@@ -158,7 +158,7 @@ export default function StudentExplorerPage() {
           s.name?.includes(searchName.trim())
         );
 
-  // 선택 학생 (1명만)
+  // 선택 학생
   const selectedStudent =
     filteredStudents.length > 0
       ? filteredStudents[0]
@@ -219,35 +219,38 @@ export default function StudentExplorerPage() {
 
         </div>
 
-        {/* 검색 */}
-        <div className="bg-[#050505] border border-[#333] p-4 rounded-[30px]">
+        {/* 검색 전만 검색창 표시 */}
+        {!selectedStudent && (
 
-          <div className="text-2xl font-bold mb-4">
-            🔍 학생 검색
+          <div className="bg-[#050505] border border-[#333] p-4 rounded-[30px]">
+
+            <div className="text-2xl font-bold mb-4">
+              🔍 학생 검색
+            </div>
+
+            <SearchDropdown
+              students={students}
+              searchName={searchName}
+              setSearchName={setSearchName}
+            />
+
+            {searchName.trim() !== "" &&
+              filteredStudents.length === 0 && (
+
+                <div className="mt-4 text-gray-400 text-sm">
+
+                  🔍 탐험가를 찾을 수 없습니다
+
+                </div>
+
+              )}
+
           </div>
 
-          <SearchDropdown
-            students={students}
-            searchName={searchName}
-            setSearchName={setSearchName}
-          />
+        )}
 
-          {/* 검색 결과 없음 */}
-          {searchName.trim() !== "" &&
-            filteredStudents.length === 0 && (
-
-              <div className="mt-4 text-gray-400 text-sm">
-
-                🔍 탐험가를 찾을 수 없습니다
-
-              </div>
-
-            )}
-
-        </div>
-
-        {/* 검색 전만 랭킹 표시 */}
-        {searchName.trim() === "" && (
+        {/* 검색 전만 랭킹 */}
+        {!selectedStudent && (
 
           <>
 
@@ -276,21 +279,35 @@ export default function StudentExplorerPage() {
         {/* 학생 프로필 */}
         {selectedStudent && (
 
-          <StudentProfile
-            student={selectedStudent}
-            currentStage={
-              ((selectedStudent.stage || 0) - 1) % 4 + 1
-            }
-            stageInfo={
-              getStageInfo(
-                selectedStudent.stage || 0
-              )
-            }
-            achievements={
-              getAchievements(selectedStudent)
-            }
-            changeCharacter={changeCharacter}
-          />
+          <>
+
+            <StudentProfile
+              student={selectedStudent}
+              currentStage={
+                ((selectedStudent.stage || 0) - 1) % 4 + 1
+              }
+              stageInfo={
+                getStageInfo(
+                  selectedStudent.stage || 0
+                )
+              }
+              achievements={
+                getAchievements(selectedStudent)
+              }
+              changeCharacter={changeCharacter}
+            />
+
+            {/* 다시 검색 */}
+            <button
+              onClick={() =>
+                setSearchName("")
+              }
+              className="w-full bg-[#111] border border-[#333] rounded-2xl p-4 text-sm"
+            >
+              🔍 다른 탐험가 찾기
+            </button>
+
+          </>
 
         )}
 
