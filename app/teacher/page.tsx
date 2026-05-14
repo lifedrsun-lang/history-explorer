@@ -240,13 +240,13 @@ export default function TeacherPage() {
 
     };
 
-  // 삭제
+  // 학생 삭제
   const deleteStudent = async (
     student: any
   ) => {
 
     const check = confirm(
-      `${student.name} 삭제할까요?`
+      `${student.name} 학생을 삭제할까요?`
     );
 
     if (!check) return;
@@ -639,6 +639,20 @@ export default function TeacherPage() {
 
                   </button>
 
+                  {/* 삭제 */}
+                  <button
+                    onClick={() =>
+                      deleteStudent(
+                        student
+                      )
+                    }
+                    className="bg-red-600 rounded-xl py-2 text-xs font-bold col-span-2"
+                  >
+
+                    🗑️ 학생 삭제
+
+                  </button>
+
                 </div>
 
               </div>
@@ -689,7 +703,7 @@ export default function TeacherPage() {
                           student
                         )
                       }
-                      className="bg-green-600 rounded-xl px-3 py-2 text-sm font-bold"
+                      className="bg-green-600 rounded-xl px-3 py-2 text-sm font-bold w-full"
                     >
 
                       👀 다시 표시
