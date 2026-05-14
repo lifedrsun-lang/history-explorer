@@ -33,7 +33,7 @@ export default function StudentExplorerPage() {
   const [selectedStudent, setSelectedStudent] =
     useState<any>(null);
 
-  // 🔥 숨김 여부 체크
+  // 숨김 여부 체크
   const isHiddenStudent = (data: any) => {
 
     const hiddenValue =
@@ -64,7 +64,6 @@ export default function StudentExplorerPage() {
 
       const data = docItem.data();
 
-      // 🔥 숨김 학생 제외
       if (isHiddenStudent(data)) {
         return;
       }
@@ -98,7 +97,7 @@ export default function StudentExplorerPage() {
 
       const data = docItem.data();
 
-      // 🔥 1차 차단
+      // 숨김 학생 제외
       if (isHiddenStudent(data)) {
         return;
       }
@@ -171,13 +170,12 @@ export default function StudentExplorerPage() {
     return arr;
   };
 
-  // 🔥 검색 결과 (2차 차단)
+  // 검색 결과
   const filteredStudents =
     searchName.trim() === ""
       ? []
       : students.filter((s) => {
 
-          // 🔥 이중 차단
           if (isHiddenStudent(s)) {
             return false;
           }
@@ -332,17 +330,22 @@ export default function StudentExplorerPage() {
 
             <StudentProfile
               student={selectedStudent}
+
+              {/* 🔥 전체 stage 번호 그대로 전달 */}
               currentStage={
-                ((selectedStudent.stage || 0) - 1) % 4 + 1
+                selectedStudent.stage || 1
               }
+
               stageInfo={
                 getStageInfo(
-                  selectedStudent.stage || 0
+                  selectedStudent.stage || 1
                 )
               }
+
               achievements={
                 getAchievements(selectedStudent)
               }
+
               changeCharacter={changeCharacter}
             />
 
