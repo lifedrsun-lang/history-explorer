@@ -150,7 +150,7 @@ export default function StudentExplorerPage() {
     return <LoadingSpinner />;
   }
 
-  // 검색 학생
+  // 검색 결과
   const filteredStudents =
     searchName.trim() === ""
       ? []
@@ -158,11 +158,14 @@ export default function StudentExplorerPage() {
           s.name?.includes(searchName.trim())
         );
 
-  // 선택 학생
-  const selectedStudent =
-    filteredStudents.length > 0
-      ? filteredStudents[0]
-      : null;
+  // 🔥 정확히 이름 일치할 때만 선택
+  const exactMatchStudent =
+    students.find(
+      (s) =>
+        s.name?.trim() === searchName.trim()
+    ) || null;
+
+  const selectedStudent = exactMatchStudent;
 
   // 랭킹
   const moonRanking = students
@@ -219,7 +222,7 @@ export default function StudentExplorerPage() {
 
         </div>
 
-        {/* 검색 전만 검색창 표시 */}
+        {/* 검색 전만 검색창 */}
         {!selectedStudent && (
 
           <div className="bg-[#050505] border border-[#333] p-4 rounded-[30px]">
@@ -234,6 +237,7 @@ export default function StudentExplorerPage() {
               setSearchName={setSearchName}
             />
 
+            {/* 검색 결과 없음 */}
             {searchName.trim() !== "" &&
               filteredStudents.length === 0 && (
 
