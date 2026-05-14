@@ -1,36 +1,43 @@
-"use client";
-
 export default function LoadingSpinner() {
 
-  return (
-
-    <div className="min-h-[300px] flex flex-col items-center justify-center text-white">
-
-      {/* 스피너 */}
-
-      <div className="relative w-20 h-20 mb-6">
-
-        <div className="absolute inset-0 border-4 border-[#333] rounded-full"></div>
-
-        <div className="absolute inset-0 border-4 border-t-yellow-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
-
+    return (
+  
+      <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
+  
+        <div className="flex flex-col items-center">
+  
+          {/* 회전 링 */}
+          <div className="relative w-20 h-20">
+  
+            <div className="absolute inset-0 rounded-full border-4 border-[#222]" />
+  
+            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-white animate-spin" />
+  
+            {/* 중앙 아이콘 */}
+            <div className="absolute inset-0 flex items-center justify-center text-3xl">
+  
+              🧭
+  
+            </div>
+  
+          </div>
+  
+          {/* 텍스트 */}
+          <div className="mt-6 text-xl font-bold">
+  
+            탐험 기록 불러오는 중...
+  
+          </div>
+  
+          <div className="mt-2 text-sm text-gray-500 text-center">
+  
+            잠시만 기다려 주세요
+  
+          </div>
+  
+        </div>
+  
       </div>
-
-      {/* 텍스트 */}
-
-      <div className="text-2xl font-bold text-gray-300">
-
-        탐험 데이터를 불러오는 중...
-
-      </div>
-
-      <div className="text-sm text-gray-500 mt-2">
-
-        잠시만 기다려 주세요
-
-      </div>
-
-    </div>
-
-  );
-}
+  
+    );
+  }
