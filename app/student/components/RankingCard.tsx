@@ -41,13 +41,13 @@ type Props = {
                 <div>
   
                   {index === 0 &&
-                    "🥇 "}
-  
-                  {index === 1 &&
                     "🥈 "}
   
+                  {index === 1 &&
+                    "🥇 "}
+  
                   {index === 2 &&
-                    "🥉 "}
+                    `${icon} `}
   
                   {student.name}
   
