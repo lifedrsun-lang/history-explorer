@@ -32,16 +32,16 @@ export default function StudentExplorerPage() {
   const [selectedStudent, setSelectedStudent] =
     useState<any>(null);
 
-  // 숨김 여부
+  // 숨김 학생 처리
   const isHiddenStudent = (
     data: any
   ) => {
 
-    return data.isActive === false;
+    return data?.isActive === false;
 
   };
 
-  // 학교 목록
+  // 학교 목록 불러오기
   const fetchSchools = async () => {
 
     const snapshot = await getDocs(
@@ -58,7 +58,7 @@ export default function StudentExplorerPage() {
         return;
       }
 
-      if (data.school) {
+      if (data?.school) {
         schoolSet.add(data.school);
       }
 
@@ -68,38 +68,46 @@ export default function StudentExplorerPage() {
 
   };
 
-  // 학생 목록
+  // 학교별 학생 불러오기
   const fetchStudentsBySchool = async (
     school: string
   ) => {
 
     setLoading(true);
 
-    const q = query(
-      collection(db, "students"),
-      where("school", "==", school)
-    );
+    try {
 
-    const snapshot = await getDocs(q);
+      const q = query(
+        collection(db, "students"),
+        where("school", "==", school)
+      );
 
-    const list: any[] = [];
+      const snapshot = await getDocs(q);
 
-    snapshot.forEach((docItem) => {
+      const list: any[] = [];
 
-      const data = docItem.data();
+      snapshot.forEach((docItem) => {
 
-      if (isHiddenStudent(data)) {
-        return;
-      }
+        const data = docItem.data();
 
-      list.push({
-        id: docItem.id,
-        ...data,
+        if (isHiddenStudent(data)) {
+          return;
+        }
+
+        list.push({
+          id: docItem.id,
+          ...data,
+        });
+
       });
 
-    });
+      setStudents(list);
 
-    setStudents(list);
+    } catch (error) {
+
+      console.error(error);
+
+    }
 
     setLoading(false);
 
@@ -133,26 +141,34 @@ export default function StudentExplorerPage() {
     type: string
   ) => {
 
-    const ref = doc(
-      db,
-      "students",
-      studentId
-    );
+    try {
 
-    await updateDoc(ref, {
-      character: type,
-    });
+      const ref = doc(
+        db,
+        "students",
+        studentId
+      );
 
-    fetchStudentsBySchool(
-      selectedSchool
-    );
+      await updateDoc(ref, {
+        character: type,
+      });
+
+      fetchStudentsBySchool(
+        selectedSchool
+      );
+
+    } catch (error) {
+
+      console.error(error);
+
+    }
 
   };
 
   // 점수 계산
   const getScore = (s: any) =>
-    (s.silver || 0) * 10 +
-    (s.bronze || 0);
+    (s?.silver || 0) * 10 +
+    (s?.bronze || 0);
 
   // 검색 결과
   const filteredStudents =
@@ -164,7 +180,7 @@ export default function StudentExplorerPage() {
             return false;
           }
 
-          return s.name?.includes(
+          return s?.name?.includes(
             searchName.trim()
           );
 
@@ -172,7 +188,7 @@ export default function StudentExplorerPage() {
 
   // 랭킹
   const moonRanking = students
-    .filter((s) => Number(s.grade) <= 2)
+    .filter((s) => Number(s?.grade) <= 2)
     .sort(
       (a, b) =>
         getScore(b) - getScore(a)
@@ -180,14 +196,14 @@ export default function StudentExplorerPage() {
     .slice(0, 3);
 
   const starRanking = students
-    .filter((s) => Number(s.grade) >= 3)
+    .filter((s) => Number(s?.grade) >= 3)
     .sort(
       (a, b) =>
         getScore(b) - getScore(a)
     )
     .slice(0, 3);
 
-  // 학교 선택 전
+  // 학교 선택 화면
   if (!selectedSchool) {
 
     return (
@@ -320,14 +336,14 @@ export default function StudentExplorerPage() {
               student={selectedStudent}
               currentStage={
                 Number(
-                  selectedStudent.stage
-                ) || 1
+                  selectedStudent?.stage || 1
+                )
               }
               stageInfo={
                 getStageInfo(
                   Number(
-                    selectedStudent.stage
-                  ) || 1
+                    selectedStudent?.stage || 1
+                  )
                 )
               }
               achievements={[]}

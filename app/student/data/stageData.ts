@@ -878,44 +878,70 @@ export const STAGE_DATA = [
 
 
 ];
-
 export const getStageInfo = (
   stage: number
 ) => {
 
+  // STAGE_DATA 안전 처리
+  if (
+    !Array.isArray(STAGE_DATA)
+  ) {
+
+    return {
+      title: "탐험 시작",
+
+      current: {
+        id: 1,
+        book: 1,
+        title: "탐험 시작",
+        era: "기본",
+        lesson: 1,
+        short: "준비중",
+        emoji: "❓",
+      },
+
+      stages: [],
+    };
+
+  }
+
+  // 숫자 변환 안전 처리
+  const safeStage =
+    Number(stage) || 1;
+
+  // 현재 단계 찾기
   const current =
     STAGE_DATA.find(
-      (s) => s.id === Number(stage)
+      (s) => s.id === safeStage
     );
 
-  // 기본값
+  // 현재 단계 없을 때
   if (!current) {
 
     return {
       title: "탐험 시작",
 
       current: {
-        id: 0,
+        id: 1,
+        book: 1,
+        title: "탐험 시작",
+        era: "기본",
+        lesson: 1,
         short: "준비중",
         emoji: "❓",
-        lesson: 1,
-        era: "기본",
       },
 
-      stages: [
-        {
-          id: 0,
-          short: "준비중",
-          emoji: "❓",
-        },
-      ],
+      stages: [],
     };
 
   }
 
-  const stages = STAGE_DATA.filter(
-    (s) => s.era === current.era
-  );
+  // 같은 시대 묶기
+  const stages =
+    STAGE_DATA.filter(
+      (s) =>
+        s.era === current.era
+    );
 
   return {
     title: current.title,
