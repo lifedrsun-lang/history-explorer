@@ -4,7 +4,7 @@ import { db } from "@/lib/firebase";
 
 import {
   collection,
- getDocs,
+  getDocs,
   doc,
   updateDoc,
   query,
@@ -32,21 +32,12 @@ export default function StudentExplorerPage() {
   const [selectedStudent, setSelectedStudent] =
     useState<any>(null);
 
-  // 숨김 여부 체크
-  const isHiddenStudent = (data: any) => {
+  // 숨김 여부
+  const isHiddenStudent = (
+    data: any
+  ) => {
 
-    const hiddenValue =
-      String(data.hidden)
-        .trim()
-        .toLowerCase();
-
-    return (
-      hiddenValue === "true" ||
-      hiddenValue === "1" ||
-      hiddenValue === "yes" ||
-      hiddenValue === "hidden" ||
-      hiddenValue === "숨김"
-    );
+    return data.isActive === false;
 
   };
 
@@ -74,6 +65,7 @@ export default function StudentExplorerPage() {
     });
 
     setAllSchools(Array.from(schoolSet));
+
   };
 
   // 학생 목록
@@ -110,6 +102,7 @@ export default function StudentExplorerPage() {
     setStudents(list);
 
     setLoading(false);
+
   };
 
   useEffect(() => {
@@ -120,7 +113,9 @@ export default function StudentExplorerPage() {
 
     if (selectedSchool) {
 
-      fetchStudentsBySchool(selectedSchool);
+      fetchStudentsBySchool(
+        selectedSchool
+      );
 
     } else {
 
@@ -138,18 +133,26 @@ export default function StudentExplorerPage() {
     type: string
   ) => {
 
-    const ref = doc(db, "students", studentId);
+    const ref = doc(
+      db,
+      "students",
+      studentId
+    );
 
     await updateDoc(ref, {
       character: type,
     });
 
-    fetchStudentsBySchool(selectedSchool);
+    fetchStudentsBySchool(
+      selectedSchool
+    );
+
   };
 
   // 점수 계산
   const getScore = (s: any) =>
-    (s.silver || 0) * 10 + (s.bronze || 0);
+    (s.silver || 0) * 10 +
+    (s.bronze || 0);
 
   // 검색 결과
   const filteredStudents =
@@ -170,12 +173,18 @@ export default function StudentExplorerPage() {
   // 랭킹
   const moonRanking = students
     .filter((s) => Number(s.grade) <= 2)
-    .sort((a, b) => getScore(b) - getScore(a))
+    .sort(
+      (a, b) =>
+        getScore(b) - getScore(a)
+    )
     .slice(0, 3);
 
   const starRanking = students
     .filter((s) => Number(s.grade) >= 3)
-    .sort((a, b) => getScore(b) - getScore(a))
+    .sort(
+      (a, b) =>
+        getScore(b) - getScore(a)
+    )
     .slice(0, 3);
 
   // 학교 선택 전
@@ -187,6 +196,7 @@ export default function StudentExplorerPage() {
         onSelect={setSelectedSchool}
       />
     );
+
   }
 
   // 로딩
@@ -280,7 +290,7 @@ export default function StudentExplorerPage() {
 
             {/* 랭킹 */}
             <RankingCard
-              title="달 탐험대"
+              title="A반 랭킹"
               icon="🌙"
               students={moonRanking}
               getScore={getScore}
@@ -289,7 +299,7 @@ export default function StudentExplorerPage() {
             />
 
             <RankingCard
-              title="별 탐험대"
+              title="B반 랭킹"
               icon="⭐"
               students={starRanking}
               getScore={getScore}
@@ -309,15 +319,21 @@ export default function StudentExplorerPage() {
             <StudentProfile
               student={selectedStudent}
               currentStage={
-                Number(selectedStudent.stage) || 1
+                Number(
+                  selectedStudent.stage
+                ) || 1
               }
               stageInfo={
                 getStageInfo(
-                  Number(selectedStudent.stage) || 1
+                  Number(
+                    selectedStudent.stage
+                  ) || 1
                 )
               }
               achievements={[]}
-              changeCharacter={changeCharacter}
+              changeCharacter={
+                changeCharacter
+              }
             />
 
             {/* 다시 검색 */}
