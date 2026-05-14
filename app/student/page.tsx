@@ -29,6 +29,10 @@ export default function StudentExplorerPage() {
   const [selectedSchool, setSelectedSchool] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // 🔥 선택 학생 따로 관리
+  const [selectedStudent, setSelectedStudent] =
+    useState<any>(null);
+
   // 학교 목록
   const fetchSchools = async () => {
 
@@ -95,6 +99,7 @@ export default function StudentExplorerPage() {
 
       setStudents([]);
       setSearchName("");
+      setSelectedStudent(null);
 
     }
 
@@ -158,15 +163,6 @@ export default function StudentExplorerPage() {
           s.name?.includes(searchName.trim())
         );
 
-  // 🔥 정확히 이름 일치할 때만 선택
-  const exactMatchStudent =
-    students.find(
-      (s) =>
-        s.name?.trim() === searchName.trim()
-    ) || null;
-
-  const selectedStudent = exactMatchStudent;
-
   // 랭킹
   const moonRanking = students
     .filter((s) => Number(s.grade) <= 2)
@@ -222,42 +218,41 @@ export default function StudentExplorerPage() {
 
         </div>
 
-        {/* 검색 전만 검색창 */}
-        {!selectedStudent && (
-
-          <div className="bg-[#050505] border border-[#333] p-4 rounded-[30px]">
-
-            <div className="text-2xl font-bold mb-4">
-              🔍 학생 검색
-            </div>
-
-            <SearchDropdown
-              students={students}
-              searchName={searchName}
-              setSearchName={setSearchName}
-            />
-
-            {/* 검색 결과 없음 */}
-            {searchName.trim() !== "" &&
-              filteredStudents.length === 0 && (
-
-                <div className="mt-4 text-gray-400 text-sm">
-
-                  🔍 탐험가를 찾을 수 없습니다
-
-                </div>
-
-              )}
-
-          </div>
-
-        )}
-
-        {/* 검색 전만 랭킹 */}
+        {/* 검색 전 */}
         {!selectedStudent && (
 
           <>
 
+            {/* 검색 */}
+            <div className="bg-[#050505] border border-[#333] p-4 rounded-[30px]">
+
+              <div className="text-2xl font-bold mb-4">
+                🔍 학생 검색
+              </div>
+
+              <SearchDropdown
+                students={students}
+                searchName={searchName}
+                setSearchName={setSearchName}
+                setSelectedStudent={
+                  setSelectedStudent
+                }
+              />
+
+              {searchName.trim() !== "" &&
+                filteredStudents.length === 0 && (
+
+                  <div className="mt-4 text-gray-400 text-sm">
+
+                    🔍 탐험가를 찾을 수 없습니다
+
+                  </div>
+
+                )}
+
+            </div>
+
+            {/* 랭킹 */}
             <RankingCard
               title="달 탐험대"
               icon="🌙"
@@ -280,7 +275,7 @@ export default function StudentExplorerPage() {
 
         )}
 
-        {/* 학생 프로필 */}
+        {/* 프로필 */}
         {selectedStudent && (
 
           <>
@@ -303,9 +298,12 @@ export default function StudentExplorerPage() {
 
             {/* 다시 검색 */}
             <button
-              onClick={() =>
-                setSearchName("")
-              }
+              onClick={() => {
+
+                setSearchName("");
+                setSelectedStudent(null);
+
+              }}
               className="w-full bg-[#111] border border-[#333] rounded-2xl p-4 text-sm"
             >
               🔍 다른 탐험가 찾기
@@ -318,5 +316,6 @@ export default function StudentExplorerPage() {
       </div>
 
     </div>
+
   );
 }
