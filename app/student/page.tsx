@@ -29,7 +29,7 @@ export default function StudentExplorerPage() {
   const [selectedSchool, setSelectedSchool] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 🔥 선택 학생 따로 관리
+  // 선택 학생
   const [selectedStudent, setSelectedStudent] =
     useState<any>(null);
 
@@ -46,6 +46,9 @@ export default function StudentExplorerPage() {
 
       const data = docItem.data();
 
+      // 🔥 숨김 학생 학교 제외
+      if (data.hidden) return;
+
       if (data.school) {
         schoolSet.add(data.school);
       }
@@ -55,7 +58,7 @@ export default function StudentExplorerPage() {
     setAllSchools(Array.from(schoolSet));
   };
 
-  // 학교별 학생
+  // 학생 불러오기
   const fetchStudentsBySchool = async (
     school: string
   ) => {
@@ -73,9 +76,14 @@ export default function StudentExplorerPage() {
 
     snapshot.forEach((docItem) => {
 
+      const data = docItem.data();
+
+      // 🔥 숨김 학생 제외
+      if (data.hidden) return;
+
       list.push({
         id: docItem.id,
-        ...docItem.data(),
+        ...data,
       });
 
     });
@@ -120,9 +128,11 @@ export default function StudentExplorerPage() {
     fetchStudentsBySchool(selectedSchool);
   };
 
+  // 점수 계산
   const getScore = (s: any) =>
     (s.silver || 0) * 10 + (s.bronze || 0);
 
+  // 업적
   const getAchievements = (s: any) => {
 
     const arr = [];
@@ -176,31 +186,35 @@ export default function StudentExplorerPage() {
 
   return (
 
-    <div className="min-h-screen bg-black text-white p-3">
+    <div className="min-h-screen bg-black text-white px-3 py-4">
 
-      <div className="max-w-2xl mx-auto space-y-4">
+      <div className="max-w-xl mx-auto space-y-4">
 
-        {/* 상단 */}
-        <div className="rounded-[30px] border border-[#333] bg-[#050505] p-4">
+        {/* 헤더 */}
+        <div className="rounded-[28px] border border-[#333] bg-[#050505] px-4 py-4">
 
-          <div className="flex justify-between items-start">
+          <div className="flex items-center justify-between gap-3">
 
-            <div>
+            <div className="min-w-0">
 
               <div className="flex items-center gap-2">
 
-                <div className="text-4xl">
+                <div className="text-3xl">
                   🧭
                 </div>
 
-                <div className="text-3xl font-bold leading-tight">
+                <div className="text-2xl font-bold truncate">
+
                   역사 탐험가
+
                 </div>
 
               </div>
 
-              <div className="text-sm text-gray-400 mt-2">
+              <div className="text-sm text-gray-400 mt-1 truncate">
+
                 {selectedSchool}
+
               </div>
 
             </div>
@@ -209,7 +223,7 @@ export default function StudentExplorerPage() {
               onClick={() =>
                 setSelectedSchool("")
               }
-              className="bg-[#111] px-4 py-2 rounded-2xl text-sm"
+              className="bg-[#111] border border-[#333] px-3 py-2 rounded-2xl text-xs shrink-0 active:scale-95 transition"
             >
               학교 변경
             </button>
@@ -224,10 +238,12 @@ export default function StudentExplorerPage() {
           <>
 
             {/* 검색 */}
-            <div className="bg-[#050505] border border-[#333] p-4 rounded-[30px]">
+            <div className="bg-[#050505] border border-[#333] p-4 rounded-[28px]">
 
-              <div className="text-2xl font-bold mb-4">
+              <div className="text-xl font-bold mb-3">
+
                 🔍 학생 검색
+
               </div>
 
               <SearchDropdown
@@ -239,10 +255,11 @@ export default function StudentExplorerPage() {
                 }
               />
 
+              {/* 결과 없음 */}
               {searchName.trim() !== "" &&
                 filteredStudents.length === 0 && (
 
-                  <div className="mt-4 text-gray-400 text-sm">
+                  <div className="mt-3 text-sm text-gray-500">
 
                     🔍 탐험가를 찾을 수 없습니다
 
@@ -304,7 +321,7 @@ export default function StudentExplorerPage() {
                 setSelectedStudent(null);
 
               }}
-              className="w-full bg-[#111] border border-[#333] rounded-2xl p-4 text-sm"
+              className="w-full bg-[#111] border border-[#333] rounded-[24px] p-4 text-sm active:scale-95 transition"
             >
               🔍 다른 탐험가 찾기
             </button>
@@ -316,6 +333,5 @@ export default function StudentExplorerPage() {
       </div>
 
     </div>
-
   );
 }
