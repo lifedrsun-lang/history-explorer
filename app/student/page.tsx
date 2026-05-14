@@ -33,12 +33,20 @@ export default function StudentExplorerPage() {
   const [selectedStudent, setSelectedStudent] =
     useState<any>(null);
 
-  // 🔥 숨김 여부 체크 함수
+  // 🔥 숨김 여부 체크
   const isHiddenStudent = (data: any) => {
 
+    const hiddenValue =
+      String(data.hidden)
+        .trim()
+        .toLowerCase();
+
     return (
-      data.hidden === true ||
-      data.hidden === "true"
+      hiddenValue === "true" ||
+      hiddenValue === "1" ||
+      hiddenValue === "yes" ||
+      hiddenValue === "hidden" ||
+      hiddenValue === "숨김"
     );
 
   };
@@ -90,7 +98,7 @@ export default function StudentExplorerPage() {
 
       const data = docItem.data();
 
-      // 🔥 숨김 학생 제외
+      // 🔥 1차 차단
       if (isHiddenStudent(data)) {
         return;
       }
@@ -163,6 +171,36 @@ export default function StudentExplorerPage() {
     return arr;
   };
 
+  // 🔥 검색 결과 (2차 차단)
+  const filteredStudents =
+    searchName.trim() === ""
+      ? []
+      : students.filter((s) => {
+
+          // 🔥 이중 차단
+          if (isHiddenStudent(s)) {
+            return false;
+          }
+
+          return s.name?.includes(
+            searchName.trim()
+          );
+
+        });
+
+  // 랭킹
+  const moonRanking = students
+    .filter((s) => !isHiddenStudent(s))
+    .filter((s) => Number(s.grade) <= 2)
+    .sort((a, b) => getScore(b) - getScore(a))
+    .slice(0, 3);
+
+  const starRanking = students
+    .filter((s) => !isHiddenStudent(s))
+    .filter((s) => Number(s.grade) >= 3)
+    .sort((a, b) => getScore(b) - getScore(a))
+    .slice(0, 3);
+
   // 학교 선택 전
   if (!selectedSchool) {
 
@@ -178,25 +216,6 @@ export default function StudentExplorerPage() {
   if (loading) {
     return <LoadingSpinner />;
   }
-
-  // 검색 결과
-  const filteredStudents =
-    searchName.trim() === ""
-      ? []
-      : students.filter((s) =>
-          s.name?.includes(searchName.trim())
-        );
-
-  // 랭킹
-  const moonRanking = students
-    .filter((s) => Number(s.grade) <= 2)
-    .sort((a, b) => getScore(b) - getScore(a))
-    .slice(0, 3);
-
-  const starRanking = students
-    .filter((s) => Number(s.grade) >= 3)
-    .sort((a, b) => getScore(b) - getScore(a))
-    .slice(0, 3);
 
   return (
 
@@ -261,7 +280,7 @@ export default function StudentExplorerPage() {
               </div>
 
               <SearchDropdown
-                students={students}
+                students={filteredStudents}
                 searchName={searchName}
                 setSearchName={setSearchName}
                 setSelectedStudent={
