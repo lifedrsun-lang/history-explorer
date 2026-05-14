@@ -35,6 +35,10 @@ export default function TeacherPage() {
   const [name, setName] =
     useState("");
 
+  // 시작 진도 선택
+  const [selectedStage, setSelectedStage] =
+    useState(1);
+
   const [selectedSchool, setSelectedSchool] =
     useState("전체학교");
 
@@ -101,7 +105,8 @@ export default function TeacherPage() {
         totalBronze: 0,
         totalSilver: 0,
 
-        stage: 1,
+        // 시작 진도
+        stage: selectedStage,
 
         isActive: true,
 
@@ -112,6 +117,8 @@ export default function TeacherPage() {
     setGrade("");
     setStudentClass("");
     setName("");
+
+    setSelectedStage(1);
 
     fetchStudents();
 
@@ -165,6 +172,61 @@ export default function TeacherPage() {
     fetchStudents();
 
   };
+
+  // 반 전체 동엽전 지급
+  const giveBronzeToClass =
+    async () => {
+
+      const filtered =
+        activeStudents;
+
+      for (const student of filtered) {
+
+        let newBronze =
+          (student.bronze || 0) + 1;
+
+        let newSilver =
+          student.silver || 0;
+
+        let totalBronze =
+          (student.totalBronze || 0) + 1;
+
+        let totalSilver =
+          student.totalSilver || 0;
+
+        // 자동 환전
+        if (newBronze >= 10) {
+
+          newBronze = 0;
+
+          newSilver += 1;
+
+          totalSilver += 1;
+
+        }
+
+        await updateDoc(
+          doc(
+            db,
+            "students",
+            student.id
+          ),
+          {
+
+            bronze: newBronze,
+            silver: newSilver,
+
+            totalBronze,
+            totalSilver,
+
+          }
+        );
+
+      }
+
+      fetchStudents();
+
+    };
 
   // 은엽전 사용
   const useSilver = async (
@@ -242,6 +304,56 @@ export default function TeacherPage() {
     fetchStudents();
 
   };
+
+  // 반 전체 진도 이동
+  const moveClassStage =
+    async (
+      direction: number
+    ) => {
+
+      const filtered =
+        activeStudents;
+
+      for (const student of filtered) {
+
+        let newStage =
+          (student.stage || 1) +
+          direction;
+
+        // 최소 제한
+        if (newStage < 1) {
+          newStage = 1;
+        }
+
+        // 최대 제한
+        if (
+          newStage >
+          stageList.length
+        ) {
+
+          newStage =
+            stageList.length;
+
+        }
+
+        await updateDoc(
+          doc(
+            db,
+            "students",
+            student.id
+          ),
+          {
+
+            stage: newStage,
+
+          }
+        );
+
+      }
+
+      fetchStudents();
+
+    };
 
   // 숨기기 / 복구
   const toggleStudentVisible =
@@ -388,7 +500,7 @@ export default function TeacherPage() {
 
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">
 
             <input
               type="text"
@@ -438,6 +550,36 @@ export default function TeacherPage() {
               className="bg-[#181818] border border-yellow-700 rounded-xl px-3 py-2 text-sm"
             />
 
+            {/* 시작 진도 */}
+            <select
+              value={selectedStage}
+              onChange={(e) =>
+                setSelectedStage(
+                  Number(
+                    e.target.value
+                  )
+                )
+              }
+              className="bg-[#181818] border border-yellow-700 rounded-xl px-3 py-2 text-sm"
+            >
+
+              {stageList.map(
+                (stage) => (
+
+                  <option
+                    key={stage.id}
+                    value={stage.id}
+                  >
+
+                    {stage.stageName}
+
+                  </option>
+
+                )
+              )}
+
+            </select>
+
           </div>
 
           <button
@@ -454,69 +596,111 @@ export default function TeacherPage() {
         {/* 필터 */}
         <div className="bg-[#111] border border-yellow-700 rounded-3xl p-4 mb-4">
 
-          <div className="flex flex-col md:flex-row gap-3">
+          <div className="flex flex-col gap-3">
 
-            {/* 학교 선택 */}
-            <select
-              value={selectedSchool}
-              onChange={(e) =>
-                setSelectedSchool(
-                  e.target.value
-                )
-              }
-              className="bg-[#181818] border border-yellow-700 rounded-xl px-4 py-2"
-            >
+            <div className="flex flex-col md:flex-row gap-3">
 
-              {schoolList.map(
-                (
-                  schoolName,
-                  index
-                ) => (
+              {/* 학교 선택 */}
+              <select
+                value={selectedSchool}
+                onChange={(e) =>
+                  setSelectedSchool(
+                    e.target.value
+                  )
+                }
+                className="bg-[#181818] border border-yellow-700 rounded-xl px-4 py-2"
+              >
 
-                  <option
-                    key={`${schoolName}-${index}`}
-                    value={schoolName}
-                  >
+                {schoolList.map(
+                  (
+                    schoolName,
+                    index
+                  ) => (
 
-                    {schoolName}
+                    <option
+                      key={`${schoolName}-${index}`}
+                      value={schoolName}
+                    >
 
-                  </option>
+                      {schoolName}
 
-                )
-              )}
+                    </option>
 
-            </select>
+                  )
+                )}
 
-            {/* 반 선택 */}
-            <div className="flex gap-2">
+              </select>
+
+              {/* 반 선택 */}
+              <div className="flex gap-2">
+
+                <button
+                  onClick={() =>
+                    setSelectedTab("A반")
+                  }
+                  className={`px-4 py-2 rounded-xl font-bold ${
+                    selectedTab === "A반"
+                      ? "bg-yellow-600"
+                      : "bg-gray-700"
+                  }`}
+                >
+
+                  A반 (1~2학년)
+
+                </button>
+
+                <button
+                  onClick={() =>
+                    setSelectedTab("B반")
+                  }
+                  className={`px-4 py-2 rounded-xl font-bold ${
+                    selectedTab === "B반"
+                      ? "bg-yellow-600"
+                      : "bg-gray-700"
+                  }`}
+                >
+
+                  B반 (3~6학년)
+
+                </button>
+
+              </div>
+
+            </div>
+
+            {/* 전체 기능 */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
 
               <button
                 onClick={() =>
-                  setSelectedTab("A반")
+                  moveClassStage(1)
                 }
-                className={`px-4 py-2 rounded-xl font-bold ${
-                  selectedTab === "A반"
-                    ? "bg-yellow-600"
-                    : "bg-gray-700"
-                }`}
+                className="bg-yellow-700 rounded-xl py-3 text-sm font-bold"
               >
 
-                A반 (1~2학년)
+                📚 전체 다음 차시
 
               </button>
 
               <button
                 onClick={() =>
-                  setSelectedTab("B반")
+                  moveClassStage(-1)
                 }
-                className={`px-4 py-2 rounded-xl font-bold ${
-                  selectedTab === "B반"
-                    ? "bg-yellow-600"
-                    : "bg-gray-700"
-                }`}
+                className="bg-gray-700 rounded-xl py-3 text-sm font-bold"
               >
 
-                B반 (3~6학년)
+                ◀ 전체 이전 차시
+
+              </button>
+
+              <button
+                onClick={
+                  giveBronzeToClass
+                }
+                className="bg-green-700 rounded-xl py-3 text-sm font-bold"
+              >
+
+                🥇 전체 동엽전 지급
 
               </button>
 
