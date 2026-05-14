@@ -31,10 +31,12 @@ export default function TeacherPage() {
     useState("");
 
   const [selectedSchool, setSelectedSchool] =
-    useState("전체보기");
+    useState("전체학교");
 
-  // 불러오기
+  const [selectedTab, setSelectedTab] =
+    useState("A반");
 
+  // 학생 불러오기
   const fetchStudents = async () => {
 
     const querySnapshot =
@@ -54,6 +56,7 @@ export default function TeacherPage() {
     });
 
     setStudents(studentList);
+
   };
 
   useEffect(() => {
@@ -61,18 +64,16 @@ export default function TeacherPage() {
   }, []);
 
   // 학생 등록
-
   const saveStudent = async () => {
 
     if (
-      !school ||
       !grade ||
       !studentClass ||
       !name
     ) {
 
       alert(
-        "모든 정보를 입력해주세요!"
+        "학년 / 반 / 이름을 입력해주세요!"
       );
 
       return;
@@ -82,7 +83,9 @@ export default function TeacherPage() {
       collection(db, "students"),
       {
 
-        school,
+        school:
+          school || "미지정",
+
         grade,
         class: studentClass,
         name,
@@ -95,8 +98,6 @@ export default function TeacherPage() {
 
         stage: 0,
 
-        character: "boy",
-
         isActive: true,
 
       }
@@ -108,10 +109,10 @@ export default function TeacherPage() {
     setName("");
 
     fetchStudents();
+
   };
 
   // 동엽전 추가
-
   const addBronze = async (
     student: any
   ) => {
@@ -129,17 +130,14 @@ export default function TeacherPage() {
       student.totalSilver || 0;
 
     // 자동 환전
-
     if (newBronze >= 10) {
 
       newBronze = 0;
+
       newSilver += 1;
 
       totalSilver += 1;
 
-      alert(
-        "🥈 은엽전으로 환전되었습니다!"
-      );
     }
 
     await updateDoc(
@@ -160,10 +158,10 @@ export default function TeacherPage() {
     );
 
     fetchStudents();
+
   };
 
-  // 단계 추가
-
+  // 수업 완료
   const addStage = async (
     student: any
   ) => {
@@ -183,10 +181,10 @@ export default function TeacherPage() {
     );
 
     fetchStudents();
+
   };
 
   // 은엽전 사용
-
   const useSilver = async (
     student: any
   ) => {
@@ -216,15 +214,11 @@ export default function TeacherPage() {
       }
     );
 
-    alert(
-      "🎁 상품권 교환 완료!"
-    );
-
     fetchStudents();
+
   };
 
-  // 학생 숨기기
-
+  // 숨기기 / 복구
   const toggleStudentVisible =
     async (student: any) => {
 
@@ -243,16 +237,16 @@ export default function TeacherPage() {
       );
 
       fetchStudents();
+
     };
 
   // 삭제
-
   const deleteStudent = async (
     student: any
   ) => {
 
     const check = confirm(
-      `${student.name} 학생을 삭제할까요?`
+      `${student.name} 삭제할까요?`
     );
 
     if (!check) return;
@@ -266,156 +260,110 @@ export default function TeacherPage() {
     );
 
     fetchStudents();
-  };
 
-  // 수정
-
-  const editStudent = async (
-    student: any
-  ) => {
-
-    const newSchool = prompt(
-      "학교",
-      student.school
-    );
-
-    if (newSchool === null)
-      return;
-
-    const newGrade = prompt(
-      "학년",
-      student.grade
-    );
-
-    if (newGrade === null)
-      return;
-
-    const newClass = prompt(
-      "반",
-      student.class
-    );
-
-    if (newClass === null)
-      return;
-
-    const newName = prompt(
-      "이름",
-      student.name
-    );
-
-    if (newName === null)
-      return;
-
-    await updateDoc(
-      doc(
-        db,
-        "students",
-        student.id
-      ),
-      {
-
-        school: newSchool,
-        grade: newGrade,
-        class: newClass,
-        name: newName,
-
-      }
-    );
-
-    fetchStudents();
   };
 
   // 학교 목록
-
   const schoolList = [
 
-    "전체보기",
+    "전체학교",
 
-    ...new Set(
-      students.map(
-        (student) =>
-          student.school ||
-          "미지정"
+    ...Array.from(
+      new Set(
+        students.map(
+          (student) =>
+            student.school ||
+            "미지정"
+        )
       )
     ),
 
   ];
 
-  // 필터
-
-  const filteredStudents =
-    selectedSchool === "전체보기"
-      ? students
-      : students.filter(
-          (student) =>
-            student.school ===
-            selectedSchool
-        );
-
   // 활성 학생
-
   const activeStudents =
-    filteredStudents.filter(
-      (student) =>
-        student.isActive !== false
-    );
+    students.filter((student) => {
+
+      if (
+        student.isActive === false
+      ) {
+
+        return false;
+
+      }
+
+      const studentSchool =
+        student.school ||
+        "미지정";
+
+      // 학교 필터
+      if (
+        selectedSchool !==
+          "전체학교" &&
+        studentSchool !==
+          selectedSchool
+      ) {
+
+        return false;
+
+      }
+
+      const gradeNum = Number(
+        student.grade
+      );
+
+      // A반
+      if (selectedTab === "A반") {
+
+        return gradeNum <= 2;
+
+      }
+
+      // B반
+      return gradeNum >= 3;
+
+    });
 
   // 숨김 학생
-
   const hiddenStudents =
-    filteredStudents.filter(
+    students.filter(
       (student) =>
         student.isActive === false
     );
 
   return (
 
-    <div className="min-h-screen bg-black text-white p-4">
+    <div className="min-h-screen bg-black text-white p-3">
 
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto">
 
         {/* 제목 */}
+        <div className="bg-[#111] border border-yellow-700 rounded-3xl p-4 mb-4">
 
-        <div className="rounded-[30px] border border-yellow-600 bg-[#111] p-6 shadow-[0_0_30px_rgba(255,180,0,0.15)]">
+          <h1 className="text-3xl font-bold">
 
-          <div className="flex items-center gap-5">
+            🏫 역사 탐험 관리소
 
-            <div className="text-6xl">
-              🏫
-            </div>
+          </h1>
 
-            <div>
+          <p className="text-gray-400 mt-1 text-sm">
 
-              <h1 className="text-5xl font-bold mb-2">
+            학생 탐험 현황 관리
 
-                역사 탐험 관리소
-
-              </h1>
-
-              <p className="text-xl text-gray-300">
-
-                학생 탐험 진행 현황을
-                관리하세요.
-
-              </p>
-
-            </div>
-
-          </div>
+          </p>
 
         </div>
 
         {/* 학생 등록 */}
+        <div className="bg-[#111] border border-yellow-700 rounded-3xl p-4 mb-4">
 
-        <div className="rounded-[30px] border border-yellow-700 bg-[#111] p-6">
-
-          <div className="text-3xl font-bold mb-6">
+          <div className="text-xl font-bold mb-3">
 
             ✏️ 학생 등록
 
           </div>
 
-          <div className="grid md:grid-cols-4 gap-4 mb-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
 
             <input
               type="text"
@@ -426,7 +374,7 @@ export default function TeacherPage() {
                   e.target.value
                 )
               }
-              className="bg-[#181818] border border-yellow-700 rounded-2xl px-4 py-4 text-xl outline-none"
+              className="bg-[#181818] border border-yellow-700 rounded-xl px-3 py-2 text-sm"
             />
 
             <input
@@ -438,7 +386,7 @@ export default function TeacherPage() {
                   e.target.value
                 )
               }
-              className="bg-[#181818] border border-yellow-700 rounded-2xl px-4 py-4 text-xl outline-none"
+              className="bg-[#181818] border border-yellow-700 rounded-xl px-3 py-2 text-sm"
             />
 
             <input
@@ -450,7 +398,7 @@ export default function TeacherPage() {
                   e.target.value
                 )
               }
-              className="bg-[#181818] border border-yellow-700 rounded-2xl px-4 py-4 text-xl outline-none"
+              className="bg-[#181818] border border-yellow-700 rounded-xl px-3 py-2 text-sm"
             />
 
             <input
@@ -462,14 +410,14 @@ export default function TeacherPage() {
                   e.target.value
                 )
               }
-              className="bg-[#181818] border border-yellow-700 rounded-2xl px-4 py-4 text-xl outline-none"
+              className="bg-[#181818] border border-yellow-700 rounded-xl px-3 py-2 text-sm"
             />
 
           </div>
 
           <button
             onClick={saveStudent}
-            className="bg-yellow-600 hover:bg-yellow-500 rounded-2xl px-6 py-4 text-xl font-bold"
+            className="bg-yellow-600 hover:bg-yellow-500 rounded-xl px-4 py-2 text-sm font-bold"
           >
 
             🎉 학생 등록
@@ -478,246 +426,218 @@ export default function TeacherPage() {
 
         </div>
 
-        {/* 학교 필터 */}
+        {/* 필터 */}
+        <div className="bg-[#111] border border-yellow-700 rounded-3xl p-4 mb-4">
 
-        <div className="rounded-[30px] border border-yellow-700 bg-[#111] p-6">
+          <div className="flex flex-col md:flex-row gap-3">
 
-          <div className="text-3xl font-bold mb-5">
+            {/* 학교 선택 */}
+            <select
+              value={selectedSchool}
+              onChange={(e) =>
+                setSelectedSchool(
+                  e.target.value
+                )
+              }
+              className="bg-[#181818] border border-yellow-700 rounded-xl px-4 py-2"
+            >
 
-            🏫 학교 선택
+              {schoolList.map(
+                (
+                  schoolName,
+                  index
+                ) => (
+
+                  <option
+                    key={`${schoolName}-${index}`}
+                    value={schoolName}
+                  >
+
+                    {schoolName}
+
+                  </option>
+
+                )
+              )}
+
+            </select>
+
+            {/* 반 선택 */}
+            <div className="flex gap-2">
+
+              <button
+                onClick={() =>
+                  setSelectedTab("A반")
+                }
+                className={`px-4 py-2 rounded-xl font-bold ${
+                  selectedTab === "A반"
+                    ? "bg-yellow-600"
+                    : "bg-gray-700"
+                }`}
+              >
+
+                A반 (1~2학년)
+
+              </button>
+
+              <button
+                onClick={() =>
+                  setSelectedTab("B반")
+                }
+                className={`px-4 py-2 rounded-xl font-bold ${
+                  selectedTab === "B반"
+                    ? "bg-yellow-600"
+                    : "bg-gray-700"
+                }`}
+              >
+
+                B반 (3~6학년)
+
+              </button>
+
+            </div>
 
           </div>
-
-          <select
-            value={selectedSchool}
-            onChange={(e) =>
-              setSelectedSchool(
-                e.target.value
-              )
-            }
-            className="bg-[#181818] border border-yellow-700 rounded-2xl px-5 py-4 text-xl"
-          >
-
-            {schoolList.map(
-              (schoolName) => (
-
-                <option
-                  key={schoolName}
-                  value={schoolName}
-                >
-
-                  {schoolName}
-
-                </option>
-
-              )
-            )}
-
-          </select>
 
         </div>
 
         {/* 활성 학생 */}
-
-        <div className="space-y-5">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
 
           {activeStudents.map(
             (student) => (
 
               <div
                 key={student.id}
-                className="rounded-[30px] border border-yellow-700 bg-[#111] p-6 shadow-lg"
+                className="bg-[#111] border border-yellow-700 rounded-3xl p-3"
               >
 
-                <div className="grid lg:grid-cols-2 gap-8 items-center">
+                {/* 이름 */}
+                <div className="text-2xl font-bold mb-1">
 
-                  {/* 정보 */}
+                  {student.name}
 
-                  <div>
+                </div>
 
-                    <div className="text-5xl font-bold mb-5">
+                {/* 학교 */}
+                <div className="text-sm text-gray-400 mb-3">
 
-                      {student.name}
+                  {student.school ||
+                    "미지정"}
 
-                    </div>
+                  <br />
 
-                    <div className="text-2xl mb-2">
+                  {student.grade}학년{" "}
+                  {student.class}반
 
-                      🏫{" "}
-                      {student.school}
+                </div>
 
-                    </div>
+                {/* 엽전 */}
+                <div className="grid grid-cols-2 gap-2 mb-3">
 
-                    <div className="text-2xl mb-5">
+                  <div className="bg-[#181818] rounded-xl p-2">
 
-                      {student.grade}
-                      학년{" "}
-                      {
-                        student.class
-                      }
-                      반
+                    <div className="text-xs text-gray-400">
 
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 mb-5">
-
-                      <div className="bg-[#181818] border border-yellow-700 rounded-2xl p-4">
-
-                        <div className="text-xl mb-3">
-
-                          🥇 동엽전
-
-                        </div>
-
-                        <div className="text-5xl font-bold">
-
-                          {
-                            student.bronze
-                          }
-
-                        </div>
-
-                      </div>
-
-                      <div className="bg-[#181818] border border-gray-500 rounded-2xl p-4">
-
-                        <div className="text-xl mb-3">
-
-                          🥈 은엽전
-
-                        </div>
-
-                        <div className="text-5xl font-bold">
-
-                          {
-                            student.silver
-                          }
-
-                        </div>
-
-                      </div>
+                      🥇 동
 
                     </div>
 
-                    {/* 누적 */}
+                    <div className="text-2xl font-bold">
 
-                    <div className="bg-[#181818] border border-yellow-800 rounded-2xl p-5">
-
-                      <div className="text-2xl font-bold mb-4">
-
-                        📊 누적 기록
-
-                      </div>
-
-                      <div className="text-xl mb-2">
-
-                        🥇 총 동엽전:
-                        {" "}
-                        {
-                          student.totalBronze ||
-                          0
-                        }
-
-                      </div>
-
-                      <div className="text-xl">
-
-                        🥈 총 은엽전:
-                        {" "}
-                        {
-                          student.totalSilver ||
-                          0
-                        }
-
-                      </div>
+                      {student.bronze}
 
                     </div>
 
                   </div>
 
-                  {/* 버튼 */}
+                  <div className="bg-[#181818] rounded-xl p-2">
 
-                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-xs text-gray-400">
 
-                    <button
-                      onClick={() =>
-                        addBronze(
-                          student
-                        )
-                      }
-                      className="bg-yellow-600 hover:bg-yellow-500 rounded-2xl py-5 text-2xl font-bold"
-                    >
+                      🥈 은
 
-                      🥇 +1 동엽전
+                    </div>
 
-                    </button>
+                    <div className="text-2xl font-bold">
 
-                    <button
-                      onClick={() =>
-                        addStage(
-                          student
-                        )
-                      }
-                      className="bg-green-600 hover:bg-green-500 rounded-2xl py-5 text-2xl font-bold"
-                    >
+                      {student.silver}
 
-                      🚀 수업 완료
-
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        useSilver(
-                          student
-                        )
-                      }
-                      className="bg-purple-600 hover:bg-purple-500 rounded-2xl py-5 text-2xl font-bold"
-                    >
-
-                      🎁 은엽전 사용
-
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        editStudent(
-                          student
-                        )
-                      }
-                      className="bg-blue-600 hover:bg-blue-500 rounded-2xl py-5 text-2xl font-bold"
-                    >
-
-                      ✏️ 정보 수정
-
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        toggleStudentVisible(
-                          student
-                        )
-                      }
-                      className="bg-gray-600 hover:bg-gray-500 rounded-2xl py-5 text-2xl font-bold"
-                    >
-
-                      🙈 숨기기
-
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        deleteStudent(
-                          student
-                        )
-                      }
-                      className="bg-red-600 hover:bg-red-500 rounded-2xl py-5 text-2xl font-bold"
-                    >
-
-                      🗑️ 삭제
-
-                    </button>
+                    </div>
 
                   </div>
+
+                </div>
+
+                {/* 누적 */}
+                <div className="bg-[#181818] rounded-xl p-2 mb-3 text-xs">
+
+                  📊 총 동:
+                  {" "}
+                  {student.totalBronze || 0}
+
+                  <br />
+
+                  📊 총 은:
+                  {" "}
+                  {student.totalSilver || 0}
+
+                </div>
+
+                {/* 버튼 */}
+                <div className="grid grid-cols-2 gap-2">
+
+                  <button
+                    onClick={() =>
+                      addBronze(
+                        student
+                      )
+                    }
+                    className="bg-yellow-600 rounded-xl py-2 text-xs font-bold"
+                  >
+
+                    +동엽전
+
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      addStage(
+                        student
+                      )
+                    }
+                    className="bg-green-600 rounded-xl py-2 text-xs font-bold"
+                  >
+
+                    수업완료
+
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      useSilver(
+                        student
+                      )
+                    }
+                    className="bg-purple-600 rounded-xl py-2 text-xs font-bold"
+                  >
+
+                    은사용
+
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      toggleStudentVisible(
+                        student
+                      )
+                    }
+                    className="bg-gray-600 rounded-xl py-2 text-xs font-bold"
+                  >
+
+                    숨기기
+
+                  </button>
 
                 </div>
 
@@ -729,50 +649,37 @@ export default function TeacherPage() {
         </div>
 
         {/* 숨김 학생 */}
-
         {hiddenStudents.length >
           0 && (
 
-          <div className="rounded-[30px] border border-gray-700 bg-[#111] p-6">
+          <div className="bg-[#111] border border-gray-700 rounded-3xl p-4">
 
-            <div className="text-3xl font-bold mb-5">
+            <div className="text-xl font-bold mb-4">
 
               🙈 숨김 학생
 
             </div>
 
-            <div className="space-y-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
 
               {hiddenStudents.map(
                 (student) => (
 
                   <div
                     key={student.id}
-                    className="bg-[#181818] border border-gray-600 rounded-2xl p-5 flex justify-between items-center"
+                    className="bg-[#181818] border border-gray-600 rounded-2xl p-3"
                   >
 
-                    <div>
+                    <div className="text-lg font-bold mb-1">
 
-                      <div className="text-3xl font-bold mb-2">
+                      {student.name}
 
-                        {
-                          student.name
-                        }
+                    </div>
 
-                      </div>
+                    <div className="text-sm text-gray-400 mb-3">
 
-                      <div className="text-xl">
-
-                        {
-                          student.grade
-                        }
-                        학년{" "}
-                        {
-                          student.class
-                        }
-                        반
-
-                      </div>
+                      {student.school ||
+                        "미지정"}
 
                     </div>
 
@@ -782,7 +689,7 @@ export default function TeacherPage() {
                           student
                         )
                       }
-                      className="bg-green-600 hover:bg-green-500 rounded-2xl px-6 py-4 text-xl font-bold"
+                      className="bg-green-600 rounded-xl px-3 py-2 text-sm font-bold"
                     >
 
                       👀 다시 표시
