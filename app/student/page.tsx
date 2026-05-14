@@ -18,7 +18,6 @@ import StudentProfile from "./components/StudentProfile";
 import RankingCard from "./components/RankingCard";
 import SearchDropdown from "./components/SearchDropdown";
 import LoadingSpinner from "./components/LoadingSpinner";
-import AdminPanel from "./components/AdminPanel";
 
 import { getStageInfo } from "./data/stageData";
 
@@ -29,26 +28,33 @@ export default function StudentExplorerPage() {
   const [searchName, setSearchName] = useState("");
   const [selectedSchool, setSelectedSchool] = useState("");
   const [loading, setLoading] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   // 학교 목록
   const fetchSchools = async () => {
 
-    const snapshot = await getDocs(collection(db, "students"));
+    const snapshot = await getDocs(
+      collection(db, "students")
+    );
 
     const schoolSet = new Set<string>();
 
     snapshot.forEach((docItem) => {
+
       const data = docItem.data();
-      if (data.school) schoolSet.add(data.school);
+
+      if (data.school) {
+        schoolSet.add(data.school);
+      }
+
     });
 
     setAllSchools(Array.from(schoolSet));
   };
 
   // 학교별 학생
-  const fetchStudentsBySchool = async (school: string) => {
+  const fetchStudentsBySchool = async (
+    school: string
+  ) => {
 
     setLoading(true);
 
@@ -62,13 +68,16 @@ export default function StudentExplorerPage() {
     const list: any[] = [];
 
     snapshot.forEach((docItem) => {
+
       list.push({
         id: docItem.id,
         ...docItem.data(),
       });
+
     });
 
     setStudents(list);
+
     setLoading(false);
   };
 
@@ -77,12 +86,18 @@ export default function StudentExplorerPage() {
   }, []);
 
   useEffect(() => {
+
     if (selectedSchool) {
+
       fetchStudentsBySchool(selectedSchool);
+
     } else {
-      setStudents([]); // 🔥 학교 없으면 무조건 초기화
+
+      setStudents([]);
       setSearchName("");
+
     }
+
   }, [selectedSchool]);
 
   // 캐릭터 변경
@@ -135,14 +150,21 @@ export default function StudentExplorerPage() {
     return <LoadingSpinner />;
   }
 
-  // 🔥 핵심 수정: 자동 노출 완전 제거
+  // 검색 학생
   const filteredStudents =
     searchName.trim() === ""
-      ? []   // ❗ 자동 1명 노출 제거
+      ? []
       : students.filter((s) =>
-          s.name?.trim().includes(searchName.trim())
+          s.name?.includes(searchName.trim())
         );
 
+  // 선택 학생 (1명만)
+  const selectedStudent =
+    filteredStudents.length > 0
+      ? filteredStudents[0]
+      : null;
+
+  // 랭킹
   const moonRanking = students
     .filter((s) => Number(s.grade) <= 2)
     .sort((a, b) => getScore(b) - getScore(a))
@@ -155,27 +177,40 @@ export default function StudentExplorerPage() {
 
   return (
 
-    <div className="min-h-screen bg-black text-white p-4">
+    <div className="min-h-screen bg-black text-white p-3">
 
-      <div className="max-w-[1800px] mx-auto space-y-5">
+      <div className="max-w-2xl mx-auto space-y-4">
 
         {/* 상단 */}
-        <div className="rounded-[30px] border border-[#333] bg-[#050505] p-6">
+        <div className="rounded-[30px] border border-[#333] bg-[#050505] p-4">
 
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-start">
 
             <div>
-              <div className="text-4xl font-bold">
-                🧭 역사 탐험가
+
+              <div className="flex items-center gap-2">
+
+                <div className="text-4xl">
+                  🧭
+                </div>
+
+                <div className="text-3xl font-bold leading-tight">
+                  역사 탐험가
+                </div>
+
               </div>
-              <div className="text-gray-400">
+
+              <div className="text-sm text-gray-400 mt-2">
                 {selectedSchool}
               </div>
+
             </div>
 
             <button
-              onClick={() => setSelectedSchool("")}
-              className="bg-[#111] px-4 py-2 rounded-xl"
+              onClick={() =>
+                setSelectedSchool("")
+              }
+              className="bg-[#111] px-4 py-2 rounded-2xl text-sm"
             >
               학교 변경
             </button>
@@ -184,88 +219,82 @@ export default function StudentExplorerPage() {
 
         </div>
 
-        {/* 검색 + 랭킹 */}
-        <div className="grid lg:grid-cols-[1.3fr_1fr_1fr] gap-5">
+        {/* 검색 */}
+        <div className="bg-[#050505] border border-[#333] p-4 rounded-[30px]">
 
-          <div className="bg-[#050505] border border-[#333] p-5 rounded-2xl">
-
-            <div className="text-xl font-bold mb-3">
-              🔍 학생 검색
-            </div>
-
-            <SearchDropdown
-              students={students}
-              searchName={searchName}
-              setSearchName={setSearchName}
-            />
-
-            {/* 🔥 빈 상태 메시지 */}
-            {searchName.trim() !== "" &&
-              filteredStudents.length === 0 && (
-                <div className="mt-4 text-gray-400 text-sm">
-                  🔍 탐험가를 찾을 수 없습니다
-                </div>
-              )
-            }
-
+          <div className="text-2xl font-bold mb-4">
+            🔍 학생 검색
           </div>
 
-          <RankingCard
-            title="달 탐험대"
-            icon="🌙"
-            students={moonRanking}
-            getScore={getScore}
-            bgColor="bg-[#15154b]"
-            borderColor="border-[#444]"
+          <SearchDropdown
+            students={students}
+            searchName={searchName}
+            setSearchName={setSearchName}
           />
 
-          <RankingCard
-            title="별 탐험대"
-            icon="⭐"
-            students={starRanking}
-            getScore={getScore}
-            bgColor="bg-[#3a2800]"
-            borderColor="border-[#5a3d00]"
-          />
+          {/* 검색 결과 없음 */}
+          {searchName.trim() !== "" &&
+            filteredStudents.length === 0 && (
+
+              <div className="mt-4 text-gray-400 text-sm">
+
+                🔍 탐험가를 찾을 수 없습니다
+
+              </div>
+
+            )}
 
         </div>
 
-        {/* 학생 렌더 (검색 시만) */}
-        {filteredStudents.length > 0 &&
-          filteredStudents.map((student) => {
+        {/* 검색 전만 랭킹 표시 */}
+        {searchName.trim() === "" && (
 
-            const stageInfo = getStageInfo(student.stage || 0);
+          <>
 
-            const currentStage =
-              ((student.stage || 0) - 1) % 4 + 1;
+            <RankingCard
+              title="달 탐험대"
+              icon="🌙"
+              students={moonRanking}
+              getScore={getScore}
+              bgColor="bg-[#15154b]"
+              borderColor="border-[#444]"
+            />
 
-            const achievements =
-              getAchievements(student);
+            <RankingCard
+              title="별 탐험대"
+              icon="⭐"
+              students={starRanking}
+              getScore={getScore}
+              bgColor="bg-[#3a2800]"
+              borderColor="border-[#5a3d00]"
+            />
 
-            return (
-              <StudentProfile
-                key={student.id}
-                student={student}
-                currentStage={currentStage}
-                stageInfo={stageInfo}
-                achievements={achievements}
-                changeCharacter={changeCharacter}
-              />
-            );
-          })}
+          </>
+
+        )}
+
+        {/* 학생 프로필 */}
+        {selectedStudent && (
+
+          <StudentProfile
+            student={selectedStudent}
+            currentStage={
+              ((selectedStudent.stage || 0) - 1) % 4 + 1
+            }
+            stageInfo={
+              getStageInfo(
+                selectedStudent.stage || 0
+              )
+            }
+            achievements={
+              getAchievements(selectedStudent)
+            }
+            changeCharacter={changeCharacter}
+          />
+
+        )}
 
       </div>
-
-      {/* 관리자 패널 */}
-      {isAdmin && selectedStudent && (
-        <AdminPanel
-          student={selectedStudent}
-          onClose={() => setSelectedStudent(null)}
-          refresh={() =>
-            fetchStudentsBySchool(selectedSchool)
-          }
-        />
-      )}
 
     </div>
   );
