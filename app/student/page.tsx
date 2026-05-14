@@ -32,7 +32,7 @@ export default function StudentExplorerPage() {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // 학교 목록 불러오기
+  // 학교 목록
   const fetchSchools = async () => {
 
     const snapshot = await getDocs(collection(db, "students"));
@@ -47,7 +47,7 @@ export default function StudentExplorerPage() {
     setAllSchools(Array.from(schoolSet));
   };
 
-  // 학교별 학생 불러오기
+  // 학교별 학생
   const fetchStudentsBySchool = async (school: string) => {
 
     setLoading(true);
@@ -80,7 +80,8 @@ export default function StudentExplorerPage() {
     if (selectedSchool) {
       fetchStudentsBySchool(selectedSchool);
     } else {
-      setStudents([]); // 🔥 핵심: 학교 없으면 무조건 초기화
+      setStudents([]); // 🔥 학교 없으면 무조건 초기화
+      setSearchName("");
     }
   }, [selectedSchool]);
 
@@ -106,14 +107,19 @@ export default function StudentExplorerPage() {
 
     const arr = [];
 
-    if ((s.stage || 0) >= 4) arr.push("🌾 고조선 탐험가");
-    if ((s.stage || 0) >= 8) arr.push("👑 고조선 개척자");
-    if ((s.stage || 0) >= 12) arr.push("⚔️ 고구려 탐험가");
+    if ((s.stage || 0) >= 4)
+      arr.push("🌾 고조선 탐험가");
+
+    if ((s.stage || 0) >= 8)
+      arr.push("👑 고조선 개척자");
+
+    if ((s.stage || 0) >= 12)
+      arr.push("⚔️ 고구려 탐험가");
 
     return arr;
   };
 
-  // 학교 선택 전 → 무조건 차단
+  // 학교 선택 전
   if (!selectedSchool) {
 
     return (
@@ -124,14 +130,15 @@ export default function StudentExplorerPage() {
     );
   }
 
-  // 로딩 화면
+  // 로딩
   if (loading) {
     return <LoadingSpinner />;
   }
 
+  // 🔥 핵심 수정: 자동 노출 완전 제거
   const filteredStudents =
     searchName.trim() === ""
-      ? students.slice(0, 1)
+      ? []   // ❗ 자동 1명 노출 제거
       : students.filter((s) =>
           s.name?.trim().includes(searchName.trim())
         );
@@ -192,6 +199,15 @@ export default function StudentExplorerPage() {
               setSearchName={setSearchName}
             />
 
+            {/* 🔥 빈 상태 메시지 */}
+            {searchName.trim() !== "" &&
+              filteredStudents.length === 0 && (
+                <div className="mt-4 text-gray-400 text-sm">
+                  🔍 탐험가를 찾을 수 없습니다
+                </div>
+              )
+            }
+
           </div>
 
           <RankingCard
@@ -214,9 +230,8 @@ export default function StudentExplorerPage() {
 
         </div>
 
-        {/* 🔥 핵심: 학생 목록 완전 차단 */}
-        {selectedSchool &&
-          filteredStudents.length > 0 &&
+        {/* 학생 렌더 (검색 시만) */}
+        {filteredStudents.length > 0 &&
           filteredStudents.map((student) => {
 
             const stageInfo = getStageInfo(student.stage || 0);
