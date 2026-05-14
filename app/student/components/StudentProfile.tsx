@@ -17,6 +17,11 @@ export default function StudentProfile({
   changeCharacter,
 }: Props) {
 
+  // 배포 안정화
+  if (!stageInfo || !stageInfo.current) {
+    return null;
+  }
+
   const characterImage =
     student.character === "girl"
       ? "/characters/girl.png"
@@ -99,7 +104,7 @@ export default function StudentProfile({
 
         <div className="text-lg font-bold leading-snug">
 
-          {stageInfo?.title}
+          {stageInfo.title}
 
         </div>
 
@@ -173,7 +178,8 @@ export default function StudentProfile({
 
         <div className="grid grid-cols-2 gap-3">
 
-          {stageInfo?.stages?.map((s: any, i: number) => (
+          {(stageInfo.stages || []).map(
+            (s: any, i: number) => (
 
             <div
               key={i}
