@@ -330,22 +330,17 @@ export default function StudentExplorerPage() {
 
             <StudentProfile
               student={selectedStudent}
-
-              {/* 🔥 전체 stage 번호 그대로 전달 */}
               currentStage={
                 selectedStudent.stage || 1
               }
-
               stageInfo={
                 getStageInfo(
                   selectedStudent.stage || 1
                 )
               }
-
               achievements={
                 getAchievements(selectedStudent)
               }
-
               changeCharacter={changeCharacter}
             />
 
