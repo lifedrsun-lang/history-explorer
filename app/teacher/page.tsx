@@ -13,6 +13,11 @@ import {
 
 import { useEffect, useState } from "react";
 
+import {
+  stageList,
+  getStageInfo,
+} from "@/app/student/data/stageData";
+
 export default function TeacherPage() {
 
   const [students, setStudents] =
@@ -96,7 +101,7 @@ export default function TeacherPage() {
         totalBronze: 0,
         totalSilver: 0,
 
-        stage: 0,
+        stage: 1,
 
         isActive: true,
 
@@ -161,29 +166,6 @@ export default function TeacherPage() {
 
   };
 
-  // 수업 완료
-  const addStage = async (
-    student: any
-  ) => {
-
-    await updateDoc(
-      doc(
-        db,
-        "students",
-        student.id
-      ),
-      {
-
-        stage:
-          (student.stage || 0) + 1,
-
-      }
-    );
-
-    fetchStudents();
-
-  };
-
   // 은엽전 사용
   const useSilver = async (
     student: any
@@ -210,6 +192,49 @@ export default function TeacherPage() {
 
         silver:
           (student.silver || 0) - 1,
+
+      }
+    );
+
+    fetchStudents();
+
+  };
+
+  // 진도 변경
+  const changeStage = async (
+    student: any,
+    direction: number
+  ) => {
+
+    let newStage =
+      (student.stage || 1) +
+      direction;
+
+    // 최소 제한
+    if (newStage < 1) {
+      newStage = 1;
+    }
+
+    // 최대 제한
+    if (
+      newStage >
+      stageList.length
+    ) {
+
+      newStage =
+        stageList.length;
+
+    }
+
+    await updateDoc(
+      doc(
+        db,
+        "students",
+        student.id
+      ),
+      {
+
+        stage: newStage,
 
       }
     );
@@ -532,6 +557,70 @@ export default function TeacherPage() {
 
                 </div>
 
+                {/* 현재 진도 */}
+                <div className="bg-[#181818] rounded-xl p-2 mb-3">
+
+                  <div className="text-xs text-gray-400 mb-1">
+
+                    현재 진도
+
+                  </div>
+
+                  <div className="text-sm font-bold text-yellow-400">
+
+                    {
+                      getStageInfo(
+                        student.stage || 1
+                      ).stageName
+                    }
+
+                  </div>
+
+                  <div className="text-xs text-gray-500 mt-1">
+
+                    {
+                      getStageInfo(
+                        student.stage || 1
+                      ).title
+                    }
+
+                  </div>
+
+                </div>
+
+                {/* 진도 이동 */}
+                <div className="grid grid-cols-2 gap-2 mb-3">
+
+                  <button
+                    onClick={() =>
+                      changeStage(
+                        student,
+                        -1
+                      )
+                    }
+                    className="bg-gray-700 rounded-xl py-2 text-xs font-bold"
+                  >
+
+                    ◀ 이전 차시
+
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      changeStage(
+                        student,
+                        1
+                      )
+                    }
+                    className="bg-yellow-700 rounded-xl py-2 text-xs font-bold"
+                  >
+
+                    다음 차시 ▶
+
+                  </button>
+
+                </div>
+
                 {/* 엽전 */}
                 <div className="grid grid-cols-2 gap-2 mb-3">
 
@@ -602,19 +691,6 @@ export default function TeacherPage() {
 
                   <button
                     onClick={() =>
-                      addStage(
-                        student
-                      )
-                    }
-                    className="bg-green-600 rounded-xl py-2 text-xs font-bold"
-                  >
-
-                    수업완료
-
-                  </button>
-
-                  <button
-                    onClick={() =>
                       useSilver(
                         student
                       )
@@ -646,10 +722,10 @@ export default function TeacherPage() {
                         student
                       )
                     }
-                    className="bg-red-600 rounded-xl py-2 text-xs font-bold col-span-2"
+                    className="bg-red-600 rounded-xl py-2 text-xs font-bold"
                   >
 
-                    🗑️ 학생 삭제
+                    삭제
 
                   </button>
 
