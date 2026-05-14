@@ -572,7 +572,7 @@ export default function TeacherPage() {
                     value={stage.id}
                   >
 
-                    {stage.stageName}
+                   {stage.title} ({stage.short})
 
                   </option>
 
@@ -756,7 +756,7 @@ export default function TeacherPage() {
                     {
                       getStageInfo(
                         student.stage || 1
-                      ).stageName
+                      ).title
                     }
 
                   </div>
