@@ -33,6 +33,16 @@ export default function StudentExplorerPage() {
   const [selectedStudent, setSelectedStudent] =
     useState<any>(null);
 
+  // 🔥 숨김 여부 체크 함수
+  const isHiddenStudent = (data: any) => {
+
+    return (
+      data.hidden === true ||
+      data.hidden === "true"
+    );
+
+  };
+
   // 학교 목록
   const fetchSchools = async () => {
 
@@ -46,8 +56,10 @@ export default function StudentExplorerPage() {
 
       const data = docItem.data();
 
-      // 🔥 숨김 학생 학교 제외
-      if (data.hidden) return;
+      // 🔥 숨김 학생 제외
+      if (isHiddenStudent(data)) {
+        return;
+      }
 
       if (data.school) {
         schoolSet.add(data.school);
@@ -79,7 +91,9 @@ export default function StudentExplorerPage() {
       const data = docItem.data();
 
       // 🔥 숨김 학생 제외
-      if (data.hidden) return;
+      if (isHiddenStudent(data)) {
+        return;
+      }
 
       list.push({
         id: docItem.id,
@@ -333,5 +347,6 @@ export default function StudentExplorerPage() {
       </div>
 
     </div>
+
   );
 }
