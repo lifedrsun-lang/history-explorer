@@ -14,9 +14,10 @@ import {
 import { useEffect, useState } from "react";
 
 import {
-  stageList,
+  STAGE_DATA,
   getStageInfo,
 } from "@/app/student/data/stageData";
+
 
 export default function TeacherPage() {
 
@@ -280,11 +281,11 @@ export default function TeacherPage() {
     // 최대 제한
     if (
       newStage >
-      stageList.length
+      STAGE_DATA.length
     ) {
 
       newStage =
-        stageList.length;
+      STAGE_DATA.length;
 
     }
 
@@ -328,11 +329,11 @@ export default function TeacherPage() {
         // 최대 제한
         if (
           newStage >
-          stageList.length
+          STAGE_DATA.length
         ) {
 
           newStage =
-            stageList.length;
+          STAGE_DATA.length;
 
         }
 
@@ -563,7 +564,7 @@ export default function TeacherPage() {
               className="bg-[#181818] border border-yellow-700 rounded-xl px-3 py-2 text-sm"
             >
 
-              {stageList.map(
+              {STAGE_DATA.map(
                 (stage) => (
 
                   <option

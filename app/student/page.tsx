@@ -4,7 +4,7 @@ import { db } from "@/lib/firebase";
 
 import {
   collection,
-  getDocs,
+ getDocs,
   doc,
   updateDoc,
   query,
@@ -29,7 +29,6 @@ export default function StudentExplorerPage() {
   const [selectedSchool, setSelectedSchool] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 선택 학생
   const [selectedStudent, setSelectedStudent] =
     useState<any>(null);
 
@@ -77,7 +76,7 @@ export default function StudentExplorerPage() {
     setAllSchools(Array.from(schoolSet));
   };
 
-  // 학생 불러오기
+  // 학생 목록
   const fetchStudentsBySchool = async (
     school: string
   ) => {
@@ -97,7 +96,6 @@ export default function StudentExplorerPage() {
 
       const data = docItem.data();
 
-      // 숨김 학생 제외
       if (isHiddenStudent(data)) {
         return;
       }
@@ -153,23 +151,6 @@ export default function StudentExplorerPage() {
   const getScore = (s: any) =>
     (s.silver || 0) * 10 + (s.bronze || 0);
 
-  // 업적
-  const getAchievements = (s: any) => {
-
-    const arr = [];
-
-    if ((s.stage || 0) >= 4)
-      arr.push("🌾 고조선 탐험가");
-
-    if ((s.stage || 0) >= 8)
-      arr.push("👑 고조선 개척자");
-
-    if ((s.stage || 0) >= 12)
-      arr.push("⚔️ 고구려 탐험가");
-
-    return arr;
-  };
-
   // 검색 결과
   const filteredStudents =
     searchName.trim() === ""
@@ -188,13 +169,11 @@ export default function StudentExplorerPage() {
 
   // 랭킹
   const moonRanking = students
-    .filter((s) => !isHiddenStudent(s))
     .filter((s) => Number(s.grade) <= 2)
     .sort((a, b) => getScore(b) - getScore(a))
     .slice(0, 3);
 
   const starRanking = students
-    .filter((s) => !isHiddenStudent(s))
     .filter((s) => Number(s.grade) >= 3)
     .sort((a, b) => getScore(b) - getScore(a))
     .slice(0, 3);
@@ -254,7 +233,7 @@ export default function StudentExplorerPage() {
               onClick={() =>
                 setSelectedSchool("")
               }
-              className="bg-[#111] border border-[#333] px-3 py-2 rounded-2xl text-xs shrink-0 active:scale-95 transition"
+              className="bg-[#111] border border-[#333] px-3 py-2 rounded-2xl text-xs shrink-0"
             >
               학교 변경
             </button>
@@ -286,7 +265,6 @@ export default function StudentExplorerPage() {
                 }
               />
 
-              {/* 결과 없음 */}
               {searchName.trim() !== "" &&
                 filteredStudents.length === 0 && (
 
@@ -323,7 +301,7 @@ export default function StudentExplorerPage() {
 
         )}
 
-        {/* 프로필 */}
+        {/* 학생 프로필 */}
         {selectedStudent && (
 
           <>
@@ -331,16 +309,14 @@ export default function StudentExplorerPage() {
             <StudentProfile
               student={selectedStudent}
               currentStage={
-                selectedStudent.stage || 1
+                Number(selectedStudent.stage) || 1
               }
               stageInfo={
                 getStageInfo(
-                  selectedStudent.stage || 1
+                  Number(selectedStudent.stage) || 1
                 )
               }
-              achievements={
-                getAchievements(selectedStudent)
-              }
+              achievements={[]}
               changeCharacter={changeCharacter}
             />
 
@@ -352,7 +328,7 @@ export default function StudentExplorerPage() {
                 setSelectedStudent(null);
 
               }}
-              className="w-full bg-[#111] border border-[#333] rounded-[24px] p-4 text-sm active:scale-95 transition"
+              className="w-full bg-[#111] border border-[#333] rounded-[24px] p-4 text-sm"
             >
               🔍 다른 탐험가 찾기
             </button>
