@@ -596,6 +596,92 @@ export default function TeacherPage() {
                     현재 진도
                   </div>
 
+
+                  {/* 진도 이동 */}
+<div className="grid grid-cols-2 gap-2 mb-3">
+
+<button
+  onClick={() =>
+    changeStage(
+      student,
+      -1
+    )
+  }
+  className="bg-gray-700 rounded-xl py-2 text-xs font-bold"
+>
+
+  ◀ 이전 차시
+
+</button>
+
+<button
+  onClick={() =>
+    changeStage(
+      student,
+      1
+    )
+  }
+  className="bg-yellow-700 rounded-xl py-2 text-xs font-bold"
+>
+
+  다음 차시 ▶
+
+</button>
+
+</div>
+
+{/* 엽전 */}
+<div className="grid grid-cols-2 gap-2 mb-3">
+
+<div className="bg-[#181818] rounded-xl p-2">
+
+  <div className="text-xs text-gray-400">
+
+    🥇 동
+
+  </div>
+
+  <div className="text-2xl font-bold">
+
+    {student.bronze}
+
+  </div>
+
+</div>
+
+<div className="bg-[#181818] rounded-xl p-2">
+
+  <div className="text-xs text-gray-400">
+
+    🥈 은
+
+  </div>
+
+  <div className="text-2xl font-bold">
+
+    {student.silver}
+
+  </div>
+
+</div>
+
+</div>
+
+{/* 누적 */}
+<div className="bg-[#181818] rounded-xl p-2 mb-3 text-xs">
+
+📊 총 동:
+{" "}
+{student.totalBronze || 0}
+
+<br />
+
+📊 총 은:
+{" "}
+{student.totalSilver || 0}
+
+</div>
+
                   <div className="text-lg font-bold text-yellow-400">
 
                     {
