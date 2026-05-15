@@ -22,7 +22,19 @@ import {
 export default function TeacherPage() {
 
 
-  const PASSWORD = "0713";
+  const SCHOOL_PASSWORDS = {
+
+    "화성 새솔초": "0309",
+    "김포 하늘빛초": "0304",
+  
+  };
+
+
+  const [
+    selectedLoginSchool,
+    setSelectedLoginSchool
+  ] = useState("");
+
 
 const [authorized, setAuthorized] =
   useState(false);
