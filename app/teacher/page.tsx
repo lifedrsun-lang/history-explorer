@@ -590,97 +590,133 @@ export default function TeacherPage() {
 
                 </div>
 
-                <div className="bg-[#181818] rounded-2xl p-3 mb-3">
+          
+{/* 현재 진도 */}
+<div className="bg-[#181818] rounded-2xl p-4 mb-3">
 
-                  <div className="text-sm text-gray-400">
-                    현재 진도
-                  </div>
+  <div className="text-sm text-gray-400 mb-1">
 
-
-                  {/* 진도 이동 */}
-<div className="grid grid-cols-2 gap-2 mb-3">
-
-<button
-  onClick={() =>
-    changeStage(
-      student,
-      -1
-    )
-  }
-  className="bg-gray-700 rounded-xl py-2 text-xs font-bold"
->
-
-  ◀ 이전 차시
-
-</button>
-
-<button
-  onClick={() =>
-    changeStage(
-      student,
-      1
-    )
-  }
-  className="bg-yellow-700 rounded-xl py-2 text-xs font-bold"
->
-
-  다음 차시 ▶
-
-</button>
-
-</div>
-
-{/* 엽전 */}
-<div className="grid grid-cols-2 gap-2 mb-3">
-
-<div className="bg-[#181818] rounded-xl p-2">
-
-  <div className="text-xs text-gray-400">
-
-    🥇 동
+    현재 진도
 
   </div>
 
-  <div className="text-2xl font-bold">
+  <div className="text-sm text-gray-500 mb-1">
 
-    {student.bronze}
+    {
+      getStageInfo(
+        student.stage
+      ).current.short
+    }
+
+  </div>
+
+  <div className="text-lg font-bold text-yellow-400 leading-snug break-keep">
+
+    {
+      getStageInfo(
+        student.stage
+      ).title
+    }
+
+  </div>
+
+  <div className="text-gray-400 mt-1 mb-3">
+
+    {
+      getStageInfo(
+        student.stage
+      ).current.era
+    }
+
+  </div>
+
+  {/* 진도 이동 */}
+  <div className="grid grid-cols-2 gap-2 mb-3">
+
+    <button
+      onClick={() =>
+        changeStage(
+          student,
+          -1
+        )
+      }
+      className="bg-gray-700 rounded-xl py-2 text-xs font-bold"
+    >
+
+      ◀ 이전 차시
+
+    </button>
+
+    <button
+      onClick={() =>
+        changeStage(
+          student,
+          1
+        )
+      }
+      className="bg-yellow-700 rounded-xl py-2 text-xs font-bold"
+    >
+
+      다음 차시 ▶
+
+    </button>
+
+  </div>
+
+  {/* 엽전 */}
+  <div className="grid grid-cols-2 gap-2 mb-3">
+
+    <div className="bg-[#111] rounded-xl p-2">
+
+      <div className="text-xs text-gray-400">
+
+        🥇 동
+
+      </div>
+
+      <div className="text-2xl font-bold">
+
+        {student.bronze}
+
+      </div>
+
+    </div>
+
+    <div className="bg-[#111] rounded-xl p-2">
+
+      <div className="text-xs text-gray-400">
+
+        🥈 은
+
+      </div>
+
+      <div className="text-2xl font-bold">
+
+        {student.silver}
+
+      </div>
+
+    </div>
+
+  </div>
+
+  {/* 누적 */}
+  <div className="bg-[#111] rounded-xl p-2 text-xs">
+
+    📊 총 동:
+    {" "}
+    {student.totalBronze || 0}
+
+    <br />
+
+    📊 총 은:
+    {" "}
+    {student.totalSilver || 0}
 
   </div>
 
 </div>
 
-<div className="bg-[#181818] rounded-xl p-2">
-
-  <div className="text-xs text-gray-400">
-
-    🥈 은
-
-  </div>
-
-  <div className="text-2xl font-bold">
-
-    {student.silver}
-
-  </div>
-
-</div>
-
-</div>
-
-{/* 누적 */}
-<div className="bg-[#181818] rounded-xl p-2 mb-3 text-xs">
-
-📊 총 동:
-{" "}
-{student.totalBronze || 0}
-
-<br />
-
-📊 총 은:
-{" "}
-{student.totalSilver || 0}
-
-</div>
 
                   <div className="text-lg font-bold text-yellow-400">
 
