@@ -93,24 +93,22 @@ export default function StudentProfile({
 
       </div>
 
-      {/* 현재 시대 */}
-      <div className="bg-[#111] border border-[#333] rounded-2xl p-4">
+{/* 현재 시대 */}
+<div className="bg-[#111] border border-[#333] rounded-2xl p-4">
 
-        <div className="text-xs text-gray-400 mb-1">
+  <div className="text-xs text-gray-400 mb-1">
 
-          🏛 현재 시대
+    🏛 현재 시대
 
-        </div>
+  </div>
 
-      
+  <div className="text-lg font-bold leading-snug">
 
-        <div className="text-lg font-bold leading-snug">
+    {stageInfo.title} {stageInfo.current.era}
 
-  {stageInfo.title} {stageInfo.current.era}
+  </div>
 
 </div>
-
-      </div>
 
       {/* 엽전 */}
       <div className="grid grid-cols-2 gap-3">
