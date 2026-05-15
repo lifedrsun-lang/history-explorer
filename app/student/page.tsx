@@ -32,12 +32,11 @@ export default function StudentExplorerPage() {
   const [selectedStudent, setSelectedStudent] =
     useState<any>(null);
 
-  // 학교 비밀번호 상태
-  const [schoolPassword, setSchoolPassword] =
-    useState("");
-
-  // 학교별 비밀번호
-  const SCHOOL_PASSWORDS: Record<string, string> = {
+  // 학교 비밀번호
+  const SCHOOL_PASSWORDS: Record<
+    string,
+    string
+  > = {
     "하늘빛초": "0304",
     "새솔초": "0309",
   };
@@ -145,7 +144,7 @@ export default function StudentExplorerPage() {
 
   }, [selectedSchool]);
 
-  // 학교 선택 + 비밀번호 확인
+  // 학교 선택 + 비밀번호 체크
   const handleSchoolSelect = (
     school: string
   ) => {
@@ -153,7 +152,7 @@ export default function StudentExplorerPage() {
     const password =
       SCHOOL_PASSWORDS[school];
 
-    // 비밀번호가 없는 학교는 바로 입장
+    // 비밀번호 없는 학교
     if (!password) {
 
       setSelectedSchool(school);
@@ -194,6 +193,12 @@ export default function StudentExplorerPage() {
       await updateDoc(ref, {
         character: type,
       });
+
+      // 즉시 화면 반영
+      setSelectedStudent((prev: any) => ({
+        ...prev,
+        character: type,
+      }));
 
       fetchStudentsBySchool(
         selectedSchool
