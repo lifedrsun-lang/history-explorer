@@ -1,4 +1,3 @@
-
 "use client";
 
 import { db } from "@/lib/firebase";
@@ -19,8 +18,6 @@ import {
   getStageInfo,
 } from "@/app/student/data/stageData";
 
-
-
 export default function TeacherPage() {
 
   const [authorized, setAuthorized] =
@@ -28,7 +25,6 @@ export default function TeacherPage() {
 
   const [passwordInput, setPasswordInput] =
     useState("");
-
 
   const [students, setStudents] =
     useState<any[]>([]);
@@ -176,93 +172,6 @@ export default function TeacherPage() {
 
   };
 
-  // 활성 학생
-  const activeStudents =
-    students.filter((student) => {
-
-      if (
-        student.isActive === false
-      ) {
-        return false;
-      }
-
-      const studentSchool =
-        student.school ||
-        "미지정";
-
-      if (
-        selectedSchool !==
-          "전체학교" &&
-        studentSchool !==
-          selectedSchool
-      ) {
-        return false;
-      }
-
-      const gradeNum = Number(
-        student.grade
-      );
-
-      if (selectedTab === "A반") {
-        return gradeNum <= 2;
-      }
-
-      return gradeNum >= 3;
-
-    });
-
-  // 반 전체 동엽전 지급
-  const giveBronzeToClass =
-    async () => {
-
-      const filtered =
-        activeStudents;
-
-      for (const student of filtered) {
-
-        let newBronze =
-          (student.bronze || 0) + 1;
-
-        let newSilver =
-          student.silver || 0;
-
-        let totalBronze =
-          (student.totalBronze || 0) + 1;
-
-        let totalSilver =
-          student.totalSilver || 0;
-
-        if (newBronze >= 10) {
-
-          newBronze = 0;
-
-          newSilver += 1;
-
-          totalSilver += 1;
-
-        }
-
-        await updateDoc(
-          doc(
-            db,
-            "students",
-            student.id
-          ),
-          {
-            bronze: newBronze,
-            silver: newSilver,
-
-            totalBronze,
-            totalSilver,
-          }
-        );
-
-      }
-
-      fetchStudents();
-
-    };
-
   // 은엽전 사용
   const useSilver = async (
     student: any
@@ -332,51 +241,7 @@ export default function TeacherPage() {
 
   };
 
-  // 반 전체 진도 이동
-  const moveClassStage =
-    async (
-      direction: number
-    ) => {
-
-      const filtered =
-        activeStudents;
-
-      for (const student of filtered) {
-
-        let newStage =
-          (student.stage || 1) +
-          direction;
-
-        if (newStage < 1) {
-          newStage = 1;
-        }
-
-        if (
-          newStage >
-          STAGE_DATA.length
-        ) {
-          newStage =
-            STAGE_DATA.length;
-        }
-
-        await updateDoc(
-          doc(
-            db,
-            "students",
-            student.id
-          ),
-          {
-            stage: newStage,
-          }
-        );
-
-      }
-
-      fetchStudents();
-
-    };
-
-  // 숨기기 / 복구
+  // 숨기기
   const toggleStudentVisible =
     async (student: any) => {
 
@@ -396,7 +261,7 @@ export default function TeacherPage() {
 
     };
 
-  // 학생 삭제
+  // 삭제
   const deleteStudent = async (
     student: any
   ) => {
@@ -419,6 +284,41 @@ export default function TeacherPage() {
 
   };
 
+  // 활성 학생
+  const activeStudents =
+    students.filter((student) => {
+
+      if (
+        student.isActive === false
+      ) {
+        return false;
+      }
+
+      const studentSchool =
+        student.school ||
+        "미지정";
+
+      if (
+        selectedSchool !==
+          "전체학교" &&
+        studentSchool !==
+          selectedSchool
+      ) {
+        return false;
+      }
+
+      const gradeNum = Number(
+        student.grade
+      );
+
+      if (selectedTab === "A반") {
+        return gradeNum <= 2;
+      }
+
+      return gradeNum >= 3;
+
+    });
+
   // 학교 목록
   const schoolList = [
 
@@ -436,72 +336,61 @@ export default function TeacherPage() {
 
   ];
 
-  // 숨김 학생
-  const hiddenStudents =
-    students.filter(
-      (student) =>
-        student.isActive === false
-    );
+  // 로그인 화면
+  if (!authorized) {
 
-// 로그인 화면
-if (!authorized) {
+    return (
 
-  return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
 
-    <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
+        <div className="bg-[#111] border border-orange-500 rounded-3xl p-6 w-full max-w-sm">
 
-      <div className="bg-[#111] border border-orange-500 rounded-3xl p-6 w-full max-w-sm">
+          <div className="text-2xl font-bold mb-4 text-center">
+            🔒 교사용 입장
+          </div>
 
-        <div className="text-2xl font-bold mb-4 text-center">
+          <input
+            type="password"
+            placeholder="비밀번호 입력"
+            value={passwordInput}
+            onChange={(e) =>
+              setPasswordInput(
+                e.target.value
+              )
+            }
+            className="w-full bg-[#222] border border-[#444] rounded-2xl px-4 py-3 mb-4 outline-none"
+          />
 
-          🔒 교사용 입장
+          <button
+            onClick={() => {
+
+              if (
+                passwordInput === "0713"
+              ) {
+
+                setAuthorized(true);
+
+              } else {
+
+                alert(
+                  "비밀번호가 틀렸습니다"
+                );
+
+              }
+
+            }}
+            className="w-full bg-orange-500 rounded-2xl py-3 font-bold"
+          >
+            입장하기
+          </button>
 
         </div>
 
-        <input
-          type="password"
-          placeholder="비밀번호 입력"
-          value={passwordInput}
-          onChange={(e) =>
-            setPasswordInput(
-              e.target.value
-            )
-          }
-          className="w-full bg-[#222] border border-[#444] rounded-2xl px-4 py-3 mb-4 outline-none"
-        />
-
-        <button
-          onClick={() => {
-
-            if (
-              passwordInput === "0713"
-            ) {
-
-              setAuthorized(true);
-
-            } else {
-
-              alert(
-                "비밀번호가 틀렸습니다"
-              );
-
-            }
-
-          }}
-          className="w-full bg-orange-500 rounded-2xl py-3 font-bold"
-        >
-          입장하기
-        </button>
-
       </div>
 
-    </div>
+    );
 
-  );
-
-}
-
-
+  }
 
   return (
 
@@ -536,9 +425,7 @@ if (!authorized) {
               placeholder="학교"
               value={school}
               onChange={(e) =>
-                setSchool(
-                  e.target.value
-                )
+                setSchool(e.target.value)
               }
               className="bg-[#181818] border border-yellow-700 rounded-xl px-3 py-2 text-sm"
             />
@@ -548,9 +435,7 @@ if (!authorized) {
               placeholder="학년"
               value={grade}
               onChange={(e) =>
-                setGrade(
-                  e.target.value
-                )
+                setGrade(e.target.value)
               }
               className="bg-[#181818] border border-yellow-700 rounded-xl px-3 py-2 text-sm"
             />
@@ -560,9 +445,7 @@ if (!authorized) {
               placeholder="반"
               value={studentClass}
               onChange={(e) =>
-                setStudentClass(
-                  e.target.value
-                )
+                setStudentClass(e.target.value)
               }
               className="bg-[#181818] border border-yellow-700 rounded-xl px-3 py-2 text-sm"
             />
@@ -572,9 +455,7 @@ if (!authorized) {
               placeholder="이름"
               value={name}
               onChange={(e) =>
-                setName(
-                  e.target.value
-                )
+                setName(e.target.value)
               }
               className="bg-[#181818] border border-yellow-700 rounded-xl px-3 py-2 text-sm"
             />
@@ -583,9 +464,7 @@ if (!authorized) {
               value={selectedStage}
               onChange={(e) =>
                 setSelectedStage(
-                  Number(
-                    e.target.value
-                  )
+                  Number(e.target.value)
                 )
               }
               className="bg-[#181818] border border-yellow-700 rounded-xl px-3 py-2 text-sm"
@@ -598,7 +477,7 @@ if (!authorized) {
                     key={stage.id}
                     value={stage.id}
                   >
-                    {stage.title} ({stage.short})
+                    {stage.title}
                   </option>
 
                 )
@@ -610,10 +489,169 @@ if (!authorized) {
 
           <button
             onClick={saveStudent}
-            className="bg-yellow-600 hover:bg-yellow-500 rounded-xl px-4 py-2 text-sm font-bold"
+            className="bg-yellow-600 rounded-xl px-4 py-2 font-bold"
           >
             🎉 학생 등록
           </button>
+
+        </div>
+
+        {/* 필터 */}
+        <div className="bg-[#111] border border-yellow-700 rounded-3xl p-4 mb-4">
+
+          <div className="flex flex-col md:flex-row gap-3">
+
+            <select
+              value={selectedSchool}
+              onChange={(e) =>
+                setSelectedSchool(
+                  e.target.value
+                )
+              }
+              className="bg-[#181818] border border-yellow-700 rounded-xl px-4 py-2"
+            >
+
+              {schoolList.map(
+                (
+                  schoolName,
+                  index
+                ) => (
+
+                  <option
+                    key={`${schoolName}-${index}`}
+                    value={schoolName}
+                  >
+
+                    {schoolName}
+
+                  </option>
+
+                )
+              )}
+
+            </select>
+
+            <div className="flex gap-2">
+
+              <button
+                onClick={() =>
+                  setSelectedTab("A반")
+                }
+                className={`px-4 py-2 rounded-xl font-bold ${
+                  selectedTab === "A반"
+                    ? "bg-yellow-600"
+                    : "bg-gray-700"
+                }`}
+              >
+                A반
+              </button>
+
+              <button
+                onClick={() =>
+                  setSelectedTab("B반")
+                }
+                className={`px-4 py-2 rounded-xl font-bold ${
+                  selectedTab === "B반"
+                    ? "bg-yellow-600"
+                    : "bg-gray-700"
+                }`}
+              >
+                B반
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* 학생 목록 */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+
+          {activeStudents.map(
+            (student) => (
+
+              <div
+                key={student.id}
+                className="bg-[#111] border border-yellow-700 rounded-3xl p-3"
+              >
+
+                <div className="text-2xl font-bold mb-1">
+                  {student.name}
+                </div>
+
+                <div className="text-sm text-gray-400 mb-3">
+
+                  {student.school || "미지정"}
+
+                  <br />
+
+                  {student.grade}학년 {student.class}반
+
+                </div>
+
+                <div className="bg-[#181818] rounded-2xl p-3 mb-3">
+
+                  <div className="text-sm text-gray-400">
+                    현재 진도
+                  </div>
+
+                  <div className="text-lg font-bold text-yellow-400">
+
+                    {
+                      getStageInfo(
+                        student.stage
+                      ).title
+                    }
+
+                  </div>
+
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+
+                  <button
+                    onClick={() =>
+                      addBronze(student)
+                    }
+                    className="bg-yellow-600 rounded-xl py-2 text-xs font-bold"
+                  >
+                    +동엽전
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      useSilver(student)
+                    }
+                    className="bg-purple-600 rounded-xl py-2 text-xs font-bold"
+                  >
+                    은사용
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      toggleStudentVisible(student)
+                    }
+                    className="bg-gray-600 rounded-xl py-2 text-xs font-bold"
+                  >
+                    숨기기
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      deleteStudent(student)
+                    }
+                    className="bg-red-600 rounded-xl py-2 text-xs font-bold"
+                  >
+                    삭제
+                  </button>
+
+                </div>
+
+              </div>
+
+            )
+          )}
 
         </div>
 
@@ -622,4 +660,5 @@ if (!authorized) {
     </div>
 
   );
+
 }
