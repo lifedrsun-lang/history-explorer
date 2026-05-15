@@ -718,15 +718,6 @@ export default function TeacherPage() {
 </div>
 
 
-                  <div className="text-lg font-bold text-yellow-400">
-
-                    {
-                      getStageInfo(
-                        student.stage
-                      ).title
-                    }
-
-                  </div>
 
          
 
