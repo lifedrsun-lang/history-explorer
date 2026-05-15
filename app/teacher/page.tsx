@@ -1,6 +1,4 @@
-# app/teacher/page.tsx 전체 교체본
 
-```tsx
 "use client";
 
 import { db } from "@/lib/firebase";
@@ -509,11 +507,21 @@ export default function TeacherPage() {
           <button
             onClick={() => {
 
-              const correctPassword =
-                SCHOOL_PASSWORDS[
-                  selectedLoginSchool
-                ];
+              const SCHOOL_PASSWORDS: Record<
+  string,
+  string
+> = {
 
+  "화성 새솔초": "0309",
+  "김포 하늘빛초": "0304",
+
+};
+const correctPassword =
+  SCHOOL_PASSWORDS[
+    selectedLoginSchool
+  ];
+
+  
               if (
                 passwordInput ===
                 correctPassword
@@ -667,4 +675,3 @@ export default function TeacherPage() {
 
   );
 }
-```
