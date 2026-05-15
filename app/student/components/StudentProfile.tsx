@@ -106,7 +106,7 @@ export default function StudentProfile({
 
         <div className="text-lg font-bold leading-snug">
 
-  [{stageInfo.title} {stageInfo.current.era}]
+  {stageInfo.title} {stageInfo.current.era}
 
 </div>
 
