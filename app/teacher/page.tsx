@@ -760,8 +760,7 @@ export default function TeacherPage() {
 
   </div>
 
-  <div className="text-3xl font-bold text-yellow-400">
-
+  <div className="text-lg font-bold text-yellow-400 leading-snug break-keep">
     {
       getStageInfo(
         student.stage
