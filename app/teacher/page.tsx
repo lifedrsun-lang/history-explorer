@@ -745,33 +745,45 @@ export default function TeacherPage() {
                 {/* 현재 진도 */}
                 <div className="bg-[#181818] rounded-xl p-2 mb-3">
 
-                  <div className="text-xs text-gray-400 mb-1">
+                <div className="bg-[#181818] rounded-2xl p-4">
 
-                    현재 진도
+<div className="text-sm text-gray-400 mb-1">
 
-                  </div>
+  현재 진도
 
-                  <div className="text-sm font-bold text-yellow-400">
+</div>
 
-                    {
-                      getStageInfo(
-                        student.stage || 1
-                      ).title
-                    }
+<div className="text-sm text-gray-500 mb-1">
 
-                  </div>
+  {
+    getStageInfo(
+      student.stage
+    ).current.short
+  }
 
-                  <div className="text-xs text-gray-500 mt-1">
+</div>
 
-                    {
-                      getStageInfo(
-                        student.stage || 1
-                      ).title
-                    }
+<div className="text-3xl font-bold text-yellow-400">
 
-                  </div>
+  {
+    getStageInfo(
+      student.stage
+    ).title
+  }
 
-                </div>
+</div>
+
+<div className="text-gray-400 mt-1">
+
+  {
+    getStageInfo(
+      student.stage
+    ).current.era
+  }
+
+</div>
+
+</div>
 
                 {/* 진도 이동 */}
                 <div className="grid grid-cols-2 gap-2 mb-3">
