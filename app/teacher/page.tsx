@@ -19,10 +19,7 @@ import {
   getStageInfo,
 } from "@/app/student/data/stageData";
 
-const SCHOOL_PASSWORDS = {
-  "화성 새솔초": "0309",
-  "김포 하늘빛초": "0304",
-};
+
 
 export default function TeacherPage() {
 
@@ -32,8 +29,6 @@ export default function TeacherPage() {
   const [passwordInput, setPasswordInput] =
     useState("");
 
-  const [selectedLoginSchool, setSelectedLoginSchool] =
-    useState("");
 
   const [students, setStudents] =
     useState<any[]>([]);
@@ -448,112 +443,66 @@ export default function TeacherPage() {
         student.isActive === false
     );
 
-  // 로그인 화면
-  if (!authorized) {
 
-    return (
+    // 로그인 화면
+    if (!authorized) {
 
-      <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
+      return (
 
-        <div className="bg-[#111] border border-orange-500 rounded-3xl p-6 w-full max-w-sm">
-
-          <div className="text-2xl font-bold mb-4 text-center">
-
-            🔒 교사용 입장
-
-          </div>
-
-          <select
-            value={selectedLoginSchool}
-            onChange={(e) =>
-              setSelectedLoginSchool(
-                e.target.value
-              )
-            }
-            className="w-full bg-[#222] border border-[#444] rounded-2xl px-4 py-3 mb-4 outline-none"
-          >
-
-            <option value="">
-              학교 선택
-            </option>
-
-            {Object.keys(
-              SCHOOL_PASSWORDS
-            ).map((school) => (
-
-              <option
-                key={school}
-                value={school}
-              >
-                {school}
-              </option>
-
-            ))}
-
-          </select>
-
-          <input
-            type="password"
-            placeholder="비밀번호 입력"
-            value={passwordInput}
-            onChange={(e) =>
-              setPasswordInput(
-                e.target.value
-              )
-            }
-            className="w-full bg-[#222] border border-[#444] rounded-2xl px-4 py-3 mb-4 outline-none"
-          />
-
-          <button
-            onClick={() => {
-
-              const SCHOOL_PASSWORDS: Record<
-  string,
-  string
-> = {
-
-  "화성 새솔초": "0309",
-  "김포 하늘빛초": "0304",
-
-};
-const correctPassword =
-  SCHOOL_PASSWORDS[
-    selectedLoginSchool
-  ];
-
-  
-              if (
-                passwordInput ===
-                correctPassword
-              ) {
-
-                setAuthorized(true);
-
-                setSelectedSchool(
-                  selectedLoginSchool
-                );
-
-              } else {
-
-                alert(
-                  "비밀번호가 틀렸습니다"
-                );
-
-              }
-
-            }}
-            className="w-full bg-orange-500 rounded-2xl py-3 font-bold"
-          >
-            입장하기
-          </button>
-
-        </div>
-
-      </div>
-
+            
     );
 
   }
+        <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
+    
+          <div className="bg-[#111] border border-orange-500 rounded-3xl p-6 w-full max-w-sm">
+    
+            <div className="text-2xl font-bold mb-4 text-center">
+              🔒 교사용 입장
+            </div>
+    
+            <input
+              type="password"
+              placeholder="비밀번호 입력"
+              value={passwordInput}
+              onChange={(e) =>
+                setPasswordInput(
+                  e.target.value
+                )
+              }
+              className="w-full bg-[#222] border border-[#444] rounded-2xl px-4 py-3 mb-4 outline-none"
+            />
+    
+            <button
+              onClick={() => {
+    
+                if (
+                  passwordInput === "0713"
+                ) {
+    
+                  setAuthorized(true);
+    
+                } else {
+    
+                  alert(
+                    "비밀번호가 틀렸습니다"
+                  );
+    
+                }
+    
+              }}
+              className="w-full bg-orange-500 rounded-2xl py-3 font-bold"
+            >
+              입장하기
+            </button>
+    
+          </div>
+    
+        </div>
+    
+      );
+    
+    
 
   return (
 
