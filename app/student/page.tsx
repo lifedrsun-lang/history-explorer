@@ -37,8 +37,8 @@ export default function StudentExplorerPage() {
     string,
     string
   > = {
-    하늘빛초: "0304",
-    새솔초: "0309",
+    "김포 하늘빛초": "0304",
+    "화성 새솔초": "0309",
   };
 
   // 숨김 학생 처리
@@ -73,7 +73,9 @@ export default function StudentExplorerPage() {
 
     });
 
-    setAllSchools(Array.from(schoolSet));
+    setAllSchools(
+      Array.from(schoolSet)
+    );
 
   };
 
@@ -144,7 +146,7 @@ export default function StudentExplorerPage() {
 
   }, [selectedSchool]);
 
-  // 학교 선택 시 비밀번호 체크
+  // 학교 선택 + 비밀번호 체크
   const handleSchoolSelect = (
     school: string
   ) => {
@@ -152,7 +154,7 @@ export default function StudentExplorerPage() {
     const password =
       SCHOOL_PASSWORDS[school];
 
-    // 비밀번호 없는 학교
+    // 비밀번호 없는 학교는 바로 입장
     if (!password) {
 
       setSelectedSchool(school);
@@ -196,11 +198,13 @@ export default function StudentExplorerPage() {
         character: type,
       });
 
-      // 즉시 반영
-      setSelectedStudent((prev: any) => ({
-        ...prev,
-        character: type,
-      }));
+      // 즉시 화면 반영
+      setSelectedStudent(
+        (prev: any) => ({
+          ...prev,
+          character: type,
+        })
+      );
 
       fetchStudentsBySchool(
         selectedSchool
@@ -258,13 +262,15 @@ export default function StudentExplorerPage() {
     return (
       <SchoolSelect
         schools={allSchools}
-        onSelect={handleSchoolSelect}
+        onSelect={
+          handleSchoolSelect
+        }
       />
     );
 
   }
 
-  // 로딩
+  // 로딩 화면
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -322,7 +328,7 @@ export default function StudentExplorerPage() {
 
           <>
 
-            {/* 검색 */}
+            {/* 학생 검색 */}
             <div className="bg-[#050505] border border-[#333] p-4 rounded-[28px]">
 
               <div className="text-xl font-bold mb-3">
@@ -334,7 +340,9 @@ export default function StudentExplorerPage() {
               <SearchDropdown
                 students={filteredStudents}
                 searchName={searchName}
-                setSearchName={setSearchName}
+                setSearchName={
+                  setSearchName
+                }
                 setSelectedStudent={
                   setSelectedStudent
                 }
@@ -423,4 +431,5 @@ export default function StudentExplorerPage() {
     </div>
 
   );
+
 }
