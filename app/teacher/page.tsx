@@ -443,66 +443,65 @@ export default function TeacherPage() {
         student.isActive === false
     );
 
+// 로그인 화면
+if (!authorized) {
 
-    // 로그인 화면
-    if (!authorized) {
+  return (
 
-      return (
+    <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
 
-            
-    );
+      <div className="bg-[#111] border border-orange-500 rounded-3xl p-6 w-full max-w-sm">
 
-  }
-        <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
-    
-          <div className="bg-[#111] border border-orange-500 rounded-3xl p-6 w-full max-w-sm">
-    
-            <div className="text-2xl font-bold mb-4 text-center">
-              🔒 교사용 입장
-            </div>
-    
-            <input
-              type="password"
-              placeholder="비밀번호 입력"
-              value={passwordInput}
-              onChange={(e) =>
-                setPasswordInput(
-                  e.target.value
-                )
-              }
-              className="w-full bg-[#222] border border-[#444] rounded-2xl px-4 py-3 mb-4 outline-none"
-            />
-    
-            <button
-              onClick={() => {
-    
-                if (
-                  passwordInput === "0713"
-                ) {
-    
-                  setAuthorized(true);
-    
-                } else {
-    
-                  alert(
-                    "비밀번호가 틀렸습니다"
-                  );
-    
-                }
-    
-              }}
-              className="w-full bg-orange-500 rounded-2xl py-3 font-bold"
-            >
-              입장하기
-            </button>
-    
-          </div>
-    
+        <div className="text-2xl font-bold mb-4 text-center">
+
+          🔒 교사용 입장
+
         </div>
-    
-      );
-    
-    
+
+        <input
+          type="password"
+          placeholder="비밀번호 입력"
+          value={passwordInput}
+          onChange={(e) =>
+            setPasswordInput(
+              e.target.value
+            )
+          }
+          className="w-full bg-[#222] border border-[#444] rounded-2xl px-4 py-3 mb-4 outline-none"
+        />
+
+        <button
+          onClick={() => {
+
+            if (
+              passwordInput === "0713"
+            ) {
+
+              setAuthorized(true);
+
+            } else {
+
+              alert(
+                "비밀번호가 틀렸습니다"
+              );
+
+            }
+
+          }}
+          className="w-full bg-orange-500 rounded-2xl py-3 font-bold"
+        >
+          입장하기
+        </button>
+
+      </div>
+
+    </div>
+
+  );
+
+}
+
+
 
   return (
 
