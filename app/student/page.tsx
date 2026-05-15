@@ -23,16 +23,32 @@ import { getStageInfo } from "./data/stageData";
 
 export default function StudentExplorerPage() {
 
-  const [students, setStudents] = useState<any[]>([]);
-  const [allSchools, setAllSchools] = useState<string[]>([]);
-  const [searchName, setSearchName] = useState("");
-  const [selectedSchool, setSelectedSchool] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [students, setStudents] =
+    useState<any[]>([]);
+
+  const [allSchools, setAllSchools] =
+    useState<string[]>([]);
+
+  const [searchName, setSearchName] =
+    useState("");
+
+  const [selectedSchool, setSelectedSchool] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(false);
 
   const [selectedStudent, setSelectedStudent] =
     useState<any>(null);
 
-  // 학교별 비밀번호
+  // 학교 비밀번호 UI
+  const [pendingSchool, setPendingSchool] =
+    useState("");
+
+  const [passwordInput, setPasswordInput] =
+    useState("");
+
+  // 학교 비밀번호
   const SCHOOL_PASSWORDS: Record<
     string,
     string
@@ -146,7 +162,7 @@ export default function StudentExplorerPage() {
 
   }, [selectedSchool]);
 
-  // 학교 선택 + 비밀번호 체크
+  // 학교 선택
   const handleSchoolSelect = (
     school: string
   ) => {
@@ -154,7 +170,7 @@ export default function StudentExplorerPage() {
     const password =
       SCHOOL_PASSWORDS[school];
 
-    // 비밀번호 없는 학교는 바로 입장
+    // 비밀번호 없는 학교
     if (!password) {
 
       setSelectedSchool(school);
@@ -162,21 +178,8 @@ export default function StudentExplorerPage() {
 
     }
 
-    const input = window.prompt(
-      `${school} 비밀번호를 입력하세요`
-    );
-
-    if (input === password) {
-
-      setSelectedSchool(school);
-
-    } else {
-
-      window.alert(
-        "비밀번호가 틀렸습니다."
-      );
-
-    }
+    // 비밀번호 UI 열기
+    setPendingSchool(school);
 
   };
 
@@ -198,7 +201,7 @@ export default function StudentExplorerPage() {
         character: type,
       });
 
-      // 즉시 화면 반영
+      // 즉시 반영
       setSelectedStudent(
         (prev: any) => ({
           ...prev,
@@ -259,18 +262,97 @@ export default function StudentExplorerPage() {
   // 학교 선택 화면
   if (!selectedSchool) {
 
+    // 비밀번호 입력 화면
+    if (pendingSchool) {
+
+      return (
+
+        <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
+
+          <div className="w-full max-w-md border border-orange-500 rounded-[32px] p-8 bg-[#050505]">
+
+            <div className="text-3xl font-bold text-center mb-6">
+
+              🔐 {pendingSchool} 입장
+
+            </div>
+
+            <input
+              type="password"
+              placeholder="비밀번호 입력"
+              value={passwordInput}
+              onChange={(e) =>
+                setPasswordInput(
+                  e.target.value
+                )
+              }
+              className="w-full bg-[#111] border border-[#333] rounded-2xl px-4 py-4 text-lg mb-5 outline-none"
+            />
+
+            <button
+              onClick={() => {
+
+                const correctPassword =
+                  SCHOOL_PASSWORDS[
+                    pendingSchool
+                  ];
+
+                if (
+                  passwordInput ===
+                  correctPassword
+                ) {
+
+                  setSelectedSchool(
+                    pendingSchool
+                  );
+
+                  setPendingSchool("");
+                  setPasswordInput("");
+
+                } else {
+
+                  alert(
+                    "비밀번호가 틀렸습니다."
+                  );
+
+                }
+
+              }}
+              className="w-full bg-orange-500 hover:bg-orange-600 transition rounded-2xl py-4 text-xl font-bold"
+            >
+              입장하기
+            </button>
+
+            <button
+              onClick={() => {
+
+                setPendingSchool("");
+                setPasswordInput("");
+
+              }}
+              className="w-full mt-3 bg-[#111] border border-[#333] rounded-2xl py-3 text-sm"
+            >
+              학교 목록으로
+            </button>
+
+          </div>
+
+        </div>
+
+      );
+
+    }
+
     return (
       <SchoolSelect
         schools={allSchools}
-        onSelect={
-          handleSchoolSelect
-        }
+        onSelect={handleSchoolSelect}
       />
     );
 
   }
 
-  // 로딩 화면
+  // 로딩
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -328,7 +410,7 @@ export default function StudentExplorerPage() {
 
           <>
 
-            {/* 학생 검색 */}
+            {/* 검색 */}
             <div className="bg-[#050505] border border-[#333] p-4 rounded-[28px]">
 
               <div className="text-xl font-bold mb-3">
@@ -340,9 +422,7 @@ export default function StudentExplorerPage() {
               <SearchDropdown
                 students={filteredStudents}
                 searchName={searchName}
-                setSearchName={
-                  setSearchName
-                }
+                setSearchName={setSearchName}
                 setSelectedStudent={
                   setSelectedStudent
                 }
