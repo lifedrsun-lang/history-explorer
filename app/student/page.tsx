@@ -32,13 +32,13 @@ export default function StudentExplorerPage() {
   const [selectedStudent, setSelectedStudent] =
     useState<any>(null);
 
-  // 학교 비밀번호
+  // 학교별 비밀번호
   const SCHOOL_PASSWORDS: Record<
     string,
     string
   > = {
-    "하늘빛초": "0304",
-    "새솔초": "0309",
+    하늘빛초: "0304",
+    새솔초: "0309",
   };
 
   // 숨김 학생 처리
@@ -144,7 +144,7 @@ export default function StudentExplorerPage() {
 
   }, [selectedSchool]);
 
-  // 학교 선택 + 비밀번호 체크
+  // 학교 선택 시 비밀번호 체크
   const handleSchoolSelect = (
     school: string
   ) => {
@@ -160,7 +160,7 @@ export default function StudentExplorerPage() {
 
     }
 
-    const input = prompt(
+    const input = window.prompt(
       `${school} 비밀번호를 입력하세요`
     );
 
@@ -170,7 +170,9 @@ export default function StudentExplorerPage() {
 
     } else {
 
-      alert("비밀번호가 틀렸습니다.");
+      window.alert(
+        "비밀번호가 틀렸습니다."
+      );
 
     }
 
@@ -194,7 +196,7 @@ export default function StudentExplorerPage() {
         character: type,
       });
 
-      // 즉시 화면 반영
+      // 즉시 반영
       setSelectedStudent((prev: any) => ({
         ...prev,
         character: type,
