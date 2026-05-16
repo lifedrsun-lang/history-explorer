@@ -880,6 +880,38 @@ export default function TeacherPage() {
               className="border rounded-xl px-4 py-2"
             />
 
+
+<div className="flex gap-2 mt-3">
+
+  <button
+    onClick={() =>
+      setSelectedTab("A반")
+    }
+    className={`flex-1 py-3 rounded-2xl font-bold transition ${
+      selectedTab === "A반"
+        ? "bg-blue-500 text-white"
+        : "bg-gray-100 text-gray-500"
+    }`}
+  >
+    🌙 A반
+  </button>
+
+  <button
+    onClick={() =>
+      setSelectedTab("B반")
+    }
+    className={`flex-1 py-3 rounded-2xl font-bold transition ${
+      selectedTab === "B반"
+        ? "bg-pink-500 text-white"
+        : "bg-gray-100 text-gray-500"
+    }`}
+  >
+    ⭐ B반
+  </button>
+
+</div>
+
+
           </div>
 
         </div>
