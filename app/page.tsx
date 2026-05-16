@@ -39,7 +39,7 @@ export default function HomePage() {
         items-start
         justify-center
         px-5
-        pt-40
+        pt-56
         pb-10
       "
       style={{
