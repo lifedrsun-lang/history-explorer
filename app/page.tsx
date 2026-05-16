@@ -24,31 +24,122 @@ export default function HomePage() {
         {/* 설정 버튼 */}
         <button
           onClick={() => router.push("/teacher")}
-          className="absolute top-[2%] right-[2%] w-[12%] h-[8%]"
+          className="
+            absolute
+            top-[0%]
+            right-[0%]
+            w-[16%]
+            h-[10%]
+            z-30
+          "
         />
 
-        {/* 봄 섬 */}
+        {/* 배 */}
+        <Image
+          src="/images/ship.png"
+          alt="배"
+          width={70}
+          height={70}
+          priority
+          className="
+            absolute
+            top-[42%]
+            left-[42%]
+            z-20
+            animate-bounce
+          "
+        />
+
+        {/* 봄 */}
         <button
           onClick={() => router.push("/spring")}
-          className="absolute top-[28%] left-[2%] w-[46%] h-[24%]"
+          className="
+            absolute
+            top-[20%]
+            left-[0%]
+            w-[48%]
+            h-[30%]
+            z-10
+
+            transition-all
+            duration-300
+
+            hover:scale-105
+            active:scale-95
+
+            hover:brightness-110
+
+            hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.9)]
+          "
         />
 
-        {/* 여름 섬 */}
+        {/* 여름 */}
         <button
-          onClick={() => alert("준비중")}
-          className="absolute top-[28%] right-[2%] w-[46%] h-[24%]"
+          onClick={() => router.push("/summer")}
+          className="
+            absolute
+            top-[20%]
+            right-[0%]
+            w-[48%]
+            h-[30%]
+            z-10
+
+            transition-all
+            duration-300
+
+            hover:scale-105
+            active:scale-95
+
+            hover:brightness-110
+
+            hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.9)]
+          "
         />
 
-        {/* 가을 섬 */}
+        {/* 가을 */}
         <button
-          onClick={() => alert("준비중")}
-          className="absolute top-[54%] left-[2%] w-[46%] h-[24%]"
+          onClick={() => router.push("/autumn")}
+          className="
+            absolute
+            top-[50%]
+            left-[0%]
+            w-[48%]
+            h-[30%]
+            z-10
+
+            transition-all
+            duration-300
+
+            hover:scale-105
+            active:scale-95
+
+            hover:brightness-110
+
+            hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.9)]
+          "
         />
 
-        {/* 겨울 섬 */}
+        {/* 겨울 */}
         <button
-          onClick={() => alert("준비중")}
-          className="absolute top-[54%] right-[2%] w-[46%] h-[24%]"
+          onClick={() => router.push("/winter")}
+          className="
+            absolute
+            top-[50%]
+            right-[0%]
+            w-[48%]
+            h-[30%]
+            z-10
+
+            transition-all
+            duration-300
+
+            hover:scale-105
+            active:scale-95
+
+            hover:brightness-110
+
+            hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.9)]
+          "
         />
 
       </div>
