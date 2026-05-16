@@ -7,42 +7,45 @@ export default function HomePage() {
   const router = useRouter();
 
   return (
-    <main className="relative w-full h-screen overflow-hidden bg-black">
-      
-      {/* 배경 이미지 */}
-      <Image
-        src="/images/main-seasons.png"
-        alt="메인"
-        fill
-        priority
-        className="object-cover"
-      />
+    <main className="w-full min-h-screen bg-sky-300 flex justify-center">
 
-      {/* 클릭 영역 */}
-      
-      {/* 봄 */}
-      <button
-        onClick={() => router.push("/spring")}
-        className="absolute top-[52%] left-[18%] w-[18%] h-[18%]"
-      />
+      <div className="relative w-full max-w-[500px]">
 
-      {/* 여름 */}
-      <button
-        onClick={() => router.push("/summer")}
-        className="absolute top-[52%] left-[63%] w-[18%] h-[18%]"
-      />
+        {/* 메인 이미지 */}
+        <Image
+          src="/images/main-seasons.png"
+          alt="메인"
+          width={1536}
+          height={1024}
+          priority
+          className="w-full h-auto"
+        />
 
-      {/* 가을 */}
-      <button
-        onClick={() => router.push("/autumn")}
-        className="absolute top-[77%] left-[18%] w-[18%] h-[18%]"
-      />
+        {/* 봄 */}
+        <button
+          onClick={() => router.push("/spring")}
+          className="absolute top-[48%] left-[8%] w-[35%] h-[18%]"
+        />
 
-      {/* 겨울 */}
-      <button
-        onClick={() => router.push("/winter")}
-        className="absolute top-[77%] left-[63%] w-[18%] h-[18%]"
-      />
+        {/* 여름 */}
+        <button
+          onClick={() => alert("준비중")}
+          className="absolute top-[48%] right-[8%] w-[35%] h-[18%]"
+        />
+
+        {/* 가을 */}
+        <button
+          onClick={() => alert("준비중")}
+          className="absolute bottom-[7%] left-[8%] w-[35%] h-[18%]"
+        />
+
+        {/* 겨울 */}
+        <button
+          onClick={() => alert("준비중")}
+          className="absolute bottom-[7%] right-[8%] w-[35%] h-[18%]"
+        />
+
+      </div>
     </main>
   );
 }
