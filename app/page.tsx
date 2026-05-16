@@ -34,22 +34,6 @@ export default function HomePage() {
           "
         />
 
-        {/* 배 */}
-        <Image
-          src="/images/ship.png"
-          alt="배"
-          width={70}
-          height={70}
-          priority
-          className="
-            absolute
-            top-[42%]
-            left-[42%]
-            z-20
-            animate-bounce
-          "
-        />
-
         {/* 봄 */}
         <button
           onClick={() => router.push("/spring")}
@@ -61,15 +45,15 @@ export default function HomePage() {
             h-[30%]
             z-10
 
+            rounded-full
+
             transition-all
             duration-300
 
-            hover:scale-105
+            hover:bg-white/10
             active:scale-95
 
-            hover:brightness-110
-
-            hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.9)]
+            hover:shadow-[0_0_50px_rgba(255,255,255,0.9)]
           "
         />
 
@@ -84,15 +68,15 @@ export default function HomePage() {
             h-[30%]
             z-10
 
+            rounded-full
+
             transition-all
             duration-300
 
-            hover:scale-105
+            hover:bg-white/10
             active:scale-95
 
-            hover:brightness-110
-
-            hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.9)]
+            hover:shadow-[0_0_50px_rgba(255,255,255,0.9)]
           "
         />
 
@@ -107,15 +91,15 @@ export default function HomePage() {
             h-[30%]
             z-10
 
+            rounded-full
+
             transition-all
             duration-300
 
-            hover:scale-105
+            hover:bg-white/10
             active:scale-95
 
-            hover:brightness-110
-
-            hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.9)]
+            hover:shadow-[0_0_50px_rgba(255,255,255,0.9)]
           "
         />
 
@@ -130,15 +114,15 @@ export default function HomePage() {
             h-[30%]
             z-10
 
+            rounded-full
+
             transition-all
             duration-300
 
-            hover:scale-105
+            hover:bg-white/10
             active:scale-95
 
-            hover:brightness-110
-
-            hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.9)]
+            hover:shadow-[0_0_50px_rgba(255,255,255,0.9)]
           "
         />
 
