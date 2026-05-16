@@ -6,22 +6,39 @@ import { useRouter } from "next/navigation";
 export default function HomePage() {
   const router = useRouter();
 
+  const notOpen = () => {
+    alert("해당 학기가 아닙니다.");
+  };
+
   return (
-    <main className="w-full min-h-screen bg-sky-300 overflow-hidden">
+    <main className="relative w-screen h-screen bg-sky-300 overflow-hidden flex items-center justify-center">
 
-      <div className="relative w-full max-w-[1000px] mx-auto">
+      {/* 메인맵 */}
+      <div className="relative h-screen aspect-[9/16]">
 
-        {/* 메인 이미지 */}
         <Image
           src="/images/main-seasons.png"
           alt="메인"
-          width={1080}
-          height={1920}
+          fill
           priority
-          className="w-full h-auto block"
+          className="object-contain"
         />
 
-        {/* 설정 버튼 */}
+        {/* 반짝임 효과 */}
+        <div className="
+          absolute
+          top-[20%]
+          left-[0%]
+          w-[48%]
+          h-[30%]
+          rounded-full
+
+          animate-pulse
+
+          shadow-[0_0_40px_rgba(255,255,255,0.9)]
+        " />
+
+        {/* 설정 */}
         <button
           onClick={() => router.push("/teacher")}
           className="
@@ -43,62 +60,58 @@ export default function HomePage() {
             left-[0%]
             w-[48%]
             h-[30%]
-            z-10
+            z-20
 
             active:scale-95
             transition-transform
-            duration-150
           "
         />
 
         {/* 여름 */}
         <button
-          onClick={() => router.push("/summer")}
+          onClick={notOpen}
           className="
             absolute
             top-[20%]
             right-[0%]
             w-[48%]
             h-[30%]
-            z-10
+            z-20
 
             active:scale-95
             transition-transform
-            duration-150
           "
         />
 
         {/* 가을 */}
         <button
-          onClick={() => router.push("/autumn")}
+          onClick={notOpen}
           className="
             absolute
             top-[50%]
             left-[0%]
             w-[48%]
             h-[30%]
-            z-10
+            z-20
 
             active:scale-95
             transition-transform
-            duration-150
           "
         />
 
         {/* 겨울 */}
         <button
-          onClick={() => router.push("/winter")}
+          onClick={notOpen}
           className="
             absolute
             top-[50%]
             right-[0%]
             w-[48%]
             h-[30%]
-            z-10
+            z-20
 
             active:scale-95
             transition-transform
-            duration-150
           "
         />
 
