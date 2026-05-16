@@ -36,10 +36,11 @@ export default function HomePage() {
         bg-center
         bg-no-repeat
         flex
-        items-center
+        items-start
         justify-center
         px-5
-        py-8
+        pt-52
+        pb-10
       "
       style={{
         backgroundImage: "url('/map-bg.png')",
