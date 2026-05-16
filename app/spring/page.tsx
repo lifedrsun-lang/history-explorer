@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 export default function SpringPage() {
+
   const router = useRouter();
 
   return (
@@ -13,6 +14,7 @@ export default function SpringPage() {
         h-screen
         bg-sky-300
         overflow-hidden
+
         flex
         items-center
         justify-center
@@ -22,6 +24,7 @@ export default function SpringPage() {
       {/* 봄맵 */}
       <div className="relative h-screen aspect-[9/16]">
 
+        {/* 배경 */}
         <Image
           src="/images/spring-map.png"
           alt="봄맵"
@@ -37,8 +40,10 @@ export default function SpringPage() {
             absolute
             top-[1%]
             right-[1%]
+
             w-[14%]
             h-[8%]
+
             z-30
           "
         />
@@ -50,8 +55,10 @@ export default function SpringPage() {
             absolute
             top-[18%]
             left-[0%]
+
             w-[48%]
             h-[32%]
+
             z-20
 
             transition-all
@@ -65,13 +72,15 @@ export default function SpringPage() {
 
         {/* 세계탐험대 */}
         <button
-          onClick={() => alert('준비중입니다.')}
+          onClick={() => router.push("/summer")}
           className="
             absolute
             top-[18%]
             right-[0%]
+
             w-[48%]
             h-[32%]
+
             z-20
 
             transition-all
@@ -85,13 +94,15 @@ export default function SpringPage() {
 
         {/* 위인탐험대 */}
         <button
-          onClick={() => alert('준비중입니다.')}
+          onClick={() => router.push("/summer")}
           className="
             absolute
             top-[52%]
             left-[0%]
+
             w-[48%]
             h-[32%]
+
             z-20
 
             transition-all
@@ -105,13 +116,15 @@ export default function SpringPage() {
 
         {/* 문화탐험대 */}
         <button
-          onClick={() => alert('준비중입니다.')}
+          onClick={() => router.push("/summer")}
           className="
             absolute
             top-[52%]
             right-[0%]
+
             w-[48%]
             h-[32%]
+
             z-20
 
             transition-all
@@ -124,6 +137,7 @@ export default function SpringPage() {
         />
 
       </div>
+
     </main>
   );
 }

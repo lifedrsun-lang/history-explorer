@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 export default function SummerPage() {
+
   const router = useRouter();
 
   return (
@@ -11,6 +12,7 @@ export default function SummerPage() {
       className="
         w-screen
         h-screen
+
         bg-black/50
 
         flex
@@ -103,7 +105,7 @@ export default function SummerPage() {
           곧 열립니다!
         </p>
 
-        {/* 버튼 */}
+        {/* 확인 버튼 */}
         <button
           onClick={() => router.push("/")}
           className="
@@ -131,6 +133,7 @@ export default function SummerPage() {
         </button>
 
       </div>
+
     </main>
   );
 }
