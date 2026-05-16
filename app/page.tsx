@@ -6,10 +6,6 @@ import { useRouter } from "next/navigation";
 export default function HomePage() {
   const router = useRouter();
 
-  const notOpen = () => {
-    alert("해당 학기가 아닙니다.");
-  };
-
   return (
     <main
       className="
@@ -70,7 +66,7 @@ export default function HomePage() {
 
         {/* 여름 */}
         <button
-          onClick={notOpen}
+          onClick={() => router.push("/summer")}
           className="
             absolute
             top-[20%]
@@ -90,7 +86,7 @@ export default function HomePage() {
 
         {/* 가을 */}
         <button
-          onClick={notOpen}
+          onClick={() => router.push("/autumn")}
           className="
             absolute
             top-[50%]
@@ -110,7 +106,7 @@ export default function HomePage() {
 
         {/* 겨울 */}
         <button
-          onClick={notOpen}
+          onClick={() => router.push("/winter")}
           className="
             absolute
             top-[50%]
