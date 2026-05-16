@@ -2,12 +2,23 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function SummerPage() {
 
   const router = useRouter();
 
+  useEffect(() => {
+
+    localStorage.setItem(
+      "previousMap",
+      "/summer"
+    );
+
+  }, []);
+
   return (
+
     <main
       className="
         w-screen
@@ -65,6 +76,7 @@ export default function SummerPage() {
               bg-white
             "
           >
+
             <Image
               src="/images/logo.png"
               alt="로고"
@@ -72,6 +84,7 @@ export default function SummerPage() {
               height={300}
               className="w-full h-full object-cover"
             />
+
           </div>
 
         </div>
@@ -135,5 +148,6 @@ export default function SummerPage() {
       </div>
 
     </main>
+
   );
 }

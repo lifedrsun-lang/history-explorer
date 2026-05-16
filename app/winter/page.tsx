@@ -2,12 +2,23 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function WinterPage() {
 
   const router = useRouter();
 
+  useEffect(() => {
+
+    localStorage.setItem(
+      "previousMap",
+      "/winter"
+    );
+
+  }, []);
+
   return (
+
     <main
       className="
         w-screen
@@ -61,6 +72,7 @@ export default function WinterPage() {
               bg-white
             "
           >
+
             <Image
               src="/images/logo.png"
               alt="로고"
@@ -68,6 +80,7 @@ export default function WinterPage() {
               height={300}
               className="w-full h-full object-cover"
             />
+
           </div>
 
         </div>
@@ -129,5 +142,7 @@ export default function WinterPage() {
       </div>
 
     </main>
+
   );
+
 }

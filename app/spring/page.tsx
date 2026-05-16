@@ -2,12 +2,23 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function SpringPage() {
 
   const router = useRouter();
 
+  useEffect(() => {
+
+    localStorage.setItem(
+      "previousMap",
+      "/spring"
+    );
+
+  }, []);
+
   return (
+
     <main
       className="
         w-screen
@@ -139,5 +150,6 @@ export default function SpringPage() {
       </div>
 
     </main>
+
   );
 }

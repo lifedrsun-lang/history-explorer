@@ -1,3 +1,8 @@
+import TeacherLogin from "./components/TeacherLogin";
+import StudentCard from "./components/StudentCard";
+import StudentEditModal from "./components/StudentEditModal";
+
+
 "use client";
 
 import { db } from "@/lib/firebase";
@@ -11,25 +16,14 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 
-import {
-  useEffect,
-  useState,
-} from "react";
-
-import { useRouter }
-from "next/navigation";
+import { useEffect, useState } from "react";
 
 import {
   STAGE_DATA,
+  getStageInfo,
 } from "@/app/student/data/stageData";
 
-import TeacherLogin from "./components/TeacherLogin";
-import StudentCard from "./components/StudentCard";
-import StudentEditModal from "./components/StudentEditModal";
-
 export default function TeacherPage() {
-
-  const router = useRouter();
 
   const [authorized, setAuthorized] =
     useState(false);
@@ -67,9 +61,6 @@ export default function TeacherPage() {
   const [searchTerm, setSearchTerm] =
     useState("");
 
-  const [editingStudent, setEditingStudent] =
-    useState<any>(null);
-
   // 학생 불러오기
   const fetchStudents = async () => {
 
@@ -94,84 +85,8 @@ export default function TeacherPage() {
   };
 
   useEffect(() => {
-
     fetchStudents();
-
-    // 로그인 유지
-    const savedAuth =
-      localStorage.getItem(
-        "teacherAuth"
-      );
-
-    const loginTime =
-      localStorage.getItem(
-        "teacherLoginTime"
-      );
-
-    if (
-      savedAuth === "true" &&
-      loginTime
-    ) {
-
-      const now = Date.now();
-
-      const diff =
-        now -
-        Number(loginTime);
-
-      // 2분 유지
-      if (
-        diff <
-        1000 * 60 * 2
-      ) {
-
-        setAuthorized(true);
-
-      } else {
-
-        localStorage.removeItem(
-          "teacherAuth"
-        );
-
-        localStorage.removeItem(
-          "teacherLoginTime"
-        );
-
-      }
-
-    }
-
   }, []);
-
-  // 로그인
-  const handleLogin = () => {
-
-    if (
-      passwordInput.trim() ===
-      "0713"
-    ) {
-
-      setAuthorized(true);
-
-      localStorage.setItem(
-        "teacherAuth",
-        "true"
-      );
-
-      localStorage.setItem(
-        "teacherLoginTime",
-        Date.now().toString()
-      );
-
-    } else {
-
-      alert(
-        "비밀번호가 틀렸습니다"
-      );
-
-    }
-
-  };
 
   // 학생 등록
   const saveStudent = async () => {
@@ -274,22 +189,6 @@ export default function TeacherPage() {
       fetchStudents();
 
     };
-
-  // 수정 모달 열기
-  const openEditModal = (
-    student: any
-  ) => {
-
-    setEditingStudent(student);
-
-  };
-
-  // 수정 모달 닫기
-  const closeEditModal = () => {
-
-    setEditingStudent(null);
-
-  };
 
   // 동엽전 추가
   const addBronze = async (
@@ -519,15 +418,53 @@ export default function TeacherPage() {
 
     return (
 
-      <TeacherLogin
-        passwordInput={
-          passwordInput
-        }
-        setPasswordInput={
-          setPasswordInput
-        }
-        onLogin={handleLogin}
-      />
+      <div className="min-h-screen bg-[#f5f7fb] flex items-center justify-center p-4">
+
+        <div className="bg-white shadow-xl rounded-3xl p-6 w-full max-w-sm">
+
+          <div className="text-2xl font-bold mb-4 text-center">
+            🔒 교사용 입장
+          </div>
+
+          <input
+            type="password"
+            placeholder="비밀번호 입력"
+            value={passwordInput}
+            onChange={(e) =>
+              setPasswordInput(
+                e.target.value
+              )
+            }
+            className="w-full border rounded-2xl px-4 py-3 mb-4 outline-none"
+          />
+
+          <button
+            onClick={() => {
+
+              if (
+                passwordInput.trim() ===
+                "0713"
+              ) {
+
+                setAuthorized(true);
+
+              } else {
+
+                alert(
+                  "비밀번호가 틀렸습니다"
+                );
+
+              }
+
+            }}
+            className="w-full bg-yellow-500 rounded-2xl py-3 font-bold text-white"
+          >
+            입장하기
+          </button>
+
+        </div>
+
+      </div>
 
     );
 
@@ -549,36 +486,6 @@ export default function TeacherPage() {
           <p className="text-gray-500 mt-1 text-sm">
             학생 탐험 현황 관리
           </p>
-
-          <div className="flex justify-end mt-3">
-
-            <button
-              onClick={() => {
-
-                const previousMap =
-                  localStorage.getItem(
-                    "previousMap"
-                  );
-
-                if (previousMap) {
-
-                  router.push(
-                    previousMap
-                  );
-
-                } else {
-
-                  router.push("/");
-
-                }
-
-              }}
-              className="bg-blue-500 text-white px-4 py-2 rounded-xl font-bold"
-            >
-              🏝 맵으로 돌아가기
-            </button>
-
-          </div>
 
         </div>
 
@@ -753,54 +660,245 @@ export default function TeacherPage() {
               className="border rounded-xl px-4 py-2"
             />
 
+            <div className="flex gap-2">
+
+              <button
+                onClick={() =>
+                  setSelectedTab("A반")
+                }
+                className={`px-4 py-2 rounded-xl font-bold ${
+                  selectedTab === "A반"
+                    ? "bg-yellow-500 text-white"
+                    : "bg-gray-200"
+                }`}
+              >
+                A반
+              </button>
+
+              <button
+                onClick={() =>
+                  setSelectedTab("B반")
+                }
+                className={`px-4 py-2 rounded-xl font-bold ${
+                  selectedTab === "B반"
+                    ? "bg-yellow-500 text-white"
+                    : "bg-gray-200"
+                }`}
+              >
+                B반
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+{/* 학생 목록 */}
+<div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+
+  {activeStudents.map(
+    (student) => (
+
+      <div
+        key={student.id}
+        className="bg-white rounded-3xl p-3 shadow-md"
+      >
+
+        <div className="text-2xl font-bold mb-1">
+          {student.name}
+        </div>
+
+        <div className="text-sm text-gray-500 mb-2">
+
+          {student.school || "미지정"}
+
+          <br />
+
+          {student.grade}학년 {student.class}반
+
+          {student.studentNumber && (
+            <>
+              {" "}
+              / {student.studentNumber}번
+            </>
+          )}
+
+        </div>
+
+        {/* 비밀번호 */}
+        <div className="bg-blue-50 rounded-xl p-2 mb-3 text-sm">
+
+          🔑 비밀번호 :
+          {" "}
+          <span className="font-bold text-blue-600">
+
+            {student.password || "없음"}
+
+          </span>
+
+        </div>
+
+        {/* 현재 진도 */}
+        <div className="bg-[#f5f7fb] rounded-2xl p-4 mb-3">
+
+          <div className="text-sm text-gray-400 mb-1">
+
+            현재 진도
+
+          </div>
+
+          <div className="text-sm text-gray-500 mb-1">
+
+            {
+              getStageInfo(
+                student.stage
+              ).current.short
+            }
+
+          </div>
+
+          <div className="text-lg font-bold text-yellow-600 leading-snug break-keep">
+
+            {
+              getStageInfo(
+                student.stage
+              ).title
+            }
+
+          </div>
+
+          <div className="text-gray-400 mt-1 mb-3">
+
+            {
+              getStageInfo(
+                student.stage
+              ).current.era
+            }
+
+          </div>
+
+          {/* 진도 이동 */}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+
+            <button
+              onClick={() =>
+                changeStage(
+                  student,
+                  -1
+                )
+              }
+              className="bg-gray-200 rounded-xl py-2 text-xs font-bold"
+            >
+
+              ◀ 이전 차시
+
+            </button>
+
+            <button
+              onClick={() =>
+                changeStage(
+                  student,
+                  1
+                )
+              }
+              className="bg-yellow-500 text-white rounded-xl py-2 text-xs font-bold"
+            >
+
+              다음 차시 ▶
+
+            </button>
+
+          </div>
+
+          {/* 엽전 */}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+
+            <div className="bg-white rounded-xl p-2">
+
+              <div className="text-xs text-gray-400">
+
+                🥇 동
+
+              </div>
+
+              <div className="text-2xl font-bold">
+
+                {student.bronze}
+
+              </div>
+
+            </div>
+
+            <div className="bg-white rounded-xl p-2">
+
+              <div className="text-xs text-gray-400">
+
+                🥈 은
+
+              </div>
+
+              <div className="text-2xl font-bold">
+
+                {student.silver}
+
+              </div>
+
+            </div>
+
           </div>
 
         </div>
 
-        {/* 학생 목록 */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        {/* 버튼 */}
+        <div className="grid grid-cols-2 gap-2">
 
-          {activeStudents.map(
-            (student) => (
+          <button
+            onClick={() =>
+              addBronze(student)
+            }
+            className="bg-yellow-500 text-white rounded-xl py-2 text-xs font-bold"
+          >
+            +동엽전
+          </button>
 
-              <StudentCard
-                key={student.id}
-                student={student}
-                addBronze={addBronze}
-                useSilver={useSilver}
-                changeStage={changeStage}
-                toggleStudentVisible={
-                  toggleStudentVisible
-                }
-                deleteStudent={
-                  deleteStudent
-                }
-                openEditModal={
-                  openEditModal
-                }
-              />
+          <button
+            onClick={() =>
+              useSilver(student)
+            }
+            className="bg-purple-500 text-white rounded-xl py-2 text-xs font-bold"
+          >
+            은사용
+          </button>
 
-            )
-          )}
+          <button
+            onClick={() =>
+              toggleStudentVisible(student)
+            }
+            className="bg-gray-500 text-white rounded-xl py-2 text-xs font-bold"
+          >
+            숨기기
+          </button>
+
+          <button
+            onClick={() =>
+              deleteStudent(student)
+            }
+            className="bg-red-500 text-white rounded-xl py-2 text-xs font-bold"
+          >
+            삭제
+          </button>
 
         </div>
 
       </div>
 
-      {/* 수정 모달 */}
-      {editingStudent && (
+    )
+  )}
 
-        <StudentEditModal
-          student={editingStudent}
-          onClose={
-            closeEditModal
-          }
-          refreshStudents={
-            fetchStudents
-          }
-        />
+</div>
 
-      )}
+
+      </div>
 
     </div>
 
