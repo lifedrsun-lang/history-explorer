@@ -1,110 +1,121 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState } from "react";
 
 type Props = {
   students: any[];
-  searchName: string;
-  setSearchName: (value: string) => void;
-  setSelectedStudent: (student: any) => void;
+  onSelectStudent: (student: any) => void;
 };
 
 export default function SearchDropdown({
   students,
-  searchName,
-  setSearchName,
-  setSelectedStudent,
+  onSelectStudent,
 }: Props) {
 
-  // 검색 결과
-  const filteredStudents = useMemo(() => {
+  const [search, setSearch] =
+    useState("");
 
-    if (searchName.trim() === "") {
-      return [];
-    }
+  const filteredStudents =
+    students.filter((student) => {
 
-    return students.filter((s) =>
-      s.name?.includes(searchName.trim())
-    );
+      const keyword =
+        search.toLowerCase();
 
-  }, [students, searchName]);
+      return (
+
+        student.name
+          ?.toLowerCase()
+          .includes(keyword) ||
+
+        student.school
+          ?.toLowerCase()
+          .includes(keyword)
+
+      );
+
+    });
 
   return (
 
-    <div className="relative">
+    <div className="w-full">
 
-      {/* 입력창 */}
+      {/* 검색창 */}
       <input
-        value={searchName}
+        type="text"
+        placeholder="이름 검색"
+        value={search}
         onChange={(e) =>
-          setSearchName(e.target.value)
+          setSearch(
+            e.target.value
+          )
         }
-        placeholder="이름을 입력하세요"
-        autoComplete="off"
-        className="w-full bg-[#111] border border-[#333] rounded-2xl px-4 py-4 text-lg outline-none focus:border-gray-500 transition"
+        className="w-full bg-[#111] border border-yellow-700 rounded-2xl px-4 py-4 text-white outline-none text-lg"
       />
 
-      {/* 자동완성 */}
-      {searchName.trim() !== "" &&
-        filteredStudents.length > 0 && (
+      {/* 검색 결과 */}
+      {search.length > 0 && (
 
-          <div className="absolute top-full left-0 right-0 mt-2 bg-[#111] border border-[#333] rounded-2xl overflow-hidden z-50 max-h-[260px] overflow-y-auto shadow-2xl">
+        <div className="mt-3 bg-[#111] border border-yellow-700 rounded-2xl overflow-hidden">
 
-            {filteredStudents.map((student) => (
+          {filteredStudents.length >
+          0 ? (
 
-              <button
-                key={student.id}
-                onClick={() => {
+            filteredStudents.map(
+              (student) => (
 
-                  // 이름 입력
-                  setSearchName(student.name);
+                <button
+                  key={student.id}
+                  onClick={() => {
 
-                  // 학생 선택
-                  setSelectedStudent(student);
+                    onSelectStudent(
+                      student
+                    );
 
-                }}
-                className="w-full text-left px-4 py-4 active:bg-[#222] hover:bg-[#1a1a1a] transition border-b border-[#222] last:border-b-0"
-              >
+                    setSearch("");
 
-                <div className="flex items-center justify-between gap-3">
+                  }}
+                  className="w-full text-left px-4 py-4 border-b border-[#222] hover:bg-[#1b1b1b] transition"
+                >
 
-                  {/* 왼쪽 */}
-                  <div className="min-w-0">
+                  <div className="font-bold text-white">
 
-                    <div className="font-bold text-base truncate">
-
-                      {student.name}
-
-                    </div>
-
-                    <div className="text-xs text-gray-400 mt-1">
-
-                      {student.grade}학년
-                      {" "}
-                      {student.class}반
-
-                    </div>
+                    {student.name}
 
                   </div>
 
-                  {/* 화살표 */}
-                  <div className="text-gray-500 text-sm shrink-0">
+                  <div className="text-sm text-gray-400">
 
-                    ▶
+                    {student.school}
+                    {" "}
+                    ·
+                    {" "}
+                    {student.grade}학년
+                    {" "}
+                    {student.class}반
 
                   </div>
 
-                </div>
+                </button>
 
-              </button>
+              )
+            )
 
-            ))}
+          ) : (
 
-          </div>
+            <div className="px-4 py-4 text-gray-500">
 
-        )}
+              검색 결과 없음
+
+            </div>
+
+          )}
+
+        </div>
+
+      )}
 
     </div>
 
   );
+
 }

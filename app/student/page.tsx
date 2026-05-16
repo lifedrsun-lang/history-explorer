@@ -1,97 +1,118 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
+import {
+  collection,
+  getDocs,
+} from "firebase/firestore";
+
+import { db } from "@/lib/firebase";
+
+import SearchDropdown from "./components/SearchDropdown";
+import StudentProfile from "./components/StudentProfile";
+import LoadingSpinner from "./components/LoadingSpinner";
 
 export default function StudentPage() {
 
-  const router = useRouter();
+  const [students, setStudents] =
+    useState<any[]>([]);
+
+  const [selectedStudent, setSelectedStudent] =
+    useState<any>(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  // 학생 불러오기
+  const fetchStudents = async () => {
+
+    try {
+
+      const querySnapshot =
+        await getDocs(
+          collection(db, "students")
+        );
+
+      const studentList: any[] = [];
+
+      querySnapshot.forEach((docItem) => {
+
+        const data = docItem.data();
+
+        // 숨김 학생 제외
+        if (data.isActive === false) {
+          return;
+        }
+
+        studentList.push({
+          id: docItem.id,
+          ...data,
+        });
+
+      });
+
+      setStudents(studentList);
+
+    } catch (error) {
+
+      console.error(error);
+
+    } finally {
+
+      setLoading(false);
+
+    }
+
+  };
+
+  useEffect(() => {
+
+    fetchStudents();
+
+  }, []);
+
+  if (loading) {
+
+    return <LoadingSpinner />;
+
+  }
 
   return (
-    <main
-      className="
-        w-screen
-        h-screen
-        bg-black
 
-        flex
-        items-center
-        justify-center
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
 
-        px-6
-      "
-    >
+      <div className="w-full max-w-xl">
 
-      {/* 가운데 박스 */}
-      <div className="w-full max-w-[500px]">
+        {/* 검색창 */}
+        <SearchDropdown
+          students={students}
+          onSelectStudent={
+            setSelectedStudent
+          }
+        />
 
-        {/* 제목 */}
-        <h1
-          className="
-            text-white
-            text-5xl
-            font-bold
-            text-center
-            mb-10
-          "
-        >
-          🏫 학교 선택
-        </h1>
+        {/* 학생 정보 */}
+        {selectedStudent && (
 
-        {/* 학교 버튼 영역 */}
-        <div className="flex flex-col gap-6">
+          <div className="mt-6">
 
-          {/* 화성 새솔초 */}
-          <button
-            onClick={() => router.push("/student/search")}
-            className="
-              w-full
-              h-[120px]
+            <StudentProfile
+              student={selectedStudent}
+              currentStage={1}
+              stageInfo={{}}
+              achievements={[]}
+              changeCharacter={() => {}}
+            />
 
-              rounded-[30px]
+          </div>
 
-              bg-[#111]
-
-              text-white
-              text-3xl
-
-              border
-              border-gray-700
-
-              active:scale-95
-              transition-all
-            "
-          >
-            화성 새솔초
-          </button>
-
-          {/* 김포 하늘빛초 */}
-          <button
-            onClick={() => router.push("/student/search")}
-            className="
-              w-full
-              h-[120px]
-
-              rounded-[30px]
-
-              bg-[#111]
-
-              text-white
-              text-3xl
-
-              border
-              border-gray-700
-
-              active:scale-95
-              transition-all
-            "
-          >
-            김포 하늘빛초
-          </button>
-
-        </div>
+        )}
 
       </div>
 
-    </main>
+    </div>
+
   );
+
 }
