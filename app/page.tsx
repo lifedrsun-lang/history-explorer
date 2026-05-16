@@ -11,11 +11,22 @@ export default function HomePage() {
   };
 
   return (
-    <main className="relative w-screen h-screen bg-sky-300 overflow-hidden flex items-center justify-center">
+    <main
+      className="
+        w-screen
+        h-screen
+        bg-sky-300
+        overflow-hidden
+        flex
+        items-center
+        justify-center
+      "
+    >
 
       {/* 메인맵 */}
       <div className="relative h-screen aspect-[9/16]">
 
+        {/* 메인 이미지 */}
         <Image
           src="/images/main-seasons.png"
           alt="메인"
@@ -24,21 +35,7 @@ export default function HomePage() {
           className="object-contain"
         />
 
-        {/* 반짝임 효과 */}
-        <div className="
-          absolute
-          top-[20%]
-          left-[0%]
-          w-[48%]
-          h-[30%]
-          rounded-full
-
-          animate-pulse
-
-          shadow-[0_0_40px_rgba(255,255,255,0.9)]
-        " />
-
-        {/* 설정 */}
+        {/* 설정 버튼 */}
         <button
           onClick={() => router.push("/teacher")}
           className="
@@ -62,8 +59,12 @@ export default function HomePage() {
             h-[30%]
             z-20
 
-            active:scale-95
-            transition-transform
+            transition-all
+            duration-150
+
+            active:scale-110
+            active:brightness-125
+            active:shadow-[0_0_40px_rgba(255,255,255,0.9)]
           "
         />
 
@@ -78,8 +79,12 @@ export default function HomePage() {
             h-[30%]
             z-20
 
-            active:scale-95
-            transition-transform
+            transition-all
+            duration-150
+
+            active:scale-110
+            active:brightness-125
+            active:shadow-[0_0_40px_rgba(255,255,255,0.9)]
           "
         />
 
@@ -94,8 +99,12 @@ export default function HomePage() {
             h-[30%]
             z-20
 
-            active:scale-95
-            transition-transform
+            transition-all
+            duration-150
+
+            active:scale-110
+            active:brightness-125
+            active:shadow-[0_0_40px_rgba(255,255,255,0.9)]
           "
         />
 
@@ -110,8 +119,12 @@ export default function HomePage() {
             h-[30%]
             z-20
 
-            active:scale-95
-            transition-transform
+            transition-all
+            duration-150
+
+            active:scale-110
+            active:brightness-125
+            active:shadow-[0_0_40px_rgba(255,255,255,0.9)]
           "
         />
 

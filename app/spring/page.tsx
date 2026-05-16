@@ -7,18 +7,27 @@ export default function SpringPage() {
   const router = useRouter();
 
   return (
-    <main className="w-full min-h-screen bg-sky-300 overflow-hidden">
+    <main
+      className="
+        w-screen
+        h-screen
+        bg-sky-300
+        overflow-hidden
+        flex
+        items-center
+        justify-center
+      "
+    >
 
-      <div className="relative w-full max-w-[1000px] mx-auto">
+      {/* 봄맵 */}
+      <div className="relative h-screen aspect-[9/16]">
 
-        {/* 봄맵 */}
         <Image
           src="/images/spring-map.png"
           alt="봄맵"
-          width={1080}
-          height={1920}
+          fill
           priority
-          className="w-full h-auto block"
+          className="object-contain"
         />
 
         {/* 설정 버튼 */}
@@ -43,62 +52,74 @@ export default function SpringPage() {
             left-[0%]
             w-[48%]
             h-[32%]
-            z-10
+            z-20
 
-            active:scale-95
-            transition-transform
+            transition-all
             duration-150
+
+            active:scale-110
+            active:brightness-125
+            active:shadow-[0_0_40px_rgba(255,255,255,0.9)]
           "
         />
 
         {/* 세계탐험대 */}
         <button
-          onClick={() => router.push("/world")}
+          onClick={() => alert('준비중입니다.')}
           className="
             absolute
             top-[18%]
             right-[0%]
             w-[48%]
             h-[32%]
-            z-10
+            z-20
 
-            active:scale-95
-            transition-transform
+            transition-all
             duration-150
+
+            active:scale-110
+            active:brightness-125
+            active:shadow-[0_0_40px_rgba(255,255,255,0.9)]
           "
         />
 
         {/* 위인탐험대 */}
         <button
-          onClick={() => router.push("/hero")}
+          onClick={() => alert('준비중입니다.')}
           className="
             absolute
             top-[52%]
             left-[0%]
             w-[48%]
             h-[32%]
-            z-10
+            z-20
 
-            active:scale-95
-            transition-transform
+            transition-all
             duration-150
+
+            active:scale-110
+            active:brightness-125
+            active:shadow-[0_0_40px_rgba(255,255,255,0.9)]
           "
         />
 
         {/* 문화탐험대 */}
         <button
-          onClick={() => router.push("/culture")}
+          onClick={() => alert('준비중입니다.')}
           className="
             absolute
             top-[52%]
             right-[0%]
             w-[48%]
             h-[32%]
-            z-10
+            z-20
 
-            active:scale-95
-            transition-transform
+            transition-all
             duration-150
+
+            active:scale-110
+            active:brightness-125
+            active:shadow-[0_0_40px_rgba(255,255,255,0.9)]
           "
         />
 
