@@ -1,6 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 export default function StudentPage() {
+
+  const router = useRouter();
+
   return (
     <main
       className="
@@ -37,6 +42,9 @@ export default function StudentPage() {
 
           {/* 화성 새솔초 */}
           <button
+            onClick={() =>
+              router.push("/student/search?school=saesol")
+            }
             className="
               w-full
               h-[120px]
@@ -60,6 +68,9 @@ export default function StudentPage() {
 
           {/* 김포 하늘빛초 */}
           <button
+            onClick={() =>
+              router.push("/student/search?school=haneul")
+            }
             className="
               w-full
               h-[120px]
@@ -84,6 +95,7 @@ export default function StudentPage() {
         </div>
 
       </div>
+
     </main>
   );
 }
