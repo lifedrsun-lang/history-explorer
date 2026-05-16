@@ -130,6 +130,30 @@ export default function StudentExplorerPage() {
 
       setStudents(list);
 
+      // 저장된 학생 복원
+      const savedStudent =
+        localStorage.getItem(
+          "selectedStudent"
+        );
+
+      if (savedStudent) {
+
+        const parsed =
+          JSON.parse(savedStudent);
+
+        const matched =
+          list.find(
+            (s) => s.id === parsed.id
+          );
+
+        if (matched) {
+          setSelectedStudent(
+            matched
+          );
+        }
+
+      }
+
     } catch (error) {
 
       console.error(error);
@@ -142,6 +166,24 @@ export default function StudentExplorerPage() {
 
   useEffect(() => {
     fetchSchools();
+  }, []);
+
+  // 새로고침 복원
+  useEffect(() => {
+
+    const savedSchool =
+      localStorage.getItem(
+        "selectedSchool"
+      );
+
+    if (savedSchool) {
+
+      setSelectedSchool(
+        savedSchool
+      );
+
+    }
+
   }, []);
 
   useEffect(() => {
@@ -174,6 +216,12 @@ export default function StudentExplorerPage() {
     if (!password) {
 
       setSelectedSchool(school);
+
+      localStorage.setItem(
+        "selectedSchool",
+        school
+      );
+
       return;
 
     }
@@ -203,10 +251,21 @@ export default function StudentExplorerPage() {
 
       // 즉시 반영
       setSelectedStudent(
-        (prev: any) => ({
-          ...prev,
-          character: type,
-        })
+        (prev: any) => {
+
+          const updated = {
+            ...prev,
+            character: type,
+          };
+
+          localStorage.setItem(
+            "selectedStudent",
+            JSON.stringify(updated)
+          );
+
+          return updated;
+
+        }
       );
 
       fetchStudentsBySchool(
@@ -306,6 +365,11 @@ export default function StudentExplorerPage() {
                     pendingSchool
                   );
 
+                  localStorage.setItem(
+                    "selectedSchool",
+                    pendingSchool
+                  );
+
                   setPendingSchool("");
                   setPasswordInput("");
 
@@ -393,9 +457,20 @@ export default function StudentExplorerPage() {
             </div>
 
             <button
-              onClick={() =>
-                setSelectedSchool("")
-              }
+              onClick={() => {
+
+                localStorage.removeItem(
+                  "selectedSchool"
+                );
+
+                localStorage.removeItem(
+                  "selectedStudent"
+                );
+
+                setSelectedSchool("");
+                setSelectedStudent(null);
+
+              }}
               className="bg-[#111] border border-[#333] px-3 py-2 rounded-2xl text-xs shrink-0"
             >
               학교 변경
@@ -437,9 +512,20 @@ export default function StudentExplorerPage() {
                     students={filteredStudents}
                     searchName={searchName}
                     setSearchName={setSearchName}
-                    setSelectedStudent={
-                      setSelectedStudent
-                    }
+                    setSelectedStudent={(
+                      student: any
+                    ) => {
+
+                      setSelectedStudent(
+                        student
+                      );
+
+                      localStorage.setItem(
+                        "selectedStudent",
+                        JSON.stringify(student)
+                      );
+
+                    }}
                   />
 
                 </div>
@@ -513,6 +599,11 @@ export default function StudentExplorerPage() {
               onClick={() => {
 
                 setSearchName("");
+
+                localStorage.removeItem(
+                  "selectedStudent"
+                );
+
                 setSelectedStudent(null);
 
               }}
