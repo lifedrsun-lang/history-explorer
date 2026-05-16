@@ -1,53 +1,82 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { db } from "@/lib/firebase";
 
 import {
   collection,
   addDoc,
   getDocs,
-  deleteDoc,
   doc,
   updateDoc,
+  deleteDoc,
 } from "firebase/firestore";
 
-import { db } from "@/lib/firebase";
+import { useEffect, useState } from "react";
 
-type Student = {
-  id: string;
-  name: string;
-  school: string;
-  grade: string;
-  classNum: string;
-  studentNumber: string;
-  password?: string;
-};
+import {
+  STAGE_DATA,
+  getStageInfo,
+} from "@/app/student/data/stageData";
 
 export default function TeacherPage() {
-  const [students, setStudents] = useState<Student[]>([]);
 
-  const [name, setName] = useState("");
-  const [school, setSchool] = useState("");
-  const [grade, setGrade] = useState("");
-  const [classNum, setClassNum] = useState("");
-  const [studentNumber, setStudentNumber] = useState("");
+  const [authorized, setAuthorized] =
+    useState(false);
 
-  // 검색
-  const [searchTerm, setSearchTerm] = useState("");
+  const [passwordInput, setPasswordInput] =
+    useState("");
+
+  const [students, setStudents] =
+    useState<any[]>([]);
+
+  const [school, setSchool] =
+    useState("");
+
+  const [grade, setGrade] =
+    useState("");
+
+  const [studentClass, setStudentClass] =
+    useState("");
+
+  const [studentNumber, setStudentNumber] =
+    useState("");
+
+  const [name, setName] =
+    useState("");
+
+  const [selectedStage, setSelectedStage] =
+    useState(1);
+
+  const [selectedSchool, setSelectedSchool] =
+    useState("전체학교");
+
+  const [selectedTab, setSelectedTab] =
+    useState("A반");
+
+  const [searchTerm, setSearchTerm] =
+    useState("");
 
   // 학생 불러오기
   const fetchStudents = async () => {
-    const snapshot = await getDocs(collection(db, "students"));
 
-    const list: Student[] = snapshot.docs.map((docItem) => ({
-      id: docItem.id,
-      ...(docItem.data() as Omit<Student, "id">),
-    }));
+    const querySnapshot =
+      await getDocs(
+        collection(db, "students")
+      );
 
-    // 이름순 정렬
-    list.sort((a, b) => a.name.localeCompare(b.name));
+    const studentList: any[] = [];
 
-    setStudents(list);
+    querySnapshot.forEach((docItem) => {
+
+      studentList.push({
+        id: docItem.id,
+        ...docItem.data(),
+      });
+
+    });
+
+    setStudents(studentList);
+
   };
 
   useEffect(() => {
@@ -55,252 +84,576 @@ export default function TeacherPage() {
   }, []);
 
   // 학생 등록
-  const handleAddStudent = async () => {
+  const saveStudent = async () => {
+
     if (
-      !name ||
-      !school ||
       !grade ||
-      !classNum ||
-      !studentNumber
+      !studentClass ||
+      !studentNumber ||
+      !name
     ) {
-      alert("모든 항목을 입력해주세요.");
+
+      alert(
+        "학년 / 반 / 번호 / 이름을 입력해주세요!"
+      );
+
       return;
     }
 
     // 자동 비밀번호 생성
-    const password = String(studentNumber).padStart(2, "0");
+    const password = String(
+      studentNumber
+    ).padStart(2, "0");
 
-    try {
-      await addDoc(collection(db, "students"), {
-        name,
-        school,
+    await addDoc(
+      collection(db, "students"),
+      {
+        school:
+          school || "미지정",
+
         grade,
-        classNum,
+        class: studentClass,
         studentNumber,
         password,
-        createdAt: new Date(),
-      });
+        name,
 
-      alert(
-        `학생 등록 완료!\n\n자동 비밀번호 : ${password}`
-      );
+        bronze: 0,
+        silver: 0,
 
-      setName("");
-      setSchool("");
-      setGrade("");
-      setClassNum("");
-      setStudentNumber("");
+        totalBronze: 0,
+        totalSilver: 0,
 
-      fetchStudents();
-    } catch (error) {
-      console.error(error);
-      alert("학생 등록 실패");
-    }
-  };
+        stage: selectedStage,
 
-  // 학생 삭제
-  const handleDelete = async (id: string) => {
-    const ok = confirm("학생을 삭제할까요?");
+        isActive: true,
+      }
+    );
 
-    if (!ok) return;
+    setSchool("");
+    setGrade("");
+    setStudentClass("");
+    setStudentNumber("");
+    setName("");
 
-    try {
-      await deleteDoc(doc(db, "students", id));
+    setSelectedStage(1);
 
-      fetchStudents();
-    } catch (error) {
-      console.error(error);
-      alert("삭제 실패");
-    }
+    alert(
+      `학생 등록 완료!\n비밀번호 : ${password}`
+    );
+
+    fetchStudents();
+
   };
 
   // 기존 학생 비밀번호 자동 생성
-  const handleUpdatePasswords = async () => {
-    try {
-      const snapshot = await getDocs(
-        collection(db, "students")
-      );
+  const updateAllPasswords =
+    async () => {
 
-      for (const studentDoc of snapshot.docs) {
-        const data = studentDoc.data();
+      const querySnapshot =
+        await getDocs(
+          collection(db, "students")
+        );
+
+      for (const studentDoc of querySnapshot.docs) {
+
+        const data =
+          studentDoc.data();
 
         const password = String(
           data.studentNumber || ""
         ).padStart(2, "0");
 
         await updateDoc(
-          doc(db, "students", studentDoc.id),
+          doc(
+            db,
+            "students",
+            studentDoc.id
+          ),
           {
             password,
           }
         );
+
       }
 
-      alert("기존 학생 비밀번호 생성 완료!");
+      alert(
+        "기존 학생 비밀번호 생성 완료!"
+      );
 
       fetchStudents();
-    } catch (error) {
-      console.error(error);
-      alert("업데이트 실패");
+
+    };
+
+  // 동엽전 추가
+  const addBronze = async (
+    student: any
+  ) => {
+
+    let newBronze =
+      (student.bronze || 0) + 1;
+
+    let newSilver =
+      student.silver || 0;
+
+    let totalBronze =
+      (student.totalBronze || 0) + 1;
+
+    let totalSilver =
+      student.totalSilver || 0;
+
+    if (newBronze >= 10) {
+
+      newBronze = 0;
+
+      newSilver += 1;
+
+      totalSilver += 1;
+
     }
+
+    await updateDoc(
+      doc(
+        db,
+        "students",
+        student.id
+      ),
+      {
+        bronze: newBronze,
+        silver: newSilver,
+
+        totalBronze,
+        totalSilver,
+      }
+    );
+
+    fetchStudents();
+
   };
 
-  // 검색 필터
-  const filteredStudents = students.filter((student) => {
-    const keyword = searchTerm.toLowerCase();
+  // 은엽전 사용
+  const useSilver = async (
+    student: any
+  ) => {
+
+    if (
+      (student.silver || 0) <= 0
+    ) {
+
+      alert(
+        "은엽전이 부족합니다!"
+      );
+
+      return;
+    }
+
+    await updateDoc(
+      doc(
+        db,
+        "students",
+        student.id
+      ),
+      {
+        silver:
+          (student.silver || 0) - 1,
+      }
+    );
+
+    fetchStudents();
+
+  };
+
+  // 진도 변경
+  const changeStage = async (
+    student: any,
+    direction: number
+  ) => {
+
+    let newStage =
+      (student.stage || 1) +
+      direction;
+
+    if (newStage < 1) {
+      newStage = 1;
+    }
+
+    if (
+      newStage >
+      STAGE_DATA.length
+    ) {
+      newStage =
+        STAGE_DATA.length;
+    }
+
+    await updateDoc(
+      doc(
+        db,
+        "students",
+        student.id
+      ),
+      {
+        stage: newStage,
+      }
+    );
+
+    fetchStudents();
+
+  };
+
+  // 숨기기
+  const toggleStudentVisible =
+    async (student: any) => {
+
+      await updateDoc(
+        doc(
+          db,
+          "students",
+          student.id
+        ),
+        {
+          isActive:
+            !student.isActive,
+        }
+      );
+
+      fetchStudents();
+
+    };
+
+  // 삭제
+  const deleteStudent = async (
+    student: any
+  ) => {
+
+    const check = confirm(
+      `${student.name} 학생을 삭제할까요?`
+    );
+
+    if (!check) return;
+
+    await deleteDoc(
+      doc(
+        db,
+        "students",
+        student.id
+      )
+    );
+
+    fetchStudents();
+
+  };
+
+  // 활성 학생
+  const activeStudents =
+    students.filter((student) => {
+
+      if (
+        student.isActive === false
+      ) {
+        return false;
+      }
+
+      const studentSchool =
+        student.school ||
+        "미지정";
+
+      if (
+        selectedSchool !==
+          "전체학교" &&
+        studentSchool !==
+          selectedSchool
+      ) {
+        return false;
+      }
+
+      const keyword =
+        searchTerm.toLowerCase();
+
+      if (
+        searchTerm &&
+        !student.name
+          ?.toLowerCase()
+          .includes(keyword)
+      ) {
+        return false;
+      }
+
+      const gradeNum = Number(
+        student.grade
+      );
+
+      if (selectedTab === "A반") {
+        return gradeNum <= 2;
+      }
+
+      return gradeNum >= 3;
+
+    });
+
+  // 학교 목록
+  const schoolList = [
+
+    "전체학교",
+
+    ...Array.from(
+      new Set(
+        students.map(
+          (student) =>
+            student.school ||
+            "미지정"
+        )
+      )
+    ),
+
+  ];
+
+  // 로그인 화면
+  if (!authorized) {
 
     return (
-      student.name?.toLowerCase().includes(keyword) ||
-      student.school?.toLowerCase().includes(keyword)
+
+      <div className="min-h-screen bg-[#f5f7fb] flex items-center justify-center p-4">
+
+        <div className="bg-white shadow-xl rounded-3xl p-6 w-full max-w-sm">
+
+          <div className="text-2xl font-bold mb-4 text-center">
+            🔒 교사용 입장
+          </div>
+
+          <input
+            type="password"
+            placeholder="비밀번호 입력"
+            value={passwordInput}
+            onChange={(e) =>
+              setPasswordInput(
+                e.target.value
+              )
+            }
+            className="w-full border rounded-2xl px-4 py-3 mb-4 outline-none"
+          />
+
+          <button
+            onClick={() => {
+
+              if (
+                passwordInput === "0713"
+              ) {
+
+                setAuthorized(true);
+
+              } else {
+
+                alert(
+                  "비밀번호가 틀렸습니다"
+                );
+
+              }
+
+            }}
+            className="w-full bg-yellow-500 rounded-2xl py-3 font-bold text-white"
+          >
+            입장하기
+          </button>
+
+        </div>
+
+      </div>
+
     );
-  });
+
+  }
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb] p-4">
-      <div className="max-w-4xl mx-auto">
+
+    <div className="min-h-screen bg-[#f5f7fb] p-3">
+
+      <div className="max-w-7xl mx-auto">
+
         {/* 제목 */}
-        <h1 className="text-3xl font-bold mb-6">
-          학생 관리
-        </h1>
+        <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
+
+          <h1 className="text-3xl font-bold">
+            🏫 역사 탐험 관리소
+          </h1>
+
+          <p className="text-gray-500 mt-1 text-sm">
+            학생 탐험 현황 관리
+          </p>
+
+        </div>
 
         {/* 학생 등록 */}
-        <div className="bg-white rounded-2xl shadow-md p-5 mb-6">
-          <h2 className="text-xl font-bold mb-4">
-            학생 등록
-          </h2>
+        <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="text-xl font-bold mb-3">
+            ✏️ 학생 등록
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-3">
+
             <input
-              className="border rounded-xl p-3"
+              type="text"
               placeholder="학교"
               value={school}
-              onChange={(e) => setSchool(e.target.value)}
+              onChange={(e) =>
+                setSchool(e.target.value)
+              }
+              className="border rounded-xl px-3 py-2 text-sm"
             />
 
             <input
-              className="border rounded-xl p-3"
-              placeholder="이름"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-
-            <input
-              className="border rounded-xl p-3"
+              type="text"
               placeholder="학년"
               value={grade}
-              onChange={(e) => setGrade(e.target.value)}
+              onChange={(e) =>
+                setGrade(e.target.value)
+              }
+              className="border rounded-xl px-3 py-2 text-sm"
             />
 
             <input
-              className="border rounded-xl p-3"
+              type="text"
               placeholder="반"
-              value={classNum}
-              onChange={(e) => setClassNum(e.target.value)}
+              value={studentClass}
+              onChange={(e) =>
+                setStudentClass(e.target.value)
+              }
+              className="border rounded-xl px-3 py-2 text-sm"
             />
 
             <input
-              className="border rounded-xl p-3"
+              type="text"
               placeholder="번호"
               value={studentNumber}
               onChange={(e) =>
-                setStudentNumber(e.target.value)
+                setStudentNumber(
+                  e.target.value
+                )
               }
+              className="border rounded-xl px-3 py-2 text-sm"
             />
+
+            <input
+              type="text"
+              placeholder="이름"
+              value={name}
+              onChange={(e) =>
+                setName(e.target.value)
+              }
+              className="border rounded-xl px-3 py-2 text-sm"
+            />
+
+            <select
+              value={selectedStage}
+              onChange={(e) =>
+                setSelectedStage(
+                  Number(e.target.value)
+                )
+              }
+              className="border rounded-xl px-3 py-2 text-sm"
+            >
+
+              {STAGE_DATA.map(
+                (stage) => (
+
+                  <option
+                    key={stage.id}
+                    value={stage.id}
+                  >
+                    {stage.title}
+                  </option>
+
+                )
+              )}
+
+            </select>
+
           </div>
 
-          {/* 자동 비밀번호 표시 */}
+          {/* 자동 비밀번호 */}
           {studentNumber && (
-            <p className="mt-3 text-sm text-blue-500 font-medium">
-              자동 비밀번호 :{" "}
-              {String(studentNumber).padStart(2, "0")}
-            </p>
+
+            <div className="text-sm text-blue-500 mb-3 font-bold">
+
+              자동 비밀번호 :
+              {" "}
+              {String(
+                studentNumber
+              ).padStart(2, "0")}
+
+            </div>
+
           )}
 
-          {/* 등록 버튼 */}
-          <button
-            onClick={handleAddStudent}
-            className="mt-5 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl"
-          >
-            학생 등록
-          </button>
+          <div className="flex flex-col md:flex-row gap-2">
 
-          {/* 기존 학생 비밀번호 생성 */}
-          <button
-            onClick={handleUpdatePasswords}
-            className="mt-3 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl"
-          >
-            기존 학생 비밀번호 자동 생성
-          </button>
+            <button
+              onClick={saveStudent}
+              className="bg-yellow-500 text-white rounded-xl px-4 py-2 font-bold"
+            >
+              🎉 학생 등록
+            </button>
+
+            <button
+              onClick={
+                updateAllPasswords
+              }
+              className="bg-green-500 text-white rounded-xl px-4 py-2 font-bold"
+            >
+              🔑 기존 학생 비밀번호 생성
+            </button>
+
+          </div>
+
         </div>
 
-        {/* 학생 목록 */}
-        <div className="bg-white rounded-2xl shadow-md p-5">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-            <h2 className="text-xl font-bold">
-              등록된 학생
-            </h2>
+        {/* 필터 */}
+        <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
 
-            {/* 검색 */}
+          <div className="flex flex-col md:flex-row gap-3">
+
+            <select
+              value={selectedSchool}
+              onChange={(e) =>
+                setSelectedSchool(
+                  e.target.value
+                )
+              }
+              className="border rounded-xl px-4 py-2"
+            >
+
+              {schoolList.map(
+                (
+                  schoolName,
+                  index
+                ) => (
+
+                  <option
+                    key={`${schoolName}-${index}`}
+                    value={schoolName}
+                  >
+
+                    {schoolName}
+
+                  </option>
+
+                )
+              )}
+
+            </select>
+
+            {/* 학생 검색 */}
             <input
               type="text"
               placeholder="학생 이름 검색"
               value={searchTerm}
               onChange={(e) =>
-                setSearchTerm(e.target.value)
+                setSearchTerm(
+                  e.target.value
+                )
               }
-              className="border rounded-xl px-4 py-2 w-full md:w-72"
+              className="border rounded-xl px-4 py-2"
             />
+
           </div>
 
-          {/* 학생 수 */}
-          <p className="text-sm text-gray-500 mb-4">
-            총 학생 수 : {filteredStudents.length}명
-          </p>
-
-          {/* 학생 리스트 */}
-          <div className="space-y-3">
-            {filteredStudents.map((student) => (
-              <div
-                key={student.id}
-                className="border rounded-xl p-4 flex items-center justify-between"
-              >
-                <div>
-                  <p className="font-bold text-lg">
-                    {student.name}
-                  </p>
-
-                  <p className="text-sm text-gray-500">
-                    {student.school} /{" "}
-                    {student.grade}학년{" "}
-                    {student.classNum}반 /{" "}
-                    {student.studentNumber}번
-                  </p>
-
-                  <p className="text-sm text-blue-500 mt-1">
-                    비밀번호 :{" "}
-                    {student.password || "없음"}
-                  </p>
-                </div>
-
-                <button
-                  onClick={() =>
-                    handleDelete(student.id)
-                  }
-                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
-                >
-                  삭제
-                </button>
-              </div>
-            ))}
-
-            {filteredStudents.length === 0 && (
-              <div className="text-center py-10 text-gray-400">
-                검색 결과가 없습니다.
-              </div>
-            )}
-          </div>
         </div>
-      </div>
-    </div>
-  );
-}
