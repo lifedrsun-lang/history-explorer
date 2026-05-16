@@ -703,7 +703,7 @@ export default function TeacherPage() {
                     key={stage.id}
                     value={stage.id}
                   >
-                    {stage.title}
+                   {stage.short}
                   </option>
 
                 )
