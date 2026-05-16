@@ -19,6 +19,27 @@ export default function StudentProfile({
   changeCharacter,
 }: Props) {
 
+  // 전체 시대 수
+  const TOTAL_STAGE_GROUPS = 23;
+
+  // 시대당 단계 수
+  const STAGES_PER_GROUP = 4;
+
+  // 전체 진행 개수
+  const TOTAL_PROGRESS =
+    TOTAL_STAGE_GROUPS *
+    STAGES_PER_GROUP;
+
+  // 현재 완료 개수
+  const completedCount =
+    Math.max(currentStage, 0);
+
+  // 진행률 %
+  const progressPercent =
+    (completedCount /
+      TOTAL_PROGRESS) *
+    100;
+
   const stages = [
     {
       stage: 1,
@@ -169,7 +190,7 @@ export default function StudentProfile({
             </div>
 
             <div className="text-2xl font-black">
-              {currentStage} / 4
+              {completedCount} / {TOTAL_PROGRESS}
             </div>
 
           </div>
@@ -177,9 +198,9 @@ export default function StudentProfile({
           <div className="w-full h-4 rounded-full bg-[#111] overflow-hidden">
 
             <div
-              className="h-full bg-gray-300"
+              className="h-full bg-gray-300 transition-all duration-500"
               style={{
-                width: `${(currentStage / 4) * 100}%`,
+                width: `${progressPercent}%`,
               }}
             />
 
@@ -198,8 +219,13 @@ export default function StudentProfile({
 
             {stages.map((item) => {
 
+              // 현재 단계만 정확히 완료 처리
               const completed =
-                currentStage >= item.stage;
+                currentStage === item.stage;
+
+              // 이전 단계들
+              const cleared =
+                currentStage > item.stage;
 
               return (
 
@@ -216,7 +242,7 @@ export default function StudentProfile({
                     {item.title}
                   </div>
 
-                  {completed ? (
+                  {completed || cleared ? (
 
                     <div className="text-lg font-bold text-white">
                       ✅ 완료
