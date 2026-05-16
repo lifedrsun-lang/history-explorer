@@ -749,7 +749,7 @@ export default function TeacherPage() {
 
         </div>
 
-        {/* 학생 수 */}
+ {/* 학생 수 */}
 <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
 
 <div className="grid grid-cols-3 gap-3 text-center">
@@ -765,12 +765,37 @@ export default function TeacherPage() {
 
       {
         students.filter(
-          (student) =>
-            Number(
-              student.grade
-            ) <= 2 &&
-            student.isActive !==
-              false
+          (student) => {
+
+            if (
+              student.isActive === false
+            ) {
+              return false;
+            }
+
+            if (
+              selectedSchool !==
+              "전체학교"
+            ) {
+
+              return (
+                (student.school || "")
+                  .trim() ===
+                  selectedSchool.trim() &&
+                Number(
+                  student.grade
+                ) <= 2
+              );
+
+            }
+
+            return (
+              Number(
+                student.grade
+              ) <= 2
+            );
+
+          }
         ).length
       }
 
@@ -791,12 +816,37 @@ export default function TeacherPage() {
 
       {
         students.filter(
-          (student) =>
-            Number(
-              student.grade
-            ) >= 3 &&
-            student.isActive !==
-              false
+          (student) => {
+
+            if (
+              student.isActive === false
+            ) {
+              return false;
+            }
+
+            if (
+              selectedSchool !==
+              "전체학교"
+            ) {
+
+              return (
+                (student.school || "")
+                  .trim() ===
+                  selectedSchool.trim() &&
+                Number(
+                  student.grade
+                ) >= 3
+              );
+
+            }
+
+            return (
+              Number(
+                student.grade
+              ) >= 3
+            );
+
+          }
         ).length
       }
 
@@ -817,9 +867,30 @@ export default function TeacherPage() {
 
       {
         students.filter(
-          (student) =>
-            student.isActive !==
-            false
+          (student) => {
+
+            if (
+              student.isActive === false
+            ) {
+              return false;
+            }
+
+            if (
+              selectedSchool !==
+              "전체학교"
+            ) {
+
+              return (
+                (student.school || "")
+                  .trim() ===
+                  selectedSchool.trim()
+              );
+
+            }
+
+            return true;
+
+          }
         ).length
       }
 
@@ -833,53 +904,86 @@ export default function TeacherPage() {
 
 </div>
 
-        {/* 필터 */}
-        <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
+{/* 필터 */}
+<div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
 
-          <div className="flex flex-col md:flex-row gap-3">
+<div className="flex flex-col md:flex-row gap-3">
 
-            <select
-              value={selectedSchool}
-              onChange={(e) =>
-                setSelectedSchool(
-                  e.target.value
-                )
-              }
-              className="border rounded-xl px-4 py-2"
-            >
+  <select
+    value={selectedSchool}
+    onChange={(e) =>
+      setSelectedSchool(
+        e.target.value
+      )
+    }
+    className="border rounded-xl px-4 py-2"
+  >
 
-              {schoolList.map(
-                (
-                  schoolName,
-                  index
-                ) => (
+    {schoolList.map(
+      (
+        schoolName,
+        index
+      ) => (
 
-                  <option
-                    key={`${schoolName}-${index}`}
-                    value={schoolName}
-                  >
+        <option
+          key={`${schoolName}-${index}`}
+          value={schoolName}
+        >
 
-                    {schoolName}
+          {schoolName}
 
-                  </option>
+        </option>
 
-                )
-              )}
+      )
+    )}
 
-            </select>
+  </select>
 
-            <input
-              type="text"
-              placeholder="학생 이름 검색"
-              value={searchTerm}
-              onChange={(e) =>
-                setSearchTerm(
-                  e.target.value
-                )
-              }
-              className="border rounded-xl px-4 py-2"
-            />
+  <input
+    type="text"
+    placeholder="학생 이름 검색"
+    value={searchTerm}
+    onChange={(e) =>
+      setSearchTerm(
+        e.target.value
+      )
+    }
+    className="border rounded-xl px-4 py-2"
+  />
 
+  <div className="flex gap-2">
+
+    <button
+      onClick={() =>
+        setSelectedTab("A반")
+      }
+      className={`px-4 py-2 rounded-xl font-bold ${
+        selectedTab === "A반"
+          ? "bg-blue-500 text-white"
+          : "bg-gray-200"
+      }`}
+    >
+      🌙 A반
+    </button>
+
+    <button
+      onClick={() =>
+        setSelectedTab("B반")
+      }
+      className={`px-4 py-2 rounded-xl font-bold ${
+        selectedTab === "B반"
+          ? "bg-pink-500 text-white"
+          : "bg-gray-200"
+      }`}
+    >
+      ⭐ B반
+    </button>
+
+  </div>
+
+</div>
+
+</div>
 
 <div className="flex gap-2 mt-3">
 
@@ -914,7 +1018,7 @@ export default function TeacherPage() {
 
           </div>
 
-        </div>
+
 
         {/* 학생 목록 */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
@@ -944,7 +1048,7 @@ export default function TeacherPage() {
 
         </div>
 
-      </div>
+
 
       {/* 수정 모달 */}
       {editingStudent && (
