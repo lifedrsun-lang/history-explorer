@@ -38,8 +38,14 @@ export default function StudentExplorerPage() {
   const [loading, setLoading] =
     useState(false);
 
-  const [selectedStudent, setSelectedStudent] =
+    const [selectedStudent, setSelectedStudent] =
     useState<any>(null);
+  
+  const [pendingStudent, setPendingStudent] =
+    useState<any>(null);
+  
+  const [studentPassword, setStudentPassword] =
+    useState("");
 
   // 학교 비밀번호 UI
   const [pendingSchool, setPendingSchool] =
@@ -508,25 +514,18 @@ export default function StudentExplorerPage() {
 
                 <div className="mt-3">
 
-                  <SearchDropdown
-                    students={filteredStudents}
-                    searchName={searchName}
-                    setSearchName={setSearchName}
-                    setSelectedStudent={(
-                      student: any
-                    ) => {
+<SearchDropdown
+  students={filteredStudents}
+  searchName={searchName}
+  setSearchName={setSearchName}
+  setSelectedStudent={(
+    student: any
+  ) => {
 
-                      setSelectedStudent(
-                        student
-                      );
+    setPendingStudent(student);
 
-                      localStorage.setItem(
-                        "selectedStudent",
-                        JSON.stringify(student)
-                      );
-
-                    }}
-                  />
+  }}
+/>
 
                 </div>
 
@@ -568,6 +567,88 @@ export default function StudentExplorerPage() {
           </>
 
         )}
+
+{/* 학생 비밀번호 */}
+{pendingStudent && (
+
+<div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
+
+  <div className="w-full max-w-sm bg-[#050505] border border-orange-500 rounded-[32px] p-6">
+
+    <div className="text-2xl font-bold text-center mb-5">
+
+      🔐 {pendingStudent.name}
+
+    </div>
+
+    <input
+      type="password"
+      placeholder="비밀번호 입력"
+      value={studentPassword}
+      onChange={(e) =>
+        setStudentPassword(
+          e.target.value
+        )
+      }
+      className="w-full bg-[#111] border border-[#333] rounded-2xl px-4 py-4 text-lg mb-4 outline-none"
+    />
+
+    <button
+      onClick={() => {
+
+        if (
+          studentPassword ===
+          pendingStudent.password
+        ) {
+
+          setSelectedStudent(
+            pendingStudent
+          );
+
+          localStorage.setItem(
+            "selectedStudent",
+            JSON.stringify(
+              pendingStudent
+            )
+          );
+
+          setPendingStudent(null);
+
+          setStudentPassword("");
+
+        } else {
+
+          alert(
+            "비밀번호가 틀렸습니다."
+          );
+
+        }
+
+      }}
+      className="w-full bg-orange-500 rounded-2xl py-4 text-xl font-bold"
+    >
+      입장하기
+    </button>
+
+    <button
+      onClick={() => {
+
+        setPendingStudent(null);
+
+        setStudentPassword("");
+
+      }}
+      className="w-full mt-3 bg-[#111] border border-[#333] rounded-2xl py-3 text-sm"
+    >
+      취소
+    </button>
+
+  </div>
+
+</div>
+
+)}
+
 
         {/* 학생 프로필 */}
         {selectedStudent && (

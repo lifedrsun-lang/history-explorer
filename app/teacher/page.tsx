@@ -450,9 +450,9 @@ export default function TeacherPage() {
 
   };
 
-  // 활성 학생 필터
   const activeStudents =
-    students.filter((student) => {
+  students
+    .filter((student) => {
 
       if (
         student.isActive === false
@@ -490,10 +490,53 @@ export default function TeacherPage() {
       );
 
       if (selectedTab === "A반") {
+
         return gradeNum <= 2;
+
       }
 
       return gradeNum >= 3;
+
+    })
+
+    // 출석부 순 정렬
+    .sort((a, b) => {
+
+      const gradeA =
+        Number(a.grade) || 0;
+
+      const gradeB =
+        Number(b.grade) || 0;
+
+      if (gradeA !== gradeB) {
+
+        return gradeA - gradeB;
+
+      }
+
+      const classA =
+        Number(a.class) || 0;
+
+      const classB =
+        Number(b.class) || 0;
+
+      if (classA !== classB) {
+
+        return classA - classB;
+
+      }
+
+      const numberA =
+        Number(
+          a.studentNumber
+        ) || 0;
+
+      const numberB =
+        Number(
+          b.studentNumber
+        ) || 0;
+
+      return numberA - numberB;
 
     });
 
@@ -705,6 +748,90 @@ export default function TeacherPage() {
           </div>
 
         </div>
+
+        {/* 학생 수 */}
+<div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
+
+<div className="grid grid-cols-3 gap-3 text-center">
+
+  {/* A반 */}
+  <div className="bg-blue-50 rounded-2xl p-3">
+
+    <div className="text-sm text-gray-500 mb-1">
+      A반
+    </div>
+
+    <div className="text-2xl font-bold text-blue-600">
+
+      {
+        students.filter(
+          (student) =>
+            Number(
+              student.grade
+            ) <= 2 &&
+            student.isActive !==
+              false
+        ).length
+      }
+
+      명
+
+    </div>
+
+  </div>
+
+  {/* B반 */}
+  <div className="bg-pink-50 rounded-2xl p-3">
+
+    <div className="text-sm text-gray-500 mb-1">
+      B반
+    </div>
+
+    <div className="text-2xl font-bold text-pink-600">
+
+      {
+        students.filter(
+          (student) =>
+            Number(
+              student.grade
+            ) >= 3 &&
+            student.isActive !==
+              false
+        ).length
+      }
+
+      명
+
+    </div>
+
+  </div>
+
+  {/* 전체 */}
+  <div className="bg-yellow-50 rounded-2xl p-3">
+
+    <div className="text-sm text-gray-500 mb-1">
+      전체
+    </div>
+
+    <div className="text-2xl font-bold text-yellow-600">
+
+      {
+        students.filter(
+          (student) =>
+            student.isActive !==
+            false
+        ).length
+      }
+
+      명
+
+    </div>
+
+  </div>
+
+</div>
+
+</div>
 
         {/* 필터 */}
         <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
