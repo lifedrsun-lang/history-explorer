@@ -118,7 +118,7 @@ export default function StudentProfile({
             🏛 현재 시대
           </div>
 
-          <div className="mt-2 overflow-x-auto scrollbar-hide">
+          <div className="mt-4 overflow-x-auto scrollbar-hide">
 
             <div className="text-[30px] leading-tight font-black whitespace-nowrap min-w-max">
 
