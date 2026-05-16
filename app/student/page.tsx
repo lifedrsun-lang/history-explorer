@@ -7,17 +7,27 @@ import {
   getDocs,
   doc,
   updateDoc,
+  query,
+  where,
 } from "firebase/firestore";
 
 import { useEffect, useState } from "react";
 
 import SchoolSelect from "./components/SchoolSelect";
 import StudentProfile from "./components/StudentProfile";
+import RankingCard from "./components/RankingCard";
+import SearchDropdown from "./components/SearchDropdown";
+import LoadingSpinner from "./components/LoadingSpinner";
+
+import { getStageInfo } from "./data/stageData";
 
 export default function StudentExplorerPage() {
 
   const [students, setStudents] =
     useState<any[]>([]);
+
+  const [allSchools, setAllSchools] =
+    useState<string[]>([]);
 
   const [searchName, setSearchName] =
     useState("");
@@ -25,279 +35,358 @@ export default function StudentExplorerPage() {
   const [selectedSchool, setSelectedSchool] =
     useState("");
 
-  // 학생 불러오기
+  const [loading, setLoading] =
+    useState(false);
 
-  const fetchStudents = async () => {
+  const [selectedStudent, setSelectedStudent] =
+    useState<any>(null);
 
-    const querySnapshot =
-      await getDocs(
-        collection(db, "students")
-      );
+  // 학교 비밀번호 UI
+  const [pendingSchool, setPendingSchool] =
+    useState("");
 
-    const studentList: any[] = [];
+  const [passwordInput, setPasswordInput] =
+    useState("");
 
-    querySnapshot.forEach((docItem) => {
+  // 학교 비밀번호
+  const SCHOOL_PASSWORDS: Record<
+    string,
+    string
+  > = {
+    "김포 하늘빛초": "0304",
+    "화성 새솔초": "0309",
+  };
 
-      studentList.push({
-        id: docItem.id,
-        ...docItem.data(),
-      });
+  // 숨김 학생 처리
+  const isHiddenStudent = (
+    data: any
+  ) => {
+
+    return data?.isActive === false;
+
+  };
+
+  // 학교 목록 불러오기
+  const fetchSchools = async () => {
+
+    const snapshot = await getDocs(
+      collection(db, "students")
+    );
+
+    const schoolSet = new Set<string>();
+
+    snapshot.forEach((docItem) => {
+
+      const data = docItem.data();
+
+      if (isHiddenStudent(data)) {
+        return;
+      }
+
+      if (data?.school) {
+        schoolSet.add(data.school);
+      }
 
     });
 
-    setStudents(studentList);
+    setAllSchools(
+      Array.from(schoolSet)
+    );
+
+  };
+
+  // 학교별 학생 불러오기
+  const fetchStudentsBySchool = async (
+    school: string
+  ) => {
+
+    setLoading(true);
+
+    try {
+
+      const q = query(
+        collection(db, "students"),
+        where("school", "==", school)
+      );
+
+      const snapshot = await getDocs(q);
+
+      const list: any[] = [];
+
+      snapshot.forEach((docItem) => {
+
+        const data = docItem.data();
+
+        if (isHiddenStudent(data)) {
+          return;
+        }
+
+        list.push({
+          id: docItem.id,
+          ...data,
+        });
+
+      });
+
+      setStudents(list);
+
+    } catch (error) {
+
+      console.error(error);
+
+    }
+
+    setLoading(false);
+
   };
 
   useEffect(() => {
-    fetchStudents();
+    fetchSchools();
   }, []);
 
-  // 캐릭터 변경
+  useEffect(() => {
 
-  const changeCharacter = async (
-    studentId: string,
-    characterType: string
+    if (selectedSchool) {
+
+      fetchStudentsBySchool(
+        selectedSchool
+      );
+
+    } else {
+
+      setStudents([]);
+      setSearchName("");
+      setSelectedStudent(null);
+
+    }
+
+  }, [selectedSchool]);
+
+  // 학교 선택
+  const handleSchoolSelect = (
+    school: string
   ) => {
 
-    const studentRef = doc(
-      db,
-      "students",
-      studentId
-    );
+    const password =
+      SCHOOL_PASSWORDS[school];
 
-    await updateDoc(studentRef, {
-      character: characterType,
-    });
+    // 비밀번호 없는 학교
+    if (!password) {
 
-    fetchStudents();
+      setSelectedSchool(school);
+      return;
+
+    }
+
+    // 비밀번호 UI 열기
+    setPendingSchool(school);
+
+  };
+
+  // 캐릭터 변경
+  const changeCharacter = async (
+    studentId: string,
+    type: string
+  ) => {
+
+    try {
+
+      const ref = doc(
+        db,
+        "students",
+        studentId
+      );
+
+      await updateDoc(ref, {
+        character: type,
+      });
+
+      // 즉시 반영
+      setSelectedStudent(
+        (prev: any) => ({
+          ...prev,
+          character: type,
+        })
+      );
+
+      fetchStudentsBySchool(
+        selectedSchool
+      );
+
+    } catch (error) {
+
+      console.error(error);
+
+    }
+
   };
 
   // 점수 계산
+  const getScore = (s: any) =>
+    (s?.silver || 0) * 10 +
+    (s?.bronze || 0);
 
-  const getScore = (student: any) => {
-
-    return (
-      (student.silver || 0) * 10 +
-      (student.bronze || 0)
-    );
-  };
-
-  // 업적
-
-  const getAchievements = (
-    student: any
-  ) => {
-
-    const achievements = [];
-
-    if ((student.stage || 0) >= 4) {
-      achievements.push(
-        "🌾 고조선 탐험가"
-      );
-    }
-
-    if ((student.stage || 0) >= 8) {
-      achievements.push(
-        "👑 고조선 개척자"
-      );
-    }
-
-    if ((student.stage || 0) >= 12) {
-      achievements.push(
-        "⚔️ 고구려 탐험가"
-      );
-    }
-
-    return achievements;
-  };
-
-  // 탐험 단계
-
-  const getStageInfo = (
-    stage: number
-  ) => {
-
-    if (stage <= 4) {
-
-      return {
-
-        title: "고조선 2 탐험",
-
-        stages: [
-
-          {
-            emoji: "🌱",
-            name: "고조선2-1",
-          },
-
-          {
-            emoji: "⚔️",
-            name: "고조선2-2",
-          },
-
-          {
-            emoji: "📜",
-            name: "고조선2-3",
-          },
-
-          {
-            emoji: "👑",
-            name: "고조선2-4",
-          },
-
-        ],
-
-      };
-    }
-
-    return {
-
-      title: "고구려 1 탐험",
-
-      stages: [
-
-        {
-          emoji: "🐎",
-          name: "고구려1-1",
-        },
-
-        {
-          emoji: "🏹",
-          name: "고구려1-2",
-        },
-
-        {
-          emoji: "🛡️",
-          name: "고구려1-3",
-        },
-
-        {
-          emoji: "👑",
-          name: "고구려1-4",
-        },
-
-      ],
-
-    };
-  };
-
-  // 학교 목록
-
-  const schoolList = [
-    ...new Set(
-      students
-        .map((student) => student.school)
-        .filter(Boolean)
-    ),
-  ];
-
-  // 검색
-
+  // 검색 결과
   const filteredStudents =
-    searchName === ""
-      ? students
-          .filter(
-            (student) =>
-              student.school ===
-                selectedSchool &&
-              student.isActive !== false
-          )
-          .slice(0, 1)
-      : students.filter(
-          (student) =>
-            student.isActive !== false &&
-            student.school ===
-              selectedSchool &&
-            student.name
-              ?.trim()
-              .includes(
-                searchName.trim()
-              )
-        );
+    searchName.trim() === ""
+      ? []
+      : students.filter((s) => {
 
-  // 학교 학생
+          if (isHiddenStudent(s)) {
+            return false;
+          }
 
-  const schoolStudents =
-    students.filter(
-      (student) =>
-        student.school ===
-          selectedSchool &&
-        student.isActive !== false
-    );
+          return s?.name?.includes(
+            searchName.trim()
+          );
 
-  // 달 탐험대
+        });
 
-  const moonRanking =
-    schoolStudents
-      .filter(
-        (student) =>
-          Number(student.grade) <= 2
-      )
-      .sort(
-        (a, b) =>
-          getScore(b) - getScore(a)
-      )
-      .slice(0, 3);
+  // 랭킹
+  const moonRanking = students
+    .filter((s) => Number(s?.grade) <= 2)
+    .sort(
+      (a, b) =>
+        getScore(b) - getScore(a)
+    )
+    .slice(0, 3);
 
-  // 별 탐험대
-
-  const starRanking =
-    schoolStudents
-      .filter(
-        (student) =>
-          Number(student.grade) >= 3
-      )
-      .sort(
-        (a, b) =>
-          getScore(b) - getScore(a)
-      )
-      .slice(0, 3);
+  const starRanking = students
+    .filter((s) => Number(s?.grade) >= 3)
+    .sort(
+      (a, b) =>
+        getScore(b) - getScore(a)
+    )
+    .slice(0, 3);
 
   // 학교 선택 화면
-
   if (!selectedSchool) {
 
+    // 비밀번호 입력 화면
+    if (pendingSchool) {
+
+      return (
+
+        <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
+
+          <div className="w-full max-w-md border border-orange-500 rounded-[32px] p-8 bg-[#050505]">
+
+            <div className="text-3xl font-bold text-center mb-6">
+
+              🔐 {pendingSchool} 입장
+
+            </div>
+
+            <input
+              type="password"
+              placeholder="비밀번호 입력"
+              value={passwordInput}
+              onChange={(e) =>
+                setPasswordInput(
+                  e.target.value
+                )
+              }
+              className="w-full bg-[#111] border border-[#333] rounded-2xl px-4 py-4 text-lg mb-5 outline-none"
+            />
+
+            <button
+              onClick={() => {
+
+                const correctPassword =
+                  SCHOOL_PASSWORDS[
+                    pendingSchool
+                  ];
+
+                if (
+                  passwordInput ===
+                  correctPassword
+                ) {
+
+                  setSelectedSchool(
+                    pendingSchool
+                  );
+
+                  setPendingSchool("");
+                  setPasswordInput("");
+
+                } else {
+
+                  alert(
+                    "비밀번호가 틀렸습니다."
+                  );
+
+                }
+
+              }}
+              className="w-full bg-orange-500 hover:bg-orange-600 transition rounded-2xl py-4 text-xl font-bold"
+            >
+              입장하기
+            </button>
+
+            <button
+              onClick={() => {
+
+                setPendingSchool("");
+                setPasswordInput("");
+
+              }}
+              className="w-full mt-3 bg-[#111] border border-[#333] rounded-2xl py-3 text-sm"
+            >
+              학교 목록으로
+            </button>
+
+          </div>
+
+        </div>
+
+      );
+
+    }
+
     return (
-
       <SchoolSelect
-        schools={schoolList}
-        onSelect={setSelectedSchool}
+        schools={allSchools}
+        onSelect={handleSchoolSelect}
       />
-
     );
+
+  }
+
+  // 로딩
+  if (loading) {
+    return <LoadingSpinner />;
   }
 
   return (
 
-    <div className="min-h-screen bg-black text-white p-4">
+    <div className="min-h-screen bg-black text-white px-3 py-4">
 
-      <div className="max-w-[1800px] mx-auto space-y-5">
+      <div className="max-w-xl mx-auto space-y-4">
 
-        {/* 상단 */}
+        {/* 헤더 */}
+        <div className="rounded-[28px] border border-[#333] bg-[#050505] px-4 py-4">
 
-        <div className="rounded-[30px] border border-[#333] bg-[#050505] p-6 shadow-xl">
+          <div className="flex items-center justify-between gap-3">
 
-          <div className="flex items-center justify-between gap-6 flex-wrap">
+            <div className="min-w-0">
 
-            <div className="flex items-center gap-5">
+              <div className="flex items-center gap-2">
 
-              <div className="text-6xl">
-                🧭
-              </div>
+                <div className="text-3xl">
+                  🧭
+                </div>
 
-              <div>
-
-                <h1 className="text-4xl lg:text-5xl font-bold mb-2">
+                <div className="text-2xl font-bold truncate">
 
                   역사 탐험가
 
-                </h1>
+                </div>
 
-                <p className="text-lg text-gray-300">
+              </div>
 
-                  {selectedSchool}
+              <div className="text-sm text-gray-400 mt-1 truncate">
 
-                </p>
+                {selectedSchool}
 
               </div>
 
@@ -307,183 +396,133 @@ export default function StudentExplorerPage() {
               onClick={() =>
                 setSelectedSchool("")
               }
-              className="bg-[#111] hover:bg-[#1a1a1a] border border-[#333] rounded-2xl px-5 py-3 text-lg transition"
+              className="bg-[#111] border border-[#333] px-3 py-2 rounded-2xl text-xs shrink-0"
             >
-
-              🏫 학교 변경
-
+              학교 변경
             </button>
 
           </div>
 
         </div>
 
-        {/* 검색 + 랭킹 */}
+        {/* 검색 전 */}
+        {!selectedStudent && (
 
-        <div className="grid lg:grid-cols-[1.3fr_1fr_1fr] gap-5">
+          <>
 
-          {/* 검색 */}
+            {/* 검색 */}
+            <div className="bg-[#050505] border border-[#333] p-4 rounded-[28px]">
 
-          <div className="rounded-[30px] border border-[#333] bg-[#050505] p-5">
+              <div className="text-xl font-bold mb-3">
+                🔍 학생 검색
+              </div>
 
-            <div className="text-2xl font-bold mb-6">
-
-              🔎 탐험가 찾기
-
-            </div>
-
-            <div className="flex gap-4">
-
+              {/* 검색 입력창 */}
               <input
                 type="text"
-                placeholder="이름을 입력하세요"
                 value={searchName}
                 onChange={(e) =>
-                  setSearchName(
-                    e.target.value
-                  )
+                  setSearchName(e.target.value)
                 }
-                className="flex-1 bg-[#0d0d0d] border border-[#444] rounded-2xl px-5 py-3 text-xl text-white outline-none"
+                placeholder="이름 검색"
+                className="w-full rounded-[24px] border border-orange-500/40 bg-[#0b0b0f] px-5 py-4 text-lg text-white outline-none transition focus:border-orange-400"
               />
 
-            </div>
+              {/* 드롭다운 */}
+              {searchName.trim() !== "" && (
 
-          </div>
+                <div className="mt-3">
 
-          {/* 달 랭킹 */}
+                  <SearchDropdown
+                    students={filteredStudents}
+                    searchName={searchName}
+                    setSearchName={setSearchName}
+                    setSelectedStudent={
+                      setSelectedStudent
+                    }
+                  />
 
-          <div className="rounded-[30px] border border-[#444] bg-[#15154b] p-5">
+                </div>
 
-            <div className="text-2xl font-bold mb-5">
+              )}
 
-              🌙 달 탐험대 TOP3
+              {/* 검색 결과 없음 */}
+              {searchName.trim() !== "" &&
+                filteredStudents.length === 0 && (
 
-            </div>
+                  <div className="mt-3 rounded-2xl border border-[#333] bg-[#0b0b0f] px-5 py-4 text-sm text-gray-500">
 
-            <div className="space-y-4">
-
-              {moonRanking.map(
-                (student, index) => (
-
-                  <div
-                    key={student.id}
-                    className="flex justify-between text-lg"
-                  >
-
-                    <div>
-
-                      {index === 0 &&
-                        "🥇 "}
-
-                      {index === 1 &&
-                        "🥈 "}
-
-                      {index === 2 &&
-                        "🥉 "}
-
-                      {student.name}
-
-                    </div>
-
-                    <div>
-
-                      {getScore(student)}점
-
-                    </div>
+                    검색 결과 없음
 
                   </div>
 
+                )}
+
+            </div>
+
+            {/* 랭킹 */}
+            <RankingCard
+              title="A반 랭킹"
+              icon="🌙"
+              students={moonRanking}
+              getScore={getScore}
+              bgColor="bg-[#15154b]"
+              borderColor="border-[#444]"
+            />
+
+            <RankingCard
+              title="B반 랭킹"
+              icon="⭐"
+              students={starRanking}
+              getScore={getScore}
+              bgColor="bg-[#3a2800]"
+              borderColor="border-[#5a3d00]"
+            />
+
+          </>
+
+        )}
+
+        {/* 학생 프로필 */}
+        {selectedStudent && (
+
+          <>
+
+            <StudentProfile
+              student={selectedStudent}
+              currentStage={
+                Number(
+                  selectedStudent?.stage || 1
                 )
-              )}
-
-            </div>
-
-          </div>
-
-          {/* 별 랭킹 */}
-
-          <div className="rounded-[30px] border border-[#5a3d00] bg-[#3a2800] p-5">
-
-            <div className="text-2xl font-bold mb-5">
-
-              ⭐ 별 탐험대 TOP3
-
-            </div>
-
-            <div className="space-y-4">
-
-              {starRanking.map(
-                (student, index) => (
-
-                  <div
-                    key={student.id}
-                    className="flex justify-between text-lg"
-                  >
-
-                    <div>
-
-                      {index === 0 &&
-                        "🥇 "}
-
-                      {index === 1 &&
-                        "🥈 "}
-
-                      {index === 2 &&
-                        "🥉 "}
-
-                      {student.name}
-
-                    </div>
-
-                    <div>
-
-                      {getScore(student)}점
-
-                    </div>
-
-                  </div>
-
+              }
+              stageInfo={
+                getStageInfo(
+                  Number(
+                    selectedStudent?.stage || 1
+                  )
                 )
-              )}
+              }
+              achievements={[]}
+              changeCharacter={
+                changeCharacter
+              }
+            />
 
-            </div>
+            {/* 다시 검색 */}
+            <button
+              onClick={() => {
 
-          </div>
+                setSearchName("");
+                setSelectedStudent(null);
 
-        </div>
+              }}
+              className="w-full bg-[#111] border border-[#333] rounded-[24px] p-4 text-sm"
+            >
+              🔍 다른 탐험가 찾기
+            </button>
 
-        {/* 학생 */}
+          </>
 
-        {filteredStudents.map(
-          (student) => {
-
-            const stageInfo =
-              getStageInfo(
-                student.stage || 0
-              );
-
-            const currentStage =
-              ((student.stage || 0) -
-                1) %
-                4 +
-              1;
-
-            const achievements =
-              getAchievements(student);
-
-            return (
-
-              <StudentProfile
-                key={student.id}
-                student={student}
-                currentStage={currentStage}
-                stageInfo={stageInfo}
-                achievements={achievements}
-                changeCharacter={changeCharacter}
-              />
-
-            );
-          }
         )}
 
       </div>
@@ -491,4 +530,5 @@ export default function StudentExplorerPage() {
     </div>
 
   );
+
 }

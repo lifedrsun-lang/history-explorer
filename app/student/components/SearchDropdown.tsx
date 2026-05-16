@@ -1,118 +1,63 @@
 "use client";
 
-import { useState } from "react";
-
-type Props = {
+interface Props {
   students: any[];
-  onSelectStudent: (student: any) => void;
-};
+  searchName: string;
+  setSearchName: (
+    value: string
+  ) => void;
+  setSelectedStudent: (
+    student: any
+  ) => void;
+}
 
 export default function SearchDropdown({
   students,
-  onSelectStudent,
+  searchName,
+  setSearchName,
+  setSelectedStudent,
 }: Props) {
 
-  const [search, setSearch] =
-    useState("");
-
-  const filteredStudents =
-    students.filter((student) => {
-
-      const keyword =
-        search.toLowerCase();
-
-      return (
-
-        student.name
-          ?.toLowerCase()
-          .includes(keyword) ||
-
-        student.school
-          ?.toLowerCase()
-          .includes(keyword)
-
-      );
-
-    });
+  if (!searchName?.trim()) {
+    return null;
+  }
 
   return (
 
-    <div className="w-full">
+    <div className="overflow-hidden rounded-[24px] border border-[#333] bg-[#0b0b0f]">
 
-      {/* 검색창 */}
-      <input
-        type="text"
-        placeholder="이름 검색"
-        value={search}
-        onChange={(e) =>
-          setSearch(
-            e.target.value
-          )
-        }
-        className="w-full bg-[#111] border border-yellow-700 rounded-2xl px-4 py-4 text-white outline-none text-lg"
-      />
+      {students.map((student) => (
 
-      {/* 검색 결과 */}
-      {search.length > 0 && (
+        <button
+          key={student.id}
+          onClick={() => {
 
-        <div className="mt-3 bg-[#111] border border-yellow-700 rounded-2xl overflow-hidden">
+            setSelectedStudent(student);
+            setSearchName(student.name);
 
-          {filteredStudents.length >
-          0 ? (
+          }}
+          className="flex w-full items-center justify-between border-b border-[#222] px-5 py-4 text-left transition hover:bg-white/5 last:border-none"
+        >
 
-            filteredStudents.map(
-              (student) => (
+          <div>
 
-                <button
-                  key={student.id}
-                  onClick={() => {
-
-                    onSelectStudent(
-                      student
-                    );
-
-                    setSearch("");
-
-                  }}
-                  className="w-full text-left px-4 py-4 border-b border-[#222] hover:bg-[#1b1b1b] transition"
-                >
-
-                  <div className="font-bold text-white">
-
-                    {student.name}
-
-                  </div>
-
-                  <div className="text-sm text-gray-400">
-
-                    {student.school}
-                    {" "}
-                    ·
-                    {" "}
-                    {student.grade}학년
-                    {" "}
-                    {student.class}반
-
-                  </div>
-
-                </button>
-
-              )
-            )
-
-          ) : (
-
-            <div className="px-4 py-4 text-gray-500">
-
-              검색 결과 없음
-
+            <div className="text-lg font-bold text-white">
+              {student.name}
             </div>
 
-          )}
+            <div className="mt-1 text-sm text-[#9fb0ff]">
+              {student.grade}학년 {student.class}반
+            </div>
 
-        </div>
+          </div>
 
-      )}
+          <div className="text-gray-400">
+            ▶
+          </div>
+
+        </button>
+
+      ))}
 
     </div>
 
