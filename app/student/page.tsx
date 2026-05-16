@@ -42,9 +42,7 @@ export default function StudentPage() {
 
           {/* 화성 새솔초 */}
           <button
-            onClick={() =>
-              router.push("/student/search?school=saesol")
-            }
+            onClick={() => router.push("/student/search")}
             className="
               w-full
               h-[120px]
@@ -68,9 +66,7 @@ export default function StudentPage() {
 
           {/* 김포 하늘빛초 */}
           <button
-            onClick={() =>
-              router.push("/student/search?school=haneul")
-            }
+            onClick={() => router.push("/student/search")}
             className="
               w-full
               h-[120px]
