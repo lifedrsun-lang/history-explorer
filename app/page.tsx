@@ -9,7 +9,6 @@ export default function HomePage() {
   return (
     <main className="w-full min-h-screen bg-sky-300 flex justify-center overflow-hidden">
 
-      {/* 전체 컨테이너 */}
       <div className="relative w-full max-w-[700px]">
 
         {/* 메인 이미지 */}
@@ -20,6 +19,12 @@ export default function HomePage() {
           height={1920}
           priority
           className="w-full h-auto block"
+        />
+
+        {/* 설정 버튼 */}
+        <button
+          onClick={() => router.push("/teacher")}
+          className="absolute top-[2%] right-[2%] w-[12%] h-[8%]"
         />
 
         {/* 봄 섬 */}
