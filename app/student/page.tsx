@@ -61,6 +61,8 @@ export default function StudentExplorerPage() {
   > = {
     "김포 하늘빛초": "0304",
     "화성 새솔초": "0309",
+    "김포 사우초": "0605",
+
   };
 
   // 숨김 학생 처리
