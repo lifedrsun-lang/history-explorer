@@ -688,6 +688,210 @@ export default function TeacherPage() {
           </div>
 
         </div>
+{/* 학생 목록 */}
+<div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+
+  {activeStudents.map(
+    (student) => (
+
+      <div
+        key={student.id}
+        className="bg-white rounded-3xl p-3 shadow-md"
+      >
+
+        <div className="text-2xl font-bold mb-1">
+          {student.name}
+        </div>
+
+        <div className="text-sm text-gray-500 mb-2">
+
+          {student.school || "미지정"}
+
+          <br />
+
+          {student.grade}학년 {student.class}반
+
+          {student.studentNumber && (
+            <>
+              {" "}
+              / {student.studentNumber}번
+            </>
+          )}
+
+        </div>
+
+        {/* 비밀번호 */}
+        <div className="bg-blue-50 rounded-xl p-2 mb-3 text-sm">
+
+          🔑 비밀번호 :
+          {" "}
+          <span className="font-bold text-blue-600">
+
+            {student.password || "없음"}
+
+          </span>
+
+        </div>
+
+        {/* 현재 진도 */}
+        <div className="bg-[#f5f7fb] rounded-2xl p-4 mb-3">
+
+          <div className="text-sm text-gray-400 mb-1">
+
+            현재 진도
+
+          </div>
+
+          <div className="text-sm text-gray-500 mb-1">
+
+            {
+              getStageInfo(
+                student.stage
+              ).current.short
+            }
+
+          </div>
+
+          <div className="text-lg font-bold text-yellow-600 leading-snug break-keep">
+
+            {
+              getStageInfo(
+                student.stage
+              ).title
+            }
+
+          </div>
+
+          <div className="text-gray-400 mt-1 mb-3">
+
+            {
+              getStageInfo(
+                student.stage
+              ).current.era
+            }
+
+          </div>
+
+          {/* 진도 이동 */}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+
+            <button
+              onClick={() =>
+                changeStage(
+                  student,
+                  -1
+                )
+              }
+              className="bg-gray-200 rounded-xl py-2 text-xs font-bold"
+            >
+
+              ◀ 이전 차시
+
+            </button>
+
+            <button
+              onClick={() =>
+                changeStage(
+                  student,
+                  1
+                )
+              }
+              className="bg-yellow-500 text-white rounded-xl py-2 text-xs font-bold"
+            >
+
+              다음 차시 ▶
+
+            </button>
+
+          </div>
+
+          {/* 엽전 */}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+
+            <div className="bg-white rounded-xl p-2">
+
+              <div className="text-xs text-gray-400">
+
+                🥇 동
+
+              </div>
+
+              <div className="text-2xl font-bold">
+
+                {student.bronze}
+
+              </div>
+
+            </div>
+
+            <div className="bg-white rounded-xl p-2">
+
+              <div className="text-xs text-gray-400">
+
+                🥈 은
+
+              </div>
+
+              <div className="text-2xl font-bold">
+
+                {student.silver}
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* 버튼 */}
+        <div className="grid grid-cols-2 gap-2">
+
+          <button
+            onClick={() =>
+              addBronze(student)
+            }
+            className="bg-yellow-500 text-white rounded-xl py-2 text-xs font-bold"
+          >
+            +동엽전
+          </button>
+
+          <button
+            onClick={() =>
+              useSilver(student)
+            }
+            className="bg-purple-500 text-white rounded-xl py-2 text-xs font-bold"
+          >
+            은사용
+          </button>
+
+          <button
+            onClick={() =>
+              toggleStudentVisible(student)
+            }
+            className="bg-gray-500 text-white rounded-xl py-2 text-xs font-bold"
+          >
+            숨기기
+          </button>
+
+          <button
+            onClick={() =>
+              deleteStudent(student)
+            }
+            className="bg-red-500 text-white rounded-xl py-2 text-xs font-bold"
+          >
+            삭제
+          </button>
+
+        </div>
+
+      </div>
+
+    )
+  )}
+
+</div>
+
 
       </div>
 
