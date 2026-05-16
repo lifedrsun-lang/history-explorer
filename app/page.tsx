@@ -7,9 +7,9 @@ export default function HomePage() {
   const router = useRouter();
 
   return (
-    <main className="w-full min-h-screen bg-sky-300 flex justify-center overflow-hidden">
+    <main className="w-full min-h-screen bg-sky-300 overflow-hidden">
 
-      <div className="relative w-full max-w-[700px]">
+      <div className="relative w-full max-w-[1000px] mx-auto">
 
         {/* 메인 이미지 */}
         <Image
@@ -26,10 +26,10 @@ export default function HomePage() {
           onClick={() => router.push("/teacher")}
           className="
             absolute
-            top-[0%]
-            right-[0%]
-            w-[16%]
-            h-[10%]
+            top-[1%]
+            right-[1%]
+            w-[14%]
+            h-[8%]
             z-30
           "
         />
@@ -45,15 +45,9 @@ export default function HomePage() {
             h-[30%]
             z-10
 
-            rounded-full
-
-            transition-all
-            duration-300
-
-            hover:bg-white/10
             active:scale-95
-
-            hover:shadow-[0_0_50px_rgba(255,255,255,0.9)]
+            transition-transform
+            duration-150
           "
         />
 
@@ -68,15 +62,9 @@ export default function HomePage() {
             h-[30%]
             z-10
 
-            rounded-full
-
-            transition-all
-            duration-300
-
-            hover:bg-white/10
             active:scale-95
-
-            hover:shadow-[0_0_50px_rgba(255,255,255,0.9)]
+            transition-transform
+            duration-150
           "
         />
 
@@ -91,15 +79,9 @@ export default function HomePage() {
             h-[30%]
             z-10
 
-            rounded-full
-
-            transition-all
-            duration-300
-
-            hover:bg-white/10
             active:scale-95
-
-            hover:shadow-[0_0_50px_rgba(255,255,255,0.9)]
+            transition-transform
+            duration-150
           "
         />
 
@@ -114,15 +96,9 @@ export default function HomePage() {
             h-[30%]
             z-10
 
-            rounded-full
-
-            transition-all
-            duration-300
-
-            hover:bg-white/10
             active:scale-95
-
-            hover:shadow-[0_0_50px_rgba(255,255,255,0.9)]
+            transition-transform
+            duration-150
           "
         />
 
