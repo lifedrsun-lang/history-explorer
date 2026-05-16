@@ -98,6 +98,7 @@ export default function TeacherPage() {
       );
 
       return;
+
     }
 
     // 자동 비밀번호 생성
@@ -145,7 +146,7 @@ export default function TeacherPage() {
 
   };
 
-  // 기존 학생 비밀번호 자동 생성
+  // 기존 학생 비밀번호 생성
   const updateAllPasswords =
     async () => {
 
@@ -244,6 +245,7 @@ export default function TeacherPage() {
       );
 
       return;
+
     }
 
     await updateDoc(
@@ -342,7 +344,7 @@ export default function TeacherPage() {
 
   };
 
-  // 활성 학생
+  // 활성 학생 필터
   const activeStudents =
     students.filter((student) => {
 
@@ -435,7 +437,8 @@ export default function TeacherPage() {
             onClick={() => {
 
               if (
-                passwordInput === "0713"
+                passwordInput.trim() ===
+                "0713"
               ) {
 
                 setAuthorized(true);
@@ -569,10 +572,9 @@ export default function TeacherPage() {
 
           </div>
 
-          {/* 자동 비밀번호 */}
           {studentNumber && (
 
-            <div className="text-sm text-blue-500 mb-3 font-bold">
+            <div className="text-sm text-blue-500 font-bold mb-3">
 
               자동 비밀번호 :
               {" "}
@@ -641,7 +643,6 @@ export default function TeacherPage() {
 
             </select>
 
-            {/* 학생 검색 */}
             <input
               type="text"
               placeholder="학생 이름 검색"
@@ -654,6 +655,44 @@ export default function TeacherPage() {
               className="border rounded-xl px-4 py-2"
             />
 
+            <div className="flex gap-2">
+
+              <button
+                onClick={() =>
+                  setSelectedTab("A반")
+                }
+                className={`px-4 py-2 rounded-xl font-bold ${
+                  selectedTab === "A반"
+                    ? "bg-yellow-500 text-white"
+                    : "bg-gray-200"
+                }`}
+              >
+                A반
+              </button>
+
+              <button
+                onClick={() =>
+                  setSelectedTab("B반")
+                }
+                className={`px-4 py-2 rounded-xl font-bold ${
+                  selectedTab === "B반"
+                    ? "bg-yellow-500 text-white"
+                    : "bg-gray-200"
+                }`}
+              >
+                B반
+              </button>
+
+            </div>
+
           </div>
 
         </div>
+
+      </div>
+
+    </div>
+
+  );
+
+}
