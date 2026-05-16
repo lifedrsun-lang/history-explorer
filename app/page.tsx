@@ -9,7 +9,7 @@ export default function HomePage() {
     {
       title: "역사탐험대",
       icon: "🏺",
-      path: "/history",
+      path: "/student",
     },
     {
       title: "세계탐험대",
@@ -38,37 +38,51 @@ export default function HomePage() {
         flex
         items-center
         justify-center
-        px-6
-        py-10
+        px-5
+        py-8
       "
       style={{
         backgroundImage: "url('/map-bg.png')",
       }}
     >
-      <div className="w-full max-w-md flex flex-col gap-5">
+      <div className="w-full max-w-sm flex flex-col gap-4">
+
+        {/* 탐험대 버튼 */}
         {menus.map((menu) => (
           <button
             key={menu.title}
             onClick={() => router.push(menu.path)}
             className="
-              bg-[#f5e8c7]/90
+              bg-[#f5ecd6]/88
+              backdrop-blur-sm
               border-2
-              border-[#8b6b3f]
-              rounded-3xl
-              p-5
+              border-[#9b7a4c]
+              rounded-[32px]
+              px-5
+              py-4
               text-left
-              shadow-xl
+              shadow-lg
               active:scale-95
               transition
             "
           >
-            <div className="text-4xl mb-2">
-              {menu.icon}
-            </div>
+            <div className="flex items-center gap-3">
 
-            <h2 className="text-3xl font-bold text-[#3a2a17]">
-              {menu.title}
-            </h2>
+              <div className="text-3xl">
+                {menu.icon}
+              </div>
+
+              <h2
+                className="
+                  text-2xl
+                  font-extrabold
+                  text-[#3d2b1f]
+                  tracking-tight
+                "
+              >
+                {menu.title}
+              </h2>
+            </div>
           </button>
         ))}
 
@@ -76,22 +90,37 @@ export default function HomePage() {
         <button
           onClick={() => router.push("/teacher")}
           className="
-            bg-[#2e2e2e]/90
+            mt-2
+            bg-black/65
+            backdrop-blur-sm
             border-2
-            border-[#b8b8b8]
-            rounded-3xl
-            p-5
+            border-[#d0d0d0]
+            rounded-[32px]
+            px-5
+            py-4
             text-left
-            shadow-xl
+            shadow-lg
             active:scale-95
             transition
           "
         >
-          <div className="text-4xl mb-2">🛡</div>
+          <div className="flex items-center gap-3">
 
-          <h2 className="text-3xl font-bold text-white">
-            교사용 관리
-          </h2>
+            <div className="text-3xl">
+              🛡
+            </div>
+
+            <h2
+              className="
+                text-2xl
+                font-extrabold
+                text-white
+                tracking-tight
+              "
+            >
+              교사용 관리
+            </h2>
+          </div>
         </button>
       </div>
     </main>
