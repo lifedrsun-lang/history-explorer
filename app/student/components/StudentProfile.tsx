@@ -19,49 +19,22 @@ export default function StudentProfile({
   changeCharacter,
 }: Props) {
 
-  // 전체 시대 수
-  const TOTAL_STAGE_GROUPS = 23;
-
-  // 시대당 단계 수
-  const STAGES_PER_GROUP = 4;
-
-  // 전체 진행 개수
-  const TOTAL_PROGRESS =
-    TOTAL_STAGE_GROUPS *
-    STAGES_PER_GROUP;
-
-  // 현재 완료 개수
-  const completedCount =
-    Math.max(currentStage, 0);
+  // 전체 진행 수
+  const TOTAL_PROGRESS = 92;
 
   // 진행률 %
   const progressPercent =
-    (completedCount /
+    (currentStage /
       TOTAL_PROGRESS) *
     100;
 
-  const stages = [
-    {
-      stage: 1,
-      emoji: "🐴",
-      title: "고구려1-1",
-    },
-    {
-      stage: 2,
-      emoji: "🏹",
-      title: "고구려1-2",
-    },
-    {
-      stage: 3,
-      emoji: "⚔️",
-      title: "고구려1-3",
-    },
-    {
-      stage: 4,
-      emoji: "👑",
-      title: "고구려1-4",
-    },
-  ];
+  // 현재 단계 정보
+  const current =
+    stageInfo?.current;
+
+  // 현재 시대 단계들
+  const stages =
+    stageInfo?.stages || [];
 
   return (
 
@@ -146,7 +119,7 @@ export default function StudentProfile({
           </div>
 
           <div className="mt-2 text-2xl font-black leading-snug">
-            광활한 영토에 우뚝 선 고구려1
+            {current?.title} {current?.era}
           </div>
 
         </div>
@@ -190,7 +163,7 @@ export default function StudentProfile({
             </div>
 
             <div className="text-2xl font-black">
-              {completedCount} / {TOTAL_PROGRESS}
+              {currentStage} / 92
             </div>
 
           </div>
@@ -217,20 +190,16 @@ export default function StudentProfile({
 
           <div className="grid grid-cols-2 gap-3">
 
-            {stages.map((item) => {
+            {stages.map((item: any) => {
 
-              // 현재 단계만 정확히 완료 처리
+              // 현재 단계 이하만 완료
               const completed =
-                currentStage === item.stage;
-
-              // 이전 단계들
-              const cleared =
-                currentStage > item.stage;
+                currentStage >= item.id;
 
               return (
 
                 <div
-                  key={item.stage}
+                  key={item.id}
                   className="rounded-[24px] border border-[#333] bg-[#050505] p-4 text-center"
                 >
 
@@ -239,10 +208,10 @@ export default function StudentProfile({
                   </div>
 
                   <div className="text-2xl font-black mb-3">
-                    {item.title}
+                    {item.short}
                   </div>
 
-                  {completed || cleared ? (
+                  {completed ? (
 
                     <div className="text-lg font-bold text-white">
                       ✅ 완료
