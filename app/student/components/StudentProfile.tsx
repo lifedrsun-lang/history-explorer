@@ -118,9 +118,9 @@ export default function StudentProfile({
             🏛 현재 시대
           </div>
 
-          <div className="mt-4 overflow-x-auto scrollbar-hide">
+          <div className="mt-4">
 
-            <div className="text-[30px] leading-tight font-black whitespace-nowrap min-w-max">
+            <div className="text-[clamp(20px,6vw,40px)] leading-tight font-black whitespace-nowrap overflow-hidden text-ellipsis">
 
               {current?.title} {current?.era}
 
