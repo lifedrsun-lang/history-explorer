@@ -4,54 +4,40 @@ import { STAGE_DATA }
 from "@/app/student/data/stageData";
 
 export default function StudentCard({
-
   student,
   addBronze,
   useSilver,
   toggleStudentVisible,
   deleteStudent,
   openEditModal,
-
 }: any) {
 
   const stage =
     STAGE_DATA.find(
       (item) =>
-        item.id ===
-        student.stage
+        item.id === student.stage
     );
 
   return (
 
-    <div
-      className="
-      bg-white
-      rounded-[30px]
-      p-4
-      shadow-md
-      "
-    >
+    <div className="bg-white rounded-[30px] p-4 shadow-md">
 
+      {/* 이름 */}
       <div className="text-3xl font-bold">
         {student.name}
       </div>
 
-      <div className="text-red-500 font-bold">
-🔥 코인 테스트
-</div>
-
+      {/* 학교 */}
       <div className="text-gray-500">
         {student.school}
       </div>
 
+      {/* 학년 반 번호 */}
       <div className="text-gray-500 mb-3">
-
-        {student.grade}학년
+        {student.grade}학년{" "}
+        {student.class}반 /
         {" "}
-        {student.class}반
-        {" / "}
         {student.studentNumber}번
-
       </div>
 
       {/* 비밀번호 */}
@@ -65,15 +51,18 @@ export default function StudentCard({
       >
 
         🔑 비밀번호 :
-        {" "}
 
         <span className="font-bold text-blue-600">
+
+          {" "}
           {student.password}
+
         </span>
 
       </div>
 
-      {/* 코인 표시 */}
+      {/* 코인 정보 */}
+
       <div
         className="
         bg-yellow-50
@@ -84,20 +73,33 @@ export default function StudentCard({
       >
 
         <div className="font-bold text-yellow-700">
-          🟡 동엽전 : {student.bronze ?? 0}개
+
+          🟡 동엽전 :
+          {" "}
+          {student.bronze ?? 0}개
+
         </div>
 
         <div className="font-bold text-purple-700 mt-1">
-          ⚪ 은엽전 : {student.silver ?? 0}개
+
+          ⚪ 은엽전 :
+          {" "}
+          {student.silver ?? 0}개
+
         </div>
 
         <div className="font-bold text-green-700 mt-1">
-          📈 누적 : {student.totalBronze ?? 0}개
+
+          📈 누적 :
+          {" "}
+          {student.totalBronze ?? 0}개
+
         </div>
 
       </div>
 
       {/* 진도 */}
+
       <div
         className="
         bg-gray-100
@@ -108,11 +110,15 @@ export default function StudentCard({
       >
 
         <div className="text-gray-400">
+
           현재 진도
+
         </div>
 
         <div className="text-gray-500">
+
           {stage?.short}
+
         </div>
 
         <div
@@ -122,10 +128,14 @@ export default function StudentCard({
           text-2xl
           "
         >
+
           {stage?.title}
+
         </div>
 
       </div>
+
+      {/* 버튼 */}
 
       <div className="grid grid-cols-2 gap-2">
 
