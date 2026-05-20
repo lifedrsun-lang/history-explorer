@@ -327,6 +327,9 @@ const addBronze = async (
     }
   );
 
+
+  
+
   alert(
     `🎉 ${student.name} 지급이 완료되었습니다!`
   );
@@ -336,7 +339,7 @@ const addBronze = async (
 };
 
 
-// 동엽전 회수
+
 const removeBronze = async (
   student: any
 ) => {
@@ -378,9 +381,6 @@ const removeBronze = async (
   fetchStudents();
 
 };
-
-
-
 
 
   // 은엽전 사용

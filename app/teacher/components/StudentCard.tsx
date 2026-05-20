@@ -34,7 +34,7 @@ export default function StudentCard({
         {student.school}
       </div>
 
-      {/* 학년 반 번호 */}
+      {/* 학년/반 */}
       <div className="text-gray-500 mb-3">
         {student.grade}학년{" "}
         {student.class}반 /
@@ -46,9 +46,12 @@ export default function StudentCard({
       <div className="bg-blue-50 rounded-2xl p-3 mb-3">
 
         🔑 비밀번호 :
+
         <span className="font-bold text-blue-600">
+
           {" "}
           {student.password}
+
         </span>
 
       </div>
@@ -57,15 +60,21 @@ export default function StudentCard({
       <div className="bg-yellow-50 rounded-2xl p-3 mb-3">
 
         <div className="font-bold text-yellow-700">
-          🟡 동엽전 : {student.bronze ?? 0}개
+          🟡 동엽전 :
+          {" "}
+          {student.bronze ?? 0}개
         </div>
 
         <div className="font-bold text-purple-700 mt-1">
-          ⚪ 은엽전 : {student.silver ?? 0}개
+          ⚪ 은엽전 :
+          {" "}
+          {student.silver ?? 0}개
         </div>
 
         <div className="font-bold text-green-700 mt-1">
-          📈 누적 : {student.totalBronze ?? 0}개
+          📈 누적 :
+          {" "}
+          {student.totalBronze ?? 0}개
         </div>
 
       </div>
@@ -111,7 +120,7 @@ export default function StudentCard({
       </div>
 
       {/* 기능 버튼 */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
 
         <button
           onClick={() =>
@@ -124,27 +133,19 @@ export default function StudentCard({
 
         <button
           onClick={() =>
+            removeBronze(student)
+          }
+          className="bg-orange-500 text-white rounded-xl py-2 font-bold"
+        >
+          -동엽전
+        </button>
+
+        <button
+          onClick={() =>
             useSilver(student)
           }
           className="bg-purple-500 text-white rounded-xl py-2 font-bold"
         >
-
-<button
-  onClick={() =>
-    removeBronze(student)
-  }
-  className="
-  bg-orange-500
-  text-white
-  rounded-xl
-  py-2
-  font-bold
-  "
->
-  -동엽전
-</button>
-
-
           은사용
         </button>
 
