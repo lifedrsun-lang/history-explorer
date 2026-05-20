@@ -119,55 +119,66 @@ export default function StudentCard({
 
       </div>
 
-      {/* 기능 버튼 */}
-      <div className="grid grid-cols-2 gap-2">
+    {/* 기능 버튼 */}
 
-        <button
-          onClick={() =>
-            addBronze(student)
-          }
-          className="bg-yellow-500 text-white rounded-xl py-2 font-bold"
-        >
-          +동엽전
-        </button>
+<div className="grid grid-cols-2 gap-2">
 
-        <button
-          onClick={() =>
-            removeBronze(student)
-          }
-          className="bg-orange-500 text-white rounded-xl py-2 font-bold"
-        >
-          -동엽전
-        </button>
+<button
+  onClick={() =>
+    addBronze(student)
+  }
+  className="bg-yellow-500 text-white rounded-xl py-2 font-bold"
+>
+  +동엽전
+</button>
 
-        <button
-          onClick={() =>
-            useSilver(student)
-          }
-          className="bg-purple-500 text-white rounded-xl py-2 font-bold"
-        >
-          은사용
-        </button>
+<button
+  onClick={() =>
+    removeBronze(student)
+  }
+  className="bg-orange-500 text-white rounded-xl py-2 font-bold"
+>
+  -동엽전
+</button>
 
-        <button
-          onClick={() =>
-            openEditModal(student)
-          }
-          className="bg-blue-500 text-white rounded-xl py-2 font-bold"
-        >
-          수정
-        </button>
+<button
+  onClick={() =>
+    useSilver(student)
+  }
+  className="bg-purple-500 text-white rounded-xl py-2 font-bold"
+>
+  은사용
+</button>
 
-        <button
-          onClick={() =>
-            toggleStudentVisible(student)
-          }
-          className="bg-gray-500 text-white rounded-xl py-2 font-bold"
-        >
-          숨기기
-        </button>
+<button
+  onClick={() =>
+    toggleStudentVisible(student)
+  }
+  className="bg-gray-500 text-white rounded-xl py-2 font-bold"
+>
+  숨기기
+</button>
 
-      </div>
+<button
+  onClick={() =>
+    openEditModal(student)
+  }
+  className="bg-blue-500 text-white rounded-xl py-2 font-bold"
+>
+  수정
+</button>
+
+<button
+  onClick={() =>
+    deleteStudent(student)
+  }
+  className="bg-red-500 text-white rounded-xl py-2 font-bold"
+>
+  삭제
+</button>
+
+</div>
+
 
       <button
         onClick={() =>

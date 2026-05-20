@@ -64,25 +64,42 @@ export default function HomePage() {
           "
         />
 
-        {/* 여름 */}
-        <button
-          onClick={() => router.push("/summer")}
-          className="
-            absolute
-            top-[20%]
-            right-[0%]
-            w-[48%]
-            h-[30%]
-            z-20
+{/* 여름 */}
+<button
+  onClick={() => {
+    localStorage.setItem(
+      "previousMap",
+      "/"
+    );
 
-            transition-all
-            duration-150
+    router.push(
+      "/summer"
+    );
+  }}
+  className="
+    absolute
+    top-[20%]
+    right-[0%]
+    w-[48%]
+    h-[30%]
+    z-20
 
-            active:scale-110
-            active:brightness-125
-            active:shadow-[0_0_40px_rgba(255,255,255,0.9)]
-          "
-        />
+    transition-all
+    duration-150
+
+    active:scale-110
+    active:brightness-125
+  "
+>
+
+  <div
+    className="
+    w-full
+    h-full
+    "
+  />
+
+</button>
 
         {/* 가을 */}
         <button
