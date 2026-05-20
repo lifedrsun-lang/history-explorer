@@ -7,7 +7,6 @@ import { useEffect, useState } from "react";
 export default function SummerPage() {
 
   const router = useRouter();
-
   const [showSchoolList, setShowSchoolList] =
     useState(false);
 
@@ -38,21 +37,17 @@ export default function SummerPage() {
 
   return (
 
-    <main
-      className="
-        w-screen
-        h-[100dvh]
-        overflow-hidden
-
-        flex
-        items-center
-        justify-center
-      "
-    >
+    <main className="
+      w-screen
+      h-[100dvh]
+      overflow-hidden
+      flex
+      items-center
+      justify-center
+    ">
 
       <div className="relative min-h-[100dvh] w-full">
 
-        {/* 배경 */}
         <Image
           src="/images/summer-map.png"
           alt="여름맵"
@@ -70,10 +65,8 @@ export default function SummerPage() {
             absolute
             top-[1%]
             right-[1%]
-
             w-[14%]
             h-[8%]
-
             z-30
           "
         />
@@ -87,22 +80,13 @@ export default function SummerPage() {
             absolute
             top-[18%]
             left-[0%]
-
             w-[48%]
             h-[32%]
-
             z-20
-
-            transition-all
-            duration-150
-
-            active:scale-110
-            active:brightness-125
-            active:shadow-[0_0_40px_rgba(255,255,255,0.9)]
           "
         />
 
-        {/* 학교목록 팝업 */}
+        {/* 학교 팝업 */}
         {showSchoolList && (
 
           <div
@@ -114,7 +98,6 @@ export default function SummerPage() {
               inset-0
               bg-black/50
               z-50
-
               flex
               items-center
               justify-center
@@ -122,7 +105,7 @@ export default function SummerPage() {
           >
 
             <div
-              onClick={(e) =>
+              onClick={(e)=>
                 e.stopPropagation()
               }
               className="
@@ -131,33 +114,31 @@ export default function SummerPage() {
                 p-6
                 w-[85%]
                 max-w-[400px]
-                shadow-2xl
               "
             >
 
-              <h2
-                className="
-                  text-2xl
-                  font-bold
-                  text-center
-                  mb-6
-                  text-black
-                "
-              >
+              <h2 className="
+                text-2xl
+                font-bold
+                text-center
+                mb-6
+                text-black
+              ">
                 🏫 학교 목록
               </h2>
 
               <div className="space-y-3">
 
                 {schools.map(
-                  (school) => (
-
+                  (school)=>(
                     <button
                       key={school}
                       onClick={() => {
 
-                        setShowSchoolList(
-                          false
+                        // 학교 이름만 임시 저장
+                        localStorage.setItem(
+                          "pendingSchool",
+                          school
                         );
 
                         router.push(
@@ -169,18 +150,12 @@ export default function SummerPage() {
                         w-full
                         py-4
                         rounded-2xl
-
                         bg-gray-100
                         text-black
-                        font-medium
-
-                        hover:bg-gray-200
-                        transition
                       "
                     >
                       {school}
                     </button>
-
                   )
                 )}
 
@@ -195,7 +170,6 @@ export default function SummerPage() {
                   w-full
                   py-3
                   rounded-2xl
-
                   bg-red-500
                   text-white
                   font-bold
@@ -213,7 +187,5 @@ export default function SummerPage() {
       </div>
 
     </main>
-
   );
-
 }
