@@ -86,31 +86,25 @@ export default function StudentCard({
 
       </div>
 
-      {/* 진도 변경 버튼 */}
+      {/* 진도 버튼 */}
       <div className="grid grid-cols-2 gap-2 mb-3">
 
         <button
           onClick={() =>
-            changeStage(
-              student,
-              -1
-            )
+            changeStage(student,-1)
           }
-          className="bg-indigo-500 text-white rounded-xl py-2 font-bold"
+          className="bg-indigo-500 text-white rounded-xl py-2 text-sm font-bold"
         >
-          ◀ 이전 진도
+          ◀ 이전
         </button>
 
         <button
           onClick={() =>
-            changeStage(
-              student,
-              1
-            )
+            changeStage(student,1)
           }
-          className="bg-green-500 text-white rounded-xl py-2 font-bold"
+          className="bg-green-500 text-white rounded-xl py-2 text-sm font-bold"
         >
-          다음 진도 ▶
+          다음 ▶
         </button>
 
       </div>
