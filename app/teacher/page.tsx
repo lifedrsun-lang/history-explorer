@@ -24,7 +24,7 @@ import {
 } from "@/app/student/data/stageData";
 
 import TeacherLogin from "./components/TeacherLogin";
-import StudentCard from "./components/1StudentCard";
+import StudentCard from "./components/StudentCard";
 import StudentEditModal from "./components/StudentEditModal";
 
 export default function TeacherPage() {
