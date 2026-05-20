@@ -173,26 +173,36 @@ export default function StudentExplorerPage() {
   };
 
   useEffect(() => {
-    useEffect(() => {
+    fetchSchools();
+  }, []);
 
-      const pendingSchool =
-        localStorage.getItem(
-          "pendingSchool"
-        );
-    
-      if (pendingSchool) {
-    
-        handleSchoolSelect(
-          pendingSchool
-        );
-    
-        localStorage.removeItem(
-          "pendingSchool"
-        );
-    
-      }
-    
-    }, []);
+
+  useEffect(() => {
+
+    const pendingSchool =
+      localStorage.getItem(
+        "pendingSchool"
+      );
+  
+    if (pendingSchool) {
+  
+      handleSchoolSelect(
+        pendingSchool
+      );
+  
+      localStorage.removeItem(
+        "pendingSchool"
+      );
+  
+    } else {
+  
+      fetchSchools();
+  
+    }
+  
+  }, []);
+
+
 
   // 새로고침 복원
   useEffect(() => {
