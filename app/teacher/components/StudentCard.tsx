@@ -36,6 +36,10 @@ export default function StudentCard({
         {student.name}
       </div>
 
+      <div className="text-red-500 font-bold">
+🔥 코인 테스트
+</div>
+
       <div className="text-gray-500">
         {student.school}
       </div>
