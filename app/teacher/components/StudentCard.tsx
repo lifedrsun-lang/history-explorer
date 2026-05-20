@@ -1,158 +1,201 @@
 "use client";
 
-import {
-  getStageInfo,
-} from "@/app/student/data/stageData";
-
-type Props = {
-  student: any;
-
-  addBronze: (
-    student: any
-  ) => void;
-
-  useSilver: (
-    student: any
-  ) => void;
-
-  changeStage: (
-    student: any,
-    direction: number
-  ) => void;
-
-  toggleStudentVisible: (
-    student: any
-  ) => void;
-
-  deleteStudent: (
-    student: any
-  ) => void;
-
-  openEditModal: (
-    student: any
-  ) => void;
-};
+import { STAGE_DATA }
+from "@/app/student/data/stageData";
 
 export default function StudentCard({
+
   student,
   addBronze,
   useSilver,
-  changeStage,
   toggleStudentVisible,
   deleteStudent,
   openEditModal,
-}: Props) {
+
+}: any) {
+
+  const stage =
+    STAGE_DATA.find(
+      (item) =>
+        item.id ===
+        student.stage
+    );
 
   return (
 
-    <div className="bg-white rounded-3xl p-3 shadow-md">
+    <div
+      className="
+      bg-white
+      rounded-[30px]
+      p-4
+      shadow-md
+      "
+    >
 
-      <div className="text-2xl font-bold mb-1">
+      <div className="text-3xl font-bold">
+
         {student.name}
+
       </div>
 
-      <div className="text-sm text-gray-500 mb-2">
+      <div className="text-gray-500">
 
-        {student.school || "미지정"}
+        {student.school}
 
-        <br />
+      </div>
+
+      <div className="text-gray-500 mb-3">
 
         {student.grade}학년
         {" "}
         {student.class}반
-
-        {student.studentNumber && (
-          <>
-            {" "}
-            / {student.studentNumber}번
-          </>
-        )}
+        {" / "}
+        {student.studentNumber}번
 
       </div>
 
-      {/* 비밀번호 */}
-      <div className="bg-blue-50 rounded-xl p-2 mb-3 text-sm">
+      <div
+        className="
+        bg-blue-50
+        rounded-2xl
+        p-3
+        mb-3
+        "
+      >
 
         🔑 비밀번호 :
         {" "}
-
         <span className="font-bold text-blue-600">
 
-          {student.password || "없음"}
+          {student.password}
 
         </span>
 
       </div>
 
-      {/* 진도 */}
-      <div className="bg-[#f5f7fb] rounded-2xl p-4 mb-3">
+      {/* 추가된 코인 표시 */}
 
-        <div className="text-sm text-gray-400 mb-1">
+      <div
+        className="
+        bg-gray-100
+        rounded-2xl
+        p-3
+        mb-3
+        "
+      >
 
-          현재 진도
+        <div className="font-bold">
 
-        </div>
-
-        <div className="text-sm text-gray-500 mb-1">
-
-          {
-            getStageInfo(
-              student.stage
-            ).current.short
-          }
-
-        </div>
-
-        <div className="text-lg font-bold text-yellow-600 leading-snug break-keep">
-
-          {
-            getStageInfo(
-              student.stage
-            ).title
-          }
+          🟡 동엽전 :
+          {" "}
+          {student.bronze || 0}개
 
         </div>
 
-        <div className="text-gray-400 mt-1 mb-3">
+        <div className="font-bold">
 
-          {
-            getStageInfo(
-              student.stage
-            ).current.era
-          }
+          ⚪ 은엽전 :
+          {" "}
+          {student.silver || 0}개
+
+        </div>
+
+        <div className="font-bold">
+
+          📈 누적 :
+          {" "}
+          {student.totalBronze || 0}개
 
         </div>
 
       </div>
 
-      {/* 버튼 */}
+      <div
+        className="
+        bg-gray-100
+        rounded-2xl
+        p-4
+        mb-4
+        "
+      >
+
+        <div className="text-gray-400">
+
+          현재 진도
+
+        </div>
+
+        <div className="text-gray-500">
+
+          {stage?.short}
+
+        </div>
+
+        <div
+          className="
+          text-yellow-600
+          font-bold
+          text-2xl
+          "
+        >
+
+          {stage?.title}
+
+        </div>
+
+      </div>
+
       <div className="grid grid-cols-2 gap-2">
 
         <button
           onClick={() =>
             addBronze(student)
           }
-          className="bg-yellow-500 text-white rounded-xl py-2 text-xs font-bold"
+          className="
+          bg-yellow-500
+          text-white
+          rounded-xl
+          py-2
+          font-bold
+          "
         >
+
           +동엽전
+
         </button>
 
         <button
           onClick={() =>
             useSilver(student)
           }
-          className="bg-purple-500 text-white rounded-xl py-2 text-xs font-bold"
+          className="
+          bg-purple-500
+          text-white
+          rounded-xl
+          py-2
+          font-bold
+          "
         >
+
           은사용
+
         </button>
 
         <button
           onClick={() =>
             openEditModal(student)
           }
-          className="bg-blue-500 text-white rounded-xl py-2 text-xs font-bold"
+          className="
+          bg-blue-500
+          text-white
+          rounded-xl
+          py-2
+          font-bold
+          "
         >
+
           수정
+
         </button>
 
         <button
@@ -161,21 +204,39 @@ export default function StudentCard({
               student
             )
           }
-          className="bg-gray-500 text-white rounded-xl py-2 text-xs font-bold"
+          className="
+          bg-gray-500
+          text-white
+          rounded-xl
+          py-2
+          font-bold
+          "
         >
-          숨기기
-        </button>
 
-        <button
-          onClick={() =>
-            deleteStudent(student)
-          }
-          className="bg-red-500 text-white rounded-xl py-2 text-xs font-bold col-span-2"
-        >
-          삭제
+          숨기기
+
         </button>
 
       </div>
+
+      <button
+        onClick={() =>
+          deleteStudent(student)
+        }
+        className="
+        mt-3
+        bg-red-500
+        w-full
+        text-white
+        rounded-xl
+        py-2
+        font-bold
+        "
+      >
+
+        삭제
+
+      </button>
 
     </div>
 

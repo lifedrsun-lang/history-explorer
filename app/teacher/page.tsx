@@ -24,7 +24,7 @@ import {
 } from "@/app/student/data/stageData";
 
 import TeacherLogin from "./components/TeacherLogin";
-import StudentCard from "./components/StudentCard";
+import StudentCard from "./components/1StudentCard";
 import StudentEditModal from "./components/StudentEditModal";
 
 export default function TeacherPage() {
@@ -295,29 +295,24 @@ export default function TeacherPage() {
   const addBronze = async (
     student: any
   ) => {
-
+  
     let newBronze =
       (student.bronze || 0) + 1;
-
+  
     let newSilver =
       student.silver || 0;
-
+  
     let totalBronze =
       (student.totalBronze || 0) + 1;
-
-    let totalSilver =
-      student.totalSilver || 0;
-
+  
     if (newBronze >= 10) {
-
+  
       newBronze = 0;
-
+  
       newSilver += 1;
-
-      totalSilver += 1;
-
+  
     }
-
+  
     await updateDoc(
       doc(
         db,
@@ -327,14 +322,16 @@ export default function TeacherPage() {
       {
         bronze: newBronze,
         silver: newSilver,
-
         totalBronze,
-        totalSilver,
       }
     );
-
+  
+    alert(
+      `🎉 ${student.name} 지급이 완료되었습니다!`
+    );
+  
     fetchStudents();
-
+  
   };
 
   // 은엽전 사용
