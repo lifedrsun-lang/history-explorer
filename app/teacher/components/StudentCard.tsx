@@ -7,6 +7,7 @@ export default function StudentCard({
   student,
   addBronze,
   useSilver,
+  changeStage,
   toggleStudentVisible,
   deleteStudent,
   openEditModal,
@@ -41,115 +42,87 @@ export default function StudentCard({
       </div>
 
       {/* 비밀번호 */}
-      <div
-        className="
-        bg-blue-50
-        rounded-2xl
-        p-3
-        mb-3
-        "
-      >
+      <div className="bg-blue-50 rounded-2xl p-3 mb-3">
 
         🔑 비밀번호 :
-
         <span className="font-bold text-blue-600">
-
           {" "}
           {student.password}
-
         </span>
 
       </div>
 
-      {/* 코인 정보 */}
-
-      <div
-        className="
-        bg-yellow-50
-        rounded-2xl
-        p-3
-        mb-3
-        "
-      >
+      {/* 코인 */}
+      <div className="bg-yellow-50 rounded-2xl p-3 mb-3">
 
         <div className="font-bold text-yellow-700">
-
-          🟡 동엽전 :
-          {" "}
-          {student.bronze ?? 0}개
-
+          🟡 동엽전 : {student.bronze ?? 0}개
         </div>
 
         <div className="font-bold text-purple-700 mt-1">
-
-          ⚪ 은엽전 :
-          {" "}
-          {student.silver ?? 0}개
-
+          ⚪ 은엽전 : {student.silver ?? 0}개
         </div>
 
         <div className="font-bold text-green-700 mt-1">
-
-          📈 누적 :
-          {" "}
-          {student.totalBronze ?? 0}개
-
+          📈 누적 : {student.totalBronze ?? 0}개
         </div>
 
       </div>
 
       {/* 진도 */}
-
-      <div
-        className="
-        bg-gray-100
-        rounded-2xl
-        p-4
-        mb-4
-        "
-      >
+      <div className="bg-gray-100 rounded-2xl p-4 mb-3">
 
         <div className="text-gray-400">
-
           현재 진도
-
         </div>
 
         <div className="text-gray-500">
-
           {stage?.short}
-
         </div>
 
-        <div
-          className="
-          text-yellow-600
-          font-bold
-          text-2xl
-          "
-        >
-
+        <div className="text-yellow-600 font-bold text-2xl">
           {stage?.title}
-
         </div>
 
       </div>
 
-      {/* 버튼 */}
+      {/* 진도 변경 버튼 */}
+      <div className="grid grid-cols-2 gap-2 mb-3">
 
+        <button
+          onClick={() =>
+            changeStage(
+              student,
+              -1
+            )
+          }
+          className="bg-indigo-500 text-white rounded-xl py-2 font-bold"
+        >
+          ◀ 이전 진도
+        </button>
+
+        <button
+          onClick={() =>
+            changeStage(
+              student,
+              1
+            )
+          }
+          className="bg-green-500 text-white rounded-xl py-2 font-bold"
+        >
+          다음 진도 ▶
+        </button>
+
+      </div>
+
+      {/* 기능 버튼 */}
       <div className="grid grid-cols-2 gap-2">
 
         <button
           onClick={() =>
             addBronze(student)
           }
-          className="
-          bg-yellow-500
-          text-white
-          rounded-xl
-          py-2
-          font-bold
-          "
+          className="bg-yellow-500 text-white rounded-xl py-2 font-bold"
         >
           +동엽전
         </button>
@@ -158,13 +131,7 @@ export default function StudentCard({
           onClick={() =>
             useSilver(student)
           }
-          className="
-          bg-purple-500
-          text-white
-          rounded-xl
-          py-2
-          font-bold
-          "
+          className="bg-purple-500 text-white rounded-xl py-2 font-bold"
         >
           은사용
         </button>
@@ -173,30 +140,16 @@ export default function StudentCard({
           onClick={() =>
             openEditModal(student)
           }
-          className="
-          bg-blue-500
-          text-white
-          rounded-xl
-          py-2
-          font-bold
-          "
+          className="bg-blue-500 text-white rounded-xl py-2 font-bold"
         >
           수정
         </button>
 
         <button
           onClick={() =>
-            toggleStudentVisible(
-              student
-            )
+            toggleStudentVisible(student)
           }
-          className="
-          bg-gray-500
-          text-white
-          rounded-xl
-          py-2
-          font-bold
-          "
+          className="bg-gray-500 text-white rounded-xl py-2 font-bold"
         >
           숨기기
         </button>
@@ -207,15 +160,7 @@ export default function StudentCard({
         onClick={() =>
           deleteStudent(student)
         }
-        className="
-        mt-3
-        bg-red-500
-        w-full
-        text-white
-        rounded-xl
-        py-2
-        font-bold
-        "
+        className="mt-3 bg-red-500 w-full text-white rounded-xl py-2 font-bold"
       >
         삭제
       </button>
