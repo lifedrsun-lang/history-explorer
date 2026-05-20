@@ -97,6 +97,7 @@ export default function TeacherPage() {
 
     fetchStudents();
 
+
     // 로그인 유지
     const savedAuth =
       localStorage.getItem(
@@ -291,7 +292,7 @@ export default function TeacherPage() {
 
   };
 
-  // 동엽전 추가
+// 동엽전 추가
 const addBronze = async (
   student: any
 ) => {
@@ -333,6 +334,54 @@ const addBronze = async (
   fetchStudents();
 
 };
+
+
+// 동엽전 회수
+const removeBronze = async (
+  student: any
+) => {
+
+  if (
+    (student.bronze || 0) <= 0
+  ) {
+
+    alert(
+      "회수할 동엽전이 없습니다!"
+    );
+
+    return;
+
+  }
+
+  await updateDoc(
+    doc(
+      db,
+      "students",
+      student.id
+    ),
+    {
+      bronze:
+        (student.bronze || 0) - 1,
+
+      totalBronze:
+        Math.max(
+          (student.totalBronze || 0) - 1,
+          0
+        ),
+    }
+  );
+
+  alert(
+    `↩️ ${student.name} 동엽전 회수 완료!`
+  );
+
+  fetchStudents();
+
+};
+
+
+
+
 
   // 은엽전 사용
   const useSilver = async (
@@ -1002,6 +1051,7 @@ const addBronze = async (
                 key={student.id}
                 student={student}
                 addBronze={addBronze}
+                removeBronze={removeBronze}
                 useSilver={useSilver}
                 changeStage={changeStage}
                 toggleStudentVisible={

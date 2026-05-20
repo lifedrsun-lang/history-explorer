@@ -6,6 +6,7 @@ from "@/app/student/data/stageData";
 export default function StudentCard({
   student,
   addBronze,
+  removeBronze,
   useSilver,
   changeStage,
   toggleStudentVisible,
@@ -110,7 +111,7 @@ export default function StudentCard({
       </div>
 
       {/* 기능 버튼 */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 gap-2">
 
         <button
           onClick={() =>
@@ -127,6 +128,23 @@ export default function StudentCard({
           }
           className="bg-purple-500 text-white rounded-xl py-2 font-bold"
         >
+
+<button
+  onClick={() =>
+    removeBronze(student)
+  }
+  className="
+  bg-orange-500
+  text-white
+  rounded-xl
+  py-2
+  font-bold
+  "
+>
+  -동엽전
+</button>
+
+
           은사용
         </button>
 
