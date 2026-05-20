@@ -2,7 +2,7 @@ export default function StudentPage() {
     return (
       <main className="
         w-screen
-        h-screen
+        h-[100dvh]
         flex
         items-center
         justify-center

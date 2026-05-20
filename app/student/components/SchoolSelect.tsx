@@ -10,7 +10,7 @@ export default function SchoolSelect({
 
   return (
 
-    <div className="min-h-screen bg-black text-white px-4 py-8">
+    <div className="min-h-[100dvh] bg-black text-white px-4 py-8">
 
       <div className="max-w-xl mx-auto">
 

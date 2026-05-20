@@ -17,7 +17,7 @@ export default function TeacherLogin({
 
   return (
 
-    <div className="min-h-screen bg-[#f5f7fb] flex items-center justify-center p-4">
+    <div className="min-h-[100dvh] bg-[#f5f7fb] flex items-center justify-center p-4">
 
       <div className="bg-white shadow-xl rounded-3xl p-6 w-full max-w-sm">
 

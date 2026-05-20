@@ -22,7 +22,7 @@ export default function SpringPage() {
     <main
       className="
         w-screen
-        h-screen
+        h-[100dvh]
         bg-sky-300
         overflow-hidden
 
@@ -33,8 +33,7 @@ export default function SpringPage() {
     >
 
       {/* 봄맵 */}
-      <div className="relative h-screen aspect-[9/16]">
-
+      <div className="relative min-h-[100dvh] w-full">
         {/* 배경 */}
         <Image
           src="/images/spring-map.png"

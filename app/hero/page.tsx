@@ -1,6 +1,6 @@
 export default function ComingSoonPage() {
     return (
-      <main className="min-h-screen bg-black text-white flex items-center justify-center px-6">
+      <main className="min-h-[100dvh] bg-black text-white flex items-center justify-center px-6">
         <div className="text-center">
           <div className="text-6xl mb-6">🚧</div>
   

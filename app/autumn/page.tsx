@@ -22,7 +22,7 @@ export default function AutumnPage() {
     <main
       className="
         w-screen
-        h-screen
+        h-[100dvh]
 
         bg-black/50
 

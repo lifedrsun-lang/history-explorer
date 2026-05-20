@@ -334,7 +334,7 @@ export default function StudentExplorerPage() {
 
       return (
 
-        <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
+        <div className="min-h-[100dvh] bg-black text-white flex items-center justify-center px-4">
 
           <div className="w-full max-w-md border border-orange-500 rounded-[32px] p-8 bg-[#050505]">
 
@@ -431,7 +431,7 @@ export default function StudentExplorerPage() {
 
   return (
 
-    <div className="min-h-screen bg-black text-white px-3 py-4">
+    <div className="min-h-[100dvh] bg-black text-white px-3 py-4">
 
       <div className="max-w-xl mx-auto space-y-4">
 

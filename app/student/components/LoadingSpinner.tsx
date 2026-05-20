@@ -7,7 +7,7 @@ export default function LoadingSpinner() {
     <div
       className="
         w-screen
-        h-screen
+        h-[100dvh]
 
         bg-black
 

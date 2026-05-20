@@ -22,7 +22,7 @@ export default function WinterPage() {
     <main
       className="
         w-screen
-        h-screen
+        h-[100dvh]
 
         bg-black/50
 
@@ -78,7 +78,7 @@ export default function WinterPage() {
               alt="로고"
               width={300}
               height={300}
-              className="w-full h-full object-cover"
+              className="min-h-[100dvh] w-full"
             />
 
           </div>

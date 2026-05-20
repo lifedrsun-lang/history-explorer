@@ -10,7 +10,7 @@ export default function HomePage() {
     <main
       className="
         w-screen
-        h-screen
+        h-[100dvh]
         bg-sky-300
         overflow-hidden
         flex
@@ -20,8 +20,8 @@ export default function HomePage() {
     >
 
       {/* 메인맵 */}
-      <div className="relative h-screen aspect-[9/16]">
-
+      <div className="relative min-h-[100dvh] w-full">
+      
         {/* 메인 이미지 */}
         <Image
           src="/images/main-seasons.png"

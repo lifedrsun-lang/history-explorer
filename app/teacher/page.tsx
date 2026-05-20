@@ -578,7 +578,7 @@ export default function TeacherPage() {
 
   return (
 
-    <div className="min-h-screen bg-[#f5f7fb] p-3">
+    <div className="min-h-[100dvh] bg-[#f5f7fb] p-3">
 
       <div className="max-w-7xl mx-auto">
 
@@ -1021,6 +1021,28 @@ export default function TeacherPage() {
           )}
 
         </div>
+
+              {/* 코인수 */}
+
+
+        {
+  coin: 12,         // 동엽전 현재
+  silverCoin: 4,    // 은엽전 현재
+  totalCoin: 35     // 동엽전 누적
+}
+
+      {/* 코인지급 */}
+        try {
+  await updateDoc(studentRef, {
+    coin: increment(amount),
+    totalCoin: increment(amount),
+  });
+
+  alert("🎉 지급이 완료되었습니다!");
+
+} catch (error) {
+  alert("❌ 지급 중 오류가 발생했습니다.");
+}
 
 
 
