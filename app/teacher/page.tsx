@@ -447,32 +447,33 @@ const addBronze = async (
 
   };
 
+ 
   const activeStudents =
   students
     .filter((student) => {
-
+  
       if (
         student.isActive === false
       ) {
         return false;
       }
-
+  
       const studentSchool =
         student.school ||
         "미지정";
-
+  
       if (
         selectedSchool !==
-          "전체학교" &&
+        "전체학교" &&
         studentSchool !==
-          selectedSchool
+        selectedSchool
       ) {
         return false;
       }
-
+  
       const keyword =
         searchTerm.toLowerCase();
-
+  
       if (
         searchTerm &&
         !student.name
@@ -481,61 +482,61 @@ const addBronze = async (
       ) {
         return false;
       }
-
-      const gradeNum = Number(
-        student.grade
-      );
-
-      if (selectedTab === "A반") {
-
+  
+      const gradeNum =
+        Number(student.grade);
+  
+      if (
+        selectedTab === "A반"
+      ) {
         return gradeNum <= 2;
-
       }
-
+  
       return gradeNum >= 3;
-
+  
     })
-
+  
     // 출석부 순 정렬
     .sort((a, b) => {
-
+  
       const gradeA =
         Number(a.grade) || 0;
-
+  
       const gradeB =
         Number(b.grade) || 0;
-
+  
       if (gradeA !== gradeB) {
-
         return gradeA - gradeB;
-
       }
-
+  
       const classA =
         Number(a.class) || 0;
-
+  
       const classB =
         Number(b.class) || 0;
-
+  
       if (classA !== classB) {
-
         return classA - classB;
-
       }
-
+  
       const numberA =
-        Number(
-          a.studentNumber
-        ) || 0;
-
+        Number(a.studentNumber) || 0;
+  
       const numberB =
-        Number(
-          b.studentNumber
-        ) || 0;
-
+        Number(b.studentNumber) || 0;
+  
       return numberA - numberB;
-
+  
     });
+  
+  const hiddenStudents =
+  students.filter(
+    (student) =>
+      student.isActive === false
+  );
+
+
+
 
   // 학교 목록
   const schoolList = [
@@ -1019,7 +1020,51 @@ const addBronze = async (
 
         </div>
 
+{/* 숨김 학생 */}
 
+{hiddenStudents.length > 0 && (
+
+<div className="mt-8">
+
+  <div className="text-xl font-bold mb-3">
+
+    🙈 숨김 친구 목록
+
+  </div>
+
+  <div className="flex flex-wrap gap-2">
+
+    {hiddenStudents.map(
+      (student) => (
+
+        <button
+          key={student.id}
+          onClick={() =>
+            toggleStudentVisible(student)
+          }
+          className="
+          bg-gray-300
+          px-4
+          py-2
+          rounded-xl
+          font-bold
+          "
+        >
+
+          {student.name}
+          {" "}
+          복구
+
+        </button>
+
+      )
+    )}
+
+  </div>
+
+</div>
+
+)}
 
       {/* 수정 모달 */}
       {editingStudent && (
