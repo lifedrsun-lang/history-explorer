@@ -31,7 +31,6 @@ export default function SummerPage() {
         w-screen
         h-[100dvh]
         overflow-hidden
-
         flex
         items-center
         justify-center
@@ -200,6 +199,16 @@ export default function SummerPage() {
                   (school) => (
                     <button
                       key={school}
+                      onClick={() => {
+                        localStorage.setItem(
+                          "selectedSchool",
+                          school
+                        );
+
+                        router.push(
+                          "/student"
+                        );
+                      }}
                       className="
                         w-full
                         py-3
