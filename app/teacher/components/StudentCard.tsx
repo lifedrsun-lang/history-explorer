@@ -33,15 +33,11 @@ export default function StudentCard({
     >
 
       <div className="text-3xl font-bold">
-
         {student.name}
-
       </div>
 
       <div className="text-gray-500">
-
         {student.school}
-
       </div>
 
       <div className="text-gray-500 mb-3">
@@ -54,6 +50,7 @@ export default function StudentCard({
 
       </div>
 
+      {/* 비밀번호 */}
       <div
         className="
         bg-blue-50
@@ -65,51 +62,38 @@ export default function StudentCard({
 
         🔑 비밀번호 :
         {" "}
+
         <span className="font-bold text-blue-600">
-
           {student.password}
-
         </span>
 
       </div>
 
-      {/* 추가된 코인 표시 */}
-
+      {/* 코인 표시 */}
       <div
         className="
-        bg-gray-100
+        bg-yellow-50
         rounded-2xl
         p-3
         mb-3
         "
       >
 
-        <div className="font-bold">
-
-          🟡 동엽전 :
-          {" "}
-          {student.bronze || 0}개
-
+        <div className="font-bold text-yellow-700">
+          🟡 동엽전 : {student.bronze ?? 0}개
         </div>
 
-        <div className="font-bold">
-
-          ⚪ 은엽전 :
-          {" "}
-          {student.silver || 0}개
-
+        <div className="font-bold text-purple-700 mt-1">
+          ⚪ 은엽전 : {student.silver ?? 0}개
         </div>
 
-        <div className="font-bold">
-
-          📈 누적 :
-          {" "}
-          {student.totalBronze || 0}개
-
+        <div className="font-bold text-green-700 mt-1">
+          📈 누적 : {student.totalBronze ?? 0}개
         </div>
 
       </div>
 
+      {/* 진도 */}
       <div
         className="
         bg-gray-100
@@ -120,15 +104,11 @@ export default function StudentCard({
       >
 
         <div className="text-gray-400">
-
           현재 진도
-
         </div>
 
         <div className="text-gray-500">
-
           {stage?.short}
-
         </div>
 
         <div
@@ -138,9 +118,7 @@ export default function StudentCard({
           text-2xl
           "
         >
-
           {stage?.title}
-
         </div>
 
       </div>
@@ -159,9 +137,7 @@ export default function StudentCard({
           font-bold
           "
         >
-
           +동엽전
-
         </button>
 
         <button
@@ -176,9 +152,7 @@ export default function StudentCard({
           font-bold
           "
         >
-
           은사용
-
         </button>
 
         <button
@@ -193,9 +167,7 @@ export default function StudentCard({
           font-bold
           "
         >
-
           수정
-
         </button>
 
         <button
@@ -212,9 +184,7 @@ export default function StudentCard({
           font-bold
           "
         >
-
           숨기기
-
         </button>
 
       </div>
@@ -233,9 +203,7 @@ export default function StudentCard({
         font-bold
         "
       >
-
         삭제
-
       </button>
 
     </div>
