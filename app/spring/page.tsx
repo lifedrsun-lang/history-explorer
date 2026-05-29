@@ -2,11 +2,14 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function SpringPage() {
 
   const router = useRouter();
+
+  const [showPopup, setShowPopup] =
+    useState(false);
 
   useEffect(() => {
 
@@ -34,6 +37,7 @@ export default function SpringPage() {
 
       {/* 봄맵 */}
       <div className="relative min-h-[100dvh] w-full">
+
         {/* 배경 */}
         <Image
           src="/images/spring-map.png"
@@ -60,7 +64,7 @@ export default function SpringPage() {
 
         {/* 역사탐험대 */}
         <button
-          onClick={() => router.push("/student")}
+          onClick={() => setShowPopup(true)}
           className="
             absolute
             top-[18%]
@@ -82,7 +86,7 @@ export default function SpringPage() {
 
         {/* 세계탐험대 */}
         <button
-          onClick={() => router.push("/summer")}
+          onClick={() => setShowPopup(true)}
           className="
             absolute
             top-[18%]
@@ -104,7 +108,7 @@ export default function SpringPage() {
 
         {/* 위인탐험대 */}
         <button
-          onClick={() => router.push("/summer")}
+          onClick={() => setShowPopup(true)}
           className="
             absolute
             top-[52%]
@@ -126,7 +130,7 @@ export default function SpringPage() {
 
         {/* 문화탐험대 */}
         <button
-          onClick={() => router.push("/summer")}
+          onClick={() => setShowPopup(true)}
           className="
             absolute
             top-[52%]
@@ -146,9 +150,93 @@ export default function SpringPage() {
           "
         />
 
+        {/* 1분기 수업 종료 팝업 */}
+        {showPopup && (
+
+          <div
+            onClick={() =>
+              setShowPopup(false)
+            }
+            className="
+              absolute
+              inset-0
+              bg-black/50
+              z-50
+
+              flex
+              items-center
+              justify-center
+            "
+          >
+
+            <div
+              onClick={(e) =>
+                e.stopPropagation()
+              }
+              className="
+                bg-white
+                rounded-[32px]
+                p-8
+                w-[85%]
+                max-w-[400px]
+                text-center
+                shadow-2xl
+              "
+            >
+
+              <div className="text-6xl mb-4">
+                🌸
+              </div>
+
+              <h2
+                className="
+                  text-3xl
+                  font-bold
+                  text-black
+                  mb-3
+                "
+              >
+                1분기 수업 종료
+              </h2>
+
+              <p
+                className="
+                  text-gray-600
+                  mb-6
+                "
+              >
+                봄 탐험은 종료되었습니다.
+                <br />
+                다음 분기를 기다려 주세요.
+              </p>
+
+              <button
+                onClick={() =>
+                  setShowPopup(false)
+                }
+                className="
+                  w-full
+                  py-3
+                  rounded-2xl
+
+                  bg-red-500
+                  text-white
+                  font-bold
+                "
+              >
+                확인
+              </button>
+
+            </div>
+
+          </div>
+
+        )}
+
       </div>
 
     </main>
 
   );
+
 }
