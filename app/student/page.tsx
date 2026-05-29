@@ -69,14 +69,14 @@ export default function StudentExplorerPage() {
 
   };
 
-  // 숨김 학생 처리
-  const isHiddenStudent = (
-    data: any
-  ) => {
+// 학생용에서는 숨김 학생도 조회 가능
+const isHiddenStudent = (
+  data: any
+) => {
 
-    return data?.isActive === false;
+  return false;
 
-  };
+};
 
   // 학교 목록 불러오기
   const fetchSchools = async () => {
@@ -92,7 +92,8 @@ export default function StudentExplorerPage() {
       const data = docItem.data();
 
       if (isHiddenStudent(data)) {
-        return;
+       return;
+
       }
 
       if (data?.school) {
