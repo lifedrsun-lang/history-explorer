@@ -54,7 +54,16 @@ export default function StudentExplorerPage() {
   const [passwordInput, setPasswordInput] =
     useState("");
 
-
+  // 학교 비밀번호
+  const SCHOOL_PASSWORDS: Record<
+    string,
+    string
+  > = {
+    "김포 하늘빛초": "0304",
+    "화성 새솔초": "0309",
+    "김포 사우초": "0605",
+    "홈플러스 문화센터": "0607",
+    "이마트 문화센터": "0607",
 
 
 
@@ -83,7 +92,7 @@ const isHiddenStudent = (
       const data = docItem.data();
 
       if (isHiddenStudent(data)) {
-       return;
+        return false;
 
       }
 
@@ -730,3 +739,4 @@ const isHiddenStudent = (
   );
 
 }
+
