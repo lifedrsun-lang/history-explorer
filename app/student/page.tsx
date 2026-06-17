@@ -35,8 +35,6 @@ export default function StudentExplorerPage() {
   const [pendingSchool, setPendingSchool] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
 
-  const [debugInfo, setDebugInfo] = useState("");
-
   const SCHOOL_PASSWORDS: Record<string, string> = {
     "김포 하늘빛초": "0527",
     "화성 새솔초": "0602",
@@ -51,6 +49,7 @@ export default function StudentExplorerPage() {
     "students",
     "student",
     "Students",
+    "Student",
   ];
 
   const normalize = (value: any) => {
@@ -131,13 +130,24 @@ export default function StudentExplorerPage() {
   };
 
   const getBronze = (data: any) => {
-    return Number(data?.bronze || data?.bronzeCoin || data?.동엽전 || 0);
+    return Number(
+      data?.bronze ||
+        data?.bronzeCoin ||
+        data?.동엽전 ||
+        0
+    );
   };
 
   const getSilver = (data: any) => {
-    return Number(data?.silver || data?.silverCoin || data?.은엽전 || 0);
+    return Number(
+      data?.silver ||
+        data?.silverCoin ||
+        data?.은엽전 ||
+        0
+    );
   };
 
+  // 학생용에서는 숨김 학생도 조회 가능
   const isHiddenStudent = (data: any) => {
     return false;
   };
@@ -259,14 +269,9 @@ export default function StudentExplorerPage() {
       );
 
       setAllSchools(mergedSchools);
-
-      setDebugInfo(
-        `전체 DB 학생 ${allList.length}명 / 등록 학교 ${schoolSet.size}개`
-      );
     } catch (error) {
       console.error("학교 목록 불러오기 실패:", error);
       setAllSchools(DEFAULT_SCHOOLS);
-      setDebugInfo("학교 목록 불러오기 실패");
     }
   };
 
@@ -310,18 +315,6 @@ export default function StudentExplorerPage() {
 
       setStudents(matchedList);
 
-      const dbSchools = Array.from(
-        new Set(
-          allList
-            .map((s) => s?.school)
-            .filter(Boolean)
-        )
-      );
-
-      setDebugInfo(
-        `전체 DB 학생 ${allList.length}명 / 현재 학교 매칭 ${matchedList.length}명 / DB 학교: ${dbSchools.join(", ")}`
-      );
-
       const savedStudent =
         localStorage.getItem("selectedStudent");
 
@@ -341,10 +334,27 @@ export default function StudentExplorerPage() {
       }
     } catch (error) {
       console.error("학생 목록 불러오기 실패:", error);
-      setDebugInfo("학생 목록 불러오기 실패");
     }
 
     setLoading(false);
+  };
+
+  const handleSchoolSelect = (school: string) => {
+    const cleanSchool = normalize(school);
+    const password = SCHOOL_PASSWORDS[cleanSchool];
+
+    if (!password) {
+      setSelectedSchool(cleanSchool);
+
+      localStorage.setItem(
+        "selectedSchool",
+        cleanSchool
+      );
+
+      return;
+    }
+
+    setPendingSchool(cleanSchool);
   };
 
   useEffect(() => {
@@ -379,32 +389,17 @@ export default function StudentExplorerPage() {
     }
   }, [selectedSchool]);
 
-  const handleSchoolSelect = (school: string) => {
-    const cleanSchool = normalize(school);
-    const password = SCHOOL_PASSWORDS[cleanSchool];
-
-    if (!password) {
-      setSelectedSchool(cleanSchool);
-
-      localStorage.setItem(
-        "selectedSchool",
-        cleanSchool
-      );
-
-      return;
-    }
-
-    setPendingSchool(cleanSchool);
-  };
-
   const changeCharacter = async (
     studentId: string,
     type: string
   ) => {
     try {
+      const collectionName =
+        selectedStudent?.collectionName || "students";
+
       const ref = doc(
         db,
-        "students",
+        collectionName,
         studentId
       );
 
@@ -483,11 +478,6 @@ export default function StudentExplorerPage() {
             searchName.trim()
           );
         });
-
-  const visibleStudentList =
-    searchName.trim() === ""
-      ? students
-      : filteredStudents;
 
   const moonRanking = students
     .filter(
@@ -582,6 +572,7 @@ export default function StudentExplorerPage() {
   return (
     <div className="min-h-[100dvh] bg-black text-white px-3 py-4">
       <div className="max-w-xl mx-auto space-y-4">
+        {/* 헤더 */}
         <div className="rounded-[28px] border border-[#333] bg-[#050505] px-4 py-4">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
@@ -619,16 +610,11 @@ export default function StudentExplorerPage() {
               학교 변경
             </button>
           </div>
-
-          {students.length === 0 && (
-            <div className="mt-3 text-xs text-gray-500 leading-relaxed break-words">
-              진단: {debugInfo}
-            </div>
-          )}
         </div>
 
         {!selectedStudent && (
           <>
+            {/* 검색 */}
             <div className="bg-[#050505] border border-[#333] p-4 rounded-[28px]">
               <div className="text-xl font-bold mb-3">
                 🔍 학생 검색
@@ -665,35 +651,9 @@ export default function StudentExplorerPage() {
                     검색 결과 없음
                   </div>
                 )}
-
-              {searchName.trim() === "" &&
-                visibleStudentList.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    <div className="text-sm text-gray-400">
-                      전체 학생 {visibleStudentList.length}명
-                    </div>
-
-                    {visibleStudentList.map((student) => (
-                      <button
-                        key={`${student.collectionName}-${student.id}`}
-                        onClick={() => {
-                          setPendingStudent(student);
-                        }}
-                        className="w-full text-left bg-[#111] border border-[#333] rounded-2xl px-4 py-3"
-                      >
-                        <div className="font-bold text-white">
-                          {student.name || "이름 없음"}
-                        </div>
-
-                        <div className="text-xs text-gray-500 mt-1">
-                          {student.grade || "-"}학년 / {student.class || "-"}반 / {student.studentNumber || "-"}번
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
             </div>
 
+            {/* 랭킹 */}
             <RankingCard
               title="A반 랭킹"
               icon="🌙"
@@ -714,6 +674,7 @@ export default function StudentExplorerPage() {
           </>
         )}
 
+        {/* 학생 비밀번호 */}
         {pendingStudent && (
           <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
             <div className="w-full max-w-sm bg-[#050505] border border-orange-500 rounded-[32px] p-6">
@@ -776,6 +737,7 @@ export default function StudentExplorerPage() {
           </div>
         )}
 
+        {/* 학생 프로필 */}
         {selectedStudent && (
           <>
             <StudentProfile
