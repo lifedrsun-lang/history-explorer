@@ -350,48 +350,38 @@ export default function StudentProfile({
           </div>
         </div>
 
-        {/* 엽전 현황 */}
-        <div className="grid grid-cols-3 gap-2 mt-4">
-          <div className="rounded-[22px] border border-[#333] bg-[#080808] p-3 text-center">
-            <div className="text-xs text-gray-300 leading-tight">
-              🥇 현재
-              <br />
-              동엽전
-            </div>
+      {/* 엽전 현황 */}
+<div className="grid grid-cols-3 gap-2 mt-4">
+  <div className="rounded-[22px] border border-[#333] bg-[#080808] p-3 text-center">
+    <div className="text-sm text-gray-300 font-bold whitespace-nowrap">
+      🥇 동엽전
+    </div>
 
-            <div className="text-4xl font-black mt-2">
-              {currentBronze}
-            </div>
-          </div>
+    <div className="text-4xl font-black mt-2">
+      {currentBronze}
+    </div>
+  </div>
 
-          <div className="rounded-[22px] border border-[#333] bg-[#080808] p-3 text-center">
-            <div className="text-xs text-gray-300 leading-tight">
-              🥈 현재
-              <br />
-              은엽전
-            </div>
+  <div className="rounded-[22px] border border-[#333] bg-[#080808] p-3 text-center">
+    <div className="text-sm text-gray-300 font-bold whitespace-nowrap">
+      🥈 은엽전
+    </div>
 
-            <div className="text-4xl font-black mt-2">
-              {currentSilver}
-            </div>
-          </div>
+    <div className="text-4xl font-black mt-2">
+      {currentSilver}
+    </div>
+  </div>
 
-          <div className="rounded-[22px] border border-yellow-500 bg-[#151100] p-3 text-center">
-            <div className="text-xs text-yellow-200 leading-tight">
-              📊 누적
-              <br />
-              엽전
-            </div>
+  <div className="rounded-[22px] border border-yellow-500 bg-[#151100] p-3 text-center">
+    <div className="text-sm text-yellow-200 font-bold whitespace-nowrap">
+      📊 누적
+    </div>
 
-            <div className="text-4xl font-black mt-2 text-yellow-200">
-              {totalCoinValue}
-            </div>
-          </div>
-        </div>
-
-        <div className="text-xs text-gray-500 mt-2 text-center">
-          누적 엽전은 은엽전 1개를 동엽전 10개로 계산해요.
-        </div>
+    <div className="text-4xl font-black mt-2 text-yellow-200">
+      {totalCoinValue}
+    </div>
+  </div>
+</div>
 
         {/* 진행률 */}
         <div className="mt-4 rounded-[24px] border border-[#333] bg-[#080808] p-4">
