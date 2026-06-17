@@ -12,7 +12,6 @@ import {
 } from "firebase/firestore";
 
 import { useEffect, useState } from "react";
-
 import { useRouter } from "next/navigation";
 
 import { STAGE_DATA } from "@/app/student/data/stageData";
@@ -20,6 +19,8 @@ import { STAGE_DATA } from "@/app/student/data/stageData";
 import TeacherLogin from "./components/TeacherLogin";
 import StudentCard from "./components/StudentCard";
 import StudentEditModal from "./components/StudentEditModal";
+
+type CoinSource = "quiz" | "homework" | "bonus";
 
 export default function TeacherPage() {
   const router = useRouter();
@@ -61,36 +62,49 @@ export default function TeacherPage() {
     const date = new Date();
 
     const year = date.getFullYear();
-
     const month = String(date.getMonth() + 1).padStart(2, "0");
-
     const day = String(date.getDate()).padStart(2, "0");
 
     return `${year}-${month}-${day}`;
   };
 
+  const getSourceLabel = (source: CoinSource) => {
+    if (source === "quiz") {
+      return "퀴즈";
+    }
+
+    if (source === "homework") {
+      return "과제";
+    }
+
+    return "선생님 보너스";
+  };
+
   const makeHistoryItem = (item: any) => {
     return {
-      id: `coin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: `coin-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`,
       date: getTodayString(),
       createdAt: new Date(),
       ...item,
     };
   };
 
-  const getNextCoinHistory = (student: any, item: any) => {
+  const getNextCoinHistory = (student: any, items: any[]) => {
     const currentHistory = Array.isArray(student?.coinHistory)
       ? student.coinHistory
       : [];
 
-    return [...currentHistory, makeHistoryItem(item)].slice(-100);
+    const newItems = items.map((item) => makeHistoryItem(item));
+
+    return [...currentHistory, ...newItems].slice(-100);
   };
 
   const getStudentRef = (student: any) => {
     return doc(db, "students", student.id);
   };
 
-  // 학생 불러오기
   const fetchStudents = async () => {
     const querySnapshot = await getDocs(collection(db, "students"));
 
@@ -125,7 +139,6 @@ export default function TeacherPage() {
     }
   }, []);
 
-  // 로그인
   const handleLogin = () => {
     if (passwordInput.trim() === "0713") {
       setAuthorized(true);
@@ -137,7 +150,6 @@ export default function TeacherPage() {
     }
   };
 
-  // 학생 등록
   const saveStudent = async () => {
     if (!grade || !studentClass || !studentNumber || !name) {
       alert("학년 / 반 / 번호 / 이름을 입력해주세요!");
@@ -148,7 +160,6 @@ export default function TeacherPage() {
 
     await addDoc(collection(db, "students"), {
       school: school || "미지정",
-
       grade,
       class: studentClass,
       studentNumber,
@@ -162,7 +173,6 @@ export default function TeacherPage() {
       totalSilver: 0,
 
       stage: selectedStage,
-
       isActive: true,
 
       coinHistory: [],
@@ -180,7 +190,6 @@ export default function TeacherPage() {
     fetchStudents();
   };
 
-  // 기존 학생 비밀번호 생성
   const updateAllPasswords = async () => {
     const querySnapshot = await getDocs(collection(db, "students"));
 
@@ -199,86 +208,153 @@ export default function TeacherPage() {
     fetchStudents();
   };
 
-  // 수정 모달 열기
   const openEditModal = (student: any) => {
     setEditingStudent(student);
   };
 
-  // 수정 모달 닫기
   const closeEditModal = () => {
     setEditingStudent(null);
   };
 
-  // 퀴즈 / 과제 동엽전 지급
-  const addBronzeBySource = async (student: any, source: "quiz" | "homework") => {
-    const sourceLabel = source === "quiz" ? "퀴즈" : "과제";
+  const addBronzeBySource = async (
+    student: any,
+    source: CoinSource,
+    amount: number
+  ) => {
+    const sourceLabel = getSourceLabel(source);
 
-    const newBronze = Number(student?.bronze || 0) + 1;
-    const totalBronze = Number(student?.totalBronze || 0) + 1;
+    const currentBronze = Number(student?.bronze || 0);
+    const currentSilver = Number(student?.silver || 0);
 
-    const coinHistory = getNextCoinHistory(student, {
-      type: "earn",
-      currency: "bronze",
-      amount: 1,
-      source,
-      text: `동엽전 1개 획득 (${sourceLabel})`,
-    });
+    const afterAddBronze = currentBronze + amount;
+
+    const exchangeCount = Math.floor(afterAddBronze / 10);
+    const newBronze = afterAddBronze % 10;
+    const newSilver = currentSilver + exchangeCount;
+
+    const totalBronze = Number(student?.totalBronze || 0) + amount;
+    const totalSilver = Number(student?.totalSilver || 0) + exchangeCount;
+
+    const historyItems: any[] = [
+      {
+        type: "earn",
+        currency: "bronze",
+        amount,
+        source,
+        text: `동엽전 ${amount}개 획득 (${sourceLabel})`,
+      },
+    ];
+
+    if (exchangeCount > 0) {
+      historyItems.push({
+        type: "exchange",
+        fromCurrency: "bronze",
+        fromAmount: 10 * exchangeCount,
+        toCurrency: "silver",
+        toAmount: exchangeCount,
+        text:
+          exchangeCount === 1
+            ? "동엽전 10개를 은엽전 1개로 자동 교환"
+            : `동엽전 ${10 * exchangeCount}개를 은엽전 ${exchangeCount}개로 자동 교환`,
+      });
+    }
+
+    const coinHistory = getNextCoinHistory(student, historyItems);
 
     await updateDoc(getStudentRef(student), {
       bronze: newBronze,
+      silver: newSilver,
       totalBronze,
+      totalSilver,
       coinHistory,
     });
 
-    alert(`🎉 ${student.name} ${sourceLabel} 동엽전 지급 완료!`);
+    if (exchangeCount > 0) {
+      alert(
+        `🎉 ${student.name} ${sourceLabel} 동엽전 ${amount}개 지급 완료!\n동엽전이 자동으로 은엽전 ${exchangeCount}개로 교환되었습니다.`
+      );
+    } else {
+      alert(`🎉 ${student.name} ${sourceLabel} 동엽전 ${amount}개 지급 완료!`);
+    }
 
     fetchStudents();
   };
 
   const addQuizBronze = async (student: any) => {
-    await addBronzeBySource(student, "quiz");
+    await addBronzeBySource(student, "quiz", 1);
   };
 
   const addHomeworkBronze = async (student: any) => {
-    await addBronzeBySource(student, "homework");
+    await addBronzeBySource(student, "homework", 1);
   };
 
-  // 동엽전 10개 -> 은엽전 1개 교환
-  const exchangeBronzeToSilver = async (student: any) => {
-    const currentBronze = Number(student?.bronze || 0);
-    const currentSilver = Number(student?.silver || 0);
+  const addBonusBronze = async (student: any) => {
+    const input = window.prompt(
+      `${student.name} 학생에게 지급할 보너스 동엽전 개수를 입력해주세요.`,
+      "1"
+    );
 
-    if (currentBronze < 10) {
-      alert("동엽전이 10개 이상 있어야 은엽전으로 교환할 수 있습니다!");
+    if (input === null) {
       return;
     }
 
-    const newBronze = currentBronze - 10;
-    const newSilver = currentSilver + 1;
-    const totalSilver = Number(student?.totalSilver || 0) + 1;
+    const amount = Number(input);
 
-    const coinHistory = getNextCoinHistory(student, {
-      type: "exchange",
-      fromCurrency: "bronze",
-      fromAmount: 10,
-      toCurrency: "silver",
-      toAmount: 1,
-      text: "동엽전 10개를 은엽전 1개로 교환",
-    });
+    if (!Number.isInteger(amount) || amount <= 0) {
+      alert("1개 이상의 숫자로 입력해주세요.");
+      return;
+    }
+
+    if (amount > 50) {
+      alert("한 번에 최대 50개까지만 지급할 수 있습니다.");
+      return;
+    }
+
+    const check = confirm(
+      `${student.name} 학생에게 보너스 동엽전 ${amount}개를 지급할까요?`
+    );
+
+    if (!check) {
+      return;
+    }
+
+    await addBronzeBySource(student, "bonus", amount);
+  };
+
+  // 기존 StudentCard 호환용
+  const addBronze = async (student: any) => {
+    await addQuizBronze(student);
+  };
+
+  // 기존 StudentCard 호환용
+  const removeBronze = async (student: any) => {
+    const currentBronze = Number(student?.bronze || 0);
+
+    if (currentBronze <= 0) {
+      alert("회수할 동엽전이 없습니다!");
+      return;
+    }
+
+    const coinHistory = getNextCoinHistory(student, [
+      {
+        type: "adjust",
+        currency: "bronze",
+        amount: 1,
+        text: "동엽전 1개 회수",
+      },
+    ]);
 
     await updateDoc(getStudentRef(student), {
-      bronze: newBronze,
-      silver: newSilver,
-      totalSilver,
+      bronze: currentBronze - 1,
+      totalBronze: Math.max(Number(student?.totalBronze || 0) - 1, 0),
       coinHistory,
     });
 
-    alert(`🔄 ${student.name} 은엽전 교환 완료!`);
+    alert(`↩️ ${student.name} 동엽전 회수 완료!`);
 
     fetchStudents();
   };
 
-  // 은엽전 사용
   const useSilver = async (student: any) => {
     const currentSilver = Number(student?.silver || 0);
 
@@ -293,12 +369,14 @@ export default function TeacherPage() {
       return;
     }
 
-    const coinHistory = getNextCoinHistory(student, {
-      type: "use",
-      currency: "silver",
-      amount: 1,
-      text: "은엽전 1개 사용",
-    });
+    const coinHistory = getNextCoinHistory(student, [
+      {
+        type: "use",
+        currency: "silver",
+        amount: 1,
+        text: "은엽전 1개 사용",
+      },
+    ]);
 
     await updateDoc(getStudentRef(student), {
       silver: currentSilver - 1,
@@ -310,7 +388,6 @@ export default function TeacherPage() {
     fetchStudents();
   };
 
-  // 진도 변경
   const changeStage = async (student: any, direction: number) => {
     let newStage = Number(student.stage || 1) + direction;
 
@@ -329,7 +406,6 @@ export default function TeacherPage() {
     fetchStudents();
   };
 
-  // 숨기기
   const toggleStudentVisible = async (student: any) => {
     await updateDoc(getStudentRef(student), {
       isActive: !student.isActive,
@@ -338,7 +414,6 @@ export default function TeacherPage() {
     fetchStudents();
   };
 
-  // 삭제
   const deleteStudent = async (student: any) => {
     const check = confirm(`${student.name} 학생을 삭제할까요?`);
 
@@ -406,7 +481,28 @@ export default function TeacherPage() {
       return numberA - numberB;
     });
 
-  const hiddenStudents = students.filter((student) => student.isActive === false);
+  const hiddenStudents = students
+    .filter((student) => student.isActive === false)
+    .sort((a, b) => {
+      const schoolA = normalize(a.school || "미지정");
+      const schoolB = normalize(b.school || "미지정");
+
+      if (schoolA !== schoolB) {
+        return schoolA.localeCompare(schoolB);
+      }
+
+      const gradeA = getGradeNumber(a.grade);
+      const gradeB = getGradeNumber(b.grade);
+
+      if (gradeA !== gradeB) {
+        return gradeA - gradeB;
+      }
+
+      const numberA = Number(a.studentNumber) || 0;
+      const numberB = Number(b.studentNumber) || 0;
+
+      return numberA - numberB;
+    });
 
   const schoolList = [
     "전체학교",
@@ -441,7 +537,6 @@ export default function TeacherPage() {
     return gradeNum >= 3;
   }).length;
 
-  // 로그인 화면
   if (!authorized) {
     return (
       <TeacherLogin
@@ -457,9 +552,7 @@ export default function TeacherPage() {
       <div className="max-w-7xl mx-auto">
         {/* 제목 */}
         <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
-          <h1 className="text-3xl font-bold">
-            🏫 역사 탐험 관리소
-          </h1>
+          <h1 className="text-3xl font-bold">🏫 역사 탐험 관리소</h1>
 
           <p className="text-gray-500 mt-1 text-sm">
             학생 탐험 현황 관리
@@ -485,9 +578,7 @@ export default function TeacherPage() {
 
         {/* 학생 등록 */}
         <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
-          <div className="text-xl font-bold mb-3">
-            ✏️ 학생 등록
-          </div>
+          <div className="text-xl font-bold mb-3">✏️ 학생 등록</div>
 
           <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-3">
             <input
@@ -570,30 +661,21 @@ export default function TeacherPage() {
         <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
           <div className="grid grid-cols-3 gap-3 text-center">
             <div className="bg-blue-50 rounded-2xl p-3">
-              <div className="text-sm text-gray-500 mb-1">
-                A반
-              </div>
-
+              <div className="text-sm text-gray-500 mb-1">A반</div>
               <div className="text-2xl font-bold text-blue-600">
                 {aClassCount}명
               </div>
             </div>
 
             <div className="bg-pink-50 rounded-2xl p-3">
-              <div className="text-sm text-gray-500 mb-1">
-                B반
-              </div>
-
+              <div className="text-sm text-gray-500 mb-1">B반</div>
               <div className="text-2xl font-bold text-pink-600">
                 {bClassCount}명
               </div>
             </div>
 
             <div className="bg-yellow-50 rounded-2xl p-3">
-              <div className="text-sm text-gray-500 mb-1">
-                전체
-              </div>
-
+              <div className="text-sm text-gray-500 mb-1">전체</div>
               <div className="text-2xl font-bold text-yellow-600">
                 {countTargetStudents.length}명
               </div>
@@ -656,9 +738,11 @@ export default function TeacherPage() {
             <StudentCard
               key={student.id}
               student={student}
+              addBronze={addBronze}
+              removeBronze={removeBronze}
               addQuizBronze={addQuizBronze}
               addHomeworkBronze={addHomeworkBronze}
-              exchangeBronzeToSilver={exchangeBronzeToSilver}
+              addBonusBronze={addBonusBronze}
               useSilver={useSilver}
               changeStage={changeStage}
               toggleStudentVisible={toggleStudentVisible}
@@ -670,21 +754,24 @@ export default function TeacherPage() {
 
         {/* 숨김 학생 */}
         {hiddenStudents.length > 0 && (
-          <div className="mt-8">
-            <div className="text-xl font-bold mb-3">
-              🙈 숨김 친구 목록
-            </div>
+          <div className="mt-8 bg-white rounded-3xl p-4 shadow-md">
+            <div className="text-xl font-bold mb-3">🙈 숨김 친구 목록</div>
 
             <div className="flex flex-wrap gap-2">
-              {hiddenStudents.map((student) => (
-                <button
-                  key={student.id}
-                  onClick={() => toggleStudentVisible(student)}
-                  className="bg-gray-300 px-4 py-2 rounded-xl font-bold"
-                >
-                  {student.name} 복구
-                </button>
-              ))}
+              {hiddenStudents.map((student) => {
+                const schoolName = student.school || "미지정";
+                const studentName = student.name || "이름 없음";
+
+                return (
+                  <button
+                    key={student.id}
+                    onClick={() => toggleStudentVisible(student)}
+                    className="bg-gray-300 px-4 py-2 rounded-xl font-bold"
+                  >
+                    {schoolName} {studentName} 복구
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
