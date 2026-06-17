@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 interface Props {
   student: any;
   currentStage: number;
@@ -17,6 +19,9 @@ export default function StudentProfile({
   stageInfo,
   changeCharacter,
 }: Props) {
+  const [showAllHistory, setShowAllHistory] =
+    useState(false);
+
   const TOTAL_PROGRESS = 92;
 
   const progressPercent = Math.min(
@@ -51,6 +56,14 @@ export default function StudentProfile({
     (a: any, b: any) =>
       getDateValue(b) - getDateValue(a)
   );
+
+  const displayedCoinHistory =
+    showAllHistory
+      ? sortedCoinHistory
+      : sortedCoinHistory.slice(0, 3);
+
+  const hasMoreHistory =
+    sortedCoinHistory.length > 3;
 
   const formatDate = (value: any) => {
     if (!value) {
@@ -142,6 +155,17 @@ export default function StudentProfile({
 
   const getHistoryTitle = (item: any) => {
     if (item?.text) {
+      if (
+        item?.type === "earn" &&
+        item?.source === "bonus"
+      ) {
+        const text = String(item.text);
+
+        return text.startsWith("🎁")
+          ? text
+          : `🎁 ${text}`;
+      }
+
       return item.text;
     }
 
@@ -158,9 +182,15 @@ export default function StudentProfile({
         item?.source
       );
 
-      return `${currency} ${amount}개 획득${
+      const title = `${currency} ${amount}개 획득${
         source ? ` (${source})` : ""
       }`;
+
+      if (item?.source === "bonus") {
+        return `🎁 ${title}`;
+      }
+
+      return title;
     }
 
     if (item?.type === "exchange") {
@@ -238,10 +268,9 @@ export default function StudentProfile({
 
   return (
     <div className="space-y-4">
-      {/* 상단 프로필 */}
       <div className="rounded-[32px] border border-[#333] bg-black p-4">
+        {/* 상단 프로필 */}
         <div className="flex items-start justify-between gap-3">
-          {/* 왼쪽 */}
           <div className="flex-1 min-w-0">
             <div className="text-4xl font-black leading-none truncate">
               {student?.name}
@@ -256,7 +285,6 @@ export default function StudentProfile({
             </div>
           </div>
 
-          {/* 오른쪽 */}
           <div className="flex flex-col items-center shrink-0">
             <div className="w-[110px] h-[110px] rounded-full border-[4px] border-[#444] overflow-hidden bg-[#111]">
               <img
@@ -364,7 +392,7 @@ export default function StudentProfile({
             </div>
 
             <div className="text-sm text-gray-500">
-              최근 기록
+              총 {sortedCoinHistory.length}개
             </div>
           </div>
 
@@ -383,41 +411,64 @@ export default function StudentProfile({
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
-              {sortedCoinHistory.map(
-                (item: any, index: number) => (
-                  <div
-                    key={`${item?.date || "history"}-${index}`}
-                    className="rounded-[24px] border border-[#333] bg-[#050505] p-4"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-[#111] border border-[#333] flex items-center justify-center text-2xl shrink-0">
-                        {getHistoryIcon(item)}
-                      </div>
+            <>
+              <div
+                className={
+                  showAllHistory
+                    ? "space-y-3 max-h-[420px] overflow-y-auto pr-1"
+                    : "space-y-3"
+                }
+              >
+                {displayedCoinHistory.map(
+                  (item: any, index: number) => (
+                    <div
+                      key={`${item?.id || item?.date || "history"}-${index}`}
+                      className="rounded-[24px] border border-[#333] bg-[#050505] p-4"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-[#111] border border-[#333] flex items-center justify-center text-2xl shrink-0">
+                          {getHistoryIcon(item)}
+                        </div>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm text-gray-500 mb-1">
-                          {formatDate(
-                            item?.date ||
-                              item?.createdAt
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm text-gray-500 mb-1">
+                            {formatDate(
+                              item?.date ||
+                                item?.createdAt
+                            )}
+                          </div>
+
+                          <div className="text-lg font-black text-white leading-snug">
+                            {getHistoryTitle(item)}
+                          </div>
+
+                          {getHistorySubText(item) && (
+                            <div className="text-sm text-gray-500 mt-1">
+                              {getHistorySubText(item)}
+                            </div>
                           )}
                         </div>
-
-                        <div className="text-lg font-black text-white leading-snug">
-                          {getHistoryTitle(item)}
-                        </div>
-
-                        {getHistorySubText(item) && (
-                          <div className="text-sm text-gray-500 mt-1">
-                            {getHistorySubText(item)}
-                          </div>
-                        )}
                       </div>
                     </div>
-                  </div>
-                )
+                  )
+                )}
+              </div>
+
+              {hasMoreHistory && (
+                <button
+                  onClick={() =>
+                    setShowAllHistory(
+                      !showAllHistory
+                    )
+                  }
+                  className="w-full mt-3 rounded-[20px] border border-[#333] bg-[#111] py-3 text-sm font-bold text-gray-200"
+                >
+                  {showAllHistory
+                    ? "최근 기록 3개만 보기"
+                    : `전체 코인 기록 보기 (${sortedCoinHistory.length}개)`}
+                </button>
               )}
-            </div>
+            </>
           )}
         </div>
       </div>
