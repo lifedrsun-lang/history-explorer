@@ -42,17 +42,8 @@ export default function StudentProfile({
     student?.silver || 0
   );
 
-  const currentCoinValue =
-    currentBronze + currentSilver * 10;
-
-  const savedTotalBronze = Number(
-    student?.totalBronze || 0
-  );
-
   const totalCoinValue =
-    savedTotalBronze > 0
-      ? savedTotalBronze
-      : currentCoinValue;
+    currentBronze + currentSilver * 10;
 
   const coinHistory = Array.isArray(
     student?.coinHistory
@@ -360,43 +351,46 @@ export default function StudentProfile({
         </div>
 
         {/* 엽전 현황 */}
-        <div className="grid grid-cols-2 gap-3 mt-4">
-          <div className="rounded-[24px] border border-[#333] bg-[#080808] p-4">
-            <div className="text-sm text-gray-300">
-              🥇 현재 동엽전
+        <div className="grid grid-cols-3 gap-2 mt-4">
+          <div className="rounded-[22px] border border-[#333] bg-[#080808] p-3 text-center">
+            <div className="text-xs text-gray-300 leading-tight">
+              🥇 현재
+              <br />
+              동엽전
             </div>
 
-            <div className="text-5xl font-black mt-2">
+            <div className="text-4xl font-black mt-2">
               {currentBronze}
             </div>
           </div>
 
-          <div className="rounded-[24px] border border-[#333] bg-[#080808] p-4">
-            <div className="text-sm text-gray-300">
-              🥈 현재 은엽전
+          <div className="rounded-[22px] border border-[#333] bg-[#080808] p-3 text-center">
+            <div className="text-xs text-gray-300 leading-tight">
+              🥈 현재
+              <br />
+              은엽전
             </div>
 
-            <div className="text-5xl font-black mt-2">
+            <div className="text-4xl font-black mt-2">
               {currentSilver}
             </div>
           </div>
 
-          <div className="col-span-2 rounded-[24px] border border-[#333] bg-[#050505] p-5">
-            <div className="text-sm text-gray-300">
-              📊 누적 엽전
+          <div className="rounded-[22px] border border-yellow-500 bg-[#151100] p-3 text-center">
+            <div className="text-xs text-yellow-200 leading-tight">
+              📊 누적
+              <br />
+              엽전
             </div>
 
-            <div className="text-6xl font-black mt-3 text-yellow-200">
+            <div className="text-4xl font-black mt-2 text-yellow-200">
               {totalCoinValue}
-              <span className="text-2xl ml-1 text-gray-300">
-                개
-              </span>
-            </div>
-
-            <div className="text-sm text-gray-500 mt-3">
-              은엽전 1개는 동엽전 10개로 계산돼요.
             </div>
           </div>
+        </div>
+
+        <div className="text-xs text-gray-500 mt-2 text-center">
+          누적 엽전은 은엽전 1개를 동엽전 10개로 계산해요.
         </div>
 
         {/* 진행률 */}
