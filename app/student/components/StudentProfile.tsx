@@ -58,7 +58,9 @@ export default function StudentProfile({
     }
 
     if (value?.seconds) {
-      const date = new Date(value.seconds * 1000);
+      const date = new Date(
+        value.seconds * 1000
+      );
 
       return date
         .toISOString()
@@ -74,7 +76,9 @@ export default function StudentProfile({
     return text;
   };
 
-  const getCurrencyLabel = (currency: string) => {
+  const getCurrencyLabel = (
+    currency: string
+  ) => {
     if (currency === "bronze") {
       return "동엽전";
     }
@@ -86,13 +90,19 @@ export default function StudentProfile({
     return "코인";
   };
 
-  const getSourceLabel = (source: string) => {
+  const getSourceLabel = (
+    source: string
+  ) => {
     if (source === "quiz") {
-      return "퀴즈 획득";
+      return "퀴즈";
     }
 
     if (source === "homework") {
-      return "과제 획득";
+      return "과제";
+    }
+
+    if (source === "bonus") {
+      return "선생님 보너스";
     }
 
     return "";
@@ -108,6 +118,10 @@ export default function StudentProfile({
         return "📘";
       }
 
+      if (item?.source === "bonus") {
+        return "🎁";
+      }
+
       return "🪙";
     }
 
@@ -117,6 +131,10 @@ export default function StudentProfile({
 
     if (item?.type === "use") {
       return "🎁";
+    }
+
+    if (item?.type === "adjust") {
+      return "↩️";
     }
 
     return "📝";
@@ -146,13 +164,15 @@ export default function StudentProfile({
     }
 
     if (item?.type === "exchange") {
-      const fromCurrency = getCurrencyLabel(
-        item?.fromCurrency
-      );
+      const fromCurrency =
+        getCurrencyLabel(
+          item?.fromCurrency
+        );
 
-      const toCurrency = getCurrencyLabel(
-        item?.toCurrency
-      );
+      const toCurrency =
+        getCurrencyLabel(
+          item?.toCurrency
+        );
 
       return `${fromCurrency} ${
         item?.fromAmount || 0
@@ -171,6 +191,16 @@ export default function StudentProfile({
       }개 사용`;
     }
 
+    if (item?.type === "adjust") {
+      const currency = getCurrencyLabel(
+        item?.currency
+      );
+
+      return `${currency} ${
+        item?.amount || 0
+      }개 회수`;
+    }
+
     return "코인 기록";
   };
 
@@ -184,15 +214,23 @@ export default function StudentProfile({
         return "과제 수행으로 획득했어요.";
       }
 
+      if (item?.source === "bonus") {
+        return "선생님 보너스로 받은 특별 동엽전이에요.";
+      }
+
       return "코인을 획득했어요.";
     }
 
     if (item?.type === "exchange") {
-      return "동엽전을 은엽전으로 바꿨어요.";
+      return "동엽전이 은엽전으로 자동 교환되었어요.";
     }
 
     if (item?.type === "use") {
       return "보상 또는 환전으로 사용했어요.";
+    }
+
+    if (item?.type === "adjust") {
+      return "선생님이 코인 수량을 조정했어요.";
     }
 
     return "";
@@ -341,7 +379,7 @@ export default function StudentProfile({
               </div>
 
               <div className="text-sm text-gray-500 mt-2">
-                퀴즈나 과제로 코인을 받으면 여기에 기록돼요.
+                퀴즈, 과제, 보너스로 코인을 받으면 여기에 기록돼요.
               </div>
             </div>
           ) : (
@@ -360,7 +398,8 @@ export default function StudentProfile({
                       <div className="flex-1 min-w-0">
                         <div className="text-sm text-gray-500 mb-1">
                           {formatDate(
-                            item?.date || item?.createdAt
+                            item?.date ||
+                              item?.createdAt
                           )}
                         </div>
 
