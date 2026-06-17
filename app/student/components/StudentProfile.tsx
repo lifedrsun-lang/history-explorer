@@ -34,6 +34,26 @@ export default function StudentProfile({
 
   const current = stageInfo?.current;
 
+  const currentBronze = Number(
+    student?.bronze || 0
+  );
+
+  const currentSilver = Number(
+    student?.silver || 0
+  );
+
+  const currentCoinValue =
+    currentBronze + currentSilver * 10;
+
+  const savedTotalBronze = Number(
+    student?.totalBronze || 0
+  );
+
+  const totalCoinValue =
+    savedTotalBronze > 0
+      ? savedTotalBronze
+      : currentCoinValue;
+
   const coinHistory = Array.isArray(
     student?.coinHistory
   )
@@ -339,25 +359,42 @@ export default function StudentProfile({
           </div>
         </div>
 
-        {/* 엽전 */}
+        {/* 엽전 현황 */}
         <div className="grid grid-cols-2 gap-3 mt-4">
           <div className="rounded-[24px] border border-[#333] bg-[#080808] p-4">
             <div className="text-sm text-gray-300">
-              🥇 동엽전
+              🥇 현재 동엽전
             </div>
 
             <div className="text-5xl font-black mt-2">
-              {student?.bronze || 0}
+              {currentBronze}
             </div>
           </div>
 
           <div className="rounded-[24px] border border-[#333] bg-[#080808] p-4">
             <div className="text-sm text-gray-300">
-              🥈 은엽전
+              🥈 현재 은엽전
             </div>
 
             <div className="text-5xl font-black mt-2">
-              {student?.silver || 0}
+              {currentSilver}
+            </div>
+          </div>
+
+          <div className="col-span-2 rounded-[24px] border border-[#333] bg-[#050505] p-5">
+            <div className="text-sm text-gray-300">
+              📊 누적 엽전
+            </div>
+
+            <div className="text-6xl font-black mt-3 text-yellow-200">
+              {totalCoinValue}
+              <span className="text-2xl ml-1 text-gray-300">
+                개
+              </span>
+            </div>
+
+            <div className="text-sm text-gray-500 mt-3">
+              은엽전 1개는 동엽전 10개로 계산돼요.
             </div>
           </div>
         </div>
