@@ -35,6 +35,8 @@ export default function StudentExplorerPage() {
   const [pendingSchool, setPendingSchool] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
 
+  const [debugInfo, setDebugInfo] = useState("");
+
   const SCHOOL_PASSWORDS: Record<string, string> = {
     "김포 하늘빛초": "0527",
     "화성 새솔초": "0602",
@@ -43,6 +45,14 @@ export default function StudentExplorerPage() {
     "이마트 문화센터": "0607",
   };
 
+  const DEFAULT_SCHOOLS = Object.keys(SCHOOL_PASSWORDS);
+
+  const COLLECTION_NAMES = [
+    "students",
+    "student",
+    "Students",
+  ];
+
   const normalize = (value: any) => {
     return String(value || "").trim();
   };
@@ -50,113 +60,242 @@ export default function StudentExplorerPage() {
   const normalizeNoSpace = (value: any) => {
     return String(value || "")
       .replace(/\s/g, "")
+      .replace(/초등학교/g, "초")
+      .replace(/초등/g, "초")
+      .replace(/[()]/g, "")
       .trim();
   };
 
-  // 학생용에서는 숨김 학생도 조회 가능하게 유지
+  const getStudentName = (data: any) => {
+    return normalize(
+      data?.name ||
+        data?.studentName ||
+        data?.student_name ||
+        data?.이름 ||
+        ""
+    );
+  };
+
+  const getStudentSchool = (data: any) => {
+    return normalize(
+      data?.school ||
+        data?.schoolName ||
+        data?.school_name ||
+        data?.학교 ||
+        ""
+    );
+  };
+
+  const getStudentGrade = (data: any) => {
+    return (
+      data?.grade ||
+      data?.studentGrade ||
+      data?.student_grade ||
+      data?.학년 ||
+      ""
+    );
+  };
+
+  const getStudentClass = (data: any) => {
+    return (
+      data?.class ||
+      data?.studentClass ||
+      data?.student_class ||
+      data?.className ||
+      data?.반 ||
+      data?.group ||
+      data?.team ||
+      ""
+    );
+  };
+
+  const getStudentNumber = (data: any) => {
+    return (
+      data?.studentNumber ||
+      data?.number ||
+      data?.studentNo ||
+      data?.no ||
+      data?.번호 ||
+      0
+    );
+  };
+
+  const getStudentPassword = (data: any) => {
+    return normalize(
+      data?.password ||
+        data?.studentPassword ||
+        data?.pw ||
+        data?.비밀번호 ||
+        ""
+    );
+  };
+
+  const getBronze = (data: any) => {
+    return Number(data?.bronze || data?.bronzeCoin || data?.동엽전 || 0);
+  };
+
+  const getSilver = (data: any) => {
+    return Number(data?.silver || data?.silverCoin || data?.은엽전 || 0);
+  };
+
   const isHiddenStudent = (data: any) => {
     return false;
   };
 
-  // 학교 선택
-  const handleSchoolSelect = (school: string) => {
-    const cleanSchool = normalize(school);
-    const password = SCHOOL_PASSWORDS[cleanSchool];
+  const getGradeNumber = (value: any) => {
+    const text = String(value || "").trim();
+    const match = text.match(/\d+/);
 
-    if (!password) {
-      setSelectedSchool(cleanSchool);
-
-      localStorage.setItem(
-        "selectedSchool",
-        cleanSchool
-      );
-
-      return;
+    if (!match) {
+      return 0;
     }
 
-    setPendingSchool(cleanSchool);
+    return Number(match[0]);
   };
 
-  // 학교 목록 불러오기
+  const makeStudentObject = (
+    docId: string,
+    data: any,
+    collectionName: string
+  ) => {
+    return {
+      id: docId,
+      collectionName,
+
+      ...data,
+
+      name: getStudentName(data),
+      school: getStudentSchool(data),
+      grade: getStudentGrade(data),
+      class: getStudentClass(data),
+      studentNumber: getStudentNumber(data),
+      password: getStudentPassword(data),
+
+      bronze: getBronze(data),
+      silver: getSilver(data),
+    };
+  };
+
+  const fetchAllStudents = async () => {
+    const allList: any[] = [];
+
+    for (const collectionName of COLLECTION_NAMES) {
+      try {
+        const snapshot = await getDocs(
+          collection(db, collectionName)
+        );
+
+        snapshot.forEach((docItem) => {
+          const data = docItem.data();
+
+          if (isHiddenStudent(data)) {
+            return;
+          }
+
+          allList.push(
+            makeStudentObject(
+              docItem.id,
+              data,
+              collectionName
+            )
+          );
+        });
+      } catch (error) {
+        console.error(
+          `${collectionName} 컬렉션 조회 실패:`,
+          error
+        );
+      }
+    }
+
+    return allList;
+  };
+
+  const isSameSchool = (
+    studentSchool: string,
+    targetSchool: string
+  ) => {
+    const a = normalizeNoSpace(studentSchool);
+    const b = normalizeNoSpace(targetSchool);
+
+    if (!a || !b) {
+      return false;
+    }
+
+    if (a === b) {
+      return true;
+    }
+
+    if (a.includes(b)) {
+      return true;
+    }
+
+    if (b.includes(a)) {
+      return true;
+    }
+
+    return false;
+  };
+
   const fetchSchools = async () => {
     try {
-      const snapshot = await getDocs(
-        collection(db, "students")
-      );
+      const allList = await fetchAllStudents();
 
       const schoolSet = new Set<string>();
 
-      snapshot.forEach((docItem) => {
-        const data = docItem.data();
-
-        if (isHiddenStudent(data)) {
-          return;
-        }
-
-        const school = normalize(data?.school);
+      allList.forEach((student) => {
+        const school = normalize(student?.school);
 
         if (school) {
           schoolSet.add(school);
         }
       });
 
-      setAllSchools(Array.from(schoolSet));
-    } catch (error) {
-      console.error(
-        "학교 목록 불러오기 실패:",
-        error
+      const mergedSchools = Array.from(
+        new Set([
+          ...DEFAULT_SCHOOLS,
+          ...Array.from(schoolSet),
+        ])
       );
+
+      setAllSchools(mergedSchools);
+
+      setDebugInfo(
+        `전체 DB 학생 ${allList.length}명 / 등록 학교 ${schoolSet.size}개`
+      );
+    } catch (error) {
+      console.error("학교 목록 불러오기 실패:", error);
+      setAllSchools(DEFAULT_SCHOOLS);
+      setDebugInfo("학교 목록 불러오기 실패");
     }
   };
 
-  // 학교별 학생 불러오기
   const fetchStudentsBySchool = async (
     school: string
   ) => {
     setLoading(true);
 
     try {
-      const snapshot = await getDocs(
-        collection(db, "students")
-      );
+      const allList = await fetchAllStudents();
 
-      const targetSchool = normalizeNoSpace(school);
+      const targetSchool = normalize(school);
 
-      const list: any[] = [];
-
-      snapshot.forEach((docItem) => {
-        const data = docItem.data();
-
-        if (isHiddenStudent(data)) {
-          return;
-        }
-
-        const studentSchool = normalizeNoSpace(
-          data?.school
+      const matchedList = allList.filter((student) => {
+        return isSameSchool(
+          student?.school,
+          targetSchool
         );
-
-        if (studentSchool === targetSchool) {
-          list.push({
-            id: docItem.id,
-            ...data,
-            school: normalize(data?.school),
-          });
-        }
       });
 
-      list.sort((a, b) => {
+      matchedList.sort((a, b) => {
         const gradeA = getGradeNumber(a?.grade);
         const gradeB = getGradeNumber(b?.grade);
 
         const classA = normalize(a?.class);
         const classB = normalize(b?.class);
 
-        const numA = Number(
-          a?.studentNumber || 0
-        );
-        const numB = Number(
-          b?.studentNumber || 0
-        );
+        const numA = Number(a?.studentNumber || 0);
+        const numB = Number(b?.studentNumber || 0);
 
         if (gradeA !== gradeB) {
           return gradeA - gradeB;
@@ -169,7 +308,19 @@ export default function StudentExplorerPage() {
         return numA - numB;
       });
 
-      setStudents(list);
+      setStudents(matchedList);
+
+      const dbSchools = Array.from(
+        new Set(
+          allList
+            .map((s) => s?.school)
+            .filter(Boolean)
+        )
+      );
+
+      setDebugInfo(
+        `전체 DB 학생 ${allList.length}명 / 현재 학교 매칭 ${matchedList.length}명 / DB 학교: ${dbSchools.join(", ")}`
+      );
 
       const savedStudent =
         localStorage.getItem("selectedStudent");
@@ -177,24 +328,20 @@ export default function StudentExplorerPage() {
       if (savedStudent) {
         const parsed = JSON.parse(savedStudent);
 
-        const matched = list.find(
+        const matched = matchedList.find(
           (s) => s.id === parsed.id
         );
 
         if (matched) {
           setSelectedStudent(matched);
         } else {
-          localStorage.removeItem(
-            "selectedStudent"
-          );
+          localStorage.removeItem("selectedStudent");
           setSelectedStudent(null);
         }
       }
     } catch (error) {
-      console.error(
-        "학생 목록 불러오기 실패:",
-        error
-      );
+      console.error("학생 목록 불러오기 실패:", error);
+      setDebugInfo("학생 목록 불러오기 실패");
     }
 
     setLoading(false);
@@ -232,7 +379,24 @@ export default function StudentExplorerPage() {
     }
   }, [selectedSchool]);
 
-  // 캐릭터 변경
+  const handleSchoolSelect = (school: string) => {
+    const cleanSchool = normalize(school);
+    const password = SCHOOL_PASSWORDS[cleanSchool];
+
+    if (!password) {
+      setSelectedSchool(cleanSchool);
+
+      localStorage.setItem(
+        "selectedSchool",
+        cleanSchool
+      );
+
+      return;
+    }
+
+    setPendingSchool(cleanSchool);
+  };
+
   const changeCharacter = async (
     studentId: string,
     type: string
@@ -264,26 +428,10 @@ export default function StudentExplorerPage() {
 
       fetchStudentsBySchool(selectedSchool);
     } catch (error) {
-      console.error(
-        "캐릭터 변경 실패:",
-        error
-      );
+      console.error("캐릭터 변경 실패:", error);
     }
   };
 
-  // 학년 숫자 추출
-  const getGradeNumber = (value: any) => {
-    const text = String(value || "").trim();
-    const match = text.match(/\d+/);
-
-    if (!match) {
-      return 0;
-    }
-
-    return Number(match[0]);
-  };
-
-  // 점수 계산
   const getScore = (s: any) => {
     return (
       Number(s?.silver || 0) * 10 +
@@ -291,7 +439,6 @@ export default function StudentExplorerPage() {
     );
   };
 
-  // A반 / B반 판별
   const getStudentGroup = (s: any) => {
     const classText = normalizeNoSpace(
       s?.class ||
@@ -328,21 +475,20 @@ export default function StudentExplorerPage() {
     return "";
   };
 
-  // 검색 결과
   const filteredStudents =
     searchName.trim() === ""
       ? []
       : students.filter((s) => {
-          if (isHiddenStudent(s)) {
-            return false;
-          }
-
           return normalize(s?.name).includes(
             searchName.trim()
           );
         });
 
-  // 랭킹
+  const visibleStudentList =
+    searchName.trim() === ""
+      ? students
+      : filteredStudents;
+
   const moonRanking = students
     .filter(
       (s) => getStudentGroup(s) === "moon"
@@ -361,7 +507,6 @@ export default function StudentExplorerPage() {
     )
     .slice(0, 3);
 
-  // 학교 선택 화면
   if (!selectedSchool) {
     if (pendingSchool) {
       return (
@@ -400,9 +545,7 @@ export default function StudentExplorerPage() {
                   setPendingSchool("");
                   setPasswordInput("");
                 } else {
-                  alert(
-                    "비밀번호가 틀렸습니다."
-                  );
+                  alert("비밀번호가 틀렸습니다.");
                 }
               }}
               className="w-full bg-orange-500 hover:bg-orange-600 transition rounded-2xl py-4 text-xl font-bold"
@@ -432,7 +575,6 @@ export default function StudentExplorerPage() {
     );
   }
 
-  // 로딩
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -440,7 +582,6 @@ export default function StudentExplorerPage() {
   return (
     <div className="min-h-[100dvh] bg-black text-white px-3 py-4">
       <div className="max-w-xl mx-auto space-y-4">
-        {/* 헤더 */}
         <div className="rounded-[28px] border border-[#333] bg-[#050505] px-4 py-4">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
@@ -478,12 +619,16 @@ export default function StudentExplorerPage() {
               학교 변경
             </button>
           </div>
+
+          {students.length === 0 && (
+            <div className="mt-3 text-xs text-gray-500 leading-relaxed break-words">
+              진단: {debugInfo}
+            </div>
+          )}
         </div>
 
-        {/* 검색 전 */}
         {!selectedStudent && (
           <>
-            {/* 검색 */}
             <div className="bg-[#050505] border border-[#333] p-4 rounded-[28px]">
               <div className="text-xl font-bold mb-3">
                 🔍 학생 검색
@@ -515,10 +660,36 @@ export default function StudentExplorerPage() {
               )}
 
               {searchName.trim() !== "" &&
-                filteredStudents.length ===
-                  0 && (
+                filteredStudents.length === 0 && (
                   <div className="mt-3 rounded-2xl border border-[#333] bg-[#0b0b0f] px-5 py-4 text-sm text-gray-500">
                     검색 결과 없음
+                  </div>
+                )}
+
+              {searchName.trim() === "" &&
+                visibleStudentList.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <div className="text-sm text-gray-400">
+                      전체 학생 {visibleStudentList.length}명
+                    </div>
+
+                    {visibleStudentList.map((student) => (
+                      <button
+                        key={`${student.collectionName}-${student.id}`}
+                        onClick={() => {
+                          setPendingStudent(student);
+                        }}
+                        className="w-full text-left bg-[#111] border border-[#333] rounded-2xl px-4 py-3"
+                      >
+                        <div className="font-bold text-white">
+                          {student.name || "이름 없음"}
+                        </div>
+
+                        <div className="text-xs text-gray-500 mt-1">
+                          {student.grade || "-"}학년 / {student.class || "-"}반 / {student.studentNumber || "-"}번
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 )}
             </div>
@@ -543,7 +714,6 @@ export default function StudentExplorerPage() {
           </>
         )}
 
-        {/* 학생 비밀번호 */}
         {pendingStudent && (
           <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
             <div className="w-full max-w-sm bg-[#050505] border border-orange-500 rounded-[32px] p-6">
@@ -585,9 +755,7 @@ export default function StudentExplorerPage() {
                     setPendingStudent(null);
                     setStudentPassword("");
                   } else {
-                    alert(
-                      "비밀번호가 틀렸습니다."
-                    );
+                    alert("비밀번호가 틀렸습니다.");
                   }
                 }}
                 className="w-full bg-orange-500 rounded-2xl py-4 text-xl font-bold"
@@ -608,7 +776,6 @@ export default function StudentExplorerPage() {
           </div>
         )}
 
-        {/* 학생 프로필 */}
         {selectedStudent && (
           <>
             <StudentProfile
