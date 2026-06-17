@@ -6,14 +6,16 @@ export default function StudentCard({
   student,
   addQuizBronze,
   addHomeworkBronze,
-  exchangeBronzeToSilver,
+  addBonusBronze,
   useSilver,
   changeStage,
   toggleStudentVisible,
   deleteStudent,
   openEditModal,
 }: any) {
-  const stage = STAGE_DATA.find((item) => item.id === Number(student.stage));
+  const stage = STAGE_DATA.find(
+    (item) => item.id === Number(student.stage)
+  );
 
   const coinHistoryCount = Array.isArray(student?.coinHistory)
     ? student.coinHistory.length
@@ -31,7 +33,7 @@ export default function StudentCard({
         {student.school}
       </div>
 
-      {/* 학년/반 */}
+      {/* 학년 / 반 / 번호 */}
       <div className="text-gray-500 mb-3">
         {student.grade}학년 {student.class}반 / {student.studentNumber}번
       </div>
@@ -45,7 +47,7 @@ export default function StudentCard({
         </span>
       </div>
 
-      {/* 코인 */}
+      {/* 코인 현황 */}
       <div className="bg-yellow-50 rounded-2xl p-3 mb-3">
         <div className="font-bold text-yellow-700">
           🟡 동엽전: {student.bronze ?? 0}개
@@ -71,11 +73,11 @@ export default function StudentCard({
         </div>
 
         <div className="text-gray-500">
-          {stage?.short}
+          {stage?.short || "-"}
         </div>
 
         <div className="text-yellow-600 font-bold text-2xl">
-          {stage?.title}
+          {stage?.title || "진도 없음"}
         </div>
       </div>
 
@@ -96,7 +98,7 @@ export default function StudentCard({
         </button>
       </div>
 
-      {/* 코인 지급 버튼 */}
+      {/* 코인 지급 / 사용 */}
       <div className="bg-orange-50 rounded-2xl p-3 mb-3">
         <div className="font-bold text-orange-700 mb-2">
           🪙 코인 지급 / 사용
@@ -118,10 +120,10 @@ export default function StudentCard({
           </button>
 
           <button
-            onClick={() => exchangeBronzeToSilver(student)}
-            className="bg-purple-500 text-white rounded-xl py-2 font-bold"
+            onClick={() => addBonusBronze(student)}
+            className="bg-emerald-500 text-white rounded-xl py-2 font-bold"
           >
-            동→은 교환
+            보너스 +동
           </button>
 
           <button
@@ -130,6 +132,10 @@ export default function StudentCard({
           >
             은사용
           </button>
+        </div>
+
+        <div className="text-xs text-gray-500 mt-2 leading-relaxed">
+          동엽전이 10개가 되면 은엽전 1개로 자동 교환됩니다.
         </div>
       </div>
 
