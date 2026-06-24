@@ -741,7 +741,7 @@ export default function TeacherPage() {
         </div>
 
         {/* 학생 목록 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
+        <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-3 xl:gap-4 items-start">
           {activeStudents.map((student) => (
             <StudentCard
               key={student.id}
