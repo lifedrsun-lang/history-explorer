@@ -21,7 +21,7 @@ export default function RankingCard({
   return (
 
     <div
-      className={`${bgColor} border ${borderColor} rounded-[28px] p-4`}
+      className={`${bgColor} border ${borderColor} rounded-[28px] p-4 shadow-sm text-slate-800`}
     >
 
       {/* 헤더 */}
@@ -31,7 +31,7 @@ export default function RankingCard({
           {icon}
         </div>
 
-        <div className="text-xl font-bold">
+        <div className="text-xl font-bold text-slate-800">
           {title}
         </div>
 
@@ -46,7 +46,7 @@ export default function RankingCard({
 
             <div
               key={student.id}
-              className="bg-black/20 border border-white/10 rounded-2xl px-3 py-3 flex items-center justify-between"
+              className="bg-amber-50/80 border border-amber-100 rounded-2xl px-3 py-3 flex items-center justify-between"
             >
 
               {/* 왼쪽 */}
@@ -60,13 +60,13 @@ export default function RankingCard({
 
                 <div className="min-w-0">
 
-                  <div className="font-bold truncate">
+                  <div className="font-bold truncate text-slate-800">
 
                     {student.name}
 
                   </div>
 
-                  <div className="text-xs opacity-70">
+                  <div className="text-xs text-slate-500">
 
                     {student.grade}학년
                     {" "}
@@ -81,13 +81,13 @@ export default function RankingCard({
               {/* 점수 */}
               <div className="text-right shrink-0">
 
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-bold text-sky-700">
 
                   {getScore(student)}
 
                 </div>
 
-                <div className="text-[10px] opacity-60">
+                <div className="text-[10px] text-slate-400">
 
                   SCORE
 
@@ -101,7 +101,7 @@ export default function RankingCard({
 
         ) : (
 
-          <div className="text-sm opacity-60">
+          <div className="text-sm text-slate-500">
 
             랭킹 데이터 없음
 

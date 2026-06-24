@@ -291,25 +291,25 @@ export default function StudentProfile({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-[32px] border border-[#333] bg-black p-4">
+      <div className="rounded-[32px] border border-white/80 bg-white/95 p-4 shadow-sm">
         {/* 상단 프로필 */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <div className="text-4xl font-black leading-none truncate">
+            <div className="text-4xl font-black leading-none truncate text-slate-800">
               {student?.name}
             </div>
 
-            <div className="mt-3 text-lg text-gray-300 truncate">
+            <div className="mt-3 text-lg text-slate-500 truncate">
               🏫 {student?.school}
             </div>
 
-            <div className="text-lg text-white mt-1">
+            <div className="text-lg text-slate-700 mt-1 font-bold">
               {student?.grade}학년 {student?.class}반
             </div>
           </div>
 
           <div className="flex flex-col items-center shrink-0">
-            <div className="w-[110px] h-[110px] rounded-full border-[4px] border-[#444] overflow-hidden bg-[#111]">
+            <div className="w-[110px] h-[110px] rounded-full border-[4px] border-sky-100 overflow-hidden bg-sky-50 shadow-sm">
               <img
                 src={
                   student?.character === "girl"
@@ -329,7 +329,7 @@ export default function StudentProfile({
                     "boy"
                   )
                 }
-                className="bg-[#3478f6] rounded-2xl px-4 py-2 text-xl"
+                className="bg-sky-200 rounded-2xl px-4 py-2 text-xl shadow-sm"
               >
                 👦
               </button>
@@ -341,7 +341,7 @@ export default function StudentProfile({
                     "girl"
                   )
                 }
-                className="bg-pink-500 rounded-2xl px-4 py-2 text-xl"
+                className="bg-pink-200 rounded-2xl px-4 py-2 text-xl shadow-sm"
               >
                 👧
               </button>
@@ -350,13 +350,13 @@ export default function StudentProfile({
         </div>
 
         {/* 현재 시대 */}
-        <div className="mt-5 rounded-[24px] border border-[#333] bg-[#080808] p-4">
-          <div className="text-sm text-gray-400">
+        <div className="mt-5 rounded-[24px] border border-amber-100 bg-amber-50/80 p-4">
+          <div className="text-sm text-amber-700 font-bold">
             🏛 현재 시대
           </div>
 
           <div className="mt-4">
-            <div className="text-[clamp(20px,6vw,40px)] leading-tight font-black whitespace-nowrap overflow-hidden text-ellipsis">
+            <div className="text-[clamp(20px,6vw,40px)] leading-tight font-black whitespace-nowrap overflow-hidden text-ellipsis text-slate-800">
               {current?.title} {current?.era}
             </div>
           </div>
@@ -364,52 +364,52 @@ export default function StudentProfile({
 
         {/* 엽전 현황 */}
         <div className="grid grid-cols-3 gap-2 mt-4">
-          <div className="min-w-0 rounded-[22px] border border-[#333] bg-[#080808] p-3 text-center">
-            <div className="text-sm text-gray-300 font-bold whitespace-nowrap">
+          <div className="min-w-0 rounded-[22px] border border-yellow-200 bg-yellow-50 p-3 text-center">
+            <div className="text-sm text-yellow-700 font-bold whitespace-nowrap">
               🥇 동엽전
             </div>
 
-            <div className="text-4xl font-black mt-2 whitespace-nowrap">
+            <div className="text-4xl font-black mt-2 whitespace-nowrap text-slate-800">
               {currentBronze}
             </div>
           </div>
 
-          <div className="min-w-0 rounded-[22px] border border-[#333] bg-[#080808] p-3 text-center">
-            <div className="text-sm text-gray-300 font-bold whitespace-nowrap">
+          <div className="min-w-0 rounded-[22px] border border-sky-200 bg-sky-50 p-3 text-center">
+            <div className="text-sm text-sky-700 font-bold whitespace-nowrap">
               🥈 은엽전
             </div>
 
-            <div className="text-4xl font-black mt-2 whitespace-nowrap">
+            <div className="text-4xl font-black mt-2 whitespace-nowrap text-slate-800">
               {currentSilver}
             </div>
           </div>
 
-          <div className="min-w-0 rounded-[22px] border border-yellow-500 bg-[#151100] p-3 text-center">
-            <div className="text-sm text-yellow-200 font-bold whitespace-nowrap">
+          <div className="min-w-0 rounded-[22px] border border-emerald-200 bg-emerald-50 p-3 text-center">
+            <div className="text-sm text-emerald-700 font-bold whitespace-nowrap">
               📊 누적
             </div>
 
-            <div className="text-4xl font-black mt-2 text-yellow-200 whitespace-nowrap">
+            <div className="text-4xl font-black mt-2 text-slate-800 whitespace-nowrap">
               {totalCoinValue}
             </div>
           </div>
         </div>
 
         {/* 진행률 */}
-        <div className="mt-4 rounded-[24px] border border-[#333] bg-[#080808] p-4">
+        <div className="mt-4 rounded-[24px] border border-sky-100 bg-sky-50/80 p-4">
           <div className="flex items-center justify-between mb-3">
-            <div className="text-2xl font-black">
+            <div className="text-2xl font-black text-slate-800">
               🗺 진행률
             </div>
 
-            <div className="text-2xl font-black">
+            <div className="text-2xl font-black text-sky-700">
               {currentStage} / {TOTAL_PROGRESS}
             </div>
           </div>
 
-          <div className="w-full h-4 rounded-full bg-[#111] overflow-hidden">
+          <div className="w-full h-4 rounded-full bg-white overflow-hidden border border-sky-100">
             <div
-              className="h-full bg-gray-300 transition-all duration-500"
+              className="h-full bg-gradient-to-r from-sky-300 to-emerald-300 transition-all duration-500"
               style={{
                 width: `${progressPercent}%`,
               }}
@@ -420,27 +420,27 @@ export default function StudentProfile({
         {/* 코인 기록 */}
         <div className="mt-5">
           <div className="flex items-center justify-between mb-4">
-            <div className="text-2xl font-black">
+            <div className="text-2xl font-black text-slate-800">
               🪙 코인 기록
             </div>
 
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-slate-500">
               총 {sortedCoinHistory.length}개
             </div>
           </div>
 
           {sortedCoinHistory.length === 0 ? (
-            <div className="rounded-[24px] border border-[#333] bg-[#050505] p-5 text-center">
+            <div className="rounded-[24px] border border-amber-100 bg-amber-50/80 p-5 text-center">
               <div className="text-4xl mb-3">
                 📭
               </div>
 
-              <div className="text-lg font-bold text-gray-300">
+              <div className="text-lg font-bold text-slate-700">
                 아직 코인 기록이 없습니다.
               </div>
 
-              <div className="text-sm text-gray-500 mt-2">
-                퀴즈, 과제, 보너스로 코인을 받으면 여기에 기록돼요.
+              <div className="text-sm text-slate-500 mt-2">
+                퀴즈, 과제, 만들기, 보너스로 코인을 받으면 여기에 기록돼요.
               </div>
             </div>
           ) : (
@@ -456,27 +456,27 @@ export default function StudentProfile({
                   (item: any, index: number) => (
                     <div
                       key={`${item?.id || item?.date || "history"}-${index}`}
-                      className="rounded-[24px] border border-[#333] bg-[#050505] p-4"
+                      className="rounded-[24px] border border-sky-100 bg-white p-4 shadow-sm"
                     >
                       <div className="flex items-start gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-[#111] border border-[#333] flex items-center justify-center text-2xl shrink-0">
+                        <div className="w-12 h-12 rounded-2xl bg-sky-50 border border-sky-100 flex items-center justify-center text-2xl shrink-0">
                           {getHistoryIcon(item)}
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm text-gray-500 mb-1">
+                          <div className="text-sm text-slate-500 mb-1">
                             {formatDate(
                               item?.date ||
                                 item?.createdAt
                             )}
                           </div>
 
-                          <div className="text-lg font-black text-white leading-snug">
+                          <div className="text-lg font-black text-slate-800 leading-snug">
                             {getHistoryTitle(item)}
                           </div>
 
                           {getHistorySubText(item) && (
-                            <div className="text-sm text-gray-500 mt-1">
+                            <div className="text-sm text-slate-500 mt-1">
                               {getHistorySubText(item)}
                             </div>
                           )}
@@ -494,7 +494,7 @@ export default function StudentProfile({
                       !showAllHistory
                     )
                   }
-                  className="w-full mt-3 rounded-[20px] border border-[#333] bg-[#111] py-3 text-sm font-bold text-gray-200"
+                  className="w-full mt-3 rounded-[20px] border border-sky-200 bg-sky-50 py-3 text-sm font-bold text-sky-700"
                 >
                   {showAllHistory
                     ? "최근 기록 3개만 보기"

@@ -24,7 +24,7 @@ export default function StudentCard({
     : 0;
 
   return (
-    <div className="bg-white rounded-[30px] p-4 shadow-md">
+    <div className="w-full min-w-0 bg-white rounded-[30px] p-4 shadow-md">
       {/* 이름 */}
       <div className="text-3xl font-bold">
         {student.name}

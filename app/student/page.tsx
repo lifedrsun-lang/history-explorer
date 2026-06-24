@@ -147,9 +147,9 @@ export default function StudentExplorerPage() {
     );
   };
 
-  // 학생용에서는 숨김 학생도 조회 가능
+  // 교사용에서 숨김 처리된 학생은 학생 페이지 검색/랭킹에서 제외
   const isHiddenStudent = (data: any) => {
-    return false;
+    return data?.isActive === false;
   };
 
   const getGradeNumber = (value: any) => {
@@ -470,16 +470,20 @@ export default function StudentExplorerPage() {
     return "";
   };
 
+  const activeStudents = students.filter((s) => {
+    return s?.isActive !== false;
+  });
+
   const filteredStudents =
     searchName.trim() === ""
       ? []
-      : students.filter((s) => {
+      : activeStudents.filter((s) => {
           return normalize(s?.name).includes(
             searchName.trim()
           );
         });
 
-  const moonRanking = students
+  const moonRanking = activeStudents
     .filter(
       (s) => getStudentGroup(s) === "moon"
     )
@@ -488,7 +492,7 @@ export default function StudentExplorerPage() {
     )
     .slice(0, 3);
 
-  const starRanking = students
+  const starRanking = activeStudents
     .filter(
       (s) => getStudentGroup(s) === "star"
     )
@@ -500,9 +504,9 @@ export default function StudentExplorerPage() {
   if (!selectedSchool) {
     if (pendingSchool) {
       return (
-        <div className="min-h-[100dvh] bg-black text-white flex items-center justify-center px-4">
-          <div className="w-full max-w-md border border-orange-500 rounded-[32px] p-8 bg-[#050505]">
-            <div className="text-3xl font-bold text-center mb-6">
+        <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 text-slate-800 flex items-center justify-center px-4">
+          <div className="w-full max-w-md border border-sky-100 rounded-[32px] p-8 bg-white/95 shadow-xl">
+            <div className="text-3xl font-bold text-center mb-6 text-slate-800">
               🔐 {pendingSchool} 입장
             </div>
 
@@ -513,7 +517,7 @@ export default function StudentExplorerPage() {
               onChange={(e) =>
                 setPasswordInput(e.target.value)
               }
-              className="w-full bg-[#111] border border-[#333] rounded-2xl px-4 py-4 text-lg mb-5 outline-none"
+              className="w-full bg-amber-50 border border-amber-200 rounded-2xl px-4 py-4 text-lg mb-5 text-slate-800 outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-100"
             />
 
             <button
@@ -538,7 +542,7 @@ export default function StudentExplorerPage() {
                   alert("비밀번호가 틀렸습니다.");
                 }
               }}
-              className="w-full bg-orange-500 hover:bg-orange-600 transition rounded-2xl py-4 text-xl font-bold"
+              className="w-full bg-sky-400 hover:bg-sky-500 transition rounded-2xl py-4 text-xl font-bold text-white shadow-sm"
             >
               입장하기
             </button>
@@ -548,7 +552,7 @@ export default function StudentExplorerPage() {
                 setPendingSchool("");
                 setPasswordInput("");
               }}
-              className="w-full mt-3 bg-[#111] border border-[#333] rounded-2xl py-3 text-sm"
+              className="w-full mt-3 bg-white border border-slate-200 rounded-2xl py-3 text-sm font-bold text-slate-600"
             >
               학교 목록으로
             </button>
@@ -570,10 +574,10 @@ export default function StudentExplorerPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-black text-white px-3 py-4">
-      <div className="max-w-xl mx-auto space-y-4">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 text-slate-800 px-3 py-4">
+      <div className="max-w-2xl mx-auto space-y-4">
         {/* 헤더 */}
-        <div className="rounded-[28px] border border-[#333] bg-[#050505] px-4 py-4">
+        <div className="rounded-[28px] border border-white/80 bg-white/90 px-4 py-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -581,12 +585,12 @@ export default function StudentExplorerPage() {
                   🧭
                 </div>
 
-                <div className="text-2xl font-bold truncate">
+                <div className="text-2xl font-bold truncate text-slate-800">
                   역사 탐험가
                 </div>
               </div>
 
-              <div className="text-sm text-gray-400 mt-1 truncate">
+              <div className="text-sm text-slate-500 mt-1 truncate">
                 {selectedSchool}
               </div>
             </div>
@@ -605,7 +609,7 @@ export default function StudentExplorerPage() {
                 setSelectedStudent(null);
                 setStudents([]);
               }}
-              className="bg-[#111] border border-[#333] px-3 py-2 rounded-2xl text-xs shrink-0"
+              className="bg-sky-50 border border-sky-200 px-3 py-2 rounded-2xl text-xs font-bold text-sky-700 shrink-0"
             >
               학교 변경
             </button>
@@ -615,8 +619,8 @@ export default function StudentExplorerPage() {
         {!selectedStudent && (
           <>
             {/* 검색 */}
-            <div className="bg-[#050505] border border-[#333] p-4 rounded-[28px]">
-              <div className="text-xl font-bold mb-3">
+            <div className="bg-white/90 border border-white/80 p-4 rounded-[28px] shadow-sm">
+              <div className="text-xl font-bold mb-3 text-slate-800">
                 🔍 학생 검색
               </div>
 
@@ -627,7 +631,7 @@ export default function StudentExplorerPage() {
                   setSearchName(e.target.value)
                 }
                 placeholder="이름 검색"
-                className="w-full rounded-[24px] border border-orange-500/40 bg-[#0b0b0f] px-5 py-4 text-lg text-white outline-none transition focus:border-orange-400"
+                className="w-full rounded-[24px] border border-sky-200 bg-sky-50/70 px-5 py-4 text-lg text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
               />
 
               {searchName.trim() !== "" && (
@@ -647,7 +651,7 @@ export default function StudentExplorerPage() {
 
               {searchName.trim() !== "" &&
                 filteredStudents.length === 0 && (
-                  <div className="mt-3 rounded-2xl border border-[#333] bg-[#0b0b0f] px-5 py-4 text-sm text-gray-500">
+                  <div className="mt-3 rounded-2xl border border-sky-100 bg-white px-5 py-4 text-sm text-slate-500">
                     검색 결과 없음
                   </div>
                 )}
@@ -659,8 +663,8 @@ export default function StudentExplorerPage() {
               icon="🌙"
               students={moonRanking}
               getScore={getScore}
-              bgColor="bg-[#15154b]"
-              borderColor="border-[#444]"
+              bgColor="bg-white/90"
+              borderColor="border-sky-100"
             />
 
             <RankingCard
@@ -668,17 +672,17 @@ export default function StudentExplorerPage() {
               icon="⭐"
               students={starRanking}
               getScore={getScore}
-              bgColor="bg-[#3a2800]"
-              borderColor="border-[#5a3d00]"
+              bgColor="bg-white/90"
+              borderColor="border-amber-100"
             />
           </>
         )}
 
         {/* 학생 비밀번호 */}
         {pendingStudent && (
-          <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
-            <div className="w-full max-w-sm bg-[#050505] border border-orange-500 rounded-[32px] p-6">
-              <div className="text-2xl font-bold text-center mb-5">
+          <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center px-4">
+            <div className="w-full max-w-sm bg-white border border-sky-100 rounded-[32px] p-6 shadow-xl">
+              <div className="text-2xl font-bold text-center mb-5 text-slate-800">
                 🔐 {pendingStudent.name}
               </div>
 
@@ -691,7 +695,7 @@ export default function StudentExplorerPage() {
                     e.target.value
                   )
                 }
-                className="w-full bg-[#111] border border-[#333] rounded-2xl px-4 py-4 text-lg mb-4 outline-none"
+                className="w-full bg-amber-50 border border-amber-200 rounded-2xl px-4 py-4 text-lg mb-4 text-slate-800 outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-100"
               />
 
               <button
@@ -719,7 +723,7 @@ export default function StudentExplorerPage() {
                     alert("비밀번호가 틀렸습니다.");
                   }
                 }}
-                className="w-full bg-orange-500 rounded-2xl py-4 text-xl font-bold"
+                className="w-full bg-sky-400 rounded-2xl py-4 text-xl font-bold text-white shadow-sm"
               >
                 입장하기
               </button>
@@ -729,7 +733,7 @@ export default function StudentExplorerPage() {
                   setPendingStudent(null);
                   setStudentPassword("");
                 }}
-                className="w-full mt-3 bg-[#111] border border-[#333] rounded-2xl py-3 text-sm"
+                className="w-full mt-3 bg-white border border-slate-200 rounded-2xl py-3 text-sm font-bold text-slate-600"
               >
                 취소
               </button>
@@ -766,7 +770,7 @@ export default function StudentExplorerPage() {
 
                 setSelectedStudent(null);
               }}
-              className="w-full bg-[#111] border border-[#333] rounded-[24px] p-4 text-sm"
+              className="w-full bg-white/90 border border-sky-100 rounded-[24px] p-4 text-sm font-bold text-sky-700 shadow-sm"
             >
               🔍 다른 탐험가 찾기
             </button>
