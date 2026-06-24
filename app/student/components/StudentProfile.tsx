@@ -350,38 +350,38 @@ export default function StudentProfile({
           </div>
         </div>
 
-      {/* 엽전 현황 */}
-<div className="grid grid-cols-3 gap-2 mt-4">
-  <div className="rounded-[22px] border border-[#333] bg-[#080808] p-3 text-center">
-    <div className="text-sm text-gray-300 font-bold whitespace-nowrap">
-      🥇 동엽전
-    </div>
+        {/* 엽전 현황 */}
+        <div className="grid grid-cols-3 gap-2 mt-4">
+          <div className="min-w-0 rounded-[22px] border border-[#333] bg-[#080808] p-3 text-center">
+            <div className="text-sm text-gray-300 font-bold whitespace-nowrap">
+              🥇 동엽전
+            </div>
 
-    <div className="text-4xl font-black mt-2">
-      {currentBronze}
-    </div>
-  </div>
+            <div className="text-4xl font-black mt-2 whitespace-nowrap">
+              {currentBronze}
+            </div>
+          </div>
 
-  <div className="rounded-[22px] border border-[#333] bg-[#080808] p-3 text-center">
-    <div className="text-sm text-gray-300 font-bold whitespace-nowrap">
-      🥈 은엽전
-    </div>
+          <div className="min-w-0 rounded-[22px] border border-[#333] bg-[#080808] p-3 text-center">
+            <div className="text-sm text-gray-300 font-bold whitespace-nowrap">
+              🥈 은엽전
+            </div>
 
-    <div className="text-4xl font-black mt-2">
-      {currentSilver}
-    </div>
-  </div>
+            <div className="text-4xl font-black mt-2 whitespace-nowrap">
+              {currentSilver}
+            </div>
+          </div>
 
-  <div className="rounded-[22px] border border-yellow-500 bg-[#151100] p-3 text-center">
-    <div className="text-sm text-yellow-200 font-bold whitespace-nowrap">
-      📊 누적
-    </div>
+          <div className="min-w-0 rounded-[22px] border border-yellow-500 bg-[#151100] p-3 text-center">
+            <div className="text-sm text-yellow-200 font-bold whitespace-nowrap">
+              📊 누적
+            </div>
 
-    <div className="text-4xl font-black mt-2 text-yellow-200">
-      {totalCoinValue}
-    </div>
-  </div>
-</div>
+            <div className="text-4xl font-black mt-2 text-yellow-200 whitespace-nowrap">
+              {totalCoinValue}
+            </div>
+          </div>
+        </div>
 
         {/* 진행률 */}
         <div className="mt-4 rounded-[24px] border border-[#333] bg-[#080808] p-4">
