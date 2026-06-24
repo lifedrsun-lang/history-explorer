@@ -125,6 +125,10 @@ export default function StudentProfile({
       return "과제";
     }
 
+    if (source === "making") {
+      return "만들기 완성";
+    }
+
     if (source === "bonus") {
       return "선생님 보너스";
     }
@@ -140,6 +144,10 @@ export default function StudentProfile({
 
       if (item?.source === "homework") {
         return "📘";
+      }
+
+      if (item?.source === "making") {
+        return "🎨";
       }
 
       if (item?.source === "bonus") {
@@ -253,6 +261,10 @@ export default function StudentProfile({
 
       if (item?.source === "homework") {
         return "과제 수행으로 획득했어요.";
+      }
+
+      if (item?.source === "making") {
+        return "만들기 활동을 완성해서 획득했어요.";
       }
 
       if (item?.source === "bonus") {

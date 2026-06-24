@@ -6,7 +6,9 @@ export default function StudentCard({
   student,
   addQuizBronze,
   addHomeworkBronze,
+  addMakingBronze,
   addBonusBronze,
+  removeBronze,
   useSilver,
   changeStage,
   toggleStudentVisible,
@@ -107,28 +109,42 @@ export default function StudentCard({
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => addQuizBronze(student)}
-            className="bg-yellow-500 text-white rounded-xl py-2 font-bold"
+            className="bg-yellow-500 text-white rounded-xl py-2 font-bold whitespace-nowrap"
           >
             퀴즈 +동
           </button>
 
           <button
             onClick={() => addHomeworkBronze(student)}
-            className="bg-amber-600 text-white rounded-xl py-2 font-bold"
+            className="bg-amber-600 text-white rounded-xl py-2 font-bold whitespace-nowrap"
           >
             과제 +동
           </button>
 
           <button
+            onClick={() => addMakingBronze(student)}
+            className="bg-sky-500 text-white rounded-xl py-2 font-bold whitespace-nowrap"
+          >
+            만들기 +동
+          </button>
+
+          <button
             onClick={() => addBonusBronze(student)}
-            className="bg-emerald-500 text-white rounded-xl py-2 font-bold"
+            className="bg-emerald-500 text-white rounded-xl py-2 font-bold whitespace-nowrap"
           >
             보너스 +동
           </button>
 
           <button
+            onClick={() => removeBronze(student)}
+            className="bg-orange-500 text-white rounded-xl py-2 font-bold whitespace-nowrap"
+          >
+            동회수
+          </button>
+
+          <button
             onClick={() => useSilver(student)}
-            className="bg-pink-500 text-white rounded-xl py-2 font-bold"
+            className="bg-pink-500 text-white rounded-xl py-2 font-bold whitespace-nowrap"
           >
             은사용
           </button>

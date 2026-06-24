@@ -20,7 +20,7 @@ import TeacherLogin from "./components/TeacherLogin";
 import StudentCard from "./components/StudentCard";
 import StudentEditModal from "./components/StudentEditModal";
 
-type CoinSource = "quiz" | "homework" | "bonus";
+type CoinSource = "quiz" | "homework" | "bonus" | "making";
 
 export default function TeacherPage() {
   const router = useRouter();
@@ -75,6 +75,10 @@ export default function TeacherPage() {
 
     if (source === "homework") {
       return "과제";
+    }
+
+    if (source === "making") {
+      return "만들기 완성";
     }
 
     return "선생님 보너스";
@@ -286,6 +290,10 @@ export default function TeacherPage() {
 
   const addHomeworkBronze = async (student: any) => {
     await addBronzeBySource(student, "homework", 1);
+  };
+
+  const addMakingBronze = async (student: any) => {
+    await addBronzeBySource(student, "making", 1);
   };
 
   const addBonusBronze = async (student: any) => {
@@ -742,6 +750,7 @@ export default function TeacherPage() {
               removeBronze={removeBronze}
               addQuizBronze={addQuizBronze}
               addHomeworkBronze={addHomeworkBronze}
+              addMakingBronze={addMakingBronze}
               addBonusBronze={addBonusBronze}
               useSilver={useSilver}
               changeStage={changeStage}
