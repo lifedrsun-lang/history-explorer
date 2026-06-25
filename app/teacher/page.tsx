@@ -19,6 +19,7 @@ import {
   STAGE_DATA,
   getBookNumberFromStage,
   getStageIdForBook,
+  getStageInfo,
 } from "@/app/student/data/stageData";
 import {
   DEFAULT_STUDENT_PROGRAM,
@@ -35,6 +36,11 @@ import StudentCard from "./components/StudentCard";
 import StudentEditModal from "./components/StudentEditModal";
 
 type CoinSource = "quiz" | "homework" | "bonus" | "making";
+type AttendanceStatus =
+  | "출석"
+  | "결석(병가)"
+  | "결석(체험학습)"
+  | "지각";
 
 const TEACHING_CLASS_OPTIONS = ["A반", "B반"];
 const LAST_STUDENT_REGISTRATION_KEY = "teacherLastStudentRegistration";
@@ -199,6 +205,17 @@ export default function TeacherPage() {
     return [...currentHistory, ...newItems].slice(-100);
   };
 
+  const makeClassHistoryItem = (item: any) => {
+    return {
+      id: `class-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`,
+      date: getTodayString(),
+      createdAt: new Date(),
+      ...item,
+    };
+  };
+
   const getStudentRef = (student: any) => {
     return doc(db, "students", student.id);
   };
@@ -340,6 +357,8 @@ export default function TeacherPage() {
       isActive: true,
 
       coinHistory: [],
+      attendanceHistory: [],
+      materialHistory: [],
     });
 
     setStudentNumber("");
@@ -528,6 +547,78 @@ export default function TeacherPage() {
     });
 
     showToast("은엽전 1개 사용 완료");
+
+    fetchStudents();
+  };
+
+  const getAttendanceToastIcon = (status: AttendanceStatus) => {
+    if (status === "출석") {
+      return "✅";
+    }
+
+    if (status === "결석(병가)") {
+      return "🚫";
+    }
+
+    if (status === "결석(체험학습)") {
+      return "🏕";
+    }
+
+    return "⏰";
+  };
+
+  const addAttendanceRecord = async (
+    student: any,
+    status: AttendanceStatus
+  ) => {
+    const currentHistory = Array.isArray(student?.attendanceHistory)
+      ? student.attendanceHistory
+      : [];
+
+    const attendanceHistory = [
+      ...currentHistory,
+      makeClassHistoryItem({
+        type: "attendance",
+        status,
+        text: status,
+      }),
+    ].slice(-100);
+
+    await updateDoc(getStudentRef(student), {
+      attendanceHistory,
+    });
+
+    showToast(`${getAttendanceToastIcon(status)} ${status} 기록 완료`);
+
+    fetchStudents();
+  };
+
+  const addMaterialRecord = async (student: any) => {
+    const currentHistory = Array.isArray(student?.materialHistory)
+      ? student.materialHistory
+      : [];
+
+    const stageInfo = getStageInfo(student?.stage);
+    const materialName =
+      stageInfo?.current?.short ||
+      `별꼼역사 ${getBookNumberFromStage(student?.stage)}권`;
+
+    const materialHistory = [
+      ...currentHistory,
+      makeClassHistoryItem({
+        type: "material",
+        materialName,
+        stageId: student?.stage || "",
+        stageTitle: stageInfo?.current?.title || "",
+        text: `${materialName} 교재 지급`,
+      }),
+    ].slice(-100);
+
+    await updateDoc(getStudentRef(student), {
+      materialHistory,
+    });
+
+    showToast("📦 교재 지급 기록 완료");
 
     fetchStudents();
   };
@@ -1138,6 +1229,8 @@ export default function TeacherPage() {
               addMakingBronze={addMakingBronze}
               addBonusBronze={addBonusBronze}
               useSilver={useSilver}
+              addAttendanceRecord={addAttendanceRecord}
+              addMaterialRecord={addMaterialRecord}
               changeStage={changeStage}
               toggleStudentVisible={toggleStudentVisible}
               deleteStudent={deleteStudent}

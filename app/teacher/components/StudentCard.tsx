@@ -12,6 +12,8 @@ export default function StudentCard({
   addBonusBronze,
   removeBronze,
   useSilver,
+  addAttendanceRecord,
+  addMaterialRecord,
   changeStage,
   toggleStudentVisible,
   deleteStudent,
@@ -24,6 +26,20 @@ export default function StudentCard({
   const coinHistoryCount = Array.isArray(student?.coinHistory)
     ? student.coinHistory.length
     : 0;
+  const attendanceHistoryCount = Array.isArray(
+    student?.attendanceHistory
+  )
+    ? student.attendanceHistory.length
+    : 0;
+  const materialHistoryCount = Array.isArray(
+    student?.materialHistory
+  )
+    ? student.materialHistory.length
+    : 0;
+  const classHistoryCount =
+    coinHistoryCount +
+    attendanceHistoryCount +
+    materialHistoryCount;
 
   const programLabel = getStudentProgramLabel(
     student?.program
@@ -76,7 +92,7 @@ export default function StudentCard({
         </div>
 
         <div className="text-[11px] sm:text-xs font-bold text-indigo-700 mt-1 truncate">
-          🪙 코인 기록: {coinHistoryCount}개
+          📒 수업 기록: {classHistoryCount}개
         </div>
       </div>
 
@@ -164,6 +180,52 @@ export default function StudentCard({
 
         <div className="text-[11px] text-gray-500 mt-2 leading-snug">
           동엽전이 10개가 되면 은엽전 1개로 자동 교환됩니다.
+        </div>
+      </div>
+
+      {/* 수업 기록 */}
+      <div className="bg-slate-50 rounded-2xl p-2 sm:p-3 mb-2">
+        <div className="font-bold text-slate-700 mb-2 text-sm">
+          📒 수업 기록
+        </div>
+
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+          <button
+            onClick={() => addAttendanceRecord(student, "출석")}
+            className="bg-emerald-500 text-white rounded-xl py-2 px-1 text-[11px] sm:text-sm font-bold whitespace-nowrap"
+          >
+            출석
+          </button>
+
+          <button
+            onClick={() => addAttendanceRecord(student, "결석(병가)")}
+            className="bg-rose-500 text-white rounded-xl py-2 px-1 text-[11px] sm:text-sm font-bold whitespace-nowrap"
+          >
+            병가
+          </button>
+
+          <button
+            onClick={() =>
+              addAttendanceRecord(student, "결석(체험학습)")
+            }
+            className="bg-sky-500 text-white rounded-xl py-2 px-1 text-[11px] sm:text-sm font-bold whitespace-nowrap"
+          >
+            체험
+          </button>
+
+          <button
+            onClick={() => addAttendanceRecord(student, "지각")}
+            className="bg-orange-500 text-white rounded-xl py-2 px-1 text-[11px] sm:text-sm font-bold whitespace-nowrap"
+          >
+            지각
+          </button>
+
+          <button
+            onClick={() => addMaterialRecord(student)}
+            className="col-span-2 bg-indigo-500 text-white rounded-xl py-2 px-1 text-[11px] sm:text-sm font-bold whitespace-nowrap"
+          >
+            교재 지급
+          </button>
         </div>
       </div>
 

@@ -62,6 +62,16 @@ export default function StudentProfile({
   )
     ? [...student.coinHistory]
     : [];
+  const attendanceHistory = Array.isArray(
+    student?.attendanceHistory
+  )
+    ? [...student.attendanceHistory]
+    : [];
+  const materialHistory = Array.isArray(
+    student?.materialHistory
+  )
+    ? [...student.materialHistory]
+    : [];
 
   const getDateValue = (item: any) => {
     if (item?.createdAt?.seconds) {
@@ -75,18 +85,33 @@ export default function StudentProfile({
     return 0;
   };
 
-  const sortedCoinHistory = coinHistory.sort(
+  const classHistory = [
+    ...coinHistory.map((item) => ({
+      ...item,
+      historyKind: "coin",
+    })),
+    ...attendanceHistory.map((item) => ({
+      ...item,
+      historyKind: "attendance",
+    })),
+    ...materialHistory.map((item) => ({
+      ...item,
+      historyKind: "material",
+    })),
+  ];
+
+  const sortedClassHistory = classHistory.sort(
     (a: any, b: any) =>
       getDateValue(b) - getDateValue(a)
   );
 
-  const displayedCoinHistory =
+  const displayedClassHistory =
     showAllHistory
-      ? sortedCoinHistory
-      : sortedCoinHistory.slice(0, 3);
+      ? sortedClassHistory
+      : sortedClassHistory.slice(0, 5);
 
   const hasMoreHistory =
-    sortedCoinHistory.length > 3;
+    sortedClassHistory.length > 5;
 
   const formatDate = (value: any) => {
     if (!value) {
@@ -149,6 +174,36 @@ export default function StudentProfile({
   };
 
   const getHistoryIcon = (item: any) => {
+    if (
+      item?.historyKind === "attendance" ||
+      item?.type === "attendance"
+    ) {
+      if (item?.status === "출석") {
+        return "✅";
+      }
+
+      if (item?.status === "결석(병가)") {
+        return "🚫";
+      }
+
+      if (item?.status === "결석(체험학습)") {
+        return "🏕";
+      }
+
+      if (item?.status === "지각") {
+        return "⏰";
+      }
+
+      return "✅";
+    }
+
+    if (
+      item?.historyKind === "material" ||
+      item?.type === "material"
+    ) {
+      return "📦";
+    }
+
     if (item?.type === "earn") {
       if (item?.source === "quiz") {
         return "🧠";
@@ -185,6 +240,23 @@ export default function StudentProfile({
   };
 
   const getHistoryTitle = (item: any) => {
+    if (
+      item?.historyKind === "attendance" ||
+      item?.type === "attendance"
+    ) {
+      return item?.status || item?.text || "출결 기록";
+    }
+
+    if (
+      item?.historyKind === "material" ||
+      item?.type === "material"
+    ) {
+      return (
+        item?.text ||
+        `${item?.materialName || "교재"} 지급`
+      );
+    }
+
     if (item?.text) {
       if (
         item?.type === "earn" &&
@@ -262,10 +334,27 @@ export default function StudentProfile({
       }개 회수`;
     }
 
-    return "코인 기록";
+    return "수업 기록";
   };
 
   const getHistorySubText = (item: any) => {
+    if (
+      item?.historyKind === "attendance" ||
+      item?.type === "attendance"
+    ) {
+      return "수업 출결 기록입니다.";
+    }
+
+    if (
+      item?.historyKind === "material" ||
+      item?.type === "material"
+    ) {
+      return (
+        item?.stageTitle ||
+        "교재 지급 기록입니다."
+      );
+    }
+
     if (item?.type === "earn") {
       if (item?.source === "quiz") {
         return "수업 퀴즈 참여로 획득했어요.";
@@ -299,6 +388,55 @@ export default function StudentProfile({
     }
 
     return "";
+  };
+
+  const getHistoryStyle = (item: any) => {
+    const isAttendance =
+      item?.historyKind === "attendance" ||
+      item?.type === "attendance";
+    const isMaterial =
+      item?.historyKind === "material" ||
+      item?.type === "material";
+
+    if (isAttendance) {
+      if (item?.status === "출석") {
+        return {
+          card: "border-emerald-100 bg-emerald-50/80",
+          icon: "border-emerald-200 bg-emerald-100",
+        };
+      }
+
+      if (item?.status === "결석(병가)") {
+        return {
+          card: "border-rose-100 bg-rose-50/80",
+          icon: "border-rose-200 bg-rose-100",
+        };
+      }
+
+      if (item?.status === "결석(체험학습)") {
+        return {
+          card: "border-sky-100 bg-sky-50/80",
+          icon: "border-sky-200 bg-sky-100",
+        };
+      }
+
+      return {
+        card: "border-orange-100 bg-orange-50/80",
+        icon: "border-orange-200 bg-orange-100",
+      };
+    }
+
+    if (isMaterial) {
+      return {
+        card: "border-indigo-100 bg-indigo-50/80",
+        icon: "border-indigo-200 bg-indigo-100",
+      };
+    }
+
+    return {
+      card: "border-amber-100 bg-white",
+      icon: "border-amber-100 bg-amber-50",
+    };
   };
 
   const noticeClassTimes =
@@ -454,30 +592,30 @@ export default function StudentProfile({
           </div>
         </div>
 
-        {/* 코인 기록 */}
+        {/* 수업 기록 */}
         <div className="mt-5">
           <div className="flex items-center justify-between mb-4">
             <div className="text-2xl font-black text-slate-800">
-              🪙 코인 기록
+              📒 수업 기록
             </div>
 
             <div className="text-sm text-slate-500">
-              총 {sortedCoinHistory.length}개
+              총 {sortedClassHistory.length}개
             </div>
           </div>
 
-          {sortedCoinHistory.length === 0 ? (
+          {sortedClassHistory.length === 0 ? (
             <div className="rounded-[24px] border border-amber-100 bg-amber-50/80 p-5 text-center">
               <div className="text-4xl mb-3">
                 📭
               </div>
 
               <div className="text-lg font-bold text-slate-700">
-                아직 코인 기록이 없습니다.
+                아직 수업 기록이 없습니다.
               </div>
 
               <div className="text-sm text-slate-500 mt-2">
-                퀴즈, 과제, 만들기, 보너스로 코인을 받으면 여기에 기록돼요.
+                코인, 출결, 교재 지급 기록이 여기에 모여요.
               </div>
             </div>
           ) : (
@@ -489,14 +627,17 @@ export default function StudentProfile({
                     : "space-y-3"
                 }
               >
-                {displayedCoinHistory.map(
-                  (item: any, index: number) => (
+                {displayedClassHistory.map(
+                  (item: any, index: number) => {
+                    const historyStyle = getHistoryStyle(item);
+
+                    return (
                     <div
                       key={`${item?.id || item?.date || "history"}-${index}`}
-                      className="rounded-[24px] border border-sky-100 bg-white p-4 shadow-sm"
+                      className={`rounded-[24px] border p-4 shadow-sm ${historyStyle.card}`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-sky-50 border border-sky-100 flex items-center justify-center text-2xl shrink-0">
+                        <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center text-2xl shrink-0 ${historyStyle.icon}`}>
                           {getHistoryIcon(item)}
                         </div>
 
@@ -520,7 +661,8 @@ export default function StudentProfile({
                         </div>
                       </div>
                     </div>
-                  )
+                    );
+                  }
                 )}
               </div>
 
@@ -534,8 +676,8 @@ export default function StudentProfile({
                   className="w-full mt-3 rounded-[20px] border border-sky-200 bg-sky-50 py-3 text-sm font-bold text-sky-700"
                 >
                   {showAllHistory
-                    ? "최근 기록 3개만 보기"
-                    : `전체 코인 기록 보기 (${sortedCoinHistory.length}개)`}
+                    ? "최근 기록 5개만 보기"
+                    : `전체 수업 기록 보기 (${sortedClassHistory.length}개)`}
                 </button>
               )}
             </>
