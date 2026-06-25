@@ -125,7 +125,7 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
       location: "문화센터 강의실",
     },
     notice: {
-      title: "2분기 수업 안내",
+      title: "수업 안내",
       location: "문화센터 강의실",
       classTimes: [],
     },
