@@ -38,6 +38,7 @@ import StudentEditModal from "./components/StudentEditModal";
 type CoinSource = "quiz" | "homework" | "bonus" | "making";
 
 const TEACHING_CLASS_OPTIONS = ["A반", "B반"];
+const LAST_STUDENT_REGISTRATION_KEY = "teacherLastStudentRegistration";
 
 export default function TeacherPage() {
   const router = useRouter();
@@ -52,6 +53,8 @@ export default function TeacherPage() {
   const [studentClass, setStudentClass] = useState("");
   const [studentNumber, setStudentNumber] = useState("");
   const [name, setName] = useState("");
+  const [studentTeachingClass, setStudentTeachingClass] =
+    useState("A반");
   const [studentProgram, setStudentProgram] =
     useState<StudentProgram>(DEFAULT_STUDENT_PROGRAM);
 
@@ -68,6 +71,8 @@ export default function TeacherPage() {
     useState<ProgramFilter>("all");
   const [selectedTab, setSelectedTab] = useState("A반");
   const [searchTerm, setSearchTerm] = useState("");
+  const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
+  const [isBulkStageOpen, setIsBulkStageOpen] = useState(false);
 
   const [editingStudent, setEditingStudent] = useState<any>(null);
 
@@ -105,6 +110,20 @@ export default function TeacherPage() {
     teachingClass: string
   ) => {
     return getTeachingClass(student) === teachingClass;
+  };
+
+  const rememberStudentRegistration = () => {
+    localStorage.setItem(
+      LAST_STUDENT_REGISTRATION_KEY,
+      JSON.stringify({
+        school,
+        grade,
+        studentClass,
+        studentTeachingClass,
+        studentProgram,
+        selectedStage,
+      })
+    );
   };
 
   const getTodayString = () => {
@@ -176,6 +195,54 @@ export default function TeacherPage() {
   useEffect(() => {
     fetchStudents();
 
+    const savedRegistration = localStorage.getItem(
+      LAST_STUDENT_REGISTRATION_KEY
+    );
+
+    if (savedRegistration) {
+      try {
+        const parsed = JSON.parse(savedRegistration);
+
+        if (typeof parsed?.school === "string") {
+          setSchool(parsed.school);
+        }
+
+        if (typeof parsed?.grade === "string") {
+          setGrade(parsed.grade);
+        }
+
+        if (typeof parsed?.studentClass === "string") {
+          setStudentClass(parsed.studentClass);
+        }
+
+        if (
+          TEACHING_CLASS_OPTIONS.includes(
+            parsed?.studentTeachingClass
+          )
+        ) {
+          setStudentTeachingClass(parsed.studentTeachingClass);
+        }
+
+        if (
+          STUDENT_PROGRAM_OPTIONS.some(
+            (option) => option.value === parsed?.studentProgram
+          )
+        ) {
+          setStudentProgram(parsed.studentProgram);
+        }
+
+        if (
+          STAGE_DATA.some(
+            (stage) => stage.id === parsed?.selectedStage
+          )
+        ) {
+          setSelectedStage(parsed.selectedStage);
+        }
+      } catch {
+        localStorage.removeItem(LAST_STUDENT_REGISTRATION_KEY);
+      }
+    }
+
     const savedAuth = localStorage.getItem("teacherAuth");
     const loginTime = localStorage.getItem("teacherLoginTime");
 
@@ -203,9 +270,18 @@ export default function TeacherPage() {
     }
   };
 
-  const saveStudent = async () => {
+  const saveStudent = async (keepOpen = false) => {
     if (!grade || !studentClass || !studentNumber || !name) {
-      alert("학년 / 반 / 번호 / 이름을 입력해주세요!");
+      alert("학년 / 실제 학교 반 / 번호 / 이름을 입력해주세요!");
+      return;
+    }
+
+    const actualTeachingClass = getTeachingClass({ grade });
+
+    if (actualTeachingClass !== studentTeachingClass) {
+      alert(
+        "수업반과 학년 기준이 맞지 않습니다.\nA반은 1~2학년, B반은 3~6학년 기준으로 등록해주세요."
+      );
       return;
     }
 
@@ -232,13 +308,14 @@ export default function TeacherPage() {
       coinHistory: [],
     });
 
-    setSchool("");
-    setGrade("");
-    setStudentClass("");
     setStudentNumber("");
     setName("");
-    setStudentProgram(DEFAULT_STUDENT_PROGRAM);
-    setSelectedStage(DEFAULT_STAGE_ID);
+
+    rememberStudentRegistration();
+
+    if (!keepOpen) {
+      setIsStudentModalOpen(false);
+    }
 
     alert(`학생 등록 완료!\n비밀번호 : ${password}`);
 
@@ -790,204 +867,6 @@ export default function TeacherPage() {
           </div>
         </div>
 
-        {/* 학생 등록 */}
-        <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
-          <div className="text-xl font-bold mb-3">✏️ 학생 등록</div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2 mb-3">
-            <input
-              type="text"
-              placeholder="학교"
-              value={school}
-              onChange={(e) => setSchool(e.target.value)}
-              className="border rounded-xl px-3 py-2 text-sm"
-            />
-
-            <input
-              type="text"
-              placeholder="학년"
-              value={grade}
-              onChange={(e) => setGrade(e.target.value)}
-              className="border rounded-xl px-3 py-2 text-sm"
-            />
-
-            <input
-              type="text"
-              placeholder="반"
-              value={studentClass}
-              onChange={(e) => setStudentClass(e.target.value)}
-              className="border rounded-xl px-3 py-2 text-sm"
-            />
-
-            <input
-              type="text"
-              placeholder="번호"
-              value={studentNumber}
-              onChange={(e) => setStudentNumber(e.target.value)}
-              className="border rounded-xl px-3 py-2 text-sm"
-            />
-
-            <input
-              type="text"
-              placeholder="이름"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="border rounded-xl px-3 py-2 text-sm"
-            />
-
-            <select
-              value={studentProgram}
-              onChange={(e) =>
-                setStudentProgram(
-                  e.target.value as StudentProgram
-                )
-              }
-              className="border rounded-xl px-3 py-2 text-sm"
-            >
-              {STUDENT_PROGRAM_OPTIONS.map(
-                (option) => (
-                  <option
-                    key={option.value}
-                    value={option.value}
-                  >
-                    {option.label}
-                  </option>
-                )
-              )}
-            </select>
-
-            <select
-              value={selectedStage}
-              onChange={(e) =>
-                setSelectedStage(e.target.value)
-              }
-              className="border rounded-xl px-3 py-2 text-sm"
-            >
-              {STAGE_DATA.map((stage) => (
-                <option key={stage.id} value={stage.id}>
-                  {stage.label} {stage.title}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {studentNumber && (
-            <div className="text-sm text-blue-500 font-bold mb-3">
-              자동 비밀번호: {String(studentNumber).padStart(2, "0")}
-            </div>
-          )}
-
-          <div className="flex flex-col md:flex-row gap-2">
-            <button
-              onClick={saveStudent}
-              className="bg-yellow-500 text-white rounded-xl px-4 py-2 font-bold"
-            >
-              🎉 학생 등록
-            </button>
-
-            <button
-              onClick={updateAllPasswords}
-              className="bg-green-500 text-white rounded-xl px-4 py-2 font-bold"
-            >
-              🔑 기존 학생 비밀번호 생성
-            </button>
-
-            <button
-              onClick={updateMissingStudentPrograms}
-              className="bg-slate-200 text-slate-700 rounded-xl px-3 py-2 text-xs font-bold"
-            >
-              기존 학생 별꼼역사 일괄 반영
-            </button>
-          </div>
-        </div>
-
-        {/* 반 전체 진도 변경 */}
-        <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
-          <div className="text-xl font-bold mb-3">
-            📚 반 전체 진도 변경
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
-            <select
-              value={bulkProgram}
-              onChange={(e) => {
-                setBulkProgram(e.target.value as StudentProgram);
-                setBulkSchool("");
-                setBulkClass("");
-              }}
-              className="border rounded-xl px-3 py-2 text-sm"
-            >
-              {STUDENT_PROGRAM_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={bulkSchool}
-              onChange={(e) => {
-                setBulkSchool(e.target.value);
-                setBulkClass("");
-              }}
-              className="border rounded-xl px-3 py-2 text-sm"
-            >
-              <option value="">학교 선택</option>
-              {bulkSchoolList.map((schoolName) => (
-                <option key={schoolName} value={schoolName}>
-                  {schoolName}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={bulkClass}
-              onChange={(e) => setBulkClass(e.target.value)}
-              className="border rounded-xl px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-400"
-              disabled={!bulkSchool}
-            >
-              <option value="">반 선택</option>
-              {bulkClassList.map((className) => (
-                <option key={className} value={className}>
-                  {className}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={bulkStage}
-              onChange={(e) => setBulkStage(e.target.value)}
-              className="border rounded-xl px-3 py-2 text-sm"
-            >
-              {STAGE_DATA.map((stage) => (
-                <option key={stage.id} value={stage.id}>
-                  {stage.label} {stage.title}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {bulkProgram !== DEFAULT_STUDENT_PROGRAM && (
-            <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700">
-              현재 진도 일괄 변경은 별꼼역사만 지원합니다.
-            </div>
-          )}
-
-          <div className="flex flex-col md:flex-row md:items-center gap-2">
-            <button
-              onClick={changeBulkStage}
-              className="bg-indigo-500 text-white rounded-xl px-4 py-2 font-bold"
-            >
-              선택한 반 진도 변경
-            </button>
-
-            <div className="text-xs text-gray-500 leading-relaxed">
-              숨김 학생은 제외되며, 조건에 맞는 활성 학생{" "}
-              {bulkTargetStudents.length}명이 대상입니다.
-            </div>
-          </div>
-        </div>
-
         {/* 학생 수 */}
         <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
           <div className="grid grid-cols-3 gap-3 text-center">
@@ -1082,6 +961,125 @@ export default function TeacherPage() {
           </div>
         </div>
 
+        {/* 관리 도구 */}
+        <div className="bg-white rounded-3xl p-3 mb-4 shadow-md">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setIsStudentModalOpen(true)}
+              className="bg-yellow-500 text-white rounded-xl px-4 py-2 text-sm font-bold"
+            >
+              ➕ 신규 학생 등록
+            </button>
+
+            <button
+              onClick={() =>
+                setIsBulkStageOpen((current) => !current)
+              }
+              className="bg-indigo-500 text-white rounded-xl px-4 py-2 text-sm font-bold"
+            >
+              📚 반 전체 진도 변경
+            </button>
+
+            <button
+              onClick={updateAllPasswords}
+              className="bg-green-500 text-white rounded-xl px-3 py-2 text-sm font-bold"
+            >
+              🔑 비밀번호 생성
+            </button>
+
+            <button
+              onClick={updateMissingStudentPrograms}
+              className="bg-slate-200 text-slate-700 rounded-xl px-3 py-2 text-xs font-bold"
+            >
+              기존 학생 별꼼역사 일괄 반영
+            </button>
+          </div>
+
+          {isBulkStageOpen && (
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
+                <select
+                  value={bulkProgram}
+                  onChange={(e) => {
+                    setBulkProgram(e.target.value as StudentProgram);
+                    setBulkSchool("");
+                    setBulkClass("");
+                  }}
+                  className="border rounded-xl px-3 py-2 text-sm"
+                >
+                  {STUDENT_PROGRAM_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={bulkSchool}
+                  onChange={(e) => {
+                    setBulkSchool(e.target.value);
+                    setBulkClass("");
+                  }}
+                  className="border rounded-xl px-3 py-2 text-sm"
+                >
+                  <option value="">학교 선택</option>
+                  {bulkSchoolList.map((schoolName) => (
+                    <option key={schoolName} value={schoolName}>
+                      {schoolName}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={bulkClass}
+                  onChange={(e) => setBulkClass(e.target.value)}
+                  className="border rounded-xl px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-400"
+                  disabled={!bulkSchool}
+                >
+                  <option value="">A반/B반 선택</option>
+                  {bulkClassList.map((className) => (
+                    <option key={className} value={className}>
+                      {className}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={bulkStage}
+                  onChange={(e) => setBulkStage(e.target.value)}
+                  className="border rounded-xl px-3 py-2 text-sm"
+                >
+                  {STAGE_DATA.map((stage) => (
+                    <option key={stage.id} value={stage.id}>
+                      {stage.label} {stage.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {bulkProgram !== DEFAULT_STUDENT_PROGRAM && (
+                <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700">
+                  현재 진도 일괄 변경은 별꼼역사만 지원합니다.
+                </div>
+              )}
+
+              <div className="flex flex-col md:flex-row md:items-center gap-2">
+                <button
+                  onClick={changeBulkStage}
+                  className="bg-indigo-500 text-white rounded-xl px-4 py-2 font-bold"
+                >
+                  선택한 반 진도 변경
+                </button>
+
+                <div className="text-xs text-gray-500 leading-relaxed">
+                  숨김 학생은 제외되며, 조건에 맞는 활성 학생{" "}
+                  {bulkTargetStudents.length}명이 대상입니다.
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* 학생 목록 */}
         <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-3 xl:gap-4 items-start">
           {activeStudents.map((student) => (
@@ -1123,6 +1121,198 @@ export default function TeacherPage() {
                   </button>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* 신규 학생 등록 모달 */}
+        {isStudentModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-3">
+            <div className="w-full max-w-3xl max-h-[90dvh] overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <div className="text-2xl font-black">
+                    ➕ 신규 학생 등록
+                  </div>
+                  <div className="text-sm text-gray-500 mt-1">
+                    같은 학교와 반은 유지하고 여러 명을 이어서 등록할 수 있습니다.
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsStudentModalOpen(false)}
+                  className="rounded-xl bg-gray-100 px-3 py-2 text-sm font-bold text-gray-700"
+                >
+                  닫기
+                </button>
+              </div>
+
+              <div className="rounded-2xl border border-yellow-100 bg-yellow-50/70 p-4 mb-4">
+                <div className="font-black text-yellow-800 mb-3">
+                  공통 정보
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <label className="text-sm font-bold text-gray-700">
+                    프로그램
+                    <select
+                      value={studentProgram}
+                      onChange={(e) =>
+                        setStudentProgram(
+                          e.target.value as StudentProgram
+                        )
+                      }
+                      className="mt-1 w-full border rounded-xl px-3 py-2 text-sm bg-white"
+                    >
+                      {STUDENT_PROGRAM_OPTIONS.map(
+                        (option) => (
+                          <option
+                            key={option.value}
+                            value={option.value}
+                          >
+                            {option.label}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </label>
+
+                  <label className="text-sm font-bold text-gray-700">
+                    학교
+                    <input
+                      type="text"
+                      list="teacher-school-options"
+                      placeholder="학교"
+                      value={school}
+                      onChange={(e) => setSchool(e.target.value)}
+                      className="mt-1 w-full border rounded-xl px-3 py-2 text-sm bg-white"
+                    />
+                  </label>
+
+                  <label className="text-sm font-bold text-gray-700">
+                    수업반
+                    <select
+                      value={studentTeachingClass}
+                      onChange={(e) => {
+                        const nextClass = e.target.value;
+
+                        setStudentTeachingClass(nextClass);
+
+                        if (!grade) {
+                          setGrade(nextClass === "A반" ? "1" : "3");
+                        }
+                      }}
+                      className="mt-1 w-full border rounded-xl px-3 py-2 text-sm bg-white"
+                    >
+                      {TEACHING_CLASS_OPTIONS.map((className) => (
+                        <option key={className} value={className}>
+                          {className}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="text-sm font-bold text-gray-700">
+                    시작 진도
+                    <select
+                      value={selectedStage}
+                      onChange={(e) =>
+                        setSelectedStage(e.target.value)
+                      }
+                      className="mt-1 w-full border rounded-xl px-3 py-2 text-sm bg-white"
+                    >
+                      {STAGE_DATA.map((stage) => (
+                        <option key={stage.id} value={stage.id}>
+                          {stage.label} {stage.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-sky-100 bg-sky-50/70 p-4">
+                <div className="font-black text-sky-800 mb-3">
+                  학생 정보
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <label className="text-sm font-bold text-gray-700 md:col-span-2">
+                    이름
+                    <input
+                      type="text"
+                      placeholder="이름"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="mt-1 w-full border rounded-xl px-3 py-2 text-sm bg-white"
+                    />
+                  </label>
+
+                  <label className="text-sm font-bold text-gray-700">
+                    학년
+                    <input
+                      type="text"
+                      placeholder="학년"
+                      value={grade}
+                      onChange={(e) => setGrade(e.target.value)}
+                      className="mt-1 w-full border rounded-xl px-3 py-2 text-sm bg-white"
+                    />
+                  </label>
+
+                  <label className="text-sm font-bold text-gray-700">
+                    실제 학교 반
+                    <input
+                      type="text"
+                      placeholder="반"
+                      value={studentClass}
+                      onChange={(e) => setStudentClass(e.target.value)}
+                      className="mt-1 w-full border rounded-xl px-3 py-2 text-sm bg-white"
+                    />
+                  </label>
+
+                  <label className="text-sm font-bold text-gray-700">
+                    번호
+                    <input
+                      type="text"
+                      placeholder="번호"
+                      value={studentNumber}
+                      onChange={(e) => setStudentNumber(e.target.value)}
+                      className="mt-1 w-full border rounded-xl px-3 py-2 text-sm bg-white"
+                    />
+                  </label>
+                </div>
+
+                {studentNumber && (
+                  <div className="mt-3 text-sm font-bold text-blue-600">
+                    자동 비밀번호:{" "}
+                    {String(studentNumber).padStart(2, "0")}
+                  </div>
+                )}
+              </div>
+
+              <datalist id="teacher-school-options">
+                {schoolList
+                  .filter((schoolName) => schoolName !== "전체학교")
+                  .map((schoolName) => (
+                    <option key={schoolName} value={schoolName} />
+                  ))}
+              </datalist>
+
+              <div className="mt-4 flex flex-col md:flex-row justify-end gap-2">
+                <button
+                  onClick={() => saveStudent(true)}
+                  className="rounded-xl bg-emerald-500 px-4 py-2 font-bold text-white"
+                >
+                  계속 등록
+                </button>
+
+                <button
+                  onClick={() => saveStudent(false)}
+                  className="rounded-xl bg-yellow-500 px-4 py-2 font-bold text-white"
+                >
+                  등록
+                </button>
+              </div>
             </div>
           </div>
         )}
