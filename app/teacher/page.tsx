@@ -177,6 +177,7 @@ export default function TeacherPage() {
       totalSilver: 0,
 
       stage: selectedStage,
+      program: "history",
       isActive: true,
 
       coinHistory: [],
