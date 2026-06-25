@@ -22,17 +22,25 @@ export default function StudentProfile({
   const [showAllHistory, setShowAllHistory] =
     useState(false);
 
-  const TOTAL_PROGRESS = 92;
+  const TOTAL_PROGRESS = 23;
+  const displayedProgressStage = Math.min(
+    TOTAL_PROGRESS,
+    Math.max(1, Number(currentStage || 1))
+  );
 
   const progressPercent = Math.min(
     100,
     Math.max(
       0,
-      (currentStage / TOTAL_PROGRESS) * 100
+      (displayedProgressStage / TOTAL_PROGRESS) *
+        100
     )
   );
 
   const current = stageInfo?.current;
+  const stageDescription =
+    current?.description ||
+    "이번 권의 역사 이야기를 탐험하고 있어요.";
 
   const currentBronze = Number(
     student?.bronze || 0
@@ -349,15 +357,23 @@ export default function StudentProfile({
           </div>
         </div>
 
-        {/* 현재 시대 */}
+        {/* 현재 진도 */}
         <div className="mt-5 rounded-[24px] border border-amber-100 bg-amber-50/80 p-4">
           <div className="text-sm text-amber-700 font-bold">
-            🏛 현재 시대
+            🏛 현재 진도
           </div>
 
           <div className="mt-4">
-            <div className="text-[clamp(20px,6vw,40px)] leading-tight font-black whitespace-nowrap overflow-hidden text-ellipsis text-slate-800">
-              {current?.title} {current?.era}
+            <div className="text-base font-black text-sky-700 whitespace-nowrap overflow-hidden text-ellipsis">
+              {current?.short || "별꼼역사 1권"}
+            </div>
+
+            <div className="mt-2 text-[clamp(20px,6vw,36px)] leading-tight font-black text-slate-800">
+              {current?.title || "역사 탐험 준비"}
+            </div>
+
+            <div className="mt-3 text-sm leading-relaxed text-slate-600">
+              {stageDescription}
             </div>
           </div>
         </div>
@@ -403,7 +419,7 @@ export default function StudentProfile({
             </div>
 
             <div className="text-2xl font-black text-sky-700">
-              {currentStage} / {TOTAL_PROGRESS}
+              {displayedProgressStage} / {TOTAL_PROGRESS}
             </div>
           </div>
 

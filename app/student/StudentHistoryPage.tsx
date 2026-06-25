@@ -518,6 +518,10 @@ export default function StudentHistoryPage({
     )
     .slice(0, 3);
 
+  const selectedStageInfo = selectedStudent
+    ? getStageInfo(selectedStudent?.stage)
+    : null;
+
   if (!selectedSchool) {
     if (pendingSchool) {
       return (
@@ -763,14 +767,11 @@ export default function StudentHistoryPage({
           <>
             <StudentProfile
               student={selectedStudent}
-              currentStage={Number(
-                selectedStudent?.stage || 1
-              )}
-              stageInfo={getStageInfo(
-                Number(
-                  selectedStudent?.stage || 1
-                )
-              )}
+              currentStage={
+                selectedStageInfo?.current
+                  ?.bookNumber || 1
+              }
+              stageInfo={selectedStageInfo}
               achievements={[]}
               changeCharacter={
                 changeCharacter

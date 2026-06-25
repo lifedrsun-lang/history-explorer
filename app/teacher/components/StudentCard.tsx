@@ -1,6 +1,6 @@
 "use client";
 
-import { STAGE_DATA } from "@/app/student/data/stageData";
+import { getStageInfo } from "@/app/student/data/stageData";
 import { getStudentProgramLabel } from "@/lib/programs";
 
 export default function StudentCard({
@@ -16,9 +16,7 @@ export default function StudentCard({
   deleteStudent,
   openEditModal,
 }: any) {
-  const stage = STAGE_DATA.find(
-    (item) => item.id === Number(student.stage)
-  );
+  const stage = getStageInfo(student?.stage).current;
 
   const coinHistoryCount = Array.isArray(student?.coinHistory)
     ? student.coinHistory.length
@@ -86,7 +84,7 @@ export default function StudentCard({
         </div>
 
         <div className="text-xs text-gray-500 truncate">
-          {stage?.short || "-"}
+          {stage?.short || "별꼼역사 1권"}
         </div>
 
         <div className="text-yellow-600 font-bold text-base sm:text-2xl truncate">

@@ -14,7 +14,12 @@ import {
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { STAGE_DATA } from "@/app/student/data/stageData";
+import {
+  DEFAULT_STAGE_ID,
+  STAGE_DATA,
+  getBookNumberFromStage,
+  getStageIdForBook,
+} from "@/app/student/data/stageData";
 import {
   DEFAULT_STUDENT_PROGRAM,
   PROGRAM_FILTER_OPTIONS,
@@ -47,7 +52,8 @@ export default function TeacherPage() {
   const [studentProgram, setStudentProgram] =
     useState<StudentProgram>(DEFAULT_STUDENT_PROGRAM);
 
-  const [selectedStage, setSelectedStage] = useState(1);
+  const [selectedStage, setSelectedStage] =
+    useState(DEFAULT_STAGE_ID);
   const [selectedSchool, setSelectedSchool] = useState("전체학교");
   const [selectedProgram, setSelectedProgram] =
     useState<ProgramFilter>("all");
@@ -202,7 +208,7 @@ export default function TeacherPage() {
     setStudentNumber("");
     setName("");
     setStudentProgram(DEFAULT_STUDENT_PROGRAM);
-    setSelectedStage(1);
+    setSelectedStage(DEFAULT_STAGE_ID);
 
     alert(`학생 등록 완료!\n비밀번호 : ${password}`);
 
@@ -444,18 +450,20 @@ export default function TeacherPage() {
   };
 
   const changeStage = async (student: any, direction: number) => {
-    let newStage = Number(student.stage || 1) + direction;
+    let newBookNumber =
+      getBookNumberFromStage(student?.stage) +
+      direction;
 
-    if (newStage < 1) {
-      newStage = 1;
+    if (newBookNumber < 1) {
+      newBookNumber = 1;
     }
 
-    if (newStage > STAGE_DATA.length) {
-      newStage = STAGE_DATA.length;
+    if (newBookNumber > STAGE_DATA.length) {
+      newBookNumber = STAGE_DATA.length;
     }
 
     await updateDoc(getStudentRef(student), {
-      stage: newStage,
+      stage: getStageIdForBook(newBookNumber),
     });
 
     fetchStudents();
@@ -727,12 +735,14 @@ export default function TeacherPage() {
 
             <select
               value={selectedStage}
-              onChange={(e) => setSelectedStage(Number(e.target.value))}
+              onChange={(e) =>
+                setSelectedStage(e.target.value)
+              }
               className="border rounded-xl px-3 py-2 text-sm"
             >
               {STAGE_DATA.map((stage) => (
                 <option key={stage.id} value={stage.id}>
-                  {stage.short}
+                  {stage.label} {stage.title}
                 </option>
               ))}
             </select>
