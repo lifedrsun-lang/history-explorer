@@ -1,3 +1,5 @@
+import { getSchoolLoginCard } from "../data/schoolInfo";
+
 type Props = {
   schools: string[];
   onSelect: (school: string) => void;
@@ -22,17 +24,25 @@ export default function SchoolSelect({
 
         <div className="space-y-3 rounded-[32px] border border-white/80 bg-white/80 p-4 shadow-sm">
 
-          {schools.map((school) => (
+          {schools.map((school) => {
+            const cardInfo = getSchoolLoginCard(school);
 
-            <button
-              key={school}
-              onClick={() => onSelect(school)}
-              className="w-full bg-white border border-sky-100 rounded-3xl p-5 text-lg font-bold text-slate-700 hover:bg-sky-50 transition"
-            >
-              {school}
-            </button>
+            return (
+              <button
+                key={school}
+                onClick={() => onSelect(school)}
+                className="w-full bg-white border border-sky-100 rounded-3xl p-5 text-left text-slate-700 shadow-sm transition hover:bg-sky-50"
+              >
+                <div className="text-xl font-black text-slate-800">
+                  {cardInfo.title}
+                </div>
 
-          ))}
+                <div className="mt-2 text-sm font-bold text-sky-700">
+                  📍 {cardInfo.location}
+                </div>
+              </button>
+            );
+          })}
 
         </div>
 

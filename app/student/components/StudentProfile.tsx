@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import type { SchoolNoticeInfo } from "../data/schoolInfo";
 
 interface Props {
   student: any;
   currentStage: number;
   stageInfo: any;
+  schoolNotice?: SchoolNoticeInfo | null;
+  noticeClassLabel?: string;
   achievements: any[];
   changeCharacter: (
     studentId: string,
@@ -17,6 +20,8 @@ export default function StudentProfile({
   student,
   currentStage,
   stageInfo,
+  schoolNotice,
+  noticeClassLabel = "",
   changeCharacter,
 }: Props) {
   const [showAllHistory, setShowAllHistory] =
@@ -297,6 +302,18 @@ export default function StudentProfile({
     return "";
   };
 
+  const getClassTimeIcon = (label: string) => {
+    if (label === "A반") {
+      return "🌙";
+    }
+
+    if (label === "B반") {
+      return "⭐";
+    }
+
+    return "🕒";
+  };
+
   return (
     <div className="space-y-4">
       <div className="rounded-[32px] border border-white/80 bg-white/95 p-4 shadow-sm">
@@ -356,6 +373,51 @@ export default function StudentProfile({
             </div>
           </div>
         </div>
+
+        {schoolNotice && (
+          <div className="mt-5 rounded-[24px] border border-yellow-100 bg-yellow-50/90 p-4">
+            <div className="text-lg font-black text-slate-800">
+              📌 {schoolNotice.title}
+            </div>
+
+            <div className="mt-3 space-y-2 text-sm font-bold text-slate-700">
+              <div>📍 {schoolNotice.location}</div>
+
+              {schoolNotice.period && (
+                <div>📅 {schoolNotice.period}</div>
+              )}
+
+              {schoolNotice.breakNotice && (
+                <div>🚫 {schoolNotice.breakNotice}</div>
+              )}
+
+              {schoolNotice.noBreakNotice && (
+                <div>✅ {schoolNotice.noBreakNotice}</div>
+              )}
+
+              {schoolNotice.classTimes.map((classTime) => {
+                const isCurrentClass =
+                  classTime.label === noticeClassLabel;
+
+                return (
+                  <div
+                    key={classTime.label}
+                    className={`rounded-2xl px-3 py-2 leading-relaxed ${
+                      isCurrentClass
+                        ? "bg-white text-sky-800 shadow-sm"
+                        : "bg-white/50 text-slate-600"
+                    }`}
+                  >
+                    {getClassTimeIcon(classTime.label)}{" "}
+                    {classTime.label} 학기중{" "}
+                    {classTime.semester} / 방학중{" "}
+                    {classTime.vacation}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* 지금 배우는 책 */}
         <div className="mt-5 rounded-[24px] border border-amber-100 bg-amber-50/80 p-4">

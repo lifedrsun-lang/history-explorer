@@ -23,16 +23,19 @@ import SearchDropdown from "./components/SearchDropdown";
 import LoadingSpinner from "./components/LoadingSpinner";
 
 import { getStageInfo } from "./data/stageData";
+import {
+  getDefaultSchoolDisplayNames,
+  getSchoolDisplayName,
+  getSchoolNotice,
+  getSchoolPassword,
+  isCultureCenterSchool,
+  normalizeSchoolText,
+  shouldHideRankingForSchool,
+} from "./data/schoolInfo";
 
 type Props = {
   program?: StudentProgram;
 };
-
-const CULTURE_CENTER_LABEL = "문화센터";
-const CULTURE_CENTER_SCHOOLS = [
-  "홈플러스 문화센터",
-  "이마트 문화센터",
-];
 
 export default function StudentHistoryPage({
   program = DEFAULT_STUDENT_PROGRAM,
@@ -52,21 +55,7 @@ export default function StudentHistoryPage({
   const [pendingSchool, setPendingSchool] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
 
-  const SCHOOL_PASSWORDS: Record<string, string> = {
-    "김포 하늘빛초": "0527",
-    "화성 새솔초": "0602",
-    "김포 사우초": "0605",
-    [CULTURE_CENTER_LABEL]: "0607",
-    "홈플러스 문화센터": "0607",
-    "이마트 문화센터": "0607",
-  };
-
-  const DEFAULT_SCHOOLS = [
-    "김포 하늘빛초",
-    "화성 새솔초",
-    "김포 사우초",
-    CULTURE_CENTER_LABEL,
-  ];
+  const DEFAULT_SCHOOLS = getDefaultSchoolDisplayNames();
 
   const COLLECTION_NAMES = [
     "students",
@@ -80,33 +69,7 @@ export default function StudentHistoryPage({
   };
 
   const normalizeNoSpace = (value: any) => {
-    return String(value || "")
-      .replace(/\s/g, "")
-      .replace(/초등학교/g, "초")
-      .replace(/초등/g, "초")
-      .replace(/[()]/g, "")
-      .trim();
-  };
-
-  const isCultureCenterSchool = (school: string) => {
-    const target = normalizeNoSpace(school);
-
-    if (target === normalizeNoSpace(CULTURE_CENTER_LABEL)) {
-      return true;
-    }
-
-    return CULTURE_CENTER_SCHOOLS.some(
-      (cultureSchool) =>
-        normalizeNoSpace(cultureSchool) === target
-    );
-  };
-
-  const getSchoolDisplayName = (school: string) => {
-    if (isCultureCenterSchool(school)) {
-      return CULTURE_CENTER_LABEL;
-    }
-
-    return school;
+    return normalizeSchoolText(value);
   };
 
   const getStudentName = (data: any) => {
@@ -406,7 +369,7 @@ export default function StudentHistoryPage({
     const cleanSchool = normalize(
       getSchoolDisplayName(school)
     );
-    const password = SCHOOL_PASSWORDS[cleanSchool];
+    const password = getSchoolPassword(cleanSchool);
 
     if (!password) {
       setSelectedSchool(cleanSchool);
@@ -528,6 +491,20 @@ export default function StudentHistoryPage({
     return "";
   };
 
+  const getStudentGroupLabel = (s: any) => {
+    const group = getStudentGroup(s);
+
+    if (group === "moon") {
+      return "A반";
+    }
+
+    if (group === "star") {
+      return "B반";
+    }
+
+    return "";
+  };
+
   const activeStudents = students.filter((s) => {
     return s?.isActive !== false;
   });
@@ -563,6 +540,15 @@ export default function StudentHistoryPage({
     ? getStageInfo(selectedStudent?.stage)
     : null;
 
+  const hideRanking =
+    shouldHideRankingForSchool(selectedSchool);
+  const selectedSchoolNotice = selectedStudent
+    ? getSchoolNotice(selectedStudent?.school)
+    : null;
+  const selectedStudentClassLabel = selectedStudent
+    ? getStudentGroupLabel(selectedStudent)
+    : "";
+
   if (!selectedSchool) {
     if (pendingSchool) {
       return (
@@ -585,7 +571,7 @@ export default function StudentHistoryPage({
             <button
               onClick={() => {
                 const correctPassword =
-                  SCHOOL_PASSWORDS[pendingSchool];
+                  getSchoolPassword(pendingSchool);
 
                 if (
                   normalize(passwordInput) ===
@@ -722,24 +708,38 @@ export default function StudentHistoryPage({
                 )}
             </div>
 
-            {/* 랭킹 */}
-            <RankingCard
-              title="A반 랭킹"
-              icon="🌙"
-              students={moonRanking}
-              getScore={getScore}
-              bgColor="bg-white/90"
-              borderColor="border-sky-100"
-            />
+            {hideRanking ? (
+              <div className="rounded-[28px] border border-amber-100 bg-white/90 px-5 py-5 text-center shadow-sm">
+                <div className="text-lg font-black text-slate-800">
+                  문화센터 수업은 개별 참여 수업이라 랭킹을 운영하지 않아요.
+                </div>
 
-            <RankingCard
-              title="B반 랭킹"
-              icon="⭐"
-              students={starRanking}
-              getScore={getScore}
-              bgColor="bg-white/90"
-              borderColor="border-amber-100"
-            />
+                <div className="mt-2 text-sm font-bold text-slate-500">
+                  나의 코인과 기록을 확인해 주세요.
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* 랭킹 */}
+                <RankingCard
+                  title="A반 랭킹"
+                  icon="🌙"
+                  students={moonRanking}
+                  getScore={getScore}
+                  bgColor="bg-white/90"
+                  borderColor="border-sky-100"
+                />
+
+                <RankingCard
+                  title="B반 랭킹"
+                  icon="⭐"
+                  students={starRanking}
+                  getScore={getScore}
+                  bgColor="bg-white/90"
+                  borderColor="border-amber-100"
+                />
+              </>
+            )}
           </>
         )}
 
@@ -816,6 +816,8 @@ export default function StudentHistoryPage({
                   ?.bookNumber || 1
               }
               stageInfo={selectedStageInfo}
+              schoolNotice={selectedSchoolNotice}
+              noticeClassLabel={selectedStudentClassLabel}
               achievements={[]}
               changeCharacter={
                 changeCharacter
