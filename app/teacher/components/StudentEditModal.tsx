@@ -6,6 +6,10 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
+import {
+  STUDENT_PROGRAM_OPTIONS,
+  getStudentProgramValue,
+} from "@/lib/programs";
 
 type Props = {
   student: any;
@@ -40,6 +44,9 @@ export default function StudentEditModal({
     const name =
       formData.get("name");
 
+    const program =
+      formData.get("program");
+
     // 번호 기반 자동 비밀번호
     const password = String(
       studentNumber || ""
@@ -58,6 +65,10 @@ export default function StudentEditModal({
         studentNumber,
         password,
         name,
+        program:
+          getStudentProgramValue(
+            program
+          ),
       }
     );
 
@@ -130,6 +141,25 @@ export default function StudentEditModal({
             placeholder="이름"
             className="w-full border rounded-xl px-4 py-3"
           />
+
+          <select
+            name="program"
+            defaultValue={getStudentProgramValue(
+              student?.program
+            )}
+            className="w-full border rounded-xl px-4 py-3"
+          >
+            {STUDENT_PROGRAM_OPTIONS.map(
+              (option) => (
+                <option
+                  key={option.value}
+                  value={option.value}
+                >
+                  {option.label}
+                </option>
+              )
+            )}
+          </select>
 
           <div className="bg-blue-50 rounded-xl p-3 text-sm">
 

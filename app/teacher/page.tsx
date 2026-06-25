@@ -15,6 +15,15 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { STAGE_DATA } from "@/app/student/data/stageData";
+import {
+  DEFAULT_STUDENT_PROGRAM,
+  PROGRAM_FILTER_OPTIONS,
+  STUDENT_PROGRAM_OPTIONS,
+  StudentProgram,
+  ProgramFilter,
+  getStudentProgramValue,
+  hasStudentProgramValue,
+} from "@/lib/programs";
 
 import TeacherLogin from "./components/TeacherLogin";
 import StudentCard from "./components/StudentCard";
@@ -35,9 +44,13 @@ export default function TeacherPage() {
   const [studentClass, setStudentClass] = useState("");
   const [studentNumber, setStudentNumber] = useState("");
   const [name, setName] = useState("");
+  const [studentProgram, setStudentProgram] =
+    useState<StudentProgram>(DEFAULT_STUDENT_PROGRAM);
 
   const [selectedStage, setSelectedStage] = useState(1);
   const [selectedSchool, setSelectedSchool] = useState("전체학교");
+  const [selectedProgram, setSelectedProgram] =
+    useState<ProgramFilter>("all");
   const [selectedTab, setSelectedTab] = useState("A반");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -177,7 +190,7 @@ export default function TeacherPage() {
       totalSilver: 0,
 
       stage: selectedStage,
-      program: "history",
+      program: studentProgram,
       isActive: true,
 
       coinHistory: [],
@@ -188,9 +201,42 @@ export default function TeacherPage() {
     setStudentClass("");
     setStudentNumber("");
     setName("");
+    setStudentProgram(DEFAULT_STUDENT_PROGRAM);
     setSelectedStage(1);
 
     alert(`학생 등록 완료!\n비밀번호 : ${password}`);
+
+    fetchStudents();
+  };
+
+  const updateMissingStudentPrograms = async () => {
+    const targetStudents = students.filter(
+      (student) =>
+        !hasStudentProgramValue(student?.program)
+    );
+
+    if (targetStudents.length === 0) {
+      alert("program 값이 없는 기존 학생이 없습니다.");
+      return;
+    }
+
+    const check = confirm(
+      `program 값이 없는 기존 학생 ${targetStudents.length}명을 별꼼역사로 일괄 반영할까요?`
+    );
+
+    if (!check) {
+      return;
+    }
+
+    for (const student of targetStudents) {
+      await updateDoc(getStudentRef(student), {
+        program: DEFAULT_STUDENT_PROGRAM,
+      });
+    }
+
+    alert(
+      `기존 학생 ${targetStudents.length}명에게 별꼼역사 program 값을 반영했습니다.`
+    );
 
     fetchStudents();
   };
@@ -445,6 +491,17 @@ export default function TeacherPage() {
     return studentSchool === normalize(selectedSchool);
   };
 
+  const isSameProgram = (student: any) => {
+    if (selectedProgram === "all") {
+      return true;
+    }
+
+    return (
+      getStudentProgramValue(student?.program) ===
+      selectedProgram
+    );
+  };
+
   const activeStudents = students
     .filter((student) => {
       if (student.isActive === false) {
@@ -452,6 +509,10 @@ export default function TeacherPage() {
       }
 
       if (!isSameSchool(student)) {
+        return false;
+      }
+
+      if (!isSameProgram(student)) {
         return false;
       }
 
@@ -491,7 +552,17 @@ export default function TeacherPage() {
     });
 
   const hiddenStudents = students
-    .filter((student) => student.isActive === false)
+    .filter((student) => {
+      if (student.isActive !== false) {
+        return false;
+      }
+
+      if (!isSameProgram(student)) {
+        return false;
+      }
+
+      return isSameSchool(student);
+    })
     .sort((a, b) => {
       const schoolA = normalize(a.school || "미지정");
       const schoolB = normalize(b.school || "미지정");
@@ -530,10 +601,13 @@ export default function TeacherPage() {
     }
 
     if (selectedSchool === "전체학교") {
-      return true;
+      return isSameProgram(student);
     }
 
-    return normalize(student.school || "미지정") === normalize(selectedSchool);
+    return (
+      normalize(student.school || "미지정") === normalize(selectedSchool) &&
+      isSameProgram(student)
+    );
   });
 
   const aClassCount = countTargetStudents.filter((student) => {
@@ -589,7 +663,7 @@ export default function TeacherPage() {
         <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
           <div className="text-xl font-bold mb-3">✏️ 학생 등록</div>
 
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2 mb-3">
             <input
               type="text"
               placeholder="학교"
@@ -631,6 +705,27 @@ export default function TeacherPage() {
             />
 
             <select
+              value={studentProgram}
+              onChange={(e) =>
+                setStudentProgram(
+                  e.target.value as StudentProgram
+                )
+              }
+              className="border rounded-xl px-3 py-2 text-sm"
+            >
+              {STUDENT_PROGRAM_OPTIONS.map(
+                (option) => (
+                  <option
+                    key={option.value}
+                    value={option.value}
+                  >
+                    {option.label}
+                  </option>
+                )
+              )}
+            </select>
+
+            <select
               value={selectedStage}
               onChange={(e) => setSelectedStage(Number(e.target.value))}
               className="border rounded-xl px-3 py-2 text-sm"
@@ -662,6 +757,13 @@ export default function TeacherPage() {
               className="bg-green-500 text-white rounded-xl px-4 py-2 font-bold"
             >
               🔑 기존 학생 비밀번호 생성
+            </button>
+
+            <button
+              onClick={updateMissingStudentPrograms}
+              className="bg-slate-200 text-slate-700 rounded-xl px-3 py-2 text-xs font-bold"
+            >
+              기존 학생 별꼼역사 일괄 반영
             </button>
           </div>
         </div>
@@ -703,6 +805,25 @@ export default function TeacherPage() {
               {schoolList.map((schoolName, index) => (
                 <option key={`${schoolName}-${index}`} value={schoolName}>
                   {schoolName}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={selectedProgram}
+              onChange={(e) =>
+                setSelectedProgram(
+                  e.target.value as ProgramFilter
+                )
+              }
+              className="border rounded-xl px-4 py-2"
+            >
+              {PROGRAM_FILTER_OPTIONS.map((option) => (
+                <option
+                  key={option.value}
+                  value={option.value}
+                >
+                  {option.label}
                 </option>
               ))}
             </select>

@@ -1,6 +1,7 @@
 "use client";
 
 import { STAGE_DATA } from "@/app/student/data/stageData";
+import { getStudentProgramLabel } from "@/lib/programs";
 
 export default function StudentCard({
   student,
@@ -23,11 +24,21 @@ export default function StudentCard({
     ? student.coinHistory.length
     : 0;
 
+  const programLabel = getStudentProgramLabel(
+    student?.program
+  );
+
   return (
     <div className="w-full min-w-0 bg-white rounded-[24px] p-3 sm:rounded-[30px] sm:p-4 shadow-md">
       {/* 이름 */}
       <div className="text-xl sm:text-3xl font-bold truncate">
         {student.name}
+      </div>
+
+      <div className="mt-1 mb-2 inline-flex max-w-full rounded-full bg-sky-50 px-2 py-1 text-[11px] font-bold text-sky-700">
+        <span className="truncate">
+          프로그램: {programLabel}
+        </span>
       </div>
 
       {/* 학교 */}

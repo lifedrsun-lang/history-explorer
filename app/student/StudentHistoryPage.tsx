@@ -10,6 +10,11 @@ import {
 } from "firebase/firestore";
 
 import { useEffect, useState } from "react";
+import {
+  DEFAULT_STUDENT_PROGRAM,
+  StudentProgram,
+  getStudentProgramValue,
+} from "@/lib/programs";
 
 import SchoolSelect from "./components/SchoolSelect";
 import StudentProfile from "./components/StudentProfile";
@@ -19,7 +24,13 @@ import LoadingSpinner from "./components/LoadingSpinner";
 
 import { getStageInfo } from "./data/stageData";
 
-export default function StudentHistoryPage() {
+type Props = {
+  program?: StudentProgram;
+};
+
+export default function StudentHistoryPage({
+  program = DEFAULT_STUDENT_PROGRAM,
+}: Props) {
   const [students, setStudents] = useState<any[]>([]);
   const [allSchools, setAllSchools] = useState<string[]>([]);
 
@@ -130,15 +141,11 @@ export default function StudentHistoryPage() {
   };
 
   const getStudentProgram = (data: any) => {
-    const program = normalize(
-      data?.program || "history"
-    ).toLowerCase();
-
-    return program || "history";
+    return getStudentProgramValue(data?.program);
   };
 
-  const isHistoryStudent = (data: any) => {
-    return getStudentProgram(data) === "history";
+  const isSelectedProgramStudent = (data: any) => {
+    return getStudentProgram(data) === program;
   };
 
   const getBronze = (data: any) => {
@@ -215,7 +222,7 @@ export default function StudentHistoryPage() {
             return;
           }
 
-          if (!isHistoryStudent(data)) {
+          if (!isSelectedProgramStudent(data)) {
             return;
           }
 
