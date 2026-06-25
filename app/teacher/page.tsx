@@ -84,6 +84,8 @@ export default function TeacherPage() {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
+  const [bonusStudent, setBonusStudent] = useState<any>(null);
+  const [bonusAmount, setBonusAmount] = useState("1");
 
   const [editingStudent, setEditingStudent] = useState<any>(null);
 
@@ -438,36 +440,35 @@ export default function TeacherPage() {
   };
 
   const addBonusBronze = async (student: any) => {
-    const input = window.prompt(
-      `${student.name} 학생에게 지급할 보너스 동엽전 개수를 입력해주세요.`,
-      "1"
-    );
+    setBonusStudent(student);
+    setBonusAmount("1");
+  };
 
-    if (input === null) {
+  const closeBonusModal = () => {
+    setBonusStudent(null);
+    setBonusAmount("1");
+  };
+
+  const submitBonusBronze = async () => {
+    if (!bonusStudent) {
       return;
     }
 
-    const amount = Number(input);
+    const amount = Number(bonusAmount);
 
     if (!Number.isInteger(amount) || amount <= 0) {
-      alert("1개 이상의 숫자로 입력해주세요.");
+      showToast("1개 이상의 숫자로 입력해주세요");
       return;
     }
 
     if (amount > 50) {
-      alert("한 번에 최대 50개까지만 지급할 수 있습니다.");
+      showToast("한 번에 최대 50개까지만 지급할 수 있습니다");
       return;
     }
 
-    const check = confirm(
-      `${student.name} 학생에게 보너스 동엽전 ${amount}개를 지급할까요?`
-    );
+    await addBronzeBySource(bonusStudent, "bonus", amount);
 
-    if (!check) {
-      return;
-    }
-
-    await addBronzeBySource(student, "bonus", amount);
+    closeBonusModal();
   };
 
   // 기존 StudentCard 호환용
@@ -509,12 +510,6 @@ export default function TeacherPage() {
 
     if (currentSilver <= 0) {
       showToast("은엽전이 부족합니다");
-      return;
-    }
-
-    const check = confirm(`${student.name} 학생의 은엽전 1개를 사용 처리할까요?`);
-
-    if (!check) {
       return;
     }
 
@@ -1264,6 +1259,63 @@ export default function TeacherPage() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* 보너스 동엽전 지급 모달 */}
+        {bonusStudent && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-3">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitBonusBronze();
+              }}
+              className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl"
+            >
+              <div className="text-2xl font-black text-slate-800">
+                보너스 동엽전 지급
+              </div>
+
+              <div className="mt-2 text-sm font-bold text-slate-500">
+                지급할 동엽전 개수를 입력해 주세요.
+              </div>
+
+              <label className="mt-5 block text-sm font-bold text-slate-700">
+                동엽전 개수
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={bonusAmount}
+                  onChange={(event) =>
+                    setBonusAmount(event.target.value)
+                  }
+                  className="mt-1 w-full rounded-xl border px-3 py-2 text-base font-bold"
+                  autoFocus
+                />
+              </label>
+
+              <div className="mt-3 rounded-2xl bg-yellow-50 px-3 py-2 text-xs font-bold text-yellow-700">
+                입력한 개수만큼 동엽전이 지급됩니다.
+              </div>
+
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={closeBonusModal}
+                  className="rounded-xl bg-gray-100 px-4 py-2 font-bold text-gray-700"
+                >
+                  취소
+                </button>
+
+                <button
+                  type="submit"
+                  className="rounded-xl bg-yellow-500 px-4 py-2 font-bold text-white"
+                >
+                  지급
+                </button>
+              </div>
+            </form>
           </div>
         )}
 
