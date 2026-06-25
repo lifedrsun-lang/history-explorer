@@ -2,6 +2,7 @@
 
 import { getStageInfo } from "@/app/student/data/stageData";
 import { getStudentProgramLabel } from "@/lib/programs";
+import { useRouter } from "next/navigation";
 
 export default function StudentCard({
   student,
@@ -16,6 +17,8 @@ export default function StudentCard({
   deleteStudent,
   openEditModal,
 }: any) {
+  const router = useRouter();
+
   const stage = getStageInfo(student?.stage).current;
 
   const coinHistoryCount = Array.isArray(student?.coinHistory)
@@ -174,6 +177,17 @@ export default function StudentCard({
         </button>
 
         <button
+          onClick={() =>
+            router.push(
+              `/teacher/student-preview/${student.id}`
+            )
+          }
+          className="bg-sky-500 text-white rounded-xl py-2 px-1 text-[11px] sm:text-sm font-bold whitespace-nowrap"
+        >
+          👀 학생화면
+        </button>
+
+        <button
           onClick={() => openEditModal(student)}
           className="bg-blue-500 text-white rounded-xl py-2 px-1 text-[11px] sm:text-sm font-bold whitespace-nowrap"
         >
@@ -182,7 +196,7 @@ export default function StudentCard({
 
         <button
           onClick={() => deleteStudent(student)}
-          className="col-span-2 bg-red-500 text-white rounded-xl py-2 px-1 text-[11px] sm:text-sm font-bold whitespace-nowrap"
+          className="bg-red-500 text-white rounded-xl py-2 px-1 text-[11px] sm:text-sm font-bold whitespace-nowrap"
         >
           삭제
         </button>
