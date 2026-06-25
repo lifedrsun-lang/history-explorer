@@ -37,6 +37,8 @@ import StudentEditModal from "./components/StudentEditModal";
 
 type CoinSource = "quiz" | "homework" | "bonus" | "making";
 
+const TEACHING_CLASS_OPTIONS = ["A반", "B반"];
+
 export default function TeacherPage() {
   const router = useRouter();
 
@@ -84,18 +86,25 @@ export default function TeacherPage() {
     return Number(match[0]);
   };
 
-  const getClassValue = (value: any) => {
-    return normalize(value || "미지정");
-  };
+  const getTeachingClass = (student: any) => {
+    const gradeNum = getGradeNumber(student?.grade);
 
-  const getClassLabel = (value: any) => {
-    const classValue = getClassValue(value);
-
-    if (/^[ab]$/i.test(classValue)) {
-      return `${classValue.toUpperCase()}반`;
+    if (gradeNum >= 1 && gradeNum <= 2) {
+      return "A반";
     }
 
-    return classValue;
+    if (gradeNum >= 3 && gradeNum <= 6) {
+      return "B반";
+    }
+
+    return "";
+  };
+
+  const isSameTeachingClass = (
+    student: any,
+    teachingClass: string
+  ) => {
+    return getTeachingClass(student) === teachingClass;
   };
 
   const getTodayString = () => {
@@ -556,20 +565,7 @@ export default function TeacherPage() {
     )
   ).sort((a, b) => a.localeCompare(b));
 
-  const bulkClassList = Array.from(
-    new Set(
-      bulkProgramStudents
-        .filter(
-          (student) =>
-            normalize(student.school || "미지정") ===
-            normalize(bulkSchool)
-        )
-        .map((student) =>
-          getClassValue(student.class)
-        )
-        .filter(Boolean)
-    )
-  ).sort((a, b) => a.localeCompare(b));
+  const bulkClassList = TEACHING_CLASS_OPTIONS;
 
   const bulkTargetStudents = students.filter(
     (student) => {
@@ -588,10 +584,7 @@ export default function TeacherPage() {
         return false;
       }
 
-      return (
-        getClassValue(student.class) ===
-        getClassValue(bulkClass)
-      );
+      return isSameTeachingClass(student, bulkClass);
     }
   );
 
@@ -618,7 +611,7 @@ export default function TeacherPage() {
 
     const programLabel =
       getStudentProgramLabel(bulkProgram);
-    const classLabel = getClassLabel(bulkClass);
+    const classLabel = bulkClass;
 
     const check = confirm(
       `${programLabel} ${bulkSchool} ${classLabel} 학생 ${bulkTargetStudents.length}명의 진도를 ${selectedBulkStage.label}으로 변경할까요?`
@@ -668,13 +661,7 @@ export default function TeacherPage() {
         return false;
       }
 
-      const gradeNum = getGradeNumber(student.grade);
-
-      if (selectedTab === "A반") {
-        return gradeNum >= 1 && gradeNum <= 2;
-      }
-
-      return gradeNum >= 3;
+      return isSameTeachingClass(student, selectedTab);
     })
     .sort((a, b) => {
       const gradeA = getGradeNumber(a.grade);
@@ -757,13 +744,11 @@ export default function TeacherPage() {
   });
 
   const aClassCount = countTargetStudents.filter((student) => {
-    const gradeNum = getGradeNumber(student.grade);
-    return gradeNum >= 1 && gradeNum <= 2;
+    return isSameTeachingClass(student, "A반");
   }).length;
 
   const bClassCount = countTargetStudents.filter((student) => {
-    const gradeNum = getGradeNumber(student.grade);
-    return gradeNum >= 3;
+    return isSameTeachingClass(student, "B반");
   }).length;
 
   if (!authorized) {
@@ -964,7 +949,7 @@ export default function TeacherPage() {
               <option value="">반 선택</option>
               {bulkClassList.map((className) => (
                 <option key={className} value={className}>
-                  {getClassLabel(className)}
+                  {className}
                 </option>
               ))}
             </select>
