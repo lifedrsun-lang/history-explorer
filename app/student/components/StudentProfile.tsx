@@ -22,7 +22,6 @@ export default function StudentProfile({
   stageInfo,
   schoolNotice,
   noticeClassLabel = "",
-  changeCharacter,
 }: Props) {
   const [showAllHistory, setShowAllHistory] =
     useState(false);
@@ -318,7 +317,7 @@ export default function StudentProfile({
     <div className="space-y-4">
       <div className="rounded-[32px] border border-white/80 bg-white/95 p-4 shadow-sm">
         {/* 상단 프로필 */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(260px,0.95fr)] md:items-start">
           <div className="flex-1 min-w-0">
             <div className="text-4xl font-black leading-none truncate text-slate-800">
               {student?.name}
@@ -331,92 +330,52 @@ export default function StudentProfile({
             <div className="text-lg text-slate-700 mt-1 font-bold">
               {student?.grade}학년 {student?.class}반
             </div>
+          </div>
 
-            {schoolNotice && (
-              <div className="mt-4 rounded-[22px] border border-yellow-100 bg-yellow-50/90 p-3">
-                <div className="text-base font-black text-slate-800">
-                  📌 {schoolNotice.title}
-                </div>
-
-                <div className="mt-2 space-y-1.5 text-sm font-bold text-slate-700">
-                  <div>📍 {schoolNotice.location}</div>
-
-                  {schoolNotice.period && (
-                    <div>📅 {schoolNotice.period}</div>
-                  )}
-
-                  {displayedNoticeClassTimes.length > 0 ? (
-                    displayedNoticeClassTimes.map((classTime) => (
-                      <div
-                        key={classTime.label}
-                        className="rounded-2xl bg-white/80 px-3 py-2 leading-relaxed text-sky-800 shadow-sm"
-                      >
-                        <div>
-                          ⏰ {classTime.label} 학기중{" "}
-                          {classTime.semester}
-                        </div>
-                        <div>
-                          🌞 방학중 {classTime.vacation}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="rounded-2xl bg-white/70 px-3 py-2 text-slate-600">
-                      문화센터 수업 일정은 수업별 안내를 확인해 주세요.
-                    </div>
-                  )}
-
-                  {schoolNotice.noBreakNotice && (
-                    <div>✅ {schoolNotice.noBreakNotice}</div>
-                  )}
-
-                  {schoolNotice.breakNotice && (
-                    <div>🚫 {schoolNotice.breakNotice}</div>
-                  )}
-                </div>
+          {schoolNotice && (
+            <div className="rounded-[22px] border border-yellow-100 bg-yellow-50/90 p-3">
+              <div className="text-base font-black text-slate-800">
+                📌 {schoolNotice.title}
               </div>
-            )}
-          </div>
 
-          <div className="flex flex-col items-center self-center sm:self-start shrink-0">
-            <div className="w-[110px] h-[110px] rounded-full border-[4px] border-sky-100 overflow-hidden bg-sky-50 shadow-sm">
-              <img
-                src={
-                  student?.character === "girl"
-                    ? "/characters/girl.png"
-                    : "/characters/boy.png"
-                }
-                alt="character"
-                className="w-full h-full object-cover"
-              />
+              <div className="mt-2 space-y-1.5 text-sm font-bold text-slate-700">
+                <div>📍 {schoolNotice.location}</div>
+
+                {schoolNotice.period && (
+                  <div>📅 {schoolNotice.period}</div>
+                )}
+
+                {displayedNoticeClassTimes.length > 0 ? (
+                  displayedNoticeClassTimes.map((classTime) => (
+                    <div
+                      key={classTime.label}
+                      className="rounded-2xl bg-white/80 px-3 py-2 leading-relaxed text-sky-800 shadow-sm"
+                    >
+                      <div>
+                        ⏰ {classTime.label} 학기중{" "}
+                        {classTime.semester}
+                      </div>
+                      <div>
+                        🌞 방학중 {classTime.vacation}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-2xl bg-white/70 px-3 py-2 text-slate-600">
+                    문화센터 수업 일정은 수업별 안내를 확인해 주세요.
+                  </div>
+                )}
+
+                {schoolNotice.noBreakNotice && (
+                  <div>✅ {schoolNotice.noBreakNotice}</div>
+                )}
+
+                {schoolNotice.breakNotice && (
+                  <div>🚫 {schoolNotice.breakNotice}</div>
+                )}
+              </div>
             </div>
-
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={() =>
-                  changeCharacter(
-                    student.id,
-                    "boy"
-                  )
-                }
-                className="bg-sky-200 rounded-2xl px-4 py-2 text-xl shadow-sm"
-              >
-                👦
-              </button>
-
-              <button
-                onClick={() =>
-                  changeCharacter(
-                    student.id,
-                    "girl"
-                  )
-                }
-                className="bg-pink-200 rounded-2xl px-4 py-2 text-xl shadow-sm"
-              >
-                👧
-              </button>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* 지금 배우는 책 */}
