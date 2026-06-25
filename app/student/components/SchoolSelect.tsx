@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getSchoolLoginCard } from "../data/schoolInfo";
 
 type Props = {
@@ -44,6 +45,15 @@ export default function SchoolSelect({
             );
           })}
 
+        </div>
+
+        <div className="mt-6 flex justify-center">
+          <Link
+            href="/teacher"
+            className="rounded-full border border-slate-200 bg-white/50 px-4 py-2 text-sm font-bold text-slate-500 transition hover:bg-white hover:text-slate-700"
+          >
+            교사용 접속
+          </Link>
         </div>
 
       </div>
