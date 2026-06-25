@@ -11,7 +11,7 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -80,6 +80,10 @@ export default function TeacherPage() {
   const [hiddenTeachingClass, setHiddenTeachingClass] =
     useState("전체반");
   const [hiddenSearchTerm, setHiddenSearchTerm] = useState("");
+  const [toastMessage, setToastMessage] = useState("");
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
   const [editingStudent, setEditingStudent] = useState<any>(null);
 
@@ -131,6 +135,19 @@ export default function TeacherPage() {
         selectedStage,
       })
     );
+  };
+
+  const showToast = (message: string) => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+
+    setToastMessage(message);
+
+    toastTimerRef.current = setTimeout(() => {
+      setToastMessage("");
+      toastTimerRef.current = null;
+    }, 1800);
   };
 
   const getTodayString = () => {
@@ -266,6 +283,14 @@ export default function TeacherPage() {
     }
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleLogin = () => {
     if (passwordInput.trim() === "0713") {
       setAuthorized(true);
@@ -390,13 +415,12 @@ export default function TeacherPage() {
       coinHistory,
     });
 
-    if (exchangeCount > 0) {
-      alert(
-        `🎉 ${student.name} ${sourceLabel} 동엽전 ${amount}개 지급 완료!\n동엽전이 자동으로 은엽전 ${exchangeCount}개로 교환되었습니다.`
-      );
-    } else {
-      alert(`🎉 ${student.name} ${sourceLabel} 동엽전 ${amount}개 지급 완료!`);
-    }
+    const coinToastMessage =
+      exchangeCount > 0
+        ? `🪙 동엽전 ${amount}개 지급 완료 · 은엽전 ${exchangeCount}개 자동 교환`
+        : `🪙 동엽전 ${amount}개 지급 완료`;
+
+    showToast(coinToastMessage);
 
     fetchStudents();
   };
@@ -456,7 +480,7 @@ export default function TeacherPage() {
     const currentBronze = Number(student?.bronze || 0);
 
     if (currentBronze <= 0) {
-      alert("회수할 동엽전이 없습니다!");
+      showToast("회수할 동엽전이 없습니다");
       return;
     }
 
@@ -475,7 +499,7 @@ export default function TeacherPage() {
       coinHistory,
     });
 
-    alert(`↩️ ${student.name} 동엽전 회수 완료!`);
+    showToast("동엽전 1개 회수 완료");
 
     fetchStudents();
   };
@@ -484,7 +508,7 @@ export default function TeacherPage() {
     const currentSilver = Number(student?.silver || 0);
 
     if (currentSilver <= 0) {
-      alert("은엽전이 부족합니다!");
+      showToast("은엽전이 부족합니다");
       return;
     }
 
@@ -508,7 +532,7 @@ export default function TeacherPage() {
       coinHistory,
     });
 
-    alert(`🎁 ${student.name} 은엽전 사용 완료!`);
+    showToast("은엽전 1개 사용 완료");
 
     fetchStudents();
   };
@@ -871,6 +895,15 @@ export default function TeacherPage() {
 
   return (
     <div className="min-h-[100dvh] bg-[#f5f7fb] p-3">
+      {toastMessage && (
+        <div
+          aria-live="polite"
+          className="fixed left-1/2 top-4 z-[70] w-[calc(100%-24px)] max-w-sm -translate-x-1/2 rounded-2xl border border-yellow-100 bg-white/95 px-4 py-3 text-center text-sm font-black text-slate-800 shadow-xl"
+        >
+          {toastMessage}
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto">
         {/* 제목 */}
         <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
