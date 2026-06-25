@@ -9,6 +9,7 @@ interface Props {
   setSelectedStudent: (
     student: any
   ) => void;
+  showSchool?: boolean;
 }
 
 export default function SearchDropdown({
@@ -16,6 +17,7 @@ export default function SearchDropdown({
   searchName,
   setSearchName,
   setSelectedStudent,
+  showSchool = false,
 }: Props) {
 
   if (!searchName?.trim()) {
@@ -48,6 +50,12 @@ export default function SearchDropdown({
             <div className="mt-1 text-sm text-sky-700">
               {student.grade}학년 {student.class}반
             </div>
+
+            {showSchool && student?.school && (
+              <div className="mt-1 text-xs font-bold text-slate-500">
+                {student.school}
+              </div>
+            )}
 
           </div>
 

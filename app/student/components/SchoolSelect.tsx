@@ -16,7 +16,7 @@ export default function SchoolSelect({
 
         <div className="text-3xl font-bold mb-6 text-center text-slate-800">
 
-          🏫 학교 선택
+          🏫 학교/수업 장소 선택
 
         </div>
 

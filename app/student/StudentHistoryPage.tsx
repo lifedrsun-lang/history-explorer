@@ -28,6 +28,12 @@ type Props = {
   program?: StudentProgram;
 };
 
+const CULTURE_CENTER_LABEL = "문화센터";
+const CULTURE_CENTER_SCHOOLS = [
+  "홈플러스 문화센터",
+  "이마트 문화센터",
+];
+
 export default function StudentHistoryPage({
   program = DEFAULT_STUDENT_PROGRAM,
 }: Props) {
@@ -50,11 +56,17 @@ export default function StudentHistoryPage({
     "김포 하늘빛초": "0527",
     "화성 새솔초": "0602",
     "김포 사우초": "0605",
+    [CULTURE_CENTER_LABEL]: "0607",
     "홈플러스 문화센터": "0607",
     "이마트 문화센터": "0607",
   };
 
-  const DEFAULT_SCHOOLS = Object.keys(SCHOOL_PASSWORDS);
+  const DEFAULT_SCHOOLS = [
+    "김포 하늘빛초",
+    "화성 새솔초",
+    "김포 사우초",
+    CULTURE_CENTER_LABEL,
+  ];
 
   const COLLECTION_NAMES = [
     "students",
@@ -74,6 +86,27 @@ export default function StudentHistoryPage({
       .replace(/초등/g, "초")
       .replace(/[()]/g, "")
       .trim();
+  };
+
+  const isCultureCenterSchool = (school: string) => {
+    const target = normalizeNoSpace(school);
+
+    if (target === normalizeNoSpace(CULTURE_CENTER_LABEL)) {
+      return true;
+    }
+
+    return CULTURE_CENTER_SCHOOLS.some(
+      (cultureSchool) =>
+        normalizeNoSpace(cultureSchool) === target
+    );
+  };
+
+  const getSchoolDisplayName = (school: string) => {
+    if (isCultureCenterSchool(school)) {
+      return CULTURE_CENTER_LABEL;
+    }
+
+    return school;
   };
 
   const getStudentName = (data: any) => {
@@ -249,6 +282,10 @@ export default function StudentHistoryPage({
     studentSchool: string,
     targetSchool: string
   ) => {
+    if (isCultureCenterSchool(targetSchool)) {
+      return isCultureCenterSchool(studentSchool);
+    }
+
     const a = normalizeNoSpace(studentSchool);
     const b = normalizeNoSpace(targetSchool);
 
@@ -278,7 +315,9 @@ export default function StudentHistoryPage({
       const schoolSet = new Set<string>();
 
       allList.forEach((student) => {
-        const school = normalize(student?.school);
+        const school = normalize(
+          getSchoolDisplayName(student?.school)
+        );
 
         if (school) {
           schoolSet.add(school);
@@ -364,7 +403,9 @@ export default function StudentHistoryPage({
   };
 
   const handleSchoolSelect = (school: string) => {
-    const cleanSchool = normalize(school);
+    const cleanSchool = normalize(
+      getSchoolDisplayName(school)
+    );
     const password = SCHOOL_PASSWORDS[cleanSchool];
 
     if (!password) {
@@ -661,6 +702,9 @@ export default function StudentHistoryPage({
                     students={filteredStudents}
                     searchName={searchName}
                     setSearchName={setSearchName}
+                    showSchool={isCultureCenterSchool(
+                      selectedSchool
+                    )}
                     setSelectedStudent={(
                       student: any
                     ) => {
