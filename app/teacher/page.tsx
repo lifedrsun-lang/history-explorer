@@ -27,6 +27,7 @@ import {
   StudentProgram,
   ProgramFilter,
   getStudentProgramValue,
+  getStudentProgramLabel,
   hasStudentProgramValue,
 } from "@/lib/programs";
 
@@ -54,6 +55,12 @@ export default function TeacherPage() {
 
   const [selectedStage, setSelectedStage] =
     useState(DEFAULT_STAGE_ID);
+  const [bulkProgram, setBulkProgram] =
+    useState<StudentProgram>(DEFAULT_STUDENT_PROGRAM);
+  const [bulkSchool, setBulkSchool] = useState("");
+  const [bulkClass, setBulkClass] = useState("");
+  const [bulkStage, setBulkStage] =
+    useState(DEFAULT_STAGE_ID);
   const [selectedSchool, setSelectedSchool] = useState("전체학교");
   const [selectedProgram, setSelectedProgram] =
     useState<ProgramFilter>("all");
@@ -75,6 +82,20 @@ export default function TeacherPage() {
     }
 
     return Number(match[0]);
+  };
+
+  const getClassValue = (value: any) => {
+    return normalize(value || "미지정");
+  };
+
+  const getClassLabel = (value: any) => {
+    const classValue = getClassValue(value);
+
+    if (/^[ab]$/i.test(classValue)) {
+      return `${classValue.toUpperCase()}반`;
+    }
+
+    return classValue;
   };
 
   const getTodayString = () => {
@@ -510,6 +531,123 @@ export default function TeacherPage() {
     );
   };
 
+  const isStudentInProgram = (
+    student: any,
+    program: StudentProgram
+  ) => {
+    return (
+      getStudentProgramValue(student?.program) ===
+      program
+    );
+  };
+
+  const bulkProgramStudents = students.filter(
+    (student) =>
+      isStudentInProgram(student, bulkProgram)
+  );
+
+  const bulkSchoolList = Array.from(
+    new Set(
+      bulkProgramStudents
+        .map((student) =>
+          normalize(student.school || "미지정")
+        )
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  const bulkClassList = Array.from(
+    new Set(
+      bulkProgramStudents
+        .filter(
+          (student) =>
+            normalize(student.school || "미지정") ===
+            normalize(bulkSchool)
+        )
+        .map((student) =>
+          getClassValue(student.class)
+        )
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  const bulkTargetStudents = students.filter(
+    (student) => {
+      if (student.isActive === false) {
+        return false;
+      }
+
+      if (!isStudentInProgram(student, bulkProgram)) {
+        return false;
+      }
+
+      if (
+        normalize(student.school || "미지정") !==
+        normalize(bulkSchool)
+      ) {
+        return false;
+      }
+
+      return (
+        getClassValue(student.class) ===
+        getClassValue(bulkClass)
+      );
+    }
+  );
+
+  const selectedBulkStage =
+    STAGE_DATA.find(
+      (stage) => stage.id === bulkStage
+    ) || STAGE_DATA[0];
+
+  const changeBulkStage = async () => {
+    if (bulkProgram !== DEFAULT_STUDENT_PROGRAM) {
+      alert("현재 진도 일괄 변경은 별꼼역사만 지원합니다.");
+      return;
+    }
+
+    if (!bulkSchool || !bulkClass || !selectedBulkStage) {
+      alert("프로그램, 학교, 반, 변경할 권을 모두 선택해주세요.");
+      return;
+    }
+
+    if (bulkTargetStudents.length === 0) {
+      alert("변경할 학생이 없습니다.");
+      return;
+    }
+
+    const programLabel =
+      getStudentProgramLabel(bulkProgram);
+    const classLabel = getClassLabel(bulkClass);
+
+    const check = confirm(
+      `${programLabel} ${bulkSchool} ${classLabel} 학생 ${bulkTargetStudents.length}명의 진도를 ${selectedBulkStage.label}으로 변경할까요?`
+    );
+
+    if (!check) {
+      return;
+    }
+
+    const studentsToUpdate =
+      bulkTargetStudents.filter(
+        (student) =>
+          String(student?.stage || "") !==
+          selectedBulkStage.id
+      );
+
+    for (const student of studentsToUpdate) {
+      await updateDoc(getStudentRef(student), {
+        stage: selectedBulkStage.id,
+      });
+    }
+
+    alert(
+      `${studentsToUpdate.length}명의 진도를 ${selectedBulkStage.label}으로 변경했습니다.`
+    );
+
+    fetchStudents();
+  };
+
   const activeStudents = students
     .filter((student) => {
       if (student.isActive === false) {
@@ -775,6 +913,93 @@ export default function TeacherPage() {
             >
               기존 학생 별꼼역사 일괄 반영
             </button>
+          </div>
+        </div>
+
+        {/* 반 전체 진도 변경 */}
+        <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
+          <div className="text-xl font-bold mb-3">
+            📚 반 전체 진도 변경
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
+            <select
+              value={bulkProgram}
+              onChange={(e) => {
+                setBulkProgram(e.target.value as StudentProgram);
+                setBulkSchool("");
+                setBulkClass("");
+              }}
+              className="border rounded-xl px-3 py-2 text-sm"
+            >
+              {STUDENT_PROGRAM_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={bulkSchool}
+              onChange={(e) => {
+                setBulkSchool(e.target.value);
+                setBulkClass("");
+              }}
+              className="border rounded-xl px-3 py-2 text-sm"
+            >
+              <option value="">학교 선택</option>
+              {bulkSchoolList.map((schoolName) => (
+                <option key={schoolName} value={schoolName}>
+                  {schoolName}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={bulkClass}
+              onChange={(e) => setBulkClass(e.target.value)}
+              className="border rounded-xl px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-400"
+              disabled={!bulkSchool}
+            >
+              <option value="">반 선택</option>
+              {bulkClassList.map((className) => (
+                <option key={className} value={className}>
+                  {getClassLabel(className)}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={bulkStage}
+              onChange={(e) => setBulkStage(e.target.value)}
+              className="border rounded-xl px-3 py-2 text-sm"
+            >
+              {STAGE_DATA.map((stage) => (
+                <option key={stage.id} value={stage.id}>
+                  {stage.label} {stage.title}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {bulkProgram !== DEFAULT_STUDENT_PROGRAM && (
+            <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700">
+              현재 진도 일괄 변경은 별꼼역사만 지원합니다.
+            </div>
+          )}
+
+          <div className="flex flex-col md:flex-row md:items-center gap-2">
+            <button
+              onClick={changeBulkStage}
+              className="bg-indigo-500 text-white rounded-xl px-4 py-2 font-bold"
+            >
+              선택한 반 진도 변경
+            </button>
+
+            <div className="text-xs text-gray-500 leading-relaxed">
+              숨김 학생은 제외되며, 조건에 맞는 활성 학생{" "}
+              {bulkTargetStudents.length}명이 대상입니다.
+            </div>
           </div>
         </div>
 

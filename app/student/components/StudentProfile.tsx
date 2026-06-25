@@ -357,10 +357,10 @@ export default function StudentProfile({
           </div>
         </div>
 
-        {/* 현재 진도 */}
+        {/* 지금 배우는 책 */}
         <div className="mt-5 rounded-[24px] border border-amber-100 bg-amber-50/80 p-4">
           <div className="text-sm text-amber-700 font-bold">
-            🏛 현재 진도
+            📚 지금 배우는 책
           </div>
 
           <div className="mt-4">
