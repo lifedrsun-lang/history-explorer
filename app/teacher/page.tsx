@@ -28,7 +28,6 @@ import {
   ProgramFilter,
   getStudentProgramValue,
   getStudentProgramLabel,
-  hasStudentProgramValue,
 } from "@/lib/programs";
 
 import TeacherLogin from "./components/TeacherLogin";
@@ -73,6 +72,14 @@ export default function TeacherPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [isBulkStageOpen, setIsBulkStageOpen] = useState(false);
+  const [isHiddenManagerOpen, setIsHiddenManagerOpen] =
+    useState(false);
+  const [hiddenProgram, setHiddenProgram] =
+    useState<ProgramFilter>("all");
+  const [hiddenSchool, setHiddenSchool] = useState("전체학교");
+  const [hiddenTeachingClass, setHiddenTeachingClass] =
+    useState("전체반");
+  const [hiddenSearchTerm, setHiddenSearchTerm] = useState("");
 
   const [editingStudent, setEditingStudent] = useState<any>(null);
 
@@ -318,56 +325,6 @@ export default function TeacherPage() {
     }
 
     alert(`학생 등록 완료!\n비밀번호 : ${password}`);
-
-    fetchStudents();
-  };
-
-  const updateMissingStudentPrograms = async () => {
-    const targetStudents = students.filter(
-      (student) =>
-        !hasStudentProgramValue(student?.program)
-    );
-
-    if (targetStudents.length === 0) {
-      alert("program 값이 없는 기존 학생이 없습니다.");
-      return;
-    }
-
-    const check = confirm(
-      `program 값이 없는 기존 학생 ${targetStudents.length}명을 별꼼역사로 일괄 반영할까요?`
-    );
-
-    if (!check) {
-      return;
-    }
-
-    for (const student of targetStudents) {
-      await updateDoc(getStudentRef(student), {
-        program: DEFAULT_STUDENT_PROGRAM,
-      });
-    }
-
-    alert(
-      `기존 학생 ${targetStudents.length}명에게 별꼼역사 program 값을 반영했습니다.`
-    );
-
-    fetchStudents();
-  };
-
-  const updateAllPasswords = async () => {
-    const querySnapshot = await getDocs(collection(db, "students"));
-
-    for (const studentDoc of querySnapshot.docs) {
-      const data = studentDoc.data();
-
-      const password = String(data.studentNumber || "").padStart(2, "0");
-
-      await updateDoc(doc(db, "students", studentDoc.id), {
-        password,
-      });
-    }
-
-    alert("기존 학생 비밀번호 생성 완료!");
 
     fetchStudents();
   };
@@ -627,6 +584,29 @@ export default function TeacherPage() {
     );
   };
 
+  const isStudentInProgramFilter = (
+    student: any,
+    program: ProgramFilter
+  ) => {
+    if (program === "all") {
+      return true;
+    }
+
+    return (
+      getStudentProgramValue(student?.program) ===
+      program
+    );
+  };
+
+  const getProgramOrder = (student: any) => {
+    const program = getStudentProgramValue(student?.program);
+    const index = STUDENT_PROGRAM_OPTIONS.findIndex(
+      (option) => option.value === program
+    );
+
+    return index === -1 ? STUDENT_PROGRAM_OPTIONS.length : index;
+  };
+
   const bulkProgramStudents = students.filter(
     (student) =>
       isStudentInProgram(student, bulkProgram)
@@ -761,24 +741,71 @@ export default function TeacherPage() {
       return numberA - numberB;
     });
 
-  const hiddenStudents = students
+  const allHiddenStudents = students.filter((student) => {
+    return student.isActive === false;
+  });
+
+  const hiddenSchoolList = [
+    "전체학교",
+    ...Array.from(
+      new Set(
+        allHiddenStudents
+          .filter((student) =>
+            isStudentInProgramFilter(student, hiddenProgram)
+          )
+          .map((student) => student.school || "미지정")
+      )
+    ).sort((a, b) => a.localeCompare(b)),
+  ];
+
+  const hiddenStudents = allHiddenStudents
     .filter((student) => {
-      if (student.isActive !== false) {
+      if (!isStudentInProgramFilter(student, hiddenProgram)) {
         return false;
       }
 
-      if (!isSameProgram(student)) {
+      if (
+        hiddenSchool !== "전체학교" &&
+        normalize(student.school || "미지정") !== normalize(hiddenSchool)
+      ) {
         return false;
       }
 
-      return isSameSchool(student);
+      if (
+        hiddenTeachingClass !== "전체반" &&
+        !isSameTeachingClass(student, hiddenTeachingClass)
+      ) {
+        return false;
+      }
+
+      const keyword = hiddenSearchTerm.toLowerCase().trim();
+
+      if (keyword && !student.name?.toLowerCase().includes(keyword)) {
+        return false;
+      }
+
+      return true;
     })
     .sort((a, b) => {
+      const programA = getProgramOrder(a);
+      const programB = getProgramOrder(b);
+
+      if (programA !== programB) {
+        return programA - programB;
+      }
+
       const schoolA = normalize(a.school || "미지정");
       const schoolB = normalize(b.school || "미지정");
 
       if (schoolA !== schoolB) {
         return schoolA.localeCompare(schoolB);
+      }
+
+      const teachingClassA = getTeachingClass(a);
+      const teachingClassB = getTeachingClass(b);
+
+      if (teachingClassA !== teachingClassB) {
+        return teachingClassA.localeCompare(teachingClassB);
       }
 
       const gradeA = getGradeNumber(a.grade);
@@ -791,7 +818,11 @@ export default function TeacherPage() {
       const numberA = Number(a.studentNumber) || 0;
       const numberB = Number(b.studentNumber) || 0;
 
-      return numberA - numberB;
+      if (numberA !== numberB) {
+        return numberA - numberB;
+      }
+
+      return normalize(a.name || "").localeCompare(normalize(b.name || ""));
     });
 
   const schoolList = [
@@ -979,20 +1010,6 @@ export default function TeacherPage() {
             >
               📚 반 전체 진도 변경
             </button>
-
-            <button
-              onClick={updateAllPasswords}
-              className="bg-green-500 text-white rounded-xl px-3 py-2 text-sm font-bold"
-            >
-              🔑 비밀번호 생성
-            </button>
-
-            <button
-              onClick={updateMissingStudentPrograms}
-              className="bg-slate-200 text-slate-700 rounded-xl px-3 py-2 text-xs font-bold"
-            >
-              기존 학생 별꼼역사 일괄 반영
-            </button>
           </div>
 
           {isBulkStageOpen && (
@@ -1101,27 +1118,119 @@ export default function TeacherPage() {
           ))}
         </div>
 
-        {/* 숨김 학생 */}
-        {hiddenStudents.length > 0 && (
+        {/* 숨김 친구 관리 */}
+        {allHiddenStudents.length > 0 && (
           <div className="mt-8 bg-white rounded-3xl p-4 shadow-md">
-            <div className="text-xl font-bold mb-3">🙈 숨김 친구 목록</div>
+            <button
+              onClick={() =>
+                setIsHiddenManagerOpen((current) => !current)
+              }
+              className="w-full rounded-2xl bg-slate-100 px-4 py-3 text-left font-black text-slate-800"
+            >
+              🙈 숨김 친구 관리 ({allHiddenStudents.length}명)
+            </button>
 
-            <div className="flex flex-wrap gap-2">
-              {hiddenStudents.map((student) => {
-                const schoolName = student.school || "미지정";
-                const studentName = student.name || "이름 없음";
-
-                return (
-                  <button
-                    key={student.id}
-                    onClick={() => toggleStudentVisible(student)}
-                    className="bg-gray-300 px-4 py-2 rounded-xl font-bold"
+            {isHiddenManagerOpen && (
+              <div className="mt-4 border-t border-slate-100 pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4">
+                  <select
+                    value={hiddenProgram}
+                    onChange={(e) => {
+                      setHiddenProgram(e.target.value as ProgramFilter);
+                      setHiddenSchool("전체학교");
+                    }}
+                    className="border rounded-xl px-3 py-2 text-sm"
                   >
-                    {schoolName} {studentName} 복구
-                  </button>
-                );
-              })}
-            </div>
+                    {PROGRAM_FILTER_OPTIONS.map((option) => (
+                      <option
+                        key={option.value}
+                        value={option.value}
+                      >
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={hiddenSchool}
+                    onChange={(e) => setHiddenSchool(e.target.value)}
+                    className="border rounded-xl px-3 py-2 text-sm"
+                  >
+                    {hiddenSchoolList.map((schoolName) => (
+                      <option key={schoolName} value={schoolName}>
+                        {schoolName}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={hiddenTeachingClass}
+                    onChange={(e) =>
+                      setHiddenTeachingClass(e.target.value)
+                    }
+                    className="border rounded-xl px-3 py-2 text-sm"
+                  >
+                    <option value="전체반">전체반</option>
+                    {TEACHING_CLASS_OPTIONS.map((className) => (
+                      <option key={className} value={className}>
+                        {className}
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    type="text"
+                    placeholder="숨김 친구 이름 검색"
+                    value={hiddenSearchTerm}
+                    onChange={(e) => setHiddenSearchTerm(e.target.value)}
+                    className="border rounded-xl px-3 py-2 text-sm"
+                  />
+                </div>
+
+                {hiddenStudents.length === 0 ? (
+                  <div className="rounded-2xl bg-gray-50 px-4 py-4 text-sm font-bold text-gray-500">
+                    조건에 맞는 숨김 친구가 없습니다.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+                    {hiddenStudents.map((student) => {
+                      const schoolName = student.school || "미지정";
+                      const programLabel = getStudentProgramLabel(
+                        getStudentProgramValue(student?.program)
+                      );
+                      const teachingClass =
+                        getTeachingClass(student) || "미분류";
+                      const studentName = student.name || "이름 없음";
+
+                      return (
+                        <div
+                          key={student.id}
+                          className="flex items-center justify-between gap-2 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2"
+                        >
+                          <div className="min-w-0 text-sm font-bold text-slate-700">
+                            <div className="truncate">
+                              {schoolName} / {programLabel} /{" "}
+                              {teachingClass}
+                            </div>
+                            <div className="truncate text-xs font-medium text-slate-500">
+                              {student.grade}학년 {student.class}반{" "}
+                              {student.studentNumber}번 / {studentName}
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => toggleStudentVisible(student)}
+                            className="shrink-0 rounded-xl bg-blue-500 px-3 py-2 text-sm font-bold text-white"
+                          >
+                            복구
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
