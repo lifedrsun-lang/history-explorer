@@ -32,6 +32,10 @@ import {
   normalizeSchoolText,
   shouldHideRankingForSchool,
 } from "./data/schoolInfo";
+import {
+  getStudentGroup,
+  getStudentGroupLabel,
+} from "./data/studentGroups";
 
 type Props = {
   program?: StudentProgram;
@@ -453,56 +457,6 @@ export default function StudentHistoryPage({
       Number(s?.silver || 0) * 10 +
       Number(s?.bronze || 0)
     );
-  };
-
-  const getStudentGroup = (s: any) => {
-    const classText = normalizeNoSpace(
-      s?.class ||
-        s?.studentClass ||
-        s?.group ||
-        s?.team ||
-        ""
-    ).toUpperCase();
-
-    if (
-      classText.includes("A") ||
-      classText.includes("달")
-    ) {
-      return "moon";
-    }
-
-    if (
-      classText.includes("B") ||
-      classText.includes("별")
-    ) {
-      return "star";
-    }
-
-    const grade = getGradeNumber(s?.grade);
-
-    if (grade >= 1 && grade <= 2) {
-      return "moon";
-    }
-
-    if (grade >= 3) {
-      return "star";
-    }
-
-    return "";
-  };
-
-  const getStudentGroupLabel = (s: any) => {
-    const group = getStudentGroup(s);
-
-    if (group === "moon") {
-      return "A반";
-    }
-
-    if (group === "star") {
-      return "B반";
-    }
-
-    return "";
   };
 
   const activeStudents = students.filter((s) => {

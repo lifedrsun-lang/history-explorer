@@ -15,7 +15,9 @@ import {
 } from "next/navigation";
 
 import StudentProfile from "@/app/student/components/StudentProfile";
+import { getSchoolNotice } from "@/app/student/data/schoolInfo";
 import { getStageInfo } from "@/app/student/data/stageData";
+import { getStudentGroupLabel } from "@/app/student/data/studentGroups";
 
 export default function TeacherStudentPreviewPage() {
   const router = useRouter();
@@ -141,6 +143,8 @@ export default function TeacherStudentPreviewPage() {
   }
 
   const stageInfo = getStageInfo(student?.stage);
+  const schoolNotice = getSchoolNotice(student?.school);
+  const noticeClassLabel = getStudentGroupLabel(student);
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 px-3 py-4 text-slate-800">
@@ -171,6 +175,8 @@ export default function TeacherStudentPreviewPage() {
             stageInfo?.current?.bookNumber || 1
           }
           stageInfo={stageInfo}
+          schoolNotice={schoolNotice}
+          noticeClassLabel={noticeClassLabel}
           achievements={[]}
           changeCharacter={changeCharacter}
         />
