@@ -1,6 +1,6 @@
 "use client";
 
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 
 import {
   collection,
@@ -10,6 +10,11 @@ import {
   updateDoc,
   deleteDoc,
 } from "firebase/firestore";
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -49,7 +54,11 @@ export default function TeacherPage() {
   const router = useRouter();
 
   const [authorized, setAuthorized] = useState(false);
-  const [passwordInput, setPasswordInput] = useState("");
+  const [authChecking, setAuthChecking] = useState(true);
+  const [teacherEmail, setTeacherEmail] = useState("");
+  const [teacherPassword, setTeacherPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [loginSubmitting, setLoginSubmitting] = useState(false);
 
   const [students, setStudents] = useState<any[]>([]);
 
@@ -236,8 +245,6 @@ export default function TeacherPage() {
   };
 
   useEffect(() => {
-    fetchStudents();
-
     const savedRegistration = localStorage.getItem(
       LAST_STUDENT_REGISTRATION_KEY
     );
@@ -286,20 +293,23 @@ export default function TeacherPage() {
       }
     }
 
-    const savedAuth = localStorage.getItem("teacherAuth");
-    const loginTime = localStorage.getItem("teacherLoginTime");
+  }, []);
 
-    if (savedAuth === "true" && loginTime) {
-      const now = Date.now();
-      const diff = now - Number(loginTime);
+  useEffect(() => {
+    // This step only verifies Firebase Auth sign-in. Teacher claims
+    // and server-side Rules enforcement are follow-up security work.
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setAuthorized(Boolean(user));
+      setAuthChecking(false);
 
-      if (diff < 1000 * 60 * 2) {
-        setAuthorized(true);
+      if (user) {
+        fetchStudents();
       } else {
-        localStorage.removeItem("teacherAuth");
-        localStorage.removeItem("teacherLoginTime");
+        setStudents([]);
       }
-    }
+    });
+
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
@@ -310,15 +320,52 @@ export default function TeacherPage() {
     };
   }, []);
 
-  const handleLogin = () => {
-    if (passwordInput.trim() === "0713") {
-      setAuthorized(true);
+  const handleLogin = async () => {
+    const email = teacherEmail.trim();
 
-      localStorage.setItem("teacherAuth", "true");
-      localStorage.setItem("teacherLoginTime", Date.now().toString());
-    } else {
-      alert("비밀번호가 틀렸습니다");
+    if (!email || !teacherPassword) {
+      setLoginError("Please enter both email and password.");
+      return;
     }
+
+    setLoginSubmitting(true);
+    setLoginError("");
+
+    try {
+      await signInWithEmailAndPassword(
+        auth,
+        email,
+        teacherPassword
+      );
+      setTeacherPassword("");
+    } catch (error: unknown) {
+      const code =
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error
+          ? String(error.code || "")
+          : "";
+
+      if (
+        code === "auth/invalid-credential" ||
+        code === "auth/user-not-found" ||
+        code === "auth/wrong-password"
+      ) {
+        setLoginError("Email or password is incorrect.");
+      } else if (code === "auth/invalid-email") {
+        setLoginError("Please enter a valid email address.");
+      } else if (code === "auth/too-many-requests") {
+        setLoginError("Too many failed attempts. Please try again later.");
+      } else {
+        setLoginError("Sign-in failed. Please try again.");
+      }
+    } finally {
+      setLoginSubmitting(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
   };
 
   const saveStudent = async (keepOpen = false) => {
@@ -969,11 +1016,25 @@ export default function TeacherPage() {
     return isSameTeachingClass(student, "B반");
   }).length;
 
+  if (authChecking) {
+    return (
+      <div className="min-h-[100dvh] bg-[#f5f7fb] flex items-center justify-center p-4">
+        <div className="rounded-3xl bg-white px-6 py-5 text-sm font-bold text-slate-600 shadow-xl">
+          Checking teacher sign-in...
+        </div>
+      </div>
+    );
+  }
+
   if (!authorized) {
     return (
       <TeacherLogin
-        passwordInput={passwordInput}
-        setPasswordInput={setPasswordInput}
+        email={teacherEmail}
+        password={teacherPassword}
+        errorMessage={loginError}
+        isSubmitting={loginSubmitting}
+        setEmail={setTeacherEmail}
+        setPassword={setTeacherPassword}
         onLogin={handleLogin}
       />
     );
@@ -981,6 +1042,15 @@ export default function TeacherPage() {
 
   return (
     <div className="min-h-[100dvh] bg-[#f5f7fb] p-3">
+      <div className="mx-auto mb-3 flex max-w-7xl justify-end">
+        <button
+          onClick={handleLogout}
+          className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 shadow-sm"
+        >
+          Sign out
+        </button>
+      </div>
+
       {toastMessage && (
         <div
           aria-live="polite"

@@ -1,14 +1,15 @@
 "use client";
 
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 
 import {
   doc,
   getDoc,
   updateDoc,
 } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   useParams,
   useRouter,
@@ -34,22 +35,7 @@ export default function TeacherStudentPreviewPage() {
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState("");
 
-  const isTeacherAuthorized = () => {
-    const savedAuth =
-      localStorage.getItem("teacherAuth");
-    const loginTime =
-      localStorage.getItem("teacherLoginTime");
-
-    if (savedAuth !== "true" || !loginTime) {
-      return false;
-    }
-
-    const diff = Date.now() - Number(loginTime);
-
-    return diff < 1000 * 60 * 2;
-  };
-
-  const fetchStudent = async () => {
+  const fetchStudent = useCallback(async () => {
     if (!studentId) {
       setErrorText("학생 정보를 찾을 수 없습니다.");
       setLoading(false);
@@ -82,17 +68,21 @@ export default function TeacherStudentPreviewPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [studentId]);
 
   useEffect(() => {
-    if (!isTeacherAuthorized()) {
-      router.replace("/teacher");
-      return;
-    }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        router.replace("/teacher");
+        return;
+      }
 
-    setAuthorized(true);
-    fetchStudent();
-  }, [studentId]);
+      setAuthorized(true);
+      fetchStudent();
+    });
+
+    return unsubscribe;
+  }, [fetchStudent, router]);
 
   const changeCharacter = async (
     studentIdValue: string,
