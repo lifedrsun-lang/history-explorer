@@ -17,6 +17,7 @@ import {
 } from "firebase/auth";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import {
@@ -1042,7 +1043,14 @@ export default function TeacherPage() {
 
   return (
     <div className="min-h-[100dvh] bg-[#f5f7fb] p-3">
-      <div className="mx-auto mb-3 flex max-w-7xl justify-end">
+      <div className="mx-auto mb-3 flex max-w-7xl flex-wrap justify-end gap-2">
+        <Link
+          href="/teacher/presentations"
+          className="rounded-2xl border border-yellow-200 bg-yellow-50 px-4 py-2 text-sm font-bold text-yellow-700 shadow-sm"
+        >
+          📽️ 수업자료 관리
+        </Link>
+
         <button
           onClick={handleLogout}
           className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 shadow-sm"
