@@ -1,6 +1,47 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import { useRouter } from "next/navigation";
+
+import { auth } from "@/lib/firebase";
 
 export default function TeacherPresentationsPage() {
+  const router = useRouter();
+  const [authChecking, setAuthChecking] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        router.replace("/teacher");
+        return;
+      }
+
+      setAuthorized(true);
+      setAuthChecking(false);
+    });
+
+    return unsubscribe;
+  }, [router]);
+
+  if (authChecking) {
+    return (
+      <main className="min-h-[100dvh] bg-[#f5f7fb] p-3 text-slate-800">
+        <div className="mx-auto flex min-h-[calc(100dvh-24px)] max-w-5xl items-center justify-center">
+          <div className="rounded-3xl bg-white px-6 py-5 text-sm font-bold text-slate-600 shadow-md">
+            Checking teacher sign-in...
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!authorized) {
+    return null;
+  }
+
   return (
     <main className="min-h-[100dvh] bg-[#f5f7fb] p-3 text-slate-800">
       <div className="mx-auto max-w-5xl">
