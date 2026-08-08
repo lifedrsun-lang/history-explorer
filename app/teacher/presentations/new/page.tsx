@@ -2,10 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, User } from "firebase/auth";
+import {
+  addDoc,
+  collection,
+  serverTimestamp,
+} from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { PresentationDraft } from "@/lib/presentations/types";
 import {
   createEmptyPresentationDraft,
@@ -63,10 +68,13 @@ export default function NewTeacherPresentationPage() {
   const router = useRouter();
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [draft, setDraft] = useState<PresentationDraft>(
     createEmptyPresentationDraft
   );
   const [notice, setNotice] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const validation = useMemo(
     () => validatePresentationDraft(draft),
@@ -81,6 +89,7 @@ export default function NewTeacherPresentationPage() {
       }
 
       setAuthorized(true);
+      setCurrentUser(user);
       setAuthChecking(false);
     });
 
@@ -96,14 +105,44 @@ export default function NewTeacherPresentationPage() {
       [field]: value,
     }));
     setNotice("");
+    setErrorMessage("");
   };
 
-  const handleSubmit = () => {
-    if (!validation.isValid) {
+  const handleSubmit = async () => {
+    if (!validation.isValid || !currentUser || isSaving) {
       return;
     }
 
-    setNotice("기본정보 입력 완료 · Firebase 저장 연결 전입니다.");
+    setIsSaving(true);
+    setNotice("");
+    setErrorMessage("");
+
+    try {
+      const values = validation.values;
+
+      await addDoc(collection(db, "presentations"), {
+        schemaVersion: 1,
+        title: values.title,
+        era: values.era,
+        textbookName: values.textbookName,
+        bookNumber: values.bookNumber,
+        lessonNumber: values.lessonNumber,
+        description: values.description,
+        status: "draft",
+        slideCount: 0,
+        createdBy: currentUser.uid,
+        updatedBy: currentUser.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      router.push("/teacher/presentations");
+    } catch (error) {
+      console.error("Presentation metadata save failed:", error);
+      setErrorMessage("수업자료 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (authChecking) {
@@ -220,13 +259,19 @@ export default function NewTeacherPresentationPage() {
               </div>
             )}
 
+            {errorMessage && (
+              <div className="mt-5 rounded-3xl border border-red-100 bg-red-50 p-4 text-sm font-black text-red-600">
+                {errorMessage}
+              </div>
+            )}
+
             <button
               type="button"
-              disabled={!validation.isValid}
+              disabled={!validation.isValid || isSaving}
               onClick={handleSubmit}
               className="mt-5 w-full rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-white transition enabled:hover:bg-yellow-500 disabled:opacity-60"
             >
-              수업자료 저장
+              {isSaving ? "저장 중..." : "수업자료 저장"}
             </button>
           </section>
         </div>
