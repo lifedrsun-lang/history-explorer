@@ -72,13 +72,12 @@ export default function TeacherPresentationsPage() {
               </p>
             </div>
 
-            <button
-              type="button"
-              disabled
-              className="rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-white opacity-60"
+            <Link
+              href="/teacher/presentations/new"
+              className="inline-flex items-center justify-center rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-yellow-500"
             >
-              새 수업자료 등록 준비 중
-            </button>
+              새 수업자료 등록
+            </Link>
           </div>
 
           <div className="mt-6 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 px-5 py-12 text-center">
