@@ -1,30 +1,44 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
 
 import { auth } from "@/lib/firebase";
+import { PresentationDraft } from "@/lib/presentations/types";
+import {
+  createEmptyPresentationDraft,
+  validatePresentationDraft,
+} from "@/lib/presentations/validation";
 
-const metadataFields = [
+const metadataFields: Array<{
+  name: keyof Omit<PresentationDraft, "description">;
+  label: string;
+  placeholder: string;
+}> = [
   {
+    name: "title",
     label: "자료 제목",
     placeholder: "예: 백제의 성장과 문화",
   },
   {
+    name: "era",
     label: "시대",
     placeholder: "예: 백제",
   },
   {
+    name: "textbookName",
     label: "교재명",
     placeholder: "예: 별꼼역사",
   },
   {
+    name: "bookNumber",
     label: "호수",
     placeholder: "예: 5호",
   },
   {
+    name: "lessonNumber",
     label: "차시",
     placeholder: "예: 1차시",
   },
@@ -49,6 +63,15 @@ export default function NewTeacherPresentationPage() {
   const router = useRouter();
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
+  const [draft, setDraft] = useState<PresentationDraft>(
+    createEmptyPresentationDraft
+  );
+  const [notice, setNotice] = useState("");
+
+  const validation = useMemo(
+    () => validatePresentationDraft(draft),
+    [draft]
+  );
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -63,6 +86,25 @@ export default function NewTeacherPresentationPage() {
 
     return unsubscribe;
   }, [router]);
+
+  const updateDraft = (
+    field: keyof PresentationDraft,
+    value: string
+  ) => {
+    setDraft((current) => ({
+      ...current,
+      [field]: value,
+    }));
+    setNotice("");
+  };
+
+  const handleSubmit = () => {
+    if (!validation.isValid) {
+      return;
+    }
+
+    setNotice("기본정보 입력 완료 · Firebase 저장 연결 전입니다.");
+  };
 
   if (authChecking) {
     return (
@@ -108,26 +150,37 @@ export default function NewTeacherPresentationPage() {
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               {metadataFields.map((field) => (
                 <label
-                  key={field.label}
+                  key={field.name}
                   className="text-sm font-black text-slate-700"
                 >
                   {field.label}
                   <input
                     type="text"
+                    value={draft[field.name]}
                     placeholder={field.placeholder}
-                    disabled
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-500 outline-none"
+                    onChange={(event) =>
+                      updateDraft(field.name, event.target.value)
+                    }
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
                   />
+                  {validation.errors[field.name] && (
+                    <span className="mt-2 block text-xs font-bold text-red-500">
+                      {validation.errors[field.name]}
+                    </span>
+                  )}
                 </label>
               ))}
 
               <label className="text-sm font-black text-slate-700 md:col-span-2">
                 설명
                 <textarea
+                  value={draft.description}
                   placeholder="예: 백제의 성장 과정과 주요 문화재를 소개하는 수업자료"
-                  disabled
+                  onChange={(event) =>
+                    updateDraft("description", event.target.value)
+                  }
                   rows={5}
-                  className="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-500 outline-none"
+                  className="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
                 />
               </label>
             </div>
@@ -161,10 +214,17 @@ export default function NewTeacherPresentationPage() {
               </p>
             </div>
 
+            {notice && (
+              <div className="mt-5 rounded-3xl border border-emerald-100 bg-emerald-50 p-4 text-sm font-black text-emerald-700">
+                {notice}
+              </div>
+            )}
+
             <button
               type="button"
-              disabled
-              className="mt-5 w-full rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-white opacity-60"
+              disabled={!validation.isValid}
+              onClick={handleSubmit}
+              className="mt-5 w-full rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-white transition enabled:hover:bg-yellow-500 disabled:opacity-60"
             >
               수업자료 저장
             </button>
