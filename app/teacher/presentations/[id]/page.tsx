@@ -7,6 +7,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { useParams, useRouter } from "next/navigation";
 
 import { auth, db } from "@/lib/firebase";
+import { getLocalSlidesForPresentation } from "@/lib/presentations/localSlideManifest";
 
 type PresentationDetail = {
   id: string;
@@ -32,6 +33,16 @@ export default function TeacherPresentationDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [presentation, setPresentation] =
     useState<PresentationDetail | null>(null);
+  const localSlides = presentation
+    ? getLocalSlidesForPresentation(
+        presentation.bookNumber,
+        presentation.lessonNumber
+      )
+    : [];
+  const effectiveSlideCount =
+    localSlides.length > 0
+      ? localSlides.length
+      : presentation?.slideCount ?? 0;
 
   useEffect(() => {
     const fetchPresentation = async () => {
@@ -167,7 +178,7 @@ export default function TeacherPresentationDetailPage() {
                     상태: {presentation.status}
                   </div>
                   <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                    슬라이드 수: {presentation.slideCount}
+                    슬라이드 수: {effectiveSlideCount}
                   </div>
                 </div>
 
@@ -184,7 +195,14 @@ export default function TeacherPresentationDetailPage() {
               <section className="rounded-3xl bg-white p-5 shadow-md">
                 <h2 className="text-xl font-black">슬라이드 관리</h2>
 
-                {presentation.slideCount === 0 && (
+                {localSlides.length > 0 && (
+                  <div className="mt-5 rounded-3xl border border-yellow-100 bg-yellow-50 px-5 py-4 text-sm font-bold text-yellow-700">
+                    Storage 연결 전 임시 로컬 슬라이드 {localSlides.length}
+                    장을 사용합니다.
+                  </div>
+                )}
+
+                {effectiveSlideCount === 0 && (
                   <div className="mt-5 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center">
                     <div className="text-base font-black text-slate-700">
                       아직 등록된 슬라이드가 없습니다.
@@ -205,7 +223,12 @@ export default function TeacherPresentationDetailPage() {
                   </button>
                   <button
                     type="button"
-                    disabled={presentation.slideCount === 0}
+                    disabled={effectiveSlideCount === 0}
+                    onClick={() =>
+                      router.push(
+                        `/teacher/presentations/${presentation.id}/play`
+                      )
+                    }
                     className="w-full rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-white transition enabled:hover:bg-yellow-500 disabled:opacity-50"
                   >
                     슬라이드쇼 실행
