@@ -8,6 +8,7 @@ import { useParams, useRouter } from "next/navigation";
 
 import { auth, db } from "@/lib/firebase";
 import { getLocalSlidesForPresentation } from "@/lib/presentations/localSlideManifest";
+import { getPowerPointPresentationSource } from "@/lib/presentations/powerPointSources";
 
 type PresentationDetail = {
   id: string;
@@ -39,6 +40,12 @@ export default function TeacherPresentationDetailPage() {
         presentation.lessonNumber
       )
     : [];
+  const powerPointSource = presentation
+    ? getPowerPointPresentationSource(
+        presentation.bookNumber,
+        presentation.lessonNumber
+      )
+    : null;
   const effectiveSlideCount =
     localSlides.length > 0
       ? localSlides.length
@@ -195,6 +202,20 @@ export default function TeacherPresentationDetailPage() {
               <section className="rounded-3xl bg-white p-5 shadow-md">
                 <h2 className="text-xl font-black">슬라이드 관리</h2>
 
+                {powerPointSource && (
+                  <div className="mt-5 rounded-3xl border border-blue-100 bg-blue-50 px-5 py-4">
+                    <div className="text-sm font-black text-blue-800">
+                      OneDrive 6호 통합 PowerPoint
+                    </div>
+                    <p className="mt-1 text-sm font-bold text-blue-700">
+                      이 차시는 {powerPointSource.startPage}P부터 시작합니다.
+                    </p>
+                    <p className="mt-1 text-xs font-bold leading-5 text-blue-600">
+                      현재 링크는 통합 파일 공유 링크라 PowerPoint 웹이 파일을 연 뒤 해당 페이지로 이동해 주세요.
+                    </p>
+                  </div>
+                )}
+
                 {localSlides.length > 0 && (
                   <div className="mt-5 rounded-3xl border border-yellow-100 bg-yellow-50 px-5 py-4 text-sm font-bold text-yellow-700">
                     Storage 연결 전 임시 로컬 슬라이드 {localSlides.length}
@@ -215,6 +236,16 @@ export default function TeacherPresentationDetailPage() {
                 )}
 
                 <div className="mt-5 grid gap-3">
+                  {powerPointSource && (
+                    <a
+                      href={powerPointSource.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-blue-700"
+                    >
+                      PowerPoint 웹에서 열기 ↗
+                    </a>
+                  )}
                   <button
                     type="button"
                     className="w-full rounded-2xl bg-slate-800 px-4 py-3 text-sm font-black text-white opacity-70"
