@@ -8,17 +8,30 @@ import { useParams, useRouter } from "next/navigation";
 
 import { auth, db } from "@/lib/firebase";
 
+type PresentationCategory = "history" | "coding";
+
 type PresentationDraft = {
+  category: PresentationCategory;
   bookNumber: string;
   title: string;
   pptUrl: string;
 };
 
 const EMPTY_DRAFT: PresentationDraft = {
+  category: "history",
   bookNumber: "",
   title: "",
   pptUrl: "",
 };
+
+const CATEGORIES: Array<{
+  value: PresentationCategory;
+  label: string;
+  description: string;
+}> = [
+  { value: "history", label: "역사", description: "역사 수업 PPT" },
+  { value: "coding", label: "코딩", description: "코딩 수업 PPT" },
+];
 
 function isValidHttpUrl(value: string) {
   try {
@@ -27,6 +40,10 @@ function isValidHttpUrl(value: string) {
   } catch {
     return false;
   }
+}
+
+function normalizeCategory(value: unknown): PresentationCategory {
+  return value === "coding" ? "coding" : "history";
 }
 
 export default function EditTeacherPresentationPage() {
@@ -71,6 +88,7 @@ export default function EditTeacherPresentationPage() {
 
         const data = snapshot.data();
         setDraft({
+          category: normalizeCategory(data?.category),
           bookNumber: String(data?.bookNumber || ""),
           title: String(data?.title || ""),
           pptUrl: String(data?.pptUrl || ""),
@@ -86,7 +104,10 @@ export default function EditTeacherPresentationPage() {
     return unsubscribe;
   }, [presentationId, router]);
 
-  const updateDraft = (field: keyof PresentationDraft, value: string) => {
+  const updateDraft = (
+    field: keyof PresentationDraft,
+    value: string
+  ) => {
     setDraft((current) => ({ ...current, [field]: value }));
     setErrorMessage("");
   };
@@ -99,6 +120,7 @@ export default function EditTeacherPresentationPage() {
 
     try {
       await updateDoc(doc(db, "presentations", presentationId), {
+        category: draft.category,
         bookNumber: draft.bookNumber.trim(),
         title: draft.title.trim(),
         pptUrl: draft.pptUrl.trim(),
@@ -140,10 +162,33 @@ export default function EditTeacherPresentationPage() {
 
           <h1 className="mt-5 text-2xl font-black md:text-3xl">PPT 수정</h1>
           <p className="mt-2 text-sm font-bold text-slate-500">
-            PPT를 수정한 뒤 새 OneDrive 링크로 바뀌었으면 링크만 교체해서 저장하면 됩니다.
+            분류와 기본정보를 수정하거나, PPT가 바뀌었으면 새 링크만 교체해서 저장하면 됩니다.
           </p>
 
           <div className="mt-6 grid gap-4">
+            <div>
+              <div className="text-sm font-black text-slate-700">수업 분류</div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {CATEGORIES.map((category) => (
+                  <button
+                    key={category.value}
+                    type="button"
+                    onClick={() => updateDraft("category", category.value)}
+                    className={`rounded-2xl border px-4 py-3 text-left transition ${
+                      draft.category === category.value
+                        ? "border-blue-300 bg-blue-50 text-blue-700 ring-2 ring-blue-100"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className="text-sm font-black">{category.label}</div>
+                    <div className="mt-1 text-xs font-bold opacity-70">
+                      {category.description}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <label className="text-sm font-black text-slate-700">
               몇 호
               <input
