@@ -210,6 +210,13 @@ export default function TeacherPresentationsPage() {
                     <p className="mt-4 whitespace-pre-wrap rounded-2xl bg-white px-3 py-3 text-sm font-bold leading-relaxed text-slate-500">
                       {presentation.description || "설명이 없습니다."}
                     </p>
+
+                    <Link
+                      href={`/teacher/presentations/${presentation.id}`}
+                      className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-slate-800 px-4 py-3 text-sm font-black text-white transition hover:bg-slate-700"
+                    >
+                      관리하기
+                    </Link>
                   </article>
                 ))}
               </div>
