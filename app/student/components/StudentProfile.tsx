@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { SchoolNoticeInfo } from "../data/schoolInfo";
+import StudentAssignments from "./StudentAssignments";
 
 interface Props {
   student: any;
@@ -536,6 +537,8 @@ export default function StudentProfile({
             </div>
           </div>
         </div>
+
+        <StudentAssignments student={student} />
 
         {/* 엽전 현황 */}
         <div className="grid grid-cols-3 gap-2 mt-4">
