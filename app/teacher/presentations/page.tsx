@@ -34,6 +34,11 @@ function normalizeCategory(value: unknown): PresentationCategory {
   return value === "coding" ? "coding" : "history";
 }
 
+function getBookOrder(value: string) {
+  const match = value.match(/\d+/);
+  return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
+}
+
 export default function TeacherPresentationsPage() {
   const router = useRouter();
   const [authChecking, setAuthChecking] = useState(true);
@@ -43,15 +48,25 @@ export default function TeacherPresentationsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
 
-  const filteredPresentations = useMemo(
-    () =>
+  const filteredPresentations = useMemo(() => {
+    const items =
       activeFilter === "all"
         ? presentations
         : presentations.filter(
             (presentation) => presentation.category === activeFilter
-          ),
-    [activeFilter, presentations]
-  );
+          );
+
+    return [...items].sort((a, b) => {
+      const numberDifference =
+        getBookOrder(a.bookNumber) - getBookOrder(b.bookNumber);
+
+      if (numberDifference !== 0) {
+        return numberDifference;
+      }
+
+      return a.bookNumber.localeCompare(b.bookNumber, "ko", { numeric: true });
+    });
+  }, [activeFilter, presentations]);
 
   const fetchPresentations = async () => {
     setIsLoading(true);
