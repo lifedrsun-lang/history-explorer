@@ -184,8 +184,10 @@ export default function TeacherPresentationPlayerPage() {
       onClick={goNext}
       onMouseMove={showControlsTemporarily}
       onPointerMove={showControlsTemporarily}
-      className={`relative h-[100dvh] w-screen overflow-hidden bg-black p-0 text-white ${
-        controlsVisible ? "cursor-default" : "cursor-none"
+      className={`relative h-[100dvh] w-screen select-none overflow-hidden bg-black p-0 text-white ${
+        !loadError && !controlsVisible
+          ? "cursor-none"
+          : "cursor-default"
       }`}
     >
       {loadError ? (
