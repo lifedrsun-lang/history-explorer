@@ -12,6 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 
 import { auth, db } from "@/lib/firebase";
+import { listPowerPointBookSources } from "@/lib/presentations/powerPointSources";
 
 type PresentationListItem = {
   id: string;
@@ -24,6 +25,8 @@ type PresentationListItem = {
   status: string;
   slideCount: number;
 };
+
+const powerPointBooks = listPowerPointBookSources();
 
 export default function TeacherPresentationsPage() {
   const router = useRouter();
@@ -113,7 +116,7 @@ export default function TeacherPresentationsPage() {
               📽️ 역사 수업자료 관리
             </h1>
             <p className="mt-2 text-sm font-bold text-slate-500">
-              PPT 원본, 슬라이드 이미지, 동영상을 관리합니다.
+              PowerPoint 원본은 권수별로, 기존 웹 슬라이드는 보조 자료로 관리합니다.
             </p>
           </div>
 
@@ -125,12 +128,54 @@ export default function TeacherPresentationsPage() {
           </Link>
         </div>
 
+        <section className="mb-4 rounded-3xl bg-white p-5 shadow-md">
+          <div>
+            <h2 className="text-xl font-black">권수별 PowerPoint</h2>
+            <p className="mt-1 text-sm font-bold text-slate-500">
+              OneDrive의 통합 PowerPoint는 권수마다 하나만 연결합니다.
+            </p>
+          </div>
+
+          {powerPointBooks.length === 0 ? (
+            <div className="mt-6 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center text-sm font-black text-slate-500">
+              아직 연결된 PowerPoint가 없습니다.
+            </div>
+          ) : (
+            <div className="mt-6 grid gap-3 md:grid-cols-2">
+              {powerPointBooks.map((source) => (
+                <article
+                  key={source.bookNumber}
+                  className="rounded-3xl border border-blue-100 bg-blue-50 p-5"
+                >
+                  <div className="text-xs font-black uppercase tracking-[0.16em] text-blue-500">
+                    ONEDRIVE POWERPOINT
+                  </div>
+                  <h3 className="mt-2 text-xl font-black text-slate-800">
+                    {source.label}
+                  </h3>
+                  <p className="mt-2 text-sm font-bold leading-6 text-slate-500">
+                    1~4차시가 들어 있는 권수 통합 원본입니다. 수업할 차시는 PowerPoint에서 직접 이동해 사용합니다.
+                  </p>
+                  <a
+                    href={source.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white transition hover:bg-blue-700"
+                  >
+                    {source.bookNumber}호 PowerPoint 열기 ↗
+                  </a>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
         <section className="rounded-3xl bg-white p-5 shadow-md">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-xl font-black">수업자료 목록</h2>
+              <h2 className="text-xl font-black">기존 웹 슬라이드 자료</h2>
               <p className="mt-1 text-sm font-bold text-slate-500">
-                업로드와 저장 기능은 다음 단계에서 연결됩니다.
+                기존 PNG 슬라이드쇼 자료는 삭제하지 않고 보조용으로 유지합니다.
               </p>
             </div>
 
@@ -138,7 +183,7 @@ export default function TeacherPresentationsPage() {
               href="/teacher/presentations/new"
               className="inline-flex items-center justify-center rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-yellow-500"
             >
-              새 수업자료 등록
+              새 웹 슬라이드 자료 등록
             </Link>
           </div>
 
@@ -160,11 +205,8 @@ export default function TeacherPresentationsPage() {
               <div className="mt-6 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 px-5 py-12 text-center">
                 <div className="text-4xl">📚</div>
                 <div className="mt-3 text-lg font-black text-slate-700">
-                  아직 등록된 수업자료가 없습니다.
+                  아직 등록된 웹 슬라이드 자료가 없습니다.
                 </div>
-                <p className="mt-2 text-sm font-bold text-slate-500">
-                  새 수업자료를 등록하면 이곳에 목록이 표시됩니다.
-                </p>
               </div>
             )}
 
