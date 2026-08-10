@@ -49,6 +49,8 @@ export type AssignmentSummary = {
   updatedAt: string | null;
   dueAt: string | null;
   isActive: boolean;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
   submittedCount?: number;
   targetCount?: number;
   currentSubmission?: AssignmentSubmissionSummary | null;
@@ -73,9 +75,18 @@ export type AssignmentSubmissionSummary = {
   files: AssignmentFile[];
   submittedAt: string | null;
   updatedAt: string | null;
+  revisionRequestedAt: string | null;
+  revisionRequestedBy: string | null;
+  revisionMessage: string;
+  approvedAt: string | null;
+  approvedBy: string | null;
+  approvalRevokedAt: string | null;
+  approvalRevokedBy: string | null;
   rewardGranted: boolean;
   rewardGrantedAt: string | null;
+  rewardId: string | null;
   rewardCoinHistoryId: string | null;
+  rewardExchangeCount: number;
   rewardRevokedAt: string | null;
 };
 

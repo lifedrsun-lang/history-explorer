@@ -5,6 +5,7 @@ import { FieldValue } from "firebase-admin/firestore";
 
 import {
   ASSIGNMENTS_COLLECTION,
+  AssignmentStatus,
   AssignmentFile,
   AssignmentStudent,
   AssignmentSubmissionSummary,
@@ -120,7 +121,17 @@ export const serializeAssignment = (
     updatedAt: serializeDate(data?.updatedAt),
     dueAt: serializeDate(data?.dueAt),
     isActive: data?.isActive !== false,
+    archivedAt: serializeDate(data?.archivedAt),
+    archivedBy: data?.archivedBy || null,
   };
+};
+
+const normalizeSubmissionStatus = (value: unknown): AssignmentStatus => {
+  if (value === "revision" || value === "approved") {
+    return value;
+  }
+
+  return "submitted";
 };
 
 export const serializeSubmission = (
@@ -152,14 +163,23 @@ export const serializeSubmission = (
       class: normalizeText(data?.studentSnapshot?.class),
       studentNumber: normalizeText(data?.studentSnapshot?.studentNumber),
     },
-    status: "submitted",
+    status: normalizeSubmissionStatus(data?.status),
     submissionAttemptId: normalizeText(data?.submissionAttemptId),
     files,
     submittedAt: serializeDate(data?.submittedAt),
     updatedAt: serializeDate(data?.updatedAt),
+    revisionRequestedAt: serializeDate(data?.revisionRequestedAt),
+    revisionRequestedBy: data?.revisionRequestedBy || null,
+    revisionMessage: normalizeText(data?.revisionMessage),
+    approvedAt: serializeDate(data?.approvedAt),
+    approvedBy: data?.approvedBy || null,
+    approvalRevokedAt: serializeDate(data?.approvalRevokedAt),
+    approvalRevokedBy: data?.approvalRevokedBy || null,
     rewardGranted: Boolean(data?.rewardGranted),
     rewardGrantedAt: serializeDate(data?.rewardGrantedAt),
+    rewardId: data?.rewardId || null,
     rewardCoinHistoryId: data?.rewardCoinHistoryId || null,
+    rewardExchangeCount: Number(data?.rewardExchangeCount || 0),
     rewardRevokedAt: serializeDate(data?.rewardRevokedAt),
   };
 };

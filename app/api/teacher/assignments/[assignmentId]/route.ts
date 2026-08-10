@@ -18,6 +18,7 @@ import {
   getAssignmentBucketName,
   getSupabaseServer,
 } from "@/lib/supabaseServer";
+import { FieldValue } from "firebase-admin/firestore";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -127,6 +128,58 @@ export async function GET(
       targetStudents: targetStudents.filter(Boolean),
       submissions,
     });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+
+    if (message === "teacher_auth_required") {
+      return jsonError("교사 로그인이 필요합니다.", 401, message);
+    }
+
+    return handleRouteError(error);
+  }
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ assignmentId: string }> }
+) {
+  try {
+    const teacher = await verifyTeacherRequest(request);
+    const { assignmentId } = await params;
+    const body = await request.json();
+    const action = normalizeText(body?.action);
+
+    if (!["archive", "restore"].includes(action)) {
+      return jsonError("과제 상태 변경 요청을 확인해 주세요.", 400, "invalid_action");
+    }
+
+    const { db } = getFirebaseAdmin();
+    const assignmentRef = db.collection(ASSIGNMENTS_COLLECTION).doc(assignmentId);
+    const assignmentSnapshot = await assignmentRef.get();
+
+    if (!assignmentSnapshot.exists) {
+      return jsonError("과제를 찾을 수 없습니다.", 404, "assignment_not_found");
+    }
+
+    if (action === "archive") {
+      await assignmentRef.update({
+        isActive: false,
+        archivedAt: FieldValue.serverTimestamp(),
+        archivedBy: teacher.uid,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+
+      return Response.json({ ok: true, action });
+    }
+
+    await assignmentRef.update({
+      isActive: true,
+      restoredAt: FieldValue.serverTimestamp(),
+      restoredBy: teacher.uid,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    return Response.json({ ok: true, action });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
 

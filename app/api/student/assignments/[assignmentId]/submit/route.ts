@@ -41,6 +41,7 @@ const mapSubmitError = (error: unknown) => {
       "invalid_file",
       "object_not_found",
       "storage_upload_failed",
+      "approved_submission_locked",
     ].includes(message)
   ) {
     return jsonError("제출 사진을 다시 확인해 주세요.", 400, message);
@@ -84,6 +85,19 @@ export async function POST(
     const supabase = getSupabaseServer();
     const bucketName = getAssignmentBucketName();
     const submissionAttemptId = crypto.randomUUID();
+    const submissionId = getSubmissionDocId(assignment.id, student.studentKey);
+    const currentSubmissionSnapshot = await db
+      .collection(ASSIGNMENT_SUBMISSIONS_COLLECTION)
+      .doc(submissionId)
+      .get();
+
+    if (
+      currentSubmissionSnapshot.exists &&
+      currentSubmissionSnapshot.data()?.status === "approved"
+    ) {
+      throw new Error("approved_submission_locked");
+    }
+
     const files = [];
 
     for (const photo of photos) {
@@ -138,8 +152,6 @@ export async function POST(
       });
     }
 
-    const submissionId = getSubmissionDocId(assignment.id, student.studentKey);
-
     try {
       await db
         .collection(ASSIGNMENT_SUBMISSIONS_COLLECTION)
@@ -163,9 +175,18 @@ export async function POST(
             files,
             submittedAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp(),
+            revisionRequestedAt: null,
+            revisionRequestedBy: null,
+            revisionMessage: null,
+            approvedAt: null,
+            approvedBy: null,
+            approvalRevokedAt: null,
+            approvalRevokedBy: null,
             rewardGranted: false,
             rewardGrantedAt: null,
+            rewardId: null,
             rewardCoinHistoryId: null,
+            rewardExchangeCount: 0,
             rewardRevokedAt: null,
           },
           { merge: true }

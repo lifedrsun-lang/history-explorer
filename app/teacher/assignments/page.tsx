@@ -26,7 +26,11 @@ type AssignmentDetail = {
   submissions: AssignmentSubmissionSummary[];
 };
 
+type AssignmentFilter = "active" | "archived";
+
 const teachingClassOptions = ["A반", "B반"];
+const DEFAULT_REVISION_MESSAGE =
+  "선생님이 과제를 다시 확인해 달라고 요청했어요.";
 
 const getTeachingClass = (student: AssignmentStudent) => {
   const grade = String(student.grade || "");
@@ -64,6 +68,42 @@ const formatDateTime = (value?: string | null) => {
   });
 };
 
+const getSubmissionStatusLabel = (
+  submission?: AssignmentSubmissionSummary
+) => {
+  if (!submission) {
+    return "미제출";
+  }
+
+  if (submission.status === "approved") {
+    return "승인 완료";
+  }
+
+  if (submission.status === "revision") {
+    return "다시 해오기 요청";
+  }
+
+  return "제출완료";
+};
+
+const getSubmissionStatusClassName = (
+  submission?: AssignmentSubmissionSummary
+) => {
+  if (!submission) {
+    return "bg-white text-slate-500";
+  }
+
+  if (submission.status === "approved") {
+    return "bg-yellow-100 text-yellow-800";
+  }
+
+  if (submission.status === "revision") {
+    return "bg-orange-100 text-orange-700";
+  }
+
+  return "bg-emerald-100 text-emerald-700";
+};
+
 export default function TeacherAssignmentsPage() {
   const router = useRouter();
   const [authChecking, setAuthChecking] = useState(true);
@@ -71,9 +111,14 @@ export default function TeacherAssignmentsPage() {
   const [students, setStudents] = useState<AssignmentStudent[]>([]);
   const [assignments, setAssignments] = useState<AssignmentSummary[]>([]);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState("");
+  const [assignmentFilter, setAssignmentFilter] =
+    useState<AssignmentFilter>("active");
   const [detail, setDetail] = useState<AssignmentDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [processingAssignmentId, setProcessingAssignmentId] = useState("");
+  const [processingSubmissionAction, setProcessingSubmissionAction] =
+    useState("");
   const [notice, setNotice] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -216,6 +261,13 @@ export default function TeacherAssignmentsPage() {
   const selectedAssignment = assignments.find(
     (assignment) => assignment.id === selectedAssignmentId
   );
+  const visibleAssignments = useMemo(() => {
+    return assignments.filter((assignment) => {
+      return assignmentFilter === "active"
+        ? assignment.isActive
+        : !assignment.isActive;
+    });
+  }, [assignmentFilter, assignments]);
 
   const submissionByStudentKey = useMemo(() => {
     const map = new Map<string, AssignmentSubmissionSummary>();
@@ -285,6 +337,111 @@ export default function TeacherAssignmentsPage() {
       );
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const reloadAssignmentsAndDetail = async () => {
+    await loadData();
+
+    if (selectedAssignmentId) {
+      await loadDetail(selectedAssignmentId);
+    }
+  };
+
+  const reviewSubmission = async (
+    submission: AssignmentSubmissionSummary,
+    action: "approve" | "revision" | "revoke"
+  ) => {
+    if (!selectedAssignmentId || processingSubmissionAction) {
+      return;
+    }
+
+    let revisionMessage = DEFAULT_REVISION_MESSAGE;
+
+    if (action === "revision") {
+      revisionMessage =
+        window.prompt("다시 해오기 안내 문구", DEFAULT_REVISION_MESSAGE) ||
+        DEFAULT_REVISION_MESSAGE;
+    }
+
+    const actionKey = `${submission.id}:${action}`;
+
+    setProcessingSubmissionAction(actionKey);
+    setNotice("");
+    setErrorMessage("");
+
+    try {
+      const data = await requestJson(
+        `/api/teacher/assignments/${selectedAssignmentId}/submissions/${submission.id}/review`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            action,
+            revisionMessage,
+          }),
+        }
+      );
+
+      if (data.outcome === "already_rewarded") {
+        setNotice("이미 승인 및 보상 지급이 완료된 과제입니다.");
+      } else if (action === "approve") {
+        setNotice(
+          data.exchangeCount > 0
+            ? `승인 완료 · 동엽전 1개 지급 · 은엽전 ${data.exchangeCount}개 자동 교환`
+            : "승인 완료 · 동엽전 1개 지급 완료"
+        );
+      } else if (action === "revision") {
+        setNotice("다시 해오기 요청을 보냈습니다.");
+      } else {
+        setNotice("승인을 취소하고 동엽전 1개를 회수했습니다.");
+      }
+
+      await reloadAssignmentsAndDetail();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "제출 상태 변경에 실패했습니다."
+      );
+    } finally {
+      setProcessingSubmissionAction("");
+    }
+  };
+
+  const changeAssignmentVisibility = async (
+    assignment: AssignmentSummary,
+    action: "archive" | "restore"
+  ) => {
+    if (processingAssignmentId) {
+      return;
+    }
+
+    setProcessingAssignmentId(assignment.id);
+    setNotice("");
+    setErrorMessage("");
+
+    try {
+      await requestJson(`/api/teacher/assignments/${assignment.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ action }),
+      });
+
+      setNotice(
+        action === "archive"
+          ? "과제를 숨김/보관 처리했습니다."
+          : "과제를 다시 공개했습니다."
+      );
+
+      if (selectedAssignmentId === assignment.id && action === "archive") {
+        setSelectedAssignmentId("");
+        setDetail(null);
+      }
+
+      await loadData();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "과제 상태 변경에 실패했습니다."
+      );
+    } finally {
+      setProcessingAssignmentId("");
     }
   };
 
@@ -487,8 +644,33 @@ export default function TeacherAssignmentsPage() {
 
           <section className="space-y-4">
             <div className="rounded-3xl bg-white p-5 shadow-md">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-xl font-black">과제 목록</h2>
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-xl font-black">과제 목록</h2>
+                  <div className="mt-2 inline-flex rounded-2xl bg-slate-100 p-1">
+                    {[
+                      { value: "active", label: "활성 과제" },
+                      { value: "archived", label: "보관된 과제" },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          setAssignmentFilter(option.value as AssignmentFilter);
+                          setSelectedAssignmentId("");
+                          setDetail(null);
+                        }}
+                        className={`rounded-xl px-3 py-2 text-xs font-black transition ${
+                          assignmentFilter === option.value
+                            ? "bg-white text-slate-800 shadow-sm"
+                            : "text-slate-500"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 {isLoading && (
                   <span className="text-xs font-black text-slate-400">
                     불러오는 중...
@@ -497,34 +679,64 @@ export default function TeacherAssignmentsPage() {
               </div>
 
               <div className="mt-5 grid gap-3 md:grid-cols-2">
-                {assignments.length === 0 ? (
+                {visibleAssignments.length === 0 ? (
                   <div className="rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center text-sm font-black text-slate-500 md:col-span-2">
-                    등록된 과제가 없습니다.
+                    {assignmentFilter === "active"
+                      ? "활성 과제가 없습니다."
+                      : "보관된 과제가 없습니다."}
                   </div>
                 ) : (
-                  assignments.map((assignment) => (
-                    <button
+                  visibleAssignments.map((assignment) => (
+                    <div
                       key={assignment.id}
-                      type="button"
-                      onClick={() => setSelectedAssignmentId(assignment.id)}
                       className={`rounded-3xl border p-4 text-left transition ${
                         selectedAssignmentId === assignment.id
                           ? "border-yellow-300 bg-yellow-50"
                           : "border-slate-100 bg-slate-50 hover:bg-white"
                       }`}
                     >
-                      <div className="text-lg font-black text-slate-800">
-                        {assignment.title}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedAssignmentId(assignment.id)}
+                        className="block w-full text-left"
+                      >
+                        <div className="text-lg font-black text-slate-800">
+                          {assignment.title}
+                        </div>
+                        <div className="mt-2 text-sm font-bold text-slate-500">
+                          {getStudentProgramLabel(assignment.program)} /{" "}
+                          {assignment.school} / {assignment.targetTeachingClass}
+                        </div>
+                        <div className="mt-3 inline-flex rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700">
+                          제출 {assignment.submittedCount || 0}명 / 대상{" "}
+                          {assignment.targetCount || 0}명
+                        </div>
+                      </button>
+
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          type="button"
+                          disabled={processingAssignmentId === assignment.id}
+                          onClick={() =>
+                            changeAssignmentVisibility(
+                              assignment,
+                              assignment.isActive ? "archive" : "restore"
+                            )
+                          }
+                          className={`rounded-2xl px-3 py-2 text-xs font-black transition disabled:opacity-50 ${
+                            assignment.isActive
+                              ? "bg-slate-800 text-white hover:bg-slate-700"
+                              : "bg-emerald-500 text-white hover:bg-emerald-600"
+                          }`}
+                        >
+                          {processingAssignmentId === assignment.id
+                            ? "처리 중..."
+                            : assignment.isActive
+                              ? "과제 숨기기"
+                              : "다시 공개"}
+                        </button>
                       </div>
-                      <div className="mt-2 text-sm font-bold text-slate-500">
-                        {getStudentProgramLabel(assignment.program)} /{" "}
-                        {assignment.school} / {assignment.targetTeachingClass}
-                      </div>
-                      <div className="mt-3 inline-flex rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700">
-                        제출 {assignment.submittedCount || 0}명 / 대상{" "}
-                        {assignment.targetCount || 0}명
-                      </div>
-                    </button>
+                    </div>
                   ))
                 )}
               </div>
@@ -560,13 +772,11 @@ export default function TeacherAssignmentsPage() {
                           </div>
 
                           <div
-                            className={`rounded-full px-3 py-1 text-xs font-black ${
+                            className={`rounded-full px-3 py-1 text-xs font-black ${getSubmissionStatusClassName(
                               submission
-                                ? "bg-emerald-100 text-emerald-700"
-                                : "bg-white text-slate-500"
-                            }`}
+                            )}`}
                           >
-                            {submission ? "제출완료" : "미제출"}
+                            {getSubmissionStatusLabel(submission)}
                           </div>
                         </div>
 
@@ -575,6 +785,24 @@ export default function TeacherAssignmentsPage() {
                             <div className="text-xs font-bold text-slate-500">
                               {formatDateTime(submission.submittedAt)}
                             </div>
+
+                            {submission.status === "approved" && (
+                              <div className="mt-3 rounded-2xl border border-yellow-100 bg-yellow-50 px-3 py-2 text-sm font-black text-yellow-800">
+                                승인 완료 · 동엽전 1개 지급 완료
+                              </div>
+                            )}
+
+                            {submission.status === "revision" && (
+                              <div className="mt-3 rounded-2xl border border-orange-100 bg-orange-50 px-3 py-2 text-sm font-bold text-orange-700">
+                                <div className="font-black">
+                                  다시 해오기 요청
+                                </div>
+                                <div className="mt-1">
+                                  {submission.revisionMessage ||
+                                    DEFAULT_REVISION_MESSAGE}
+                                </div>
+                              </div>
+                            )}
 
                             <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
                               {submission.files.map((file, index) => (
@@ -606,6 +834,60 @@ export default function TeacherAssignmentsPage() {
                                   </div>
                                 </a>
                               ))}
+                            </div>
+
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              {submission.status === "approved" &&
+                              submission.rewardGranted ? (
+                                <button
+                                  type="button"
+                                  disabled={
+                                    processingSubmissionAction ===
+                                    `${submission.id}:revoke`
+                                  }
+                                  onClick={() =>
+                                    reviewSubmission(submission, "revoke")
+                                  }
+                                  className="rounded-2xl bg-rose-500 px-4 py-2 text-sm font-black text-white transition hover:bg-rose-600 disabled:opacity-50"
+                                >
+                                  {processingSubmissionAction ===
+                                  `${submission.id}:revoke`
+                                    ? "처리 중..."
+                                    : "승인 취소"}
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      Boolean(processingSubmissionAction) ||
+                                      submission.rewardGranted
+                                    }
+                                    onClick={() =>
+                                      reviewSubmission(submission, "approve")
+                                    }
+                                    className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-black text-white transition hover:bg-emerald-600 disabled:opacity-50"
+                                  >
+                                    {processingSubmissionAction ===
+                                    `${submission.id}:approve`
+                                      ? "처리 중..."
+                                      : "승인"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={Boolean(processingSubmissionAction)}
+                                    onClick={() =>
+                                      reviewSubmission(submission, "revision")
+                                    }
+                                    className="rounded-2xl bg-orange-500 px-4 py-2 text-sm font-black text-white transition hover:bg-orange-600 disabled:opacity-50"
+                                  >
+                                    {processingSubmissionAction ===
+                                    `${submission.id}:revision`
+                                      ? "처리 중..."
+                                      : "다시 해오기"}
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </div>
                         )}

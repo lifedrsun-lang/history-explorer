@@ -51,6 +51,41 @@ const formatFileSize = (size: number) => {
   return `${(size / 1024 / 1024).toFixed(1)}MB`;
 };
 
+const DEFAULT_REVISION_MESSAGE =
+  "선생님이 과제를 다시 확인해 달라고 요청했어요.";
+
+const getAssignmentStatusLabel = (assignment: AssignmentSummary) => {
+  const status = assignment.currentSubmission?.status;
+
+  if (status === "approved") {
+    return "승인 완료";
+  }
+
+  if (status === "revision") {
+    return "다시 해오기";
+  }
+
+  if (status === "submitted") {
+    return "선생님 확인 중";
+  }
+
+  return "";
+};
+
+const getAssignmentStatusClassName = (assignment: AssignmentSummary) => {
+  const status = assignment.currentSubmission?.status;
+
+  if (status === "approved") {
+    return "bg-yellow-100 text-yellow-800";
+  }
+
+  if (status === "revision") {
+    return "bg-orange-100 text-orange-700";
+  }
+
+  return "bg-emerald-100 text-emerald-700";
+};
+
 const canvasToJpegBlob = (canvas: HTMLCanvasElement, quality: number) => {
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
@@ -354,7 +389,9 @@ export default function StudentAssignments({ student }: Props) {
             message: "",
             error: "",
           };
-          const submitted = Boolean(assignment.currentSubmission);
+          const currentSubmission = assignment.currentSubmission;
+          const statusLabel = getAssignmentStatusLabel(assignment);
+          const canSubmit = currentSubmission?.status !== "approved";
 
           return (
             <article
@@ -378,33 +415,55 @@ export default function StudentAssignments({ student }: Props) {
                   )}
                 </div>
 
-                {submitted && (
-                  <div className="shrink-0 rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">
-                    선생님 확인 중
+                {statusLabel && (
+                  <div
+                    className={`shrink-0 rounded-full px-3 py-1 text-xs font-black ${getAssignmentStatusClassName(
+                      assignment
+                    )}`}
+                  >
+                    {statusLabel}
                   </div>
                 )}
               </div>
 
-              <div className="mt-4">
-                <label className="inline-flex cursor-pointer rounded-2xl bg-slate-800 px-4 py-3 text-sm font-black text-white">
-                  사진 선택
-                  <input
-                    type="file"
-                    accept={HOMEWORK_ALLOWED_CONTENT_TYPES.join(",")}
-                    multiple
-                    disabled={state.isUploading}
-                    onChange={(event) =>
-                      handleFileChange(assignment.id, event.target.files)
-                    }
-                    className="sr-only"
-                  />
-                </label>
-
-                <div className="mt-2 text-xs font-bold text-slate-500">
-                  JPG, PNG, WEBP / 최대 {HOMEWORK_MAX_FILES}장 / 파일당{" "}
-                  {formatFileSize(HOMEWORK_MAX_FILE_SIZE)}
+              {currentSubmission?.status === "revision" && (
+                <div className="mt-4 rounded-2xl border border-orange-100 bg-orange-50 px-3 py-3 text-sm font-bold text-orange-700">
+                  <div className="font-black">다시 해오기</div>
+                  <div className="mt-1">
+                    {currentSubmission.revisionMessage ||
+                      DEFAULT_REVISION_MESSAGE}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {currentSubmission?.status === "approved" && (
+                <div className="mt-4 rounded-2xl border border-yellow-100 bg-yellow-50 px-3 py-3 text-sm font-black text-yellow-800">
+                  과제가 승인되었습니다. 동엽전 1개가 지급되었어요.
+                </div>
+              )}
+
+              {canSubmit && (
+                <div className="mt-4">
+                  <label className="inline-flex cursor-pointer rounded-2xl bg-slate-800 px-4 py-3 text-sm font-black text-white">
+                    사진 선택
+                    <input
+                      type="file"
+                      accept={HOMEWORK_ALLOWED_CONTENT_TYPES.join(",")}
+                      multiple
+                      disabled={state.isUploading}
+                      onChange={(event) =>
+                        handleFileChange(assignment.id, event.target.files)
+                      }
+                      className="sr-only"
+                    />
+                  </label>
+
+                  <div className="mt-2 text-xs font-bold text-slate-500">
+                    JPG, PNG, WEBP / 최대 {HOMEWORK_MAX_FILES}장 / 파일당{" "}
+                    {formatFileSize(HOMEWORK_MAX_FILE_SIZE)}
+                  </div>
+                </div>
+              )}
 
               {files.length > 0 && (
                 <div className="mt-4 rounded-2xl bg-slate-50 px-3 py-3">
@@ -436,14 +495,20 @@ export default function StudentAssignments({ student }: Props) {
                 </div>
               )}
 
-              <button
-                type="button"
-                disabled={state.isUploading}
-                onClick={() => submitAssignment(assignment)}
-                className="mt-4 w-full rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-black text-white shadow-sm transition enabled:hover:bg-emerald-600 disabled:opacity-60"
-              >
-                {state.isUploading ? "제출 중..." : "제출하기"}
-              </button>
+              {canSubmit && (
+                <button
+                  type="button"
+                  disabled={state.isUploading}
+                  onClick={() => submitAssignment(assignment)}
+                  className="mt-4 w-full rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-black text-white shadow-sm transition enabled:hover:bg-emerald-600 disabled:opacity-60"
+                >
+                  {state.isUploading
+                    ? "제출 중..."
+                    : currentSubmission?.status === "revision"
+                      ? "사진 다시 제출하기"
+                      : "제출하기"}
+                </button>
+              )}
             </article>
           );
         })}
