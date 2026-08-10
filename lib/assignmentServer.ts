@@ -10,17 +10,18 @@ import {
   AssignmentSubmissionSummary,
   AssignmentSummary,
   HOMEWORK_MAX_FILES,
-  getExtensionForContentType,
   isAllowedStudentCollection,
   makeStorageSafeStudentKey,
   makeStudentKey,
   normalizeText,
   validateHomeworkPhotoFile,
+  validateHomeworkPhotoInput,
 } from "@/lib/assignments";
 import {
   getFirebaseAdmin,
   isFirebaseAdminConfigurationError,
 } from "@/lib/firebaseAdmin";
+import { isSupabaseConfigurationError } from "@/lib/supabaseServer";
 
 type StudentAuthInput = {
   studentId: unknown;
@@ -48,6 +49,14 @@ export const handleRouteError = (error: unknown) => {
   if (isFirebaseAdminConfigurationError(error)) {
     return jsonError(
       "Firebase Admin 환경변수가 설정되지 않았습니다.",
+      500,
+      "configuration_error"
+    );
+  }
+
+  if (isSupabaseConfigurationError(error)) {
+    return jsonError(
+      "Supabase 환경변수가 설정되지 않았습니다.",
       500,
       "configuration_error"
     );
@@ -247,7 +256,7 @@ export const createUploadTarget = (
   file: { name: string; type: string; size: number },
   submissionAttemptId?: string
 ) => {
-  const validationError = validateHomeworkPhotoFile(file);
+  const validationError = validateHomeworkPhotoInput(file);
 
   if (validationError) {
     throw new Error(validationError);
@@ -256,14 +265,13 @@ export const createUploadTarget = (
   const safeStudentKey = makeStorageSafeStudentKey(studentKey);
   const attemptId = submissionAttemptId || randomUUID();
   const fileId = randomUUID();
-  const extension = getExtensionForContentType(file.type, file.name);
   const storagePath = [
     "assignments",
     assignmentId,
     "submissions",
     safeStudentKey,
     attemptId,
-    `${fileId}.${extension}`,
+    `${fileId}.jpg`,
   ].join("/");
 
   return {
@@ -304,6 +312,7 @@ export const verifyTeacherRequest = async (request: Request) => {
 
   const { auth } = getFirebaseAdmin();
 
+  // 현재는 teacher custom claim이 없어 Firebase 로그인 여부까지만 검증한다.
   return auth.verifyIdToken(match[1]);
 };
 

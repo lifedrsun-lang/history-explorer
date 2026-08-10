@@ -88,7 +88,7 @@ export const HOMEWORK_ALLOWED_CONTENT_TYPES = [
   "image/webp",
 ] as const;
 
-const EXTENSION_BY_CONTENT_TYPE: Record<string, string[]> = {
+export const EXTENSION_BY_CONTENT_TYPE: Record<string, string[]> = {
   "image/jpeg": ["jpg", "jpeg"],
   "image/png": ["png"],
   "image/webp": ["webp"],
@@ -133,23 +133,16 @@ export const getExtensionForContentType = (
   return allowedExtensions[0] || "";
 };
 
-export const validateHomeworkPhotoFile = (file: {
+export const validateHomeworkPhotoInput = (file: {
   name?: unknown;
   type?: unknown;
   size?: unknown;
 }) => {
-  const name = String(file?.name || "");
   const contentType = String(file?.type || "");
   const size = Number(file?.size || 0);
-  const extension = getFileExtension(name);
-  const allowedExtensions = EXTENSION_BY_CONTENT_TYPE[contentType] || [];
 
   if (!HOMEWORK_ALLOWED_CONTENT_TYPES.some((type) => type === contentType)) {
     return "JPG, PNG, WEBP 사진만 제출할 수 있습니다.";
-  }
-
-  if (!allowedExtensions.includes(extension)) {
-    return "파일 확장자와 사진 형식이 맞지 않습니다.";
   }
 
   if (!Number.isFinite(size) || size <= 0) {
@@ -158,6 +151,29 @@ export const validateHomeworkPhotoFile = (file: {
 
   if (size > HOMEWORK_MAX_FILE_SIZE) {
     return "사진은 파일당 10MB 이하로 제출해 주세요.";
+  }
+
+  return "";
+};
+
+export const validateHomeworkPhotoFile = (file: {
+  name?: unknown;
+  type?: unknown;
+  size?: unknown;
+}) => {
+  const name = String(file?.name || "");
+  const contentType = String(file?.type || "");
+  const extension = getFileExtension(name);
+  const allowedExtensions = EXTENSION_BY_CONTENT_TYPE[contentType] || [];
+
+  const inputValidationError = validateHomeworkPhotoInput(file);
+
+  if (inputValidationError) {
+    return inputValidationError;
+  }
+
+  if (!allowedExtensions.includes(extension)) {
+    return "파일 확장자가 사진 형식과 맞지 않습니다.";
   }
 
   return "";

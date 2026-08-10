@@ -14,6 +14,10 @@ import {
   verifyTeacherRequest,
 } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
+import {
+  getAssignmentBucketName,
+  getSupabaseServer,
+} from "@/lib/supabaseServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,7 +64,9 @@ export async function GET(
     await verifyTeacherRequest(request);
 
     const { assignmentId } = await params;
-    const { bucket, db } = getFirebaseAdmin();
+    const { db } = getFirebaseAdmin();
+    const supabase = getSupabaseServer();
+    const bucketName = getAssignmentBucketName();
     const assignmentSnapshot = await db
       .collection(ASSIGNMENTS_COLLECTION)
       .doc(assignmentId)
@@ -91,15 +97,20 @@ export async function GET(
         const submission = serializeSubmission(docItem.id, docItem.data());
         const files = await Promise.all(
           submission.files.map(async (file) => {
-            const [readUrl] = await bucket.file(file.storagePath).getSignedUrl({
-              version: "v4",
-              action: "read",
-              expires: Date.now() + 30 * 60 * 1000,
-            });
+            const { data, error } = await supabase.storage
+              .from(bucketName)
+              .createSignedUrl(file.storagePath, 300);
+
+            if (error) {
+              console.error("Supabase assignment signed URL failed:", {
+                message: error.message,
+                name: error.name,
+              });
+            }
 
             return {
               ...file,
-              readUrl,
+              readUrl: data?.signedUrl || "",
             };
           })
         );

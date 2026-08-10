@@ -3,18 +3,21 @@ import { FieldValue } from "firebase-admin/firestore";
 import {
   ASSIGNMENT_SUBMISSIONS_COLLECTION,
   HOMEWORK_MAX_FILES,
-  normalizeText,
 } from "@/lib/assignments";
 import {
   assertStoragePathForStudent,
+  createUploadTarget,
   getAssignmentForStudent,
   getSubmissionDocId,
   getVerifiedStudent,
   handleRouteError,
   jsonError,
-  normalizeUploadedFiles,
 } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
+import {
+  getAssignmentBucketName,
+  getSupabaseServer,
+} from "@/lib/supabaseServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,9 +40,10 @@ const mapSubmitError = (error: unknown) => {
       "too_many_files",
       "invalid_file",
       "object_not_found",
+      "storage_upload_failed",
     ].includes(message)
   ) {
-    return jsonError("제출 파일을 다시 확인해 주세요.", 400, message);
+    return jsonError("제출 사진을 다시 확인해 주세요.", 400, message);
   }
 
   if (message.includes("사진") || message.includes("파일")) {
@@ -53,86 +57,147 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ assignmentId: string }> }
 ) {
+  const uploadedStoragePaths: string[] = [];
+
   try {
     const { assignmentId } = await params;
-    const body = await request.json();
-    const student = await getVerifiedStudent(body);
+    const formData = await request.formData();
+    const photos = formData
+      .getAll("photos")
+      .filter((item): item is File => item instanceof File);
+    const student = await getVerifiedStudent({
+      studentId: formData.get("studentId"),
+      studentCollection: formData.get("studentCollection"),
+      studentPassword: formData.get("studentPassword"),
+    });
     const assignment = await getAssignmentForStudent(assignmentId, student);
-    const submissionAttemptId = normalizeText(body?.submissionAttemptId);
 
-    if (!submissionAttemptId) {
-      throw new Error("invalid_file");
+    if (photos.length === 0) {
+      throw new Error("files_required");
     }
 
-    const files = normalizeUploadedFiles(body?.files || []);
-
-    if (files.length > HOMEWORK_MAX_FILES) {
+    if (photos.length > HOMEWORK_MAX_FILES) {
       throw new Error("too_many_files");
     }
 
-    const { bucket, db } = getFirebaseAdmin();
+    const { db } = getFirebaseAdmin();
+    const supabase = getSupabaseServer();
+    const bucketName = getAssignmentBucketName();
+    const submissionAttemptId = crypto.randomUUID();
+    const files = [];
 
-    for (const file of files) {
+    for (const photo of photos) {
+      if (photo.type !== "image/jpeg") {
+        throw new Error("invalid_file");
+      }
+
+      const uploadTarget = createUploadTarget(
+        assignment.id,
+        student.studentKey,
+        {
+          name: photo.name,
+          type: photo.type,
+          size: photo.size,
+        },
+        submissionAttemptId
+      );
+
       assertStoragePathForStudent(
         assignment.id,
         student.studentKey,
         submissionAttemptId,
-        file.storagePath
+        uploadTarget.storagePath
       );
 
-      const storageFile = bucket.file(file.storagePath);
-      const [exists] = await storageFile.exists();
+      const arrayBuffer = await photo.arrayBuffer();
+      const { error } = await supabase.storage
+        .from(bucketName)
+        .upload(uploadTarget.storagePath, arrayBuffer, {
+          contentType: "image/jpeg",
+          cacheControl: "3600",
+          upsert: false,
+        });
 
-      if (!exists) {
-        throw new Error("object_not_found");
+      if (error) {
+        console.error("Supabase assignment upload failed:", {
+          message: error.message,
+          name: error.name,
+        });
+        throw new Error("storage_upload_failed");
       }
 
-      const [metadata] = await storageFile.getMetadata();
-      const storedSize = Number(metadata.size || 0);
-      const storedContentType = normalizeText(metadata.contentType);
+      uploadedStoragePaths.push(uploadTarget.storagePath);
 
-      if (
-        storedSize !== file.size ||
-        storedContentType !== file.contentType
-      ) {
-        throw new Error("invalid_file");
-      }
+      files.push({
+        fileId: uploadTarget.fileId,
+        storagePath: uploadTarget.storagePath,
+        originalName: photo.name,
+        contentType: "image/jpeg",
+        size: photo.size,
+        uploadedAt: new Date().toISOString(),
+      });
     }
 
     const submissionId = getSubmissionDocId(assignment.id, student.studentKey);
 
-    await db
-      .collection(ASSIGNMENT_SUBMISSIONS_COLLECTION)
-      .doc(submissionId)
-      .set(
-        {
-          schemaVersion: 1,
-          assignmentId: assignment.id,
-          studentId: student.id,
-          studentCollection: student.collectionName,
-          studentKey: student.studentKey,
-          studentSnapshot: {
-            name: student.name,
-            school: student.school,
-            grade: student.grade,
-            class: student.class,
-            studentNumber: student.studentNumber,
+    try {
+      await db
+        .collection(ASSIGNMENT_SUBMISSIONS_COLLECTION)
+        .doc(submissionId)
+        .set(
+          {
+            schemaVersion: 1,
+            assignmentId: assignment.id,
+            studentId: student.id,
+            studentCollection: student.collectionName,
+            studentKey: student.studentKey,
+            studentSnapshot: {
+              name: student.name,
+              school: student.school,
+              grade: student.grade,
+              class: student.class,
+              studentNumber: student.studentNumber,
+            },
+            status: "submitted",
+            submissionAttemptId,
+            files,
+            submittedAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+            rewardGranted: false,
+            rewardGrantedAt: null,
+            rewardCoinHistoryId: null,
+            rewardRevokedAt: null,
           },
-          status: "submitted",
-          submissionAttemptId,
-          files,
-          submittedAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp(),
-          rewardGranted: false,
-          rewardGrantedAt: null,
-          rewardCoinHistoryId: null,
-          rewardRevokedAt: null,
-        },
-        { merge: true }
-      );
+          { merge: true }
+        );
+    } catch (error) {
+      const { error: removeError } = await supabase.storage
+        .from(bucketName)
+        .remove(uploadedStoragePaths);
+
+      if (removeError) {
+        console.error("Supabase assignment rollback failed:", {
+          message: removeError.message,
+          name: removeError.name,
+        });
+      }
+
+      uploadedStoragePaths.length = 0;
+      throw error;
+    }
 
     return Response.json({ ok: true, submissionId });
   } catch (error) {
+    if (uploadedStoragePaths.length > 0) {
+      try {
+        await getSupabaseServer()
+          .storage.from(getAssignmentBucketName())
+          .remove(uploadedStoragePaths);
+      } catch (cleanupError) {
+        console.error("Supabase assignment cleanup failed:", cleanupError);
+      }
+    }
+
     return mapSubmitError(error);
   }
 }

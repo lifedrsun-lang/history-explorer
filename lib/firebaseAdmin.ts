@@ -3,7 +3,6 @@ import "server-only";
 import { cert, getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
-import { getStorage } from "firebase-admin/storage";
 
 class FirebaseAdminConfigurationError extends Error {
   constructor(message: string) {
@@ -35,7 +34,6 @@ const getAdminApp = () => {
     /\\n/g,
     "\n"
   );
-  const storageBucket = getRequiredEnv("FIREBASE_ADMIN_STORAGE_BUCKET");
 
   return initializeApp({
     credential: cert({
@@ -43,7 +41,6 @@ const getAdminApp = () => {
       clientEmail,
       privateKey,
     }),
-    storageBucket,
   });
 };
 
@@ -58,8 +55,5 @@ export const getFirebaseAdmin = () => {
     app,
     auth: getAuth(app),
     db: getFirestore(app),
-    bucket: getStorage(app).bucket(
-      getRequiredEnv("FIREBASE_ADMIN_STORAGE_BUCKET")
-    ),
   };
 };

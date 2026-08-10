@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 
 import {
-  AssignmentFile,
   AssignmentSummary,
   HOMEWORK_ALLOWED_CONTENT_TYPES,
   HOMEWORK_MAX_FILE_SIZE,
@@ -29,6 +28,11 @@ type UploadState = {
   error: string;
 };
 
+const COMPRESSED_MAX_SIDE = 1200;
+const COMPRESSED_TARGET_SIZE = 300 * 1024;
+const COMPRESSED_INITIAL_QUALITY = 0.82;
+const COMPRESSED_MIN_QUALITY = 0.62;
+
 const formatDueDate = (value?: string | null) => {
   if (!value) {
     return "";
@@ -45,6 +49,87 @@ const formatDueDate = (value?: string | null) => {
 
 const formatFileSize = (size: number) => {
   return `${(size / 1024 / 1024).toFixed(1)}MB`;
+};
+
+const canvasToJpegBlob = (canvas: HTMLCanvasElement, quality: number) => {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("사진 압축에 실패했습니다."));
+          return;
+        }
+
+        resolve(blob);
+      },
+      "image/jpeg",
+      quality
+    );
+  });
+};
+
+const loadBitmapFromFile = async (file: File) => {
+  if ("createImageBitmap" in window) {
+    return createImageBitmap(file, {
+      imageOrientation: "from-image",
+    } as ImageBitmapOptions);
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new window.Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("사진을 불러오지 못했습니다."));
+      img.src = objectUrl;
+    });
+
+    return image;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+};
+
+const compressPhoto = async (file: File) => {
+  const source = await loadBitmapFromFile(file);
+  const sourceWidth = source.width;
+  const sourceHeight = source.height;
+  const scale = Math.min(
+    1,
+    COMPRESSED_MAX_SIDE / Math.max(sourceWidth, sourceHeight)
+  );
+  const canvas = document.createElement("canvas");
+
+  canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+  canvas.height = Math.max(1, Math.round(sourceHeight * scale));
+
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error("사진 압축을 준비하지 못했습니다.");
+  }
+
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(source, 0, 0, canvas.width, canvas.height);
+
+  if ("close" in source && typeof source.close === "function") {
+    source.close();
+  }
+
+  let quality = COMPRESSED_INITIAL_QUALITY;
+  let blob = await canvasToJpegBlob(canvas, quality);
+
+  while (blob.size > COMPRESSED_TARGET_SIZE && quality > COMPRESSED_MIN_QUALITY) {
+    quality = Math.max(COMPRESSED_MIN_QUALITY, quality - 0.08);
+    blob = await canvasToJpegBlob(canvas, quality);
+  }
+
+  return new File([blob], file.name, {
+    type: "image/jpeg",
+    lastModified: Date.now(),
+  });
 };
 
 const getStudentCollection = (student: StudentLike): StudentCollection => {
@@ -182,84 +267,40 @@ export default function StudentAssignments({ student }: Props) {
 
     setAssignmentState(assignment.id, {
       isUploading: true,
-      message: "업로드 중...",
+      message: "사진을 압축하는 중...",
       error: "",
     });
 
     try {
-      let submissionAttemptId = "";
-      const uploadedFiles: AssignmentFile[] = [];
+      const compressedFiles = await Promise.all(files.map(compressPhoto));
+      const authBody = getStudentAuthBody();
+      const formData = new FormData();
 
-      for (const file of files) {
-        const uploadResponse = await fetch(
-          `/api/student/assignments/${assignment.id}/upload-url`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-              body: JSON.stringify({
-              ...getStudentAuthBody(),
-              submissionAttemptId,
-              file: {
-                name: file.name,
-                type: file.type,
-                size: file.size,
-              },
-            }),
-          }
-        );
-        const uploadData = await uploadResponse.json();
+      formData.append("studentId", authBody.studentId);
+      formData.append("studentCollection", authBody.studentCollection);
+      formData.append("studentPassword", authBody.studentPassword);
 
-        if (!uploadResponse.ok) {
-          throw new Error(uploadData?.error || "업로드 URL 발급에 실패했습니다.");
-        }
-
-        submissionAttemptId = uploadData.submissionAttemptId;
-
-        const putResponse = await fetch(uploadData.uploadUrl, {
-          method: "PUT",
-          headers: {
-            "Content-Type": file.type,
-          },
-          body: file,
-        });
-
-        if (!putResponse.ok) {
-          throw new Error("사진 업로드에 실패했습니다.");
-        }
-
-        uploadedFiles.push({
-          fileId: uploadData.fileId,
-          storagePath: uploadData.storagePath,
-          originalName: file.name,
-          contentType: file.type,
-          size: file.size,
-        });
-      }
+      compressedFiles.forEach((file) => {
+        formData.append("photos", file, file.name);
+      });
 
       setAssignmentState(assignment.id, {
-        message: "제출 처리 중...",
+        message: "사진을 제출하는 중...",
       });
 
       const submitResponse = await fetch(
         `/api/student/assignments/${assignment.id}/submit`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...getStudentAuthBody(),
-            submissionAttemptId,
-            files: uploadedFiles,
-          }),
+          body: formData,
         }
       );
       const submitData = await submitResponse.json();
 
       if (!submitResponse.ok) {
-        throw new Error(submitData?.error || "제출 처리에 실패했습니다.");
+        throw new Error(
+          submitData?.error || "사진 제출에 실패했습니다. 다시 시도해 주세요."
+        );
       }
 
       setSelectedFiles((current) => ({
@@ -276,7 +317,10 @@ export default function StudentAssignments({ student }: Props) {
       setAssignmentState(assignment.id, {
         isUploading: false,
         message: "",
-        error: error instanceof Error ? error.message : "제출에 실패했습니다.",
+        error:
+          error instanceof Error
+            ? error.message
+            : "사진 제출에 실패했습니다. 다시 시도해 주세요.",
       });
     }
   };
@@ -365,7 +409,7 @@ export default function StudentAssignments({ student }: Props) {
               {files.length > 0 && (
                 <div className="mt-4 rounded-2xl bg-slate-50 px-3 py-3">
                   <div className="text-xs font-black text-slate-500">
-                    선택된 사진
+                    선택한 사진
                   </div>
                   <div className="mt-2 space-y-1">
                     {files.map((file) => (
