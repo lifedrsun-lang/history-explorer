@@ -24,7 +24,7 @@ export function createPresentationFolderKey(
     return "";
   }
 
-  return `${bookMatch[0]}-${lessonMatch[0]}`;
+  return `${Number(bookMatch[0])}-${Number(lessonMatch[0])}`;
 }
 
 export function getLocalSlidesForPresentation(
