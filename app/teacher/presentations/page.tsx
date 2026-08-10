@@ -146,14 +146,22 @@ export default function TeacherPresentationsPage() {
                   <h3 className="mt-1 text-lg font-black text-slate-800">
                     {presentation.title || "책 제목 없음"}
                   </h3>
-                  <a
-                    href={presentation.pptUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white transition hover:bg-blue-700"
-                  >
-                    PowerPoint 열기 ↗
-                  </a>
+                  <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
+                    <a
+                      href={presentation.pptUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white transition hover:bg-blue-700"
+                    >
+                      PowerPoint 열기 ↗
+                    </a>
+                    <Link
+                      href={`/teacher/presentations/${presentation.id}/edit`}
+                      className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-100"
+                    >
+                      수정하기
+                    </Link>
+                  </div>
                 </article>
               ))}
             </div>
