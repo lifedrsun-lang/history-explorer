@@ -8,17 +8,30 @@ import { useRouter } from "next/navigation";
 
 import { auth, db } from "@/lib/firebase";
 
+type PresentationCategory = "history" | "coding";
+
 type PresentationDraft = {
+  category: PresentationCategory;
   bookNumber: string;
   title: string;
   pptUrl: string;
 };
 
 const EMPTY_DRAFT: PresentationDraft = {
+  category: "history",
   bookNumber: "",
   title: "",
   pptUrl: "",
 };
+
+const CATEGORIES: Array<{
+  value: PresentationCategory;
+  label: string;
+  description: string;
+}> = [
+  { value: "history", label: "역사", description: "역사 수업 PPT" },
+  { value: "coding", label: "코딩", description: "코딩 수업 PPT" },
+];
 
 function isValidHttpUrl(value: string) {
   try {
@@ -61,7 +74,10 @@ export default function NewTeacherPresentationPage() {
     return unsubscribe;
   }, [router]);
 
-  const updateDraft = (field: keyof PresentationDraft, value: string) => {
+  const updateDraft = (
+    field: keyof PresentationDraft,
+    value: string
+  ) => {
     setDraft((current) => ({ ...current, [field]: value }));
     setErrorMessage("");
   };
@@ -74,7 +90,8 @@ export default function NewTeacherPresentationPage() {
 
     try {
       await addDoc(collection(db, "presentations"), {
-        schemaVersion: 2,
+        schemaVersion: 3,
+        category: draft.category,
         bookNumber: draft.bookNumber.trim(),
         title: draft.title.trim(),
         pptUrl: draft.pptUrl.trim(),
@@ -117,10 +134,33 @@ export default function NewTeacherPresentationPage() {
 
           <h1 className="mt-5 text-2xl font-black md:text-3xl">PPT 등록</h1>
           <p className="mt-2 text-sm font-bold text-slate-500">
-            파일을 우리 서버에 올리는 방식이 아니라, OneDrive 등의 PowerPoint 링크를 저장합니다.
+            수업 분류와 권수, 책 제목, OneDrive 등의 PowerPoint 링크를 저장합니다.
           </p>
 
           <div className="mt-6 grid gap-4">
+            <div>
+              <div className="text-sm font-black text-slate-700">수업 분류</div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {CATEGORIES.map((category) => (
+                  <button
+                    key={category.value}
+                    type="button"
+                    onClick={() => updateDraft("category", category.value)}
+                    className={`rounded-2xl border px-4 py-3 text-left transition ${
+                      draft.category === category.value
+                        ? "border-blue-300 bg-blue-50 text-blue-700 ring-2 ring-blue-100"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className="text-sm font-black">{category.label}</div>
+                    <div className="mt-1 text-xs font-bold opacity-70">
+                      {category.description}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <label className="text-sm font-black text-slate-700">
               몇 호
               <input
