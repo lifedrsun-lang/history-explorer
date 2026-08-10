@@ -16,11 +16,16 @@ type PresentationForPlayer = {
   lessonNumber: string;
 };
 
+type DisplayMode = "cover" | "contain";
+
 export default function TeacherPresentationPlayerPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const presentationId = params.id;
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const hideControlsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const [presentation, setPresentation] =
@@ -29,6 +34,8 @@ export default function TeacherPresentationPlayerPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loadError, setLoadError] = useState("");
   const [imageError, setImageError] = useState(false);
+  const [displayMode, setDisplayMode] = useState<DisplayMode>("cover");
+  const [controlsVisible, setControlsVisible] = useState(true);
 
   const goPrevious = useCallback(() => {
     setCurrentIndex((current) => Math.max(0, current - 1));
@@ -39,6 +46,22 @@ export default function TeacherPresentationPlayerPage() {
       Math.min(slides.length - 1, current + 1)
     );
   }, [slides.length]);
+
+  const showControls = useCallback(() => {
+    setControlsVisible(true);
+
+    if (hideControlsTimerRef.current) {
+      clearTimeout(hideControlsTimerRef.current);
+    }
+
+    hideControlsTimerRef.current = setTimeout(() => {
+      setControlsVisible(false);
+    }, 2500);
+  }, []);
+
+  const toggleDisplayMode = useCallback(() => {
+    setDisplayMode((current) => (current === "cover" ? "contain" : "cover"));
+  }, []);
 
   const requestFullscreen = async () => {
     try {
@@ -105,22 +128,39 @@ export default function TeacherPresentationPlayerPage() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "ArrowLeft") {
         goPrevious();
+        return;
       }
 
       if (event.key === "ArrowRight" || event.key === " ") {
         event.preventDefault();
         goNext();
+        return;
+      }
+
+      if (event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        toggleDisplayMode();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
 
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [goNext, goPrevious]);
+  }, [goNext, goPrevious, toggleDisplayMode]);
+
+  useEffect(() => {
+    showControls();
+
+    return () => {
+      if (hideControlsTimerRef.current) {
+        clearTimeout(hideControlsTimerRef.current);
+      }
+    };
+  }, [showControls]);
 
   if (authChecking) {
     return (
-      <main className="flex min-h-[100dvh] items-center justify-center bg-black text-white">
+      <main className="flex h-[100dvh] w-screen items-center justify-center overflow-hidden bg-black text-white">
         <div className="text-sm font-bold text-zinc-300">
           Checking teacher sign-in...
         </div>
@@ -133,15 +173,21 @@ export default function TeacherPresentationPlayerPage() {
   }
 
   const currentSlide = slides[currentIndex];
+  const displayModeLabel =
+    displayMode === "cover" ? "전체 보기" : "화면 채우기";
 
   return (
     <main
       ref={stageRef}
       onClick={goNext}
-      className="relative min-h-[100dvh] overflow-hidden bg-black text-white"
+      onMouseMove={showControls}
+      onPointerMove={showControls}
+      className={`relative h-[100dvh] w-screen select-none overflow-hidden bg-black text-white ${
+        !loadError && !controlsVisible ? "cursor-none" : "cursor-default"
+      }`}
     >
       {loadError ? (
-        <div className="flex min-h-[100dvh] items-center justify-center px-6 text-center">
+        <div className="flex h-full w-full items-center justify-center px-6 text-center">
           <div>
             <div className="text-lg font-black">{loadError}</div>
             <Link
@@ -163,7 +209,9 @@ export default function TeacherPresentationPlayerPage() {
                 fill
                 priority
                 sizes="100vw"
-                className="object-contain"
+                className={
+                  displayMode === "cover" ? "object-cover" : "object-contain"
+                }
                 onError={() => setImageError(true)}
               />
             )}
@@ -175,47 +223,72 @@ export default function TeacherPresentationPlayerPage() {
             )}
           </div>
 
-          <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent p-4">
-            <div className="min-w-0 truncate text-sm font-black">
+          <div
+            className={`pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent p-4 transition-opacity duration-200 ${
+              controlsVisible ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <div className="min-w-0 truncate text-xs font-bold text-white/85">
               {presentation?.title || "수업자료 슬라이드쇼"}
             </div>
-            <div className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-sm font-black">
+            <div className="shrink-0 rounded-full bg-black/45 px-3 py-1 text-xs font-black text-white/90 backdrop-blur-sm">
               {slides.length > 0 ? currentIndex + 1 : 0} / {slides.length}
             </div>
           </div>
 
           <div
-            className="absolute inset-x-0 bottom-0 flex flex-wrap items-center justify-center gap-2 bg-gradient-to-t from-black/75 to-transparent p-4"
+            className={`absolute bottom-4 right-4 z-20 flex items-center gap-2 rounded-2xl bg-black/55 p-2 shadow-lg backdrop-blur-sm transition-opacity duration-200 ${
+              controlsVisible
+                ? "opacity-100"
+                : "pointer-events-none opacity-0"
+            }`}
             onClick={(event) => event.stopPropagation()}
           >
             <button
               type="button"
               onClick={goPrevious}
               disabled={currentIndex === 0}
-              className="rounded-2xl bg-white px-4 py-3 text-sm font-black text-black disabled:opacity-45"
+              title="이전"
+              aria-label="이전"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/90 text-base font-black text-black disabled:opacity-35"
             >
-              이전
+              ◀
             </button>
             <button
               type="button"
               onClick={goNext}
               disabled={currentIndex >= slides.length - 1}
-              className="rounded-2xl bg-white px-4 py-3 text-sm font-black text-black disabled:opacity-45"
+              title="다음"
+              aria-label="다음"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/90 text-base font-black text-black disabled:opacity-35"
             >
-              다음
+              ▶
             </button>
             <button
               type="button"
               onClick={requestFullscreen}
-              className="rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-black"
+              title="전체화면"
+              aria-label="전체화면"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-400 text-lg font-black text-black"
             >
-              전체화면
+              ⛶
+            </button>
+            <button
+              type="button"
+              onClick={toggleDisplayMode}
+              title={displayModeLabel}
+              aria-label={displayModeLabel}
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/90 text-lg font-black text-black"
+            >
+              ▣
             </button>
             <Link
               href={`/teacher/presentations/${presentationId}`}
-              className="rounded-2xl bg-zinc-800 px-4 py-3 text-sm font-black text-white"
+              title="나가기"
+              aria-label="나가기"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-800 text-lg font-black text-white"
             >
-              나가기
+              ✕
             </Link>
           </div>
         </>
