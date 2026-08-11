@@ -18,6 +18,8 @@ interface Props {
   ) => void;
 }
 
+type StudentPopup = "assignments" | "exchange" | null;
+
 export default function StudentProfile({
   student,
   currentStage,
@@ -27,6 +29,8 @@ export default function StudentProfile({
 }: Props) {
   const [showAllHistory, setShowAllHistory] =
     useState(false);
+  const [studentPopup, setStudentPopup] =
+    useState<StudentPopup>(null);
 
   const TOTAL_PROGRESS = 23;
   const displayedProgressStage = Math.min(
@@ -539,8 +543,6 @@ export default function StudentProfile({
           </div>
         </div>
 
-        <StudentAssignments student={student} />
-
         {/* 엽전 현황 */}
         <div className="grid grid-cols-3 gap-2 mt-4">
           <div className="min-w-0 rounded-[22px] border border-yellow-200 bg-yellow-50 p-3 text-center">
@@ -574,7 +576,77 @@ export default function StudentProfile({
           </div>
         </div>
 
-        <CoinExchangeRequest student={student} />
+        {/* 학생 빠른 메뉴 */}
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setStudentPopup("assignments")}
+            className="rounded-[22px] border border-emerald-200 bg-emerald-50 px-3 py-4 text-center font-black text-emerald-700 shadow-sm transition hover:bg-emerald-100"
+          >
+            <span className="block text-2xl">📘</span>
+            <span className="mt-1 block text-sm">과제 확인</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStudentPopup("exchange")}
+            className="rounded-[22px] border border-violet-200 bg-violet-50 px-3 py-4 text-center font-black text-violet-700 shadow-sm transition hover:bg-violet-100"
+          >
+            <span className="block text-2xl">🎁</span>
+            <span className="mt-1 block text-sm">은엽전 교환</span>
+          </button>
+        </div>
+
+        {studentPopup && (
+          <div
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/55 p-3"
+            onClick={() => setStudentPopup(null)}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={
+                studentPopup === "assignments"
+                  ? "나의 과제"
+                  : "은엽전 교환신청"
+              }
+              onClick={(event) => event.stopPropagation()}
+              className="w-full max-w-xl overflow-hidden rounded-[30px] bg-white shadow-2xl"
+            >
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-white px-5 py-4">
+                <div>
+                  <div className="text-xl font-black text-slate-800">
+                    {studentPopup === "assignments"
+                      ? "📘 나의 과제"
+                      : "🎁 은엽전 교환신청"}
+                  </div>
+                  <div className="mt-1 text-xs font-bold text-slate-500">
+                    {studentPopup === "assignments"
+                      ? "현재 공개된 과제를 확인하고 사진을 제출할 수 있어요."
+                      : "은엽전 1개는 1,000원 상품권으로 교환할 수 있어요."}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setStudentPopup(null)}
+                  aria-label="팝업 닫기"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xl font-black text-slate-600"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="max-h-[78dvh] overflow-y-auto px-3 pb-4">
+                {studentPopup === "assignments" ? (
+                  <StudentAssignments student={student} />
+                ) : (
+                  <CoinExchangeRequest student={student} />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 진행률 */}
         <div className="mt-4 rounded-[24px] border border-sky-100 bg-sky-50/80 p-4">
