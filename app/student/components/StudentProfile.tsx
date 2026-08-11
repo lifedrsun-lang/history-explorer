@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { SchoolNoticeInfo } from "../data/schoolInfo";
+import CoinExchangeRequest from "./CoinExchangeRequest";
 import StudentAssignments from "./StudentAssignments";
 
 interface Props {
@@ -572,6 +573,8 @@ export default function StudentProfile({
             </div>
           </div>
         </div>
+
+        <CoinExchangeRequest student={student} />
 
         {/* 진행률 */}
         <div className="mt-4 rounded-[24px] border border-sky-100 bg-sky-50/80 p-4">
