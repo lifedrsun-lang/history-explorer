@@ -29,6 +29,15 @@ const normalizeLesson = (value: unknown, topic?: unknown) => {
 const normalizeQuestionType = (value: unknown) =>
   normalizeText(value) === "exam" ? "exam" : "textbook";
 
+const normalizeExamLevel = (value: unknown) => {
+  const normalized = normalizeText(value);
+  if (normalized === "basic" || normalized === "advanced") return normalized;
+  return "";
+};
+
+const normalizeExamNumber = (value: unknown) =>
+  normalizeText(value).replace(/[^0-9]/g, "");
+
 const serializeQuestion = async (
   id: string,
   data: FirebaseFirestore.DocumentData
@@ -54,6 +63,9 @@ const serializeQuestion = async (
   return {
     id,
     questionType: normalizeQuestionType(data?.questionType),
+    examLevel: normalizeExamLevel(data?.examLevel),
+    examRound: normalizeExamNumber(data?.examRound),
+    examQuestionNumber: normalizeExamNumber(data?.examQuestionNumber),
     bookNumber: normalizeText(data?.bookNumber),
     lesson: normalizeLesson(data?.lesson, data?.topic),
     topic: normalizeText(data?.topic),
@@ -81,6 +93,7 @@ const mapError = (error: unknown) => {
   if (
     [
       "invalid_question_type",
+      "invalid_exam_level",
       "book_number_required",
       "prompt_required",
       "exam_image_or_prompt_required",
@@ -98,6 +111,9 @@ const mapError = (error: unknown) => {
 
 const parseQuestionBody = (body: Record<string, unknown>) => {
   const questionType = normalizeQuestionType(body?.questionType);
+  const examLevel = normalizeExamLevel(body?.examLevel);
+  const examRound = normalizeExamNumber(body?.examRound);
+  const examQuestionNumber = normalizeExamNumber(body?.examQuestionNumber);
   const bookNumber = normalizeText(body?.bookNumber);
   const lesson = normalizeLesson(body?.lesson);
   const topic = normalizeText(body?.topic);
@@ -124,6 +140,9 @@ const parseQuestionBody = (body: Record<string, unknown>) => {
 
     return {
       questionType,
+      examLevel: "",
+      examRound: "",
+      examQuestionNumber: "",
       bookNumber,
       lesson,
       topic,
@@ -134,6 +153,10 @@ const parseQuestionBody = (body: Record<string, unknown>) => {
       imageStoragePath,
       imageOriginalName,
     };
+  }
+
+  if (!examLevel) {
+    throw new Error("invalid_exam_level");
   }
 
   if (!prompt && !imageStoragePath) {
@@ -150,6 +173,9 @@ const parseQuestionBody = (body: Record<string, unknown>) => {
 
   return {
     questionType,
+    examLevel,
+    examRound,
+    examQuestionNumber,
     bookNumber,
     lesson,
     topic,
@@ -187,7 +213,7 @@ export async function POST(request: Request) {
     const payload = parseQuestionBody(await request.json());
     const { db } = getFirebaseAdmin();
     const docRef = await db.collection(REVIEW_QUESTIONS_COLLECTION).add({
-      schemaVersion: 2,
+      schemaVersion: 3,
       ...payload,
       createdBy: teacher.uid,
       updatedBy: teacher.uid,
@@ -215,7 +241,7 @@ export async function PATCH(request: Request) {
     if (!snapshot.exists) throw new Error("question_not_found");
 
     await docRef.update({
-      schemaVersion: 2,
+      schemaVersion: 3,
       ...payload,
       updatedBy: teacher.uid,
       updatedAt: FieldValue.serverTimestamp(),
