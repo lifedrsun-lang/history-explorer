@@ -84,7 +84,7 @@ export default function TeacherPage() {
   const [selectedSchool, setSelectedSchool] = useState("전체학교");
   const [selectedProgram, setSelectedProgram] =
     useState<ProgramFilter>("all");
-  const [selectedTab, setSelectedTab] = useState("A반");
+  const [selectedTab, setSelectedTab] = useState("전체");
   const [searchTerm, setSearchTerm] = useState("");
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [isBulkStageOpen, setIsBulkStageOpen] = useState(false);
@@ -876,9 +876,20 @@ export default function TeacherPage() {
         return false;
       }
 
+      if (selectedTab === "전체") {
+        return true;
+      }
+
       return isSameTeachingClass(student, selectedTab);
     })
     .sort((a, b) => {
+      const teachingClassA = getTeachingClass(a);
+      const teachingClassB = getTeachingClass(b);
+
+      if (teachingClassA !== teachingClassB) {
+        return teachingClassA.localeCompare(teachingClassB);
+      }
+
       const gradeA = getGradeNumber(a.grade);
       const gradeB = getGradeNumber(b.grade);
 
@@ -1102,29 +1113,47 @@ export default function TeacherPage() {
           </div>
         </div>
 
-        {/* 학생 수 */}
+        {/* 학생 수 / 반 선택 */}
         <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
           <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="bg-blue-50 rounded-2xl p-3">
-              <div className="text-sm text-gray-500 mb-1">A반</div>
-              <div className="text-2xl font-bold text-blue-600">
-                {aClassCount}명
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedTab("전체")}
+              className={`rounded-2xl p-3 transition ${
+                selectedTab === "전체"
+                  ? "bg-yellow-400 text-white ring-4 ring-yellow-100"
+                  : "bg-yellow-50 text-yellow-700"
+              }`}
+            >
+              <div className="text-sm mb-1 font-bold">전체</div>
+              <div className="text-2xl font-black">{countTargetStudents.length}명</div>
+            </button>
 
-            <div className="bg-pink-50 rounded-2xl p-3">
-              <div className="text-sm text-gray-500 mb-1">B반</div>
-              <div className="text-2xl font-bold text-pink-600">
-                {bClassCount}명
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedTab("A반")}
+              className={`rounded-2xl p-3 transition ${
+                selectedTab === "A반"
+                  ? "bg-blue-500 text-white ring-4 ring-blue-100"
+                  : "bg-blue-50 text-blue-700"
+              }`}
+            >
+              <div className="text-sm mb-1 font-bold">🌙 A반</div>
+              <div className="text-2xl font-black">{aClassCount}명</div>
+            </button>
 
-            <div className="bg-yellow-50 rounded-2xl p-3">
-              <div className="text-sm text-gray-500 mb-1">전체</div>
-              <div className="text-2xl font-bold text-yellow-600">
-                {countTargetStudents.length}명
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedTab("B반")}
+              className={`rounded-2xl p-3 transition ${
+                selectedTab === "B반"
+                  ? "bg-pink-500 text-white ring-4 ring-pink-100"
+                  : "bg-pink-50 text-pink-700"
+              }`}
+            >
+              <div className="text-sm mb-1 font-bold">⭐ B반</div>
+              <div className="text-2xl font-black">{bClassCount}명</div>
+            </button>
           </div>
         </div>
 
@@ -1167,32 +1196,8 @@ export default function TeacherPage() {
               placeholder="학생 이름 검색"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="border rounded-xl px-4 py-2"
+              className="border rounded-xl px-4 py-2 flex-1"
             />
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setSelectedTab("A반")}
-                className={`px-4 py-2 rounded-xl font-bold ${
-                  selectedTab === "A반"
-                    ? "bg-blue-500 text-white"
-                    : "bg-gray-200"
-                }`}
-              >
-                🌙 A반
-              </button>
-
-              <button
-                onClick={() => setSelectedTab("B반")}
-                className={`px-4 py-2 rounded-xl font-bold ${
-                  selectedTab === "B반"
-                    ? "bg-pink-500 text-white"
-                    : "bg-gray-200"
-                }`}
-              >
-                ⭐ B반
-              </button>
-            </div>
           </div>
         </div>
 
