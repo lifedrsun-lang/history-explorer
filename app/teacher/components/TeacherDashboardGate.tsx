@@ -49,12 +49,22 @@ export default function TeacherDashboardGate() {
     });
   }, []);
 
-  if (
-    pathname !== "/teacher" ||
-    !authorized ||
-    searchParams.get("manage") === "1" ||
-    searchParams.get("fees") === "1"
-  ) {
+  if (pathname !== "/teacher" || !authorized) {
+    return null;
+  }
+
+  if (searchParams.get("manage") === "1") {
+    return (
+      <Link
+        href="/teacher"
+        className="fixed left-4 top-4 z-[80] rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-lg"
+      >
+        ← 교사용 홈
+      </Link>
+    );
+  }
+
+  if (searchParams.get("fees") === "1") {
     return null;
   }
 
@@ -64,9 +74,7 @@ export default function TeacherDashboardGate() {
         <div className="rounded-[32px] bg-white p-6 shadow-xl sm:p-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <div className="text-sm font-black text-slate-400">
-                TEACHER HOME
-              </div>
+              <div className="text-sm font-black text-slate-400">TEACHER HOME</div>
               <h1 className="mt-1 text-3xl font-black text-slate-900 sm:text-4xl">
                 🏫 역사 탐험 관리소
               </h1>
@@ -76,17 +84,10 @@ export default function TeacherDashboardGate() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Link
-                href="/"
-                className="rounded-2xl bg-blue-50 px-4 py-2 text-sm font-black text-blue-700"
-              >
+              <Link href="/" className="rounded-2xl bg-blue-50 px-4 py-2 text-sm font-black text-blue-700">
                 🏝 맵으로
               </Link>
-              <button
-                type="button"
-                onClick={() => signOut(auth)}
-                className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-600"
-              >
+              <button type="button" onClick={() => signOut(auth)} className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-600">
                 로그아웃
               </button>
             </div>
@@ -102,12 +103,8 @@ export default function TeacherDashboardGate() {
             >
               <div className="text-4xl">{item.icon}</div>
               <div className="mt-4 text-2xl font-black">{item.title}</div>
-              <div className="mt-2 text-sm font-bold leading-relaxed opacity-70">
-                {item.description}
-              </div>
-              <div className="mt-5 text-sm font-black opacity-80">
-                들어가기 →
-              </div>
+              <div className="mt-2 text-sm font-bold leading-relaxed opacity-70">{item.description}</div>
+              <div className="mt-5 text-sm font-black opacity-80">들어가기 →</div>
             </Link>
           ))}
         </div>
