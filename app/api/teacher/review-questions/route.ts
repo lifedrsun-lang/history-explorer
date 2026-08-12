@@ -15,12 +15,22 @@ const REVIEW_QUESTIONS_COLLECTION = "reviewQuestions";
 
 const normalizeText = (value: unknown) => String(value || "").trim();
 
+const normalizeLesson = (value: unknown, topic?: unknown) => {
+  const direct = normalizeText(value);
+  if (direct) return direct;
+
+  const legacyTopic = normalizeText(topic);
+  const match = legacyTopic.match(/^(\d+)\s*차시$/);
+  return match ? `${match[1]}차시` : "";
+};
+
 const serializeQuestion = (
   id: string,
   data: FirebaseFirestore.DocumentData
 ) => ({
   id,
   bookNumber: normalizeText(data?.bookNumber),
+  lesson: normalizeLesson(data?.lesson, data?.topic),
   topic: normalizeText(data?.topic),
   prompt: normalizeText(data?.prompt),
   options: Array.isArray(data?.options)
@@ -57,6 +67,7 @@ const mapError = (error: unknown) => {
 
 const parseQuestionBody = (body: Record<string, unknown>) => {
   const bookNumber = normalizeText(body?.bookNumber);
+  const lesson = normalizeLesson(body?.lesson);
   const topic = normalizeText(body?.topic);
   const prompt = normalizeText(body?.prompt);
   const explanation = normalizeText(body?.explanation);
@@ -76,6 +87,7 @@ const parseQuestionBody = (body: Record<string, unknown>) => {
 
   return {
     bookNumber,
+    lesson,
     topic,
     prompt,
     options,
