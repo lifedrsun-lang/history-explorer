@@ -31,7 +31,7 @@ type ReviewAssignment = {
 };
 
 type Props = { student: any };
-const OPTION_LABELS = ["①", "②", "③", "④", "⑤"];
+const OPTION_LABELS = ["①", "②", "③", "④"];
 
 const getStudentCollection = (student: any): StudentCollection => {
   const collectionName = String(student?.collectionName || "students");
@@ -211,7 +211,7 @@ export default function StudentReviewAssignments({ student }: Props) {
   const isCorrect = selectedIndex === currentQuestion.correctIndex;
   const isLast = questionIndex === activeAssignment.questions.length - 1;
   const isExamImage = currentQuestion.questionType === "exam" && Boolean(currentQuestion.imageUrl);
-  const answerCount = currentQuestion.questionType === "exam" ? 5 : currentQuestion.options.length;
+  const answerCount = currentQuestion.questionType === "exam" ? 4 : currentQuestion.options.length;
 
   return (
     <div className="px-2 py-4">
@@ -243,12 +243,12 @@ export default function StudentReviewAssignments({ student }: Props) {
           <div className="mt-4 text-lg font-black leading-7 text-slate-800">{currentQuestion.prompt}</div>
         )}
 
-        <div className={`mt-4 grid gap-2 ${isExamImage ? "grid-cols-5" : ""}`}>
+        <div className={`mt-4 grid gap-2 ${isExamImage ? "grid-cols-4" : ""}`}>
           {Array.from({ length: answerCount }).map((_, index) => {
             const selected = selectedIndex === index;
             const correct = checked && index === currentQuestion.correctIndex;
             const wrongSelected = checked && selected && !correct;
-            const optionText = currentQuestion.questionType === "exam" ? "" : currentQuestion.options[index];
+            const optionText = currentQuestion.options[index] || "";
 
             return (
               <button
@@ -264,7 +264,7 @@ export default function StudentReviewAssignments({ student }: Props) {
                       : selected
                         ? "border-sky-400 bg-sky-50 text-sky-800"
                         : "border-slate-200 bg-white text-slate-700"
-                } ${isExamImage ? "text-center text-xl" : "text-left"}`}
+                } ${isExamImage ? "text-left" : "text-left"}`}
               >
                 {OPTION_LABELS[index] || `${index + 1}.`}{optionText ? ` ${optionText}` : ""}
               </button>
@@ -286,7 +286,12 @@ export default function StudentReviewAssignments({ student }: Props) {
             <div className={`mt-4 rounded-2xl px-4 py-3 text-sm font-black ${isCorrect ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
               {isCorrect ? "⭕ 정답이에요!" : "❌ 다시 확인해 보세요."}
               {currentQuestion.explanation && (
-                <div className="mt-2 text-xs font-bold leading-5 text-slate-600">{currentQuestion.explanation}</div>
+                <div className="mt-3 rounded-xl border border-slate-200/70 bg-white/90 px-3 py-3 text-slate-700">
+                  <div className="text-xs font-black">해설</div>
+                  <div className="mt-1 whitespace-pre-wrap text-xs font-bold leading-6 text-slate-600">
+                    {currentQuestion.explanation}
+                  </div>
+                </div>
               )}
             </div>
 
