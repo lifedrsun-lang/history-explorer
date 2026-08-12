@@ -16,6 +16,9 @@ type ReviewQuestion = {
   options: string[];
   correctIndex: number;
   explanation: string;
+  imageStoragePath?: string;
+  imageOriginalName?: string;
+  imageUrl?: string;
 };
 
 type ReviewAssignment = {
@@ -27,18 +30,12 @@ type ReviewAssignment = {
   createdAt: string | null;
 };
 
-type Props = {
-  student: any;
-};
-
+type Props = { student: any };
 const OPTION_LABELS = ["①", "②", "③", "④", "⑤"];
 
 const getStudentCollection = (student: any): StudentCollection => {
   const collectionName = String(student?.collectionName || "students");
-
-  return isAllowedStudentCollection(collectionName)
-    ? collectionName
-    : "students";
+  return isAllowedStudentCollection(collectionName) ? collectionName : "students";
 };
 
 export default function StudentReviewAssignments({ student }: Props) {
@@ -61,7 +58,6 @@ export default function StudentReviewAssignments({ student }: Props) {
     () => assignments.find((item) => item.id === activeAssignmentId) || null,
     [activeAssignmentId, assignments]
   );
-
   const currentQuestion = activeAssignment?.questions?.[questionIndex] || null;
 
   useEffect(() => {
@@ -79,32 +75,23 @@ export default function StudentReviewAssignments({ student }: Props) {
 
       setIsLoading(true);
       setErrorMessage("");
-
       try {
         const response = await fetch("/api/student/review-assignments", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            studentId,
-            studentCollection,
-            studentPassword,
-          }),
+          body: JSON.stringify({ studentId, studentCollection, studentPassword }),
         });
         const data = await response.json().catch(() => ({}));
-
         if (!response.ok) {
           throw new Error(data?.error || "복습문제를 불러오지 못했습니다.");
         }
-
         if (!cancelled) {
           setAssignments(Array.isArray(data?.assignments) ? data.assignments : []);
         }
       } catch (error) {
         if (!cancelled) {
           setErrorMessage(
-            error instanceof Error
-              ? error.message
-              : "복습문제를 불러오지 못했습니다."
+            error instanceof Error ? error.message : "복습문제를 불러오지 못했습니다."
           );
         }
       } finally {
@@ -113,7 +100,6 @@ export default function StudentReviewAssignments({ student }: Props) {
     };
 
     void loadAssignments();
-
     return () => {
       cancelled = true;
     };
@@ -130,7 +116,6 @@ export default function StudentReviewAssignments({ student }: Props) {
 
   const completeAssignment = async () => {
     if (!activeAssignment || isCompleting) return;
-
     setIsCompleting(true);
     setCompletionError("");
 
@@ -146,31 +131,22 @@ export default function StudentReviewAssignments({ student }: Props) {
         }),
       });
       const data = await response.json().catch(() => ({}));
-
       if (!response.ok) {
         throw new Error(data?.error || "복습 완료 보상을 지급하지 못했습니다.");
       }
 
       if (data?.alreadyRewarded) {
-        setCompletionMessage(
-          "✅ 이미 완료한 복습문제예요. 동엽전은 처음 완료할 때 1개만 지급돼요."
-        );
+        setCompletionMessage("✅ 이미 완료한 복습문제예요. 보상은 처음 완료할 때 한 번만 지급돼요.");
       } else if (Number(data?.exchangeCount || 0) > 0) {
-        setCompletionMessage(
-          "🎉 복습 완료! 동엽전 1개가 지급되고 은엽전으로 자동 교환됐어요."
-        );
+        setCompletionMessage("🎉 복습 완료! 동엽전 1개가 지급되고 은엽전으로 자동 교환됐어요.");
       } else {
         setCompletionMessage("🎉 복습 완료! 동엽전 1개를 받았어요.");
       }
 
-      window.setTimeout(() => {
-        window.location.reload();
-      }, 1200);
+      window.setTimeout(() => window.location.reload(), 1200);
     } catch (error) {
       setCompletionError(
-        error instanceof Error
-          ? error.message
-          : "복습 완료 보상을 지급하지 못했습니다."
+        error instanceof Error ? error.message : "복습 완료 보상을 지급하지 못했습니다."
       );
     } finally {
       setIsCompleting(false);
@@ -179,13 +155,11 @@ export default function StudentReviewAssignments({ student }: Props) {
 
   const goToNext = () => {
     if (!activeAssignment) return;
-
     const isLast = questionIndex >= activeAssignment.questions.length - 1;
     if (isLast) {
       void completeAssignment();
       return;
     }
-
     setQuestionIndex((current) => current + 1);
     setSelectedIndex(null);
     setChecked(false);
@@ -193,19 +167,11 @@ export default function StudentReviewAssignments({ student }: Props) {
   };
 
   if (isLoading) {
-    return (
-      <div className="px-2 py-8 text-center text-sm font-black text-slate-500">
-        복습문제를 불러오는 중이에요...
-      </div>
-    );
+    return <div className="px-2 py-8 text-center text-sm font-black text-slate-500">복습문제를 불러오는 중이에요...</div>;
   }
 
   if (errorMessage) {
-    return (
-      <div className="mx-2 mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-4 text-sm font-black text-red-600">
-        {errorMessage}
-      </div>
-    );
+    return <div className="mx-2 mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-4 text-sm font-black text-red-600">{errorMessage}</div>;
   }
 
   if (!activeAssignment) {
@@ -214,16 +180,13 @@ export default function StudentReviewAssignments({ student }: Props) {
         {assignments.length === 0 ? (
           <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center">
             <div className="text-3xl">📝</div>
-            <div className="mt-2 text-sm font-black text-slate-700">
-              지금 풀 복습문제가 없어요.
-            </div>
+            <div className="mt-2 text-sm font-black text-slate-700">지금 풀 복습문제가 없어요.</div>
           </div>
         ) : (
           <div className="grid gap-3">
             <div className="rounded-2xl border border-yellow-100 bg-yellow-50 px-4 py-3 text-xs font-black leading-5 text-yellow-800">
               🪙 복습문제를 끝까지 풀면 동엽전 1개를 받을 수 있어요. 같은 복습문제의 보상은 한 번만 지급돼요.
             </div>
-
             {assignments.map((assignment) => (
               <button
                 key={assignment.id}
@@ -231,12 +194,8 @@ export default function StudentReviewAssignments({ student }: Props) {
                 onClick={() => startAssignment(assignment.id)}
                 className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-4 text-left transition hover:bg-sky-100"
               >
-                <div className="text-base font-black text-slate-800">
-                  {assignment.title}
-                </div>
-                <div className="mt-1 text-xs font-bold text-slate-500">
-                  문제 {assignment.questions.length}개 · 눌러서 시작하기
-                </div>
+                <div className="text-base font-black text-slate-800">{assignment.title}</div>
+                <div className="mt-1 text-xs font-bold text-slate-500">문제 {assignment.questions.length}개 · 눌러서 시작하기</div>
               </button>
             ))}
           </div>
@@ -246,37 +205,50 @@ export default function StudentReviewAssignments({ student }: Props) {
   }
 
   if (!currentQuestion) {
-    return (
-      <div className="px-2 py-8 text-center text-sm font-black text-slate-500">
-        문제 정보를 확인할 수 없어요.
-      </div>
-    );
+    return <div className="px-2 py-8 text-center text-sm font-black text-slate-500">문제 정보를 확인할 수 없어요.</div>;
   }
 
   const isCorrect = selectedIndex === currentQuestion.correctIndex;
   const isLast = questionIndex === activeAssignment.questions.length - 1;
+  const isExamImage = currentQuestion.questionType === "exam" && Boolean(currentQuestion.imageUrl);
+  const answerCount = currentQuestion.questionType === "exam" ? 5 : currentQuestion.options.length;
 
   return (
     <div className="px-2 py-4">
       <div className="rounded-[26px] border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-sky-50 p-4">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-xs font-black text-sky-700">
-            {activeAssignment.title}
-          </div>
+          <div className="text-xs font-black text-sky-700">{activeAssignment.title}</div>
           <div className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 shadow-sm">
             {questionIndex + 1} / {activeAssignment.questions.length}
           </div>
         </div>
 
-        <div className="mt-4 text-lg font-black leading-7 text-slate-800">
-          {currentQuestion.prompt}
-        </div>
+        {currentQuestion.questionType === "exam" && (
+          <div className="mt-3 inline-flex rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-700">
+            🏆 한능검 기출
+          </div>
+        )}
 
-        <div className="mt-4 grid gap-2">
-          {currentQuestion.options.map((option, index) => {
+        {currentQuestion.imageUrl && (
+          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+            <img
+              src={currentQuestion.imageUrl}
+              alt={currentQuestion.imageOriginalName || "한능검 기출문제"}
+              className="max-h-[62dvh] w-full object-contain"
+            />
+          </div>
+        )}
+
+        {currentQuestion.prompt && (
+          <div className="mt-4 text-lg font-black leading-7 text-slate-800">{currentQuestion.prompt}</div>
+        )}
+
+        <div className={`mt-4 grid gap-2 ${isExamImage ? "grid-cols-5" : ""}`}>
+          {Array.from({ length: answerCount }).map((_, index) => {
             const selected = selectedIndex === index;
             const correct = checked && index === currentQuestion.correctIndex;
             const wrongSelected = checked && selected && !correct;
+            const optionText = currentQuestion.questionType === "exam" ? "" : currentQuestion.options[index];
 
             return (
               <button
@@ -284,7 +256,7 @@ export default function StudentReviewAssignments({ student }: Props) {
                 type="button"
                 disabled={checked || isCompleting}
                 onClick={() => setSelectedIndex(index)}
-                className={`rounded-2xl border px-4 py-3 text-left text-sm font-black transition ${
+                className={`rounded-2xl border px-4 py-3 text-sm font-black transition ${
                   correct
                     ? "border-emerald-300 bg-emerald-50 text-emerald-800"
                     : wrongSelected
@@ -292,9 +264,9 @@ export default function StudentReviewAssignments({ student }: Props) {
                       : selected
                         ? "border-sky-400 bg-sky-50 text-sky-800"
                         : "border-slate-200 bg-white text-slate-700"
-                }`}
+                } ${isExamImage ? "text-center text-xl" : "text-left"}`}
               >
-                {OPTION_LABELS[index] || `${index + 1}.`} {option}
+                {OPTION_LABELS[index] || `${index + 1}.`}{optionText ? ` ${optionText}` : ""}
               </button>
             );
           })}
@@ -311,32 +283,15 @@ export default function StudentReviewAssignments({ student }: Props) {
           </button>
         ) : (
           <>
-            <div
-              className={`mt-4 rounded-2xl px-4 py-3 text-sm font-black ${
-                isCorrect
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "bg-red-50 text-red-600"
-              }`}
-            >
+            <div className={`mt-4 rounded-2xl px-4 py-3 text-sm font-black ${isCorrect ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
               {isCorrect ? "⭕ 정답이에요!" : "❌ 다시 확인해 보세요."}
               {currentQuestion.explanation && (
-                <div className="mt-2 text-xs font-bold leading-5 text-slate-600">
-                  {currentQuestion.explanation}
-                </div>
+                <div className="mt-2 text-xs font-bold leading-5 text-slate-600">{currentQuestion.explanation}</div>
               )}
             </div>
 
-            {completionError && (
-              <div className="mt-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-xs font-black leading-5 text-red-600">
-                {completionError}
-              </div>
-            )}
-
-            {completionMessage && (
-              <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-black leading-6 text-emerald-700">
-                {completionMessage}
-              </div>
-            )}
+            {completionError && <div className="mt-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-xs font-black leading-5 text-red-600">{completionError}</div>}
+            {completionMessage && <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-black leading-6 text-emerald-700">{completionMessage}</div>}
 
             <button
               type="button"
@@ -344,11 +299,7 @@ export default function StudentReviewAssignments({ student }: Props) {
               onClick={goToNext}
               className="mt-4 w-full rounded-2xl bg-sky-600 px-4 py-3 text-sm font-black text-white transition enabled:hover:bg-sky-700 disabled:opacity-50"
             >
-              {isCompleting
-                ? "동엽전 지급 중..."
-                : isLast
-                  ? "복습 끝!"
-                  : "다음 문제"}
+              {isCompleting ? "동엽전 지급 중..." : isLast ? "복습 끝!" : "다음 문제"}
             </button>
           </>
         )}
