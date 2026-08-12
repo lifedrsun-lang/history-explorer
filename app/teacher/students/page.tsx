@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, doc, getDocs, updateDoc } from "firebase/firestore";
@@ -13,17 +14,14 @@ import {
   getStudentProgramValue,
 } from "@/lib/programs";
 import {
-  ENROLLMENT_STATUS_OPTIONS,
-  EnrollmentStatus,
-  EnrollmentStatusFilter,
   formatEnrollmentTerm,
   getEnrollmentStatus,
-  getEnrollmentStatusLabel,
   getEnrollmentTerms,
   makeEnrollmentTerm,
 } from "@/lib/studentEnrollment";
 
 const CLASS_OPTIONS = ["전체반", "A반", "B반"];
+type StudentStatusView = "active" | "paused";
 
 const getGradeNumber = (value: unknown) => {
   const match = String(value || "").match(/\d+/);
@@ -38,13 +36,12 @@ const getTeachingClass = (student: any) => {
   return "미분류";
 };
 
-const statusClassName = (status: EnrollmentStatus) => {
-  if (status === "active") return "bg-emerald-100 text-emerald-700";
-  if (status === "paused") return "bg-amber-100 text-amber-700";
-  return "bg-slate-200 text-slate-700";
+const getSimpleStatus = (student: any): StudentStatusView => {
+  return getEnrollmentStatus(student) === "active" ? "active" : "paused";
 };
 
 export default function TeacherStudentsPage() {
+  const searchParams = useSearchParams();
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const [students, setStudents] = useState<any[]>([]);
@@ -52,7 +49,7 @@ export default function TeacherStudentsPage() {
   const [savingId, setSavingId] = useState("");
   const [error, setError] = useState("");
   const [selectedStatus, setSelectedStatus] =
-    useState<EnrollmentStatusFilter>("active");
+    useState<StudentStatusView>("active");
   const [selectedSchool, setSelectedSchool] = useState("전체학교");
   const [selectedProgram, setSelectedProgram] =
     useState<ProgramFilter>("all");
@@ -75,6 +72,16 @@ export default function TeacherStudentsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const status = searchParams.get("status");
+
+    if (status === "paused") {
+      setSelectedStatus("paused");
+    } else if (status === "active") {
+      setSelectedStatus("active");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     return onAuthStateChanged(auth, (user) => {
@@ -103,10 +110,10 @@ export default function TeacherStudentsPage() {
   const counts = useMemo(() => {
     return students.reduce(
       (result, student) => {
-        result[getEnrollmentStatus(student)] += 1;
+        result[getSimpleStatus(student)] += 1;
         return result;
       },
-      { active: 0, paused: 0, ended: 0 } as Record<EnrollmentStatus, number>
+      { active: 0, paused: 0 } as Record<StudentStatusView, number>
     );
   }, [students]);
 
@@ -115,9 +122,7 @@ export default function TeacherStudentsPage() {
 
     return students
       .filter((student) => {
-        const status = getEnrollmentStatus(student);
-
-        if (selectedStatus !== "all" && status !== selectedStatus) return false;
+        if (getSimpleStatus(student) !== selectedStatus) return false;
         if (
           selectedSchool !== "전체학교" &&
           String(student?.school || "미지정") !== selectedSchool
@@ -136,7 +141,10 @@ export default function TeacherStudentsPage() {
         ) {
           return false;
         }
-        if (keyword && !String(student?.name || "").toLowerCase().includes(keyword)) {
+        if (
+          keyword &&
+          !String(student?.name || "").toLowerCase().includes(keyword)
+        ) {
           return false;
         }
         return true;
@@ -154,18 +162,20 @@ export default function TeacherStudentsPage() {
         const gradeB = getGradeNumber(b?.grade);
         if (gradeA !== gradeB) return gradeA - gradeB;
 
-        return String(a?.name || "").localeCompare(String(b?.name || ""), "ko-KR");
+        return String(a?.name || "").localeCompare(
+          String(b?.name || ""),
+          "ko-KR"
+        );
       });
   }, [students, searchTerm, selectedClass, selectedProgram, selectedSchool, selectedStatus]);
 
-  const changeStatus = async (student: any, status: EnrollmentStatus) => {
+  const changeStatus = async (student: any, status: StudentStatusView) => {
     setSavingId(student.id);
     setError("");
 
     try {
       await updateDoc(doc(db, "students", student.id), {
         enrollmentStatus: status,
-        // 기존 화면/강사료와의 호환을 위해 수강중만 isActive=true로 유지한다.
         isActive: status === "active",
       });
       await loadStudents();
@@ -211,7 +221,10 @@ export default function TeacherStudentsPage() {
       <div className="min-h-[100dvh] bg-[#f5f7fb] p-6">
         <div className="mx-auto max-w-md rounded-3xl bg-white p-6 text-center shadow-lg">
           <div className="text-xl font-black text-slate-800">교사 로그인이 필요합니다.</div>
-          <Link href="/teacher" className="mt-4 inline-block rounded-xl bg-blue-500 px-4 py-2 font-bold text-white">
+          <Link
+            href="/teacher"
+            className="mt-4 inline-block rounded-xl bg-blue-500 px-4 py-2 font-bold text-white"
+          >
             교사 로그인으로 이동
           </Link>
         </div>
@@ -226,74 +239,129 @@ export default function TeacherStudentsPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="text-sm font-black text-sky-600">👧 수강생 관리</div>
-              <h1 className="mt-1 text-3xl font-black text-slate-900">수강 상태와 분기 이력</h1>
+              <h1 className="mt-1 text-3xl font-black text-slate-900">
+                {selectedStatus === "active" ? "수강중인 친구" : "쉬는중인 친구"}
+              </h1>
               <p className="mt-2 text-sm font-bold leading-relaxed text-slate-500">
-                기존 숨김 학생은 우선 ‘쉬는중’으로 표시됩니다. 과거 분기 이력은 임의 추정하지 않고 확인되는 분기만 체크해 주세요.
+                기존 숨김 학생도 쉬는중 목록에서 검색할 수 있고, 학생별 수강 분기 이력은 그대로 확인할 수 있습니다.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Link href="/teacher" className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-700">
+              <Link
+                href="/teacher"
+                className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-700"
+              >
                 ← 교사용 홈
               </Link>
-              <Link href="/teacher?manage=1" className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-black text-white">
+              <Link
+                href="/teacher?manage=1"
+                className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-black text-white"
+              >
                 출석·진도·코인 상세관리
               </Link>
             </div>
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-          <button onClick={() => setSelectedStatus("active")} className="rounded-3xl bg-emerald-50 p-4 shadow-sm">
-            <div className="text-xs font-black text-emerald-700">🟢 수강중</div>
-            <div className="mt-1 text-3xl font-black text-emerald-700">{counts.active}</div>
+        <div className="mt-4 grid grid-cols-2 gap-3 text-center">
+          <button
+            onClick={() => setSelectedStatus("active")}
+            className={`rounded-3xl p-4 shadow-sm transition ${
+              selectedStatus === "active"
+                ? "bg-emerald-500 text-white ring-4 ring-emerald-100"
+                : "bg-emerald-50 text-emerald-700"
+            }`}
+          >
+            <div className="text-sm font-black">🟢 수강생(수강중)</div>
+            <div className="mt-1 text-3xl font-black">{counts.active}명</div>
           </button>
-          <button onClick={() => setSelectedStatus("paused")} className="rounded-3xl bg-amber-50 p-4 shadow-sm">
-            <div className="text-xs font-black text-amber-700">🟡 쉬는중</div>
-            <div className="mt-1 text-3xl font-black text-amber-700">{counts.paused}</div>
-          </button>
-          <button onClick={() => setSelectedStatus("ended")} className="rounded-3xl bg-slate-200 p-4 shadow-sm">
-            <div className="text-xs font-black text-slate-700">⚫ 종료</div>
-            <div className="mt-1 text-3xl font-black text-slate-700">{counts.ended}</div>
+          <button
+            onClick={() => setSelectedStatus("paused")}
+            className={`rounded-3xl p-4 shadow-sm transition ${
+              selectedStatus === "paused"
+                ? "bg-amber-500 text-white ring-4 ring-amber-100"
+                : "bg-amber-50 text-amber-700"
+            }`}
+          >
+            <div className="text-sm font-black">🟡 수강생(쉬는중)</div>
+            <div className="mt-1 text-3xl font-black">{counts.paused}명</div>
           </button>
         </div>
 
         <div className="mt-4 rounded-3xl bg-white p-4 shadow-md">
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
-            <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value as EnrollmentStatusFilter)} className="rounded-xl border px-3 py-2 text-sm font-bold">
-              {ENROLLMENT_STATUS_OPTIONS.map((option) => (
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
+            <select
+              value={selectedSchool}
+              onChange={(e) => setSelectedSchool(e.target.value)}
+              className="rounded-xl border px-3 py-2 text-sm font-bold"
+            >
+              {schoolOptions.map((school) => (
+                <option key={school} value={school}>{school}</option>
+              ))}
+            </select>
+            <select
+              value={selectedProgram}
+              onChange={(e) => setSelectedProgram(e.target.value as ProgramFilter)}
+              className="rounded-xl border px-3 py-2 text-sm font-bold"
+            >
+              {PROGRAM_FILTER_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
-            <select value={selectedSchool} onChange={(e) => setSelectedSchool(e.target.value)} className="rounded-xl border px-3 py-2 text-sm font-bold">
-              {schoolOptions.map((school) => <option key={school} value={school}>{school}</option>)}
+            <select
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+              className="rounded-xl border px-3 py-2 text-sm font-bold"
+            >
+              {CLASS_OPTIONS.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
             </select>
-            <select value={selectedProgram} onChange={(e) => setSelectedProgram(e.target.value as ProgramFilter)} className="rounded-xl border px-3 py-2 text-sm font-bold">
-              {PROGRAM_FILTER_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-            <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="rounded-xl border px-3 py-2 text-sm font-bold">
-              {CLASS_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-            <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="이름 검색 · 쉬는중도 검색됨" className="rounded-xl border px-3 py-2 text-sm font-bold md:col-span-2" />
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="학생 이름 검색"
+              className="rounded-xl border px-3 py-2 text-sm font-bold md:col-span-2"
+            />
           </div>
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
-            <div className="text-xs font-bold text-slate-500">검색 결과 {visibleStudents.length}명</div>
+            <div className="text-xs font-bold text-slate-500">
+              검색 결과 {visibleStudents.length}명
+            </div>
             <div className="flex items-center gap-2 text-xs font-black text-slate-600">
-              수강이력 편집 연도
-              <input type="number" min="2020" max="2035" value={termYear} onChange={(e) => setTermYear(Number(e.target.value) || new Date().getFullYear())} className="w-24 rounded-xl border px-2 py-1.5 text-center" />
-              <button onClick={loadStudents} disabled={loading} className="rounded-xl bg-slate-100 px-3 py-1.5 disabled:opacity-50">
+              수강이력 연도
+              <input
+                type="number"
+                min="2020"
+                max="2035"
+                value={termYear}
+                onChange={(e) =>
+                  setTermYear(Number(e.target.value) || new Date().getFullYear())
+                }
+                className="w-24 rounded-xl border px-2 py-1.5 text-center"
+              />
+              <button
+                onClick={loadStudents}
+                disabled={loading}
+                className="rounded-xl bg-slate-100 px-3 py-1.5 disabled:opacity-50"
+              >
                 {loading ? "불러오는 중" : "↻ 새로고침"}
               </button>
             </div>
           </div>
 
-          {error && <div className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{error}</div>}
+          {error && (
+            <div className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+              {error}
+            </div>
+          )}
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
           {visibleStudents.map((student) => {
-            const status = getEnrollmentStatus(student);
+            const status = getSimpleStatus(student);
             const terms = getEnrollmentTerms(student);
             const isSaving = savingId === student.id;
 
@@ -302,9 +370,17 @@ export default function TeacherStudentsPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="text-2xl font-black text-slate-900">{student.name || "이름 없음"}</div>
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-black ${statusClassName(status)}`}>
-                        {getEnrollmentStatusLabel(status)}
+                      <div className="text-2xl font-black text-slate-900">
+                        {student.name || "이름 없음"}
+                      </div>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-black ${
+                          status === "active"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
+                        {status === "active" ? "수강중" : "쉬는중"}
                       </span>
                     </div>
                     <div className="mt-1 text-sm font-bold text-slate-500">
@@ -320,10 +396,15 @@ export default function TeacherStudentsPage() {
                   <div className="text-xs font-black text-slate-500">수강이력</div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {terms.length === 0 ? (
-                      <span className="text-xs font-bold text-slate-400">아직 입력된 분기 이력이 없습니다.</span>
+                      <span className="text-xs font-bold text-slate-400">
+                        아직 입력된 분기 이력이 없습니다.
+                      </span>
                     ) : (
                       terms.map((term) => (
-                        <span key={term} className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-black text-blue-700">
+                        <span
+                          key={term}
+                          className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-black text-blue-700"
+                        >
                           {formatEnrollmentTerm(term)}
                         </span>
                       ))
@@ -331,11 +412,14 @@ export default function TeacherStudentsPage() {
                   </div>
 
                   <div className="mt-3 border-t border-slate-200 pt-3">
-                    <div className="mb-2 text-[11px] font-black text-slate-500">{termYear}년 분기 체크</div>
+                    <div className="mb-2 text-[11px] font-black text-slate-500">
+                      {termYear}년 분기 체크
+                    </div>
                     <div className="grid grid-cols-4 gap-1.5">
                       {[1, 2, 3, 4].map((quarter) => {
                         const term = makeEnrollmentTerm(termYear, quarter);
                         const selected = terms.includes(term);
+
                         return (
                           <button
                             key={quarter}
@@ -343,7 +427,9 @@ export default function TeacherStudentsPage() {
                             disabled={isSaving}
                             onClick={() => toggleTerm(student, quarter)}
                             className={`rounded-xl px-2 py-2 text-xs font-black disabled:opacity-50 ${
-                              selected ? "bg-blue-500 text-white" : "bg-white text-slate-500 ring-1 ring-slate-200"
+                              selected
+                                ? "bg-blue-500 text-white"
+                                : "bg-white text-slate-500 ring-1 ring-slate-200"
                             }`}
                           >
                             {quarter}분기 {selected ? "✓" : ""}
@@ -354,10 +440,21 @@ export default function TeacherStudentsPage() {
                   </div>
                 </div>
 
-                <div className="mt-3 grid grid-cols-3 gap-1.5">
-                  <button disabled={isSaving || status === "active"} onClick={() => changeStatus(student, "active")} className="rounded-xl bg-emerald-500 px-2 py-2 text-xs font-black text-white disabled:opacity-35">수강중</button>
-                  <button disabled={isSaving || status === "paused"} onClick={() => changeStatus(student, "paused")} className="rounded-xl bg-amber-500 px-2 py-2 text-xs font-black text-white disabled:opacity-35">쉬는중</button>
-                  <button disabled={isSaving || status === "ended"} onClick={() => changeStatus(student, "ended")} className="rounded-xl bg-slate-600 px-2 py-2 text-xs font-black text-white disabled:opacity-35">종료</button>
+                <div className="mt-3 grid grid-cols-2 gap-1.5">
+                  <button
+                    disabled={isSaving || status === "active"}
+                    onClick={() => changeStatus(student, "active")}
+                    className="rounded-xl bg-emerald-500 px-2 py-2 text-xs font-black text-white disabled:opacity-35"
+                  >
+                    수강중으로 변경
+                  </button>
+                  <button
+                    disabled={isSaving || status === "paused"}
+                    onClick={() => changeStatus(student, "paused")}
+                    className="rounded-xl bg-amber-500 px-2 py-2 text-xs font-black text-white disabled:opacity-35"
+                  >
+                    쉬는중으로 변경
+                  </button>
                 </div>
               </div>
             );
