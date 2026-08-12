@@ -1,1 +1,7 @@
 @import "tailwindcss";
+
+/* 문제은행 카드 해설은 교사가 입력한 엔터와 빈 줄을 그대로 보여준다. */
+p.mt-3.rounded-xl.bg-white.px-3.py-2.text-xs.font-bold.leading-5.text-slate-500 {
+  white-space: pre-wrap;
+  line-height: 1.5rem;
+}
