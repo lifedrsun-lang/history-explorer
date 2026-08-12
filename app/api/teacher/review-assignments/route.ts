@@ -24,7 +24,6 @@ const REVIEW_QUESTIONS_COLLECTION = "reviewQuestions";
 const normalizeLesson = (value: unknown, topic?: unknown) => {
   const direct = normalizeText(value);
   if (direct) return direct;
-
   const legacyTopic = normalizeText(topic);
   const match = legacyTopic.match(/^(\d+)\s*차시$/);
   return match ? `${match[1]}차시` : "";
@@ -33,23 +32,21 @@ const normalizeLesson = (value: unknown, topic?: unknown) => {
 const serializeQuestionSnapshot = (
   id: string,
   data: FirebaseFirestore.DocumentData
-): ReviewAssignmentQuestion => {
-  const options = Array.isArray(data?.options)
+): ReviewAssignmentQuestion => ({
+  questionId: id,
+  questionType: data?.questionType === "exam" ? "exam" : "textbook",
+  bookNumber: normalizeText(data?.bookNumber),
+  lesson: normalizeLesson(data?.lesson, data?.topic),
+  topic: normalizeText(data?.topic),
+  prompt: normalizeText(data?.prompt),
+  options: Array.isArray(data?.options)
     ? data.options.slice(0, 5).map((item: unknown) => normalizeText(item))
-    : [];
-
-  return {
-    questionId: id,
-    questionType: data?.questionType === "exam" ? "exam" : "textbook",
-    bookNumber: normalizeText(data?.bookNumber),
-    lesson: normalizeLesson(data?.lesson, data?.topic),
-    topic: normalizeText(data?.topic),
-    prompt: normalizeText(data?.prompt),
-    options,
-    correctIndex: Number(data?.correctIndex || 0),
-    explanation: normalizeText(data?.explanation),
-  };
-};
+    : [],
+  correctIndex: Number(data?.correctIndex || 0),
+  explanation: normalizeText(data?.explanation),
+  imageStoragePath: normalizeText(data?.imageStoragePath),
+  imageOriginalName: normalizeText(data?.imageOriginalName),
+});
 
 const serializeAssignment = (
   id: string,
@@ -72,11 +69,9 @@ const serializeAssignment = (
 
 const mapError = (error: unknown) => {
   const message = error instanceof Error ? error.message : "";
-
   if (message === "teacher_auth_required") {
     return jsonError("교사 로그인이 필요합니다.", 401, message);
   }
-
   if (
     [
       "title_required",
@@ -90,7 +85,6 @@ const mapError = (error: unknown) => {
   ) {
     return jsonError("복습과제 정보를 다시 확인해 주세요.", 400, message);
   }
-
   return handleRouteError(error);
 };
 
@@ -117,7 +111,6 @@ export async function POST(request: Request) {
   try {
     const teacher = await verifyTeacherRequest(request);
     const body = await request.json();
-
     const title = normalizeText(body?.title);
     const school = normalizeText(body?.school);
     const targetTeachingClass = normalizeText(body?.targetTeachingClass);
