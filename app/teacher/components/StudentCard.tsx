@@ -1,8 +1,11 @@
 "use client";
 
 import { getStageInfo } from "@/app/student/data/stageData";
+import { db } from "@/lib/firebase";
 import { getStudentProgramLabel } from "@/lib/programs";
 import { formatEnrollmentTerm, getEnrollmentTerms } from "@/lib/studentEnrollment";
+import { doc, updateDoc } from "firebase/firestore";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function StudentCard({
@@ -21,13 +24,59 @@ export default function StudentCard({
   const router = useRouter();
   const stage = getStageInfo(student?.stage).current;
   const enrollmentTerms = getEnrollmentTerms(student);
-  const materialHistory = Array.isArray(student?.materialHistory)
-    ? student.materialHistory
-    : [];
+  const [materialHistory, setMaterialHistory] = useState<any[]>(
+    Array.isArray(student?.materialHistory) ? student.materialHistory : []
+  );
+
+  useEffect(() => {
+    setMaterialHistory(
+      Array.isArray(student?.materialHistory) ? student.materialHistory : []
+    );
+  }, [student?.materialHistory]);
+
   const hasCurrentMaterial = materialHistory.some(
     (item: any) => String(item?.stageId || "") === String(student?.stage || "")
   );
   const programLabel = getStudentProgramLabel(student?.program);
+
+  const undoCurrentMaterial = async () => {
+    const currentStageId = String(student?.stage || "");
+    let targetIndex = -1;
+
+    for (let index = materialHistory.length - 1; index >= 0; index -= 1) {
+      if (String(materialHistory[index]?.stageId || "") === currentStageId) {
+        targetIndex = index;
+        break;
+      }
+    }
+
+    if (targetIndex < 0) {
+      return;
+    }
+
+    const shouldUndo = window.confirm("현재 교재 지급을 취소할까요?");
+
+    if (!shouldUndo) {
+      return;
+    }
+
+    const nextHistory = materialHistory.filter((_, index) => index !== targetIndex);
+
+    await updateDoc(doc(db, "students", student.id), {
+      materialHistory: nextHistory,
+    });
+
+    setMaterialHistory(nextHistory);
+  };
+
+  const handleMaterialClick = async () => {
+    if (hasCurrentMaterial) {
+      await undoCurrentMaterial();
+      return;
+    }
+
+    await addMaterialRecord(student);
+  };
 
   return (
     <div className="w-full min-w-0 bg-white rounded-[24px] p-3 sm:rounded-[30px] sm:p-4 shadow-md">
@@ -36,16 +85,11 @@ export default function StudentCard({
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <button
           type="button"
-          onClick={() => {
-            if (!hasCurrentMaterial) {
-              addMaterialRecord(student);
-            }
-          }}
-          disabled={hasCurrentMaterial}
-          title={hasCurrentMaterial ? "현재 교재 지급 완료" : "현재 교재 지급하기"}
+          onClick={handleMaterialClick}
+          title={hasCurrentMaterial ? "현재 교재 지급 취소하기" : "현재 교재 지급하기"}
           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black transition ${
             hasCurrentMaterial
-              ? "bg-indigo-100 text-indigo-700"
+              ? "bg-indigo-100 text-indigo-700 hover:bg-rose-50 hover:text-rose-600"
               : "bg-slate-100 text-slate-400 hover:bg-indigo-50 hover:text-indigo-500"
           }`}
         >
