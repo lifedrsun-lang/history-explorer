@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { collection, getDocs } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -37,6 +37,7 @@ const getTeachingClass = (student: any): TeachingClass | null => {
 
 export default function TeacherFeePanel() {
   const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [authorized, setAuthorized] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -80,19 +81,22 @@ export default function TeacherFeePanel() {
   }, []);
 
   useEffect(() => {
-    if (
+    const requested =
       authorized &&
       pathname === "/teacher" &&
-      searchParams.get("fees") === "1"
-    ) {
+      searchParams.get("fees") === "1";
+
+    if (requested) {
       setIsOpen(true);
       loadStudents();
+    } else {
+      setIsOpen(false);
     }
   }, [authorized, loadStudents, pathname, searchParams]);
 
-  const openPanel = async () => {
-    setIsOpen(true);
-    await loadStudents();
+  const closePanel = () => {
+    setIsOpen(false);
+    router.replace("/teacher");
   };
 
   const allFeeRows = useMemo(() => {
@@ -175,103 +179,137 @@ export default function TeacherFeePanel() {
     0
   );
 
-  if (pathname !== "/teacher" || !authorized) {
+  if (pathname !== "/teacher" || !authorized || !isOpen) {
     return null;
   }
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={openPanel}
-        className="fixed bottom-5 right-5 z-[75] rounded-full border border-emerald-200 bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-2xl transition hover:bg-emerald-700"
-      >
-        💰 예상 강사료
-      </button>
-
-      {isOpen && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/50 p-3">
-          <div className="max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-[#f5f7fb] p-4 shadow-2xl">
-            <div className="flex items-start justify-between gap-3 rounded-3xl bg-white p-4 shadow-sm">
-              <div>
-                <div className="text-2xl font-black text-slate-900">💰 월 예상 강사료</div>
-                <div className="mt-1 text-xs font-bold text-slate-500">
-                  정규 방과후 · 수강중 학생 · 학생 1인당 계약단가 기준 · 공제 전
-                </div>
-              </div>
-              <button type="button" onClick={() => setIsOpen(false)} className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-black text-slate-600">
-                닫기
-              </button>
-            </div>
-
-            <div className="mt-3 rounded-3xl bg-white p-4 shadow-sm">
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <label className="text-xs font-black text-slate-600">
-                  학교
-                  <select value={selectedSchool} onChange={(event) => setSelectedSchool(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800">
-                    {schoolOptions.map((schoolName) => <option key={schoolName} value={schoolName}>{schoolName}</option>)}
-                  </select>
-                </label>
-                <label className="text-xs font-black text-slate-600">
-                  반
-                  <select value={selectedClass} onChange={(event) => setSelectedClass(event.target.value as FeeClassFilter)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800">
-                    {FEE_CLASS_FILTER_OPTIONS.map((className) => <option key={className} value={className}>{className}</option>)}
-                  </select>
-                </label>
-              </div>
-
-              <div className="mt-4 rounded-3xl bg-emerald-50 p-5 text-center">
-                <div className="text-xs font-black text-emerald-700">
-                  {selectedSchool === "전체학교" ? "전체 학교" : selectedSchool} · {selectedClass}
-                </div>
-                <div className="mt-1 text-4xl font-black tracking-tight text-emerald-700">{formatWon(totalFee)}</div>
-                <div className="mt-2 text-sm font-bold text-slate-600">계산 대상 {totalStudentCount}명</div>
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                <div className="text-xs font-bold leading-relaxed text-slate-500">
-                  수강중 학생만 집계하며, 쉬는중·종료·보드게임·단가 미등록 학교는 제외합니다.
-                </div>
-                <button type="button" onClick={loadStudents} disabled={isLoading} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 disabled:opacity-50">
-                  {isLoading ? "불러오는 중..." : "↻ 새로고침"}
-                </button>
-              </div>
-
-              {loadError && <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">{loadError}</div>}
-            </div>
-
-            <div className="mt-3 rounded-3xl bg-white p-4 shadow-sm">
-              <div className="mb-3 text-sm font-black text-slate-800">학교·반별 계산 내역</div>
-              {isLoading && students.length === 0 ? (
-                <div className="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm font-bold text-slate-500">학생 정보를 불러오는 중입니다.</div>
-              ) : visibleRows.length === 0 ? (
-                <div className="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm font-bold text-slate-500">선택한 조건에서 계산할 방과후 강사료가 없습니다.</div>
-              ) : (
-                <div className="space-y-2">
-                  {visibleRows.map((row) => (
-                    <div key={`${row.schoolName}-${row.teachingClass}`} className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div>
-                          <div className="font-black text-slate-800">{row.schoolName} · {row.teachingClass}</div>
-                          <div className="mt-0.5 text-xs font-bold text-slate-500">{row.classLabel}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-lg font-black text-slate-900">{formatWon(row.subtotal)}</div>
-                          <div className="text-xs font-bold text-slate-500">{row.studentCount}명 × {formatWon(row.ratePerStudent)}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold leading-relaxed text-amber-800">
-              현재 등록 단가: 하늘빛초 A반 18,000원 · B반 22,411원 / 새솔초 21,520원 / 사우초 22,000원. 세금·산재보험·고용보험 등 공제액과 월별 수업횟수 조정은 아직 자동 계산하지 않습니다.
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/50 p-3">
+      <div className="max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-[#f5f7fb] p-4 shadow-2xl">
+        <div className="flex items-start justify-between gap-3 rounded-3xl bg-white p-4 shadow-sm">
+          <div>
+            <div className="text-2xl font-black text-slate-900">💰 월 예상 강사료</div>
+            <div className="mt-1 text-xs font-bold text-slate-500">
+              정규 방과후 · 수강중 학생 · 학생 1인당 계약단가 기준 · 공제 전
             </div>
           </div>
+          <button
+            type="button"
+            onClick={closePanel}
+            className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-black text-slate-600"
+          >
+            닫기
+          </button>
         </div>
-      )}
-    </>
+
+        <div className="mt-3 rounded-3xl bg-white p-4 shadow-sm">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <label className="text-xs font-black text-slate-600">
+              학교
+              <select
+                value={selectedSchool}
+                onChange={(event) => setSelectedSchool(event.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800"
+              >
+                {schoolOptions.map((schoolName) => (
+                  <option key={schoolName} value={schoolName}>{schoolName}</option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs font-black text-slate-600">
+              반
+              <select
+                value={selectedClass}
+                onChange={(event) =>
+                  setSelectedClass(event.target.value as FeeClassFilter)
+                }
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800"
+              >
+                {FEE_CLASS_FILTER_OPTIONS.map((className) => (
+                  <option key={className} value={className}>{className}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="mt-4 rounded-3xl bg-emerald-50 p-5 text-center">
+            <div className="text-xs font-black text-emerald-700">
+              {selectedSchool === "전체학교" ? "전체 학교" : selectedSchool} · {selectedClass}
+            </div>
+            <div className="mt-1 text-4xl font-black tracking-tight text-emerald-700">
+              {formatWon(totalFee)}
+            </div>
+            <div className="mt-2 text-sm font-bold text-slate-600">
+              계산 대상 {totalStudentCount}명
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs font-bold leading-relaxed text-slate-500">
+              수강중 학생만 집계하며, 쉬는중·보드게임·단가 미등록 학교는 제외합니다.
+            </div>
+            <button
+              type="button"
+              onClick={loadStudents}
+              disabled={isLoading}
+              className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 disabled:opacity-50"
+            >
+              {isLoading ? "불러오는 중..." : "↻ 새로고침"}
+            </button>
+          </div>
+
+          {loadError && (
+            <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
+              {loadError}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-3 rounded-3xl bg-white p-4 shadow-sm">
+          <div className="mb-3 text-sm font-black text-slate-800">학교·반별 계산 내역</div>
+          {isLoading && students.length === 0 ? (
+            <div className="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm font-bold text-slate-500">
+              학생 정보를 불러오는 중입니다.
+            </div>
+          ) : visibleRows.length === 0 ? (
+            <div className="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm font-bold text-slate-500">
+              선택한 조건에서 계산할 방과후 강사료가 없습니다.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {visibleRows.map((row) => (
+                <div
+                  key={`${row.schoolName}-${row.teachingClass}`}
+                  className="rounded-2xl border border-slate-100 bg-slate-50 p-3"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <div className="font-black text-slate-800">
+                        {row.schoolName} · {row.teachingClass}
+                      </div>
+                      <div className="mt-0.5 text-xs font-bold text-slate-500">
+                        {row.classLabel}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-black text-slate-900">
+                        {formatWon(row.subtotal)}
+                      </div>
+                      <div className="text-xs font-bold text-slate-500">
+                        {row.studentCount}명 × {formatWon(row.ratePerStudent)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold leading-relaxed text-amber-800">
+          현재 등록 단가: 하늘빛초 A반 18,000원 · B반 22,411원 / 새솔초 21,520원 / 사우초 22,000원. 세금·산재보험·고용보험 등 공제액과 월별 수업횟수 조정은 아직 자동 계산하지 않습니다.
+        </div>
+      </div>
+    </div>
   );
 }
