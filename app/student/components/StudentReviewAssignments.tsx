@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  StudentCollection,
+  isAllowedStudentCollection,
+} from "@/lib/assignments";
 
 type ReviewQuestion = {
   questionId: string;
@@ -29,6 +33,14 @@ type Props = {
 
 const OPTION_LABELS = ["①", "②", "③", "④", "⑤"];
 
+const getStudentCollection = (student: any): StudentCollection => {
+  const collectionName = String(student?.collectionName || "students");
+
+  return isAllowedStudentCollection(collectionName)
+    ? collectionName
+    : "students";
+};
+
 export default function StudentReviewAssignments({ student }: Props) {
   const [assignments, setAssignments] = useState<ReviewAssignment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,6 +49,10 @@ export default function StudentReviewAssignments({ student }: Props) {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [checked, setChecked] = useState(false);
+
+  const studentId = String(student?.id || "");
+  const studentCollection = getStudentCollection(student);
+  const studentPassword = String(student?.password || "");
 
   const activeAssignment = useMemo(
     () => assignments.find((item) => item.id === activeAssignmentId) || null,
@@ -49,6 +65,15 @@ export default function StudentReviewAssignments({ student }: Props) {
     let cancelled = false;
 
     const loadAssignments = async () => {
+      if (!studentId || !studentPassword) {
+        if (!cancelled) {
+          setAssignments([]);
+          setErrorMessage("학생 정보를 다시 확인해 주세요.");
+          setIsLoading(false);
+        }
+        return;
+      }
+
       setIsLoading(true);
       setErrorMessage("");
 
@@ -57,9 +82,9 @@ export default function StudentReviewAssignments({ student }: Props) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            studentId: student?.id,
-            studentCollection: student?.collectionName,
-            studentPassword: student?.password,
+            studentId,
+            studentCollection,
+            studentPassword,
           }),
         });
         const data = await response.json().catch(() => ({}));
@@ -89,7 +114,7 @@ export default function StudentReviewAssignments({ student }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [student?.collectionName, student?.id, student?.password]);
+  }, [studentCollection, studentId, studentPassword]);
 
   const startAssignment = (assignmentId: string) => {
     setActiveAssignmentId(assignmentId);
