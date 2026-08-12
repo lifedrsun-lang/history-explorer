@@ -9,10 +9,14 @@ import { auth } from "@/lib/firebase";
 import ReviewAssignmentComposer from "./ReviewAssignmentComposer";
 
 type QuestionType = "textbook" | "exam";
+type ExamLevel = "" | "basic" | "advanced";
 
 type ReviewQuestion = {
   id: string;
   questionType: QuestionType;
+  examLevel: ExamLevel;
+  examRound: string;
+  examQuestionNumber: string;
   bookNumber: string;
   lesson: string;
   topic: string;
@@ -29,6 +33,9 @@ type QuestionDraft = Omit<ReviewQuestion, "id">;
 
 const makeEmptyDraft = (): QuestionDraft => ({
   questionType: "textbook",
+  examLevel: "",
+  examRound: "",
+  examQuestionNumber: "",
   bookNumber: "",
   lesson: "",
   topic: "",
@@ -70,6 +77,12 @@ function questionTypeLabel(type: QuestionType) {
   return type === "exam" ? "기출" : "교재";
 }
 
+function examLevelLabel(level: ExamLevel) {
+  if (level === "basic") return "기본";
+  if (level === "advanced") return "심화";
+  return "미지정";
+}
+
 function makeOptions(options: string[], count: number) {
   return Array.from({ length: count }, (_, index) => options[index] || "");
 }
@@ -99,6 +112,7 @@ export default function ReviewQuestionBankPage() {
   const [questions, setQuestions] = useState<ReviewQuestion[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [questionTypeFilter, setQuestionTypeFilter] = useState<"all" | QuestionType>("all");
+  const [examLevelFilter, setExamLevelFilter] = useState<"all" | Exclude<ExamLevel, "">>("all");
   const [bookFilter, setBookFilter] = useState("all");
   const [lessonFilter, setLessonFilter] = useState("all");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -115,6 +129,7 @@ export default function ReviewQuestionBankPage() {
 
     if (draft.questionType === "exam") {
       return (
+        Boolean(draft.examLevel) &&
         Boolean(draft.imageStoragePath || draft.prompt.trim()) &&
         makeOptions(draft.options, 4).every((option) => option.trim())
       );
@@ -139,9 +154,13 @@ export default function ReviewQuestionBankPage() {
       .filter((question) => {
         const typeMatch =
           questionTypeFilter === "all" || question.questionType === questionTypeFilter;
+        const levelMatch =
+          questionTypeFilter !== "exam" ||
+          examLevelFilter === "all" ||
+          question.examLevel === examLevelFilter;
         const bookMatch = bookFilter === "all" || question.bookNumber === bookFilter;
         const lessonMatch = lessonFilter === "all" || question.lesson === lessonFilter;
-        return typeMatch && bookMatch && lessonMatch;
+        return typeMatch && levelMatch && bookMatch && lessonMatch;
       })
       .sort((a, b) => {
         const bookDiff = bookNumberValue(a.bookNumber) - bookNumberValue(b.bookNumber);
@@ -150,7 +169,7 @@ export default function ReviewQuestionBankPage() {
         if (lessonDiff !== 0) return lessonDiff;
         return a.prompt.localeCompare(b.prompt, "ko");
       });
-  }, [bookFilter, lessonFilter, questionTypeFilter, questions]);
+  }, [bookFilter, examLevelFilter, lessonFilter, questionTypeFilter, questions]);
 
   const selectedQuestions = useMemo(
     () =>
@@ -192,6 +211,9 @@ export default function ReviewQuestionBankPage() {
     setDraft((current) => ({
       ...current,
       questionType,
+      examLevel: questionType === "exam" ? current.examLevel : "",
+      examRound: questionType === "exam" ? current.examRound : "",
+      examQuestionNumber: questionType === "exam" ? current.examQuestionNumber : "",
       options: makeOptions(current.options, questionType === "exam" ? 4 : 3),
       correctIndex:
         questionType === "exam"
@@ -266,6 +288,9 @@ export default function ReviewQuestionBankPage() {
     setEditingId(question.id);
     setDraft({
       ...question,
+      examLevel: question.examLevel || "",
+      examRound: question.examRound || "",
+      examQuestionNumber: question.examQuestionNumber || "",
       lesson,
       topic,
       options: makeOptions(question.options, question.questionType === "exam" ? 4 : 3),
@@ -307,6 +332,10 @@ export default function ReviewQuestionBankPage() {
           method: isEditing ? "PATCH" : "POST",
           body: JSON.stringify({
             questionType: draft.questionType,
+            examLevel: draft.questionType === "exam" ? draft.examLevel : "",
+            examRound: draft.questionType === "exam" ? draft.examRound.trim() : "",
+            examQuestionNumber:
+              draft.questionType === "exam" ? draft.examQuestionNumber.trim() : "",
             bookNumber: draft.bookNumber.trim(),
             lesson: draft.lesson.trim(),
             topic: draft.topic.trim(),
@@ -388,7 +417,7 @@ export default function ReviewQuestionBankPage() {
             <div className="text-sm font-black text-blue-600">복습문제 관리</div>
             <h1 className="mt-1 text-2xl font-black md:text-3xl">📝 문제은행</h1>
             <p className="mt-2 text-sm font-bold text-slate-500">
-              교재 문제는 3지선다, 한능검 기출은 문제 사진과 4개 보기를 함께 등록합니다.
+              교재 문제는 3지선다, 한능검 기출은 기본·심화와 회차·문항을 함께 관리합니다.
             </p>
           </div>
           <Link
@@ -411,7 +440,7 @@ export default function ReviewQuestionBankPage() {
                 </h2>
                 <p className="mt-1 text-sm font-bold text-slate-500">
                   {draft.questionType === "exam"
-                    ? "한능검 문제 사진 + 보기 ①~④ + 정답을 등록합니다."
+                    ? "한능검 기본/심화 · 회차 · 문항 · 문제 사진 · 보기 ①~④를 등록합니다."
                     : "문제·보기 3개·정답을 입력합니다."}
                 </p>
               </div>
@@ -441,12 +470,75 @@ export default function ReviewQuestionBankPage() {
                     >
                       [{questionTypeLabel(type)}]
                       <div className="mt-1 text-xs opacity-80">
-                        {type === "exam" ? "한능검 기출 · 사진 + 4지선다" : "교재 중심 퀴즈"}
+                        {type === "exam" ? "한능검 기출 · 기본/심화 · 4지선다" : "교재 중심 퀴즈"}
                       </div>
                     </button>
                   ))}
                 </div>
               </div>
+
+              {draft.questionType === "exam" && (
+                <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-4">
+                  <div className="text-sm font-black text-violet-800">한능검 구분</div>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {(["basic", "advanced"] as const).map((level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() =>
+                          setDraft((current) => ({ ...current, examLevel: level }))
+                        }
+                        className={`rounded-2xl border px-4 py-3 text-sm font-black ${
+                          draft.examLevel === level
+                            ? "border-violet-600 bg-violet-600 text-white"
+                            : "border-violet-200 bg-white text-violet-700"
+                        }`}
+                      >
+                        [{examLevelLabel(level)}]
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <label className="text-xs font-black text-violet-800">
+                      회차
+                      <div className="mt-1 flex items-center rounded-2xl border border-violet-200 bg-white px-3">
+                        <input
+                          value={draft.examRound}
+                          inputMode="numeric"
+                          onChange={(event) =>
+                            setDraft((current) => ({
+                              ...current,
+                              examRound: event.target.value.replace(/[^0-9]/g, ""),
+                            }))
+                          }
+                          placeholder="75"
+                          className="min-w-0 flex-1 py-3 text-sm font-bold outline-none"
+                        />
+                        <span className="text-sm font-black text-violet-500">회</span>
+                      </div>
+                    </label>
+                    <label className="text-xs font-black text-violet-800">
+                      문항번호
+                      <div className="mt-1 flex items-center rounded-2xl border border-violet-200 bg-white px-3">
+                        <input
+                          value={draft.examQuestionNumber}
+                          inputMode="numeric"
+                          onChange={(event) =>
+                            setDraft((current) => ({
+                              ...current,
+                              examQuestionNumber: event.target.value.replace(/[^0-9]/g, ""),
+                            }))
+                          }
+                          placeholder="34"
+                          className="min-w-0 flex-1 py-3 text-sm font-bold outline-none"
+                        />
+                        <span className="text-sm font-black text-violet-500">번</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-sm font-black text-slate-700">
@@ -541,7 +633,7 @@ export default function ReviewQuestionBankPage() {
                   }
                   placeholder={
                     draft.questionType === "exam"
-                      ? "예: 제80회 한능검 기본 12번 또는 보충 설명"
+                      ? "사진에 없는 보충 설명이 있을 때만 입력"
                       : "문제를 입력하세요."
                   }
                   className="mt-2 w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold leading-6 outline-none focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
@@ -651,7 +743,7 @@ export default function ReviewQuestionBankPage() {
                 <div>
                   <h2 className="text-xl font-black">저장된 문제</h2>
                   <p className="mt-1 text-sm font-bold text-slate-500">
-                    유형·호수·차시로 찾고 원하는 순서대로 과제에 담으세요.
+                    유형·급수·호수·차시로 찾고 원하는 순서대로 과제에 담으세요.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -659,9 +751,11 @@ export default function ReviewQuestionBankPage() {
                     유형
                     <select
                       value={questionTypeFilter}
-                      onChange={(event) =>
-                        setQuestionTypeFilter(event.target.value as "all" | QuestionType)
-                      }
+                      onChange={(event) => {
+                        const value = event.target.value as "all" | QuestionType;
+                        setQuestionTypeFilter(value);
+                        if (value !== "exam") setExamLevelFilter("all");
+                      }}
                       className="ml-1 rounded-xl border border-slate-200 px-2 py-2 text-sm"
                     >
                       <option value="all">전체</option>
@@ -669,6 +763,24 @@ export default function ReviewQuestionBankPage() {
                       <option value="exam">기출</option>
                     </select>
                   </label>
+                  {questionTypeFilter === "exam" && (
+                    <label className="text-xs font-black text-slate-600">
+                      급수
+                      <select
+                        value={examLevelFilter}
+                        onChange={(event) =>
+                          setExamLevelFilter(
+                            event.target.value as "all" | Exclude<ExamLevel, "">
+                          )
+                        }
+                        className="ml-1 rounded-xl border border-slate-200 px-2 py-2 text-sm"
+                      >
+                        <option value="all">전체</option>
+                        <option value="basic">기본</option>
+                        <option value="advanced">심화</option>
+                      </select>
+                    </label>
+                  )}
                   <label className="text-xs font-black text-slate-600">
                     호수
                     <select
@@ -739,11 +851,26 @@ export default function ReviewQuestionBankPage() {
                             >
                               [{questionTypeLabel(question.questionType)}]
                             </span>
+                            {question.questionType === "exam" && (
+                              <span className="rounded-full bg-violet-100 px-2 py-1 text-violet-700">
+                                [{examLevelLabel(question.examLevel || "")}]
+                              </span>
+                            )}
                             <span>
                               {question.bookNumber}
                               {question.lesson ? ` · ${question.lesson}` : ""}
                               {topic ? ` · ${topic}` : ""}
                             </span>
+                            {question.questionType === "exam" &&
+                              (question.examRound || question.examQuestionNumber) && (
+                                <span className="text-violet-600">
+                                  {question.examRound ? `${question.examRound}회` : ""}
+                                  {question.examRound && question.examQuestionNumber ? " · " : ""}
+                                  {question.examQuestionNumber
+                                    ? `${question.examQuestionNumber}번`
+                                    : ""}
+                                </span>
+                              )}
                           </div>
                           {isSelected && (
                             <span className="rounded-full bg-blue-600 px-2.5 py-1 text-xs font-black text-white">
@@ -851,8 +978,17 @@ export default function ReviewQuestionBankPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="text-xs font-black text-blue-600">
-                          [{questionTypeLabel(question.questionType)}] {question.bookNumber}
+                          [{questionTypeLabel(question.questionType)}]
+                          {question.questionType === "exam" && question.examLevel
+                            ? ` [${examLevelLabel(question.examLevel)}]`
+                            : ""} {question.bookNumber}
                           {question.lesson ? ` · ${question.lesson}` : ""}
+                          {question.questionType === "exam" && question.examRound
+                            ? ` · ${question.examRound}회`
+                            : ""}
+                          {question.questionType === "exam" && question.examQuestionNumber
+                            ? ` · ${question.examQuestionNumber}번`
+                            : ""}
                         </div>
                         <p className="truncate text-sm font-black text-slate-800">
                           {question.prompt || "한능검 기출문제"}
