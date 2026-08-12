@@ -10,6 +10,7 @@ import { auth } from "@/lib/firebase";
 type ReviewQuestion = {
   id: string;
   bookNumber: string;
+  lesson: string;
   topic: string;
   prompt: string;
   options: string[];
@@ -19,6 +20,7 @@ type ReviewQuestion = {
 
 type QuestionDraft = {
   bookNumber: string;
+  lesson: string;
   topic: string;
   prompt: string;
   options: [string, string, string];
@@ -28,6 +30,7 @@ type QuestionDraft = {
 
 const EMPTY_DRAFT: QuestionDraft = {
   bookNumber: "",
+  lesson: "",
   topic: "",
   prompt: "",
   options: ["", "", ""],
@@ -36,10 +39,33 @@ const EMPTY_DRAFT: QuestionDraft = {
 };
 
 const OPTION_LABELS = ["①", "②", "③"];
+const LESSON_OPTIONS = ["1차시", "2차시", "3차시", "4차시"];
 
 function bookNumberValue(value: string) {
   const match = value.match(/\d+/);
   return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
+}
+
+function lessonValue(value: string) {
+  const match = value.match(/\d+/);
+  return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
+}
+
+function normalizeLessonFromTopic(topic: string) {
+  const match = topic.trim().match(/^(\d+)\s*차시$/);
+  return match ? `${match[1]}차시` : "";
+}
+
+function visibleTopic(question: ReviewQuestion) {
+  const topic = question.topic.trim();
+  if (!topic) return "";
+
+  const normalizedTopicLesson = normalizeLessonFromTopic(topic);
+  if (normalizedTopicLesson && normalizedTopicLesson === question.lesson) {
+    return "";
+  }
+
+  return topic;
 }
 
 async function teacherFetch(
@@ -75,6 +101,7 @@ export default function ReviewQuestionBankPage() {
   const [questions, setQuestions] = useState<ReviewQuestion[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bookFilter, setBookFilter] = useState("all");
+  const [lessonFilter, setLessonFilter] = useState("all");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -96,17 +123,25 @@ export default function ReviewQuestionBankPage() {
   }, [questions]);
 
   const filteredQuestions = useMemo(() => {
-    const filtered =
-      bookFilter === "all"
-        ? questions
-        : questions.filter((question) => question.bookNumber === bookFilter);
+    const filtered = questions.filter((question) => {
+      const matchesBook =
+        bookFilter === "all" || question.bookNumber === bookFilter;
+      const matchesLesson =
+        lessonFilter === "all" || question.lesson === lessonFilter;
+
+      return matchesBook && matchesLesson;
+    });
 
     return [...filtered].sort((a, b) => {
       const bookDiff = bookNumberValue(a.bookNumber) - bookNumberValue(b.bookNumber);
       if (bookDiff !== 0) return bookDiff;
+
+      const lessonDiff = lessonValue(a.lesson) - lessonValue(b.lesson);
+      if (lessonDiff !== 0) return lessonDiff;
+
       return a.prompt.localeCompare(b.prompt, "ko");
     });
-  }, [bookFilter, questions]);
+  }, [bookFilter, lessonFilter, questions]);
 
   const selectedQuestions = useMemo(
     () =>
@@ -161,11 +196,27 @@ export default function ReviewQuestionBankPage() {
     setErrorMessage("");
   };
 
+  const selectLesson = (lesson: string) => {
+    setDraft((current) => ({
+      ...current,
+      lesson,
+    }));
+    setNotice("");
+    setErrorMessage("");
+  };
+
   const startEditing = (question: ReviewQuestion) => {
+    const lesson = question.lesson || normalizeLessonFromTopic(question.topic);
+    const topic =
+      lesson && normalizeLessonFromTopic(question.topic) === lesson
+        ? ""
+        : question.topic;
+
     setEditingId(question.id);
     setDraft({
       bookNumber: question.bookNumber,
-      topic: question.topic,
+      lesson,
+      topic,
       prompt: question.prompt,
       options: [
         question.options[0] || "",
@@ -212,6 +263,7 @@ export default function ReviewQuestionBankPage() {
         method: isEditing ? "PATCH" : "POST",
         body: JSON.stringify({
           bookNumber: draft.bookNumber.trim(),
+          lesson: draft.lesson.trim(),
           topic: draft.topic.trim(),
           prompt: draft.prompt.trim(),
           options: draft.options.map((option) => option.trim()),
@@ -363,22 +415,48 @@ export default function ReviewQuestionBankPage() {
                   />
                 </label>
 
-                <label className="text-sm font-black text-slate-700">
-                  진도 / 주제 (선택)
-                  <input
-                    type="text"
-                    value={draft.topic}
-                    placeholder="예: 도림~무왕"
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        topic: event.target.value,
-                      }))
-                    }
-                    className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
-                  />
-                </label>
+                <div>
+                  <div className="text-sm font-black text-slate-700">차시</div>
+                  <div className="mt-2 grid grid-cols-4 gap-2">
+                    {LESSON_OPTIONS.map((lesson, index) => (
+                      <button
+                        key={lesson}
+                        type="button"
+                        onClick={() => selectLesson(lesson)}
+                        className={`rounded-2xl border px-3 py-3 text-sm font-black transition ${
+                          draft.lesson === lesson
+                            ? "border-blue-600 bg-blue-600 text-white"
+                            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                        }`}
+                        aria-pressed={draft.lesson === lesson}
+                      >
+                        {index + 1}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs font-bold text-slate-500">
+                    {draft.lesson
+                      ? `${draft.lesson}로 저장됩니다.`
+                      : "1~4 중 차시를 눌러 선택하세요."}
+                  </p>
+                </div>
               </div>
+
+              <label className="text-sm font-black text-slate-700">
+                진도 / 주제 (선택)
+                <input
+                  type="text"
+                  value={draft.topic}
+                  placeholder="예: 도림~무왕"
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      topic: event.target.value,
+                    }))
+                  }
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
+                />
+              </label>
 
               <label className="text-sm font-black text-slate-700">
                 문제 / 지문
@@ -494,25 +572,43 @@ export default function ReviewQuestionBankPage() {
                 <div>
                   <h2 className="text-xl font-black">저장된 문제</h2>
                   <p className="mt-1 text-sm font-bold text-slate-500">
-                    과제로 낼 문제를 원하는 순서대로 눌러 주세요.
+                    호수와 차시로 찾은 뒤 과제로 낼 문제를 원하는 순서대로 눌러 주세요.
                   </p>
                 </div>
 
-                <label className="text-sm font-black text-slate-700">
-                  호수 보기
-                  <select
-                    value={bookFilter}
-                    onChange={(event) => setBookFilter(event.target.value)}
-                    className="mt-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold"
-                  >
-                    <option value="all">전체</option>
-                    {bookOptions.map((book) => (
-                      <option key={book} value={book}>
-                        {book}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="flex flex-wrap gap-2">
+                  <label className="text-sm font-black text-slate-700">
+                    호수 보기
+                    <select
+                      value={bookFilter}
+                      onChange={(event) => setBookFilter(event.target.value)}
+                      className="mt-1 block rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold"
+                    >
+                      <option value="all">전체</option>
+                      {bookOptions.map((book) => (
+                        <option key={book} value={book}>
+                          {book}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="text-sm font-black text-slate-700">
+                    차시 보기
+                    <select
+                      value={lessonFilter}
+                      onChange={(event) => setLessonFilter(event.target.value)}
+                      className="mt-1 block rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold"
+                    >
+                      <option value="all">전체</option>
+                      {LESSON_OPTIONS.map((lesson) => (
+                        <option key={lesson} value={lesson}>
+                          {lesson}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
               </div>
 
               {isLoading && (
@@ -523,7 +619,7 @@ export default function ReviewQuestionBankPage() {
 
               {!isLoading && filteredQuestions.length === 0 && (
                 <div className="mt-5 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm font-black text-slate-500">
-                  저장된 문제가 없습니다. 왼쪽에서 첫 문제를 만들어 보세요.
+                  이 호수·차시에 저장된 문제가 없습니다.
                 </div>
               )}
 
@@ -533,6 +629,7 @@ export default function ReviewQuestionBankPage() {
                     const selectedOrder = selectedIds.indexOf(question.id);
                     const isSelected = selectedOrder >= 0;
                     const isEditing = editingId === question.id;
+                    const topic = visibleTopic(question);
 
                     return (
                       <article
@@ -548,7 +645,8 @@ export default function ReviewQuestionBankPage() {
                         <div className="flex items-center justify-between gap-2">
                           <div className="text-xs font-black text-blue-600">
                             {question.bookNumber}
-                            {question.topic ? ` · ${question.topic}` : ""}
+                            {question.lesson ? ` · ${question.lesson}` : ""}
+                            {topic ? ` · ${topic}` : ""}
                           </div>
                           <div className="flex flex-wrap justify-end gap-1">
                             {isEditing && (
@@ -646,50 +744,55 @@ export default function ReviewQuestionBankPage() {
                 </div>
               ) : (
                 <div className="mt-5 grid gap-2">
-                  {selectedQuestions.map((question, index) => (
-                    <div
-                      key={question.id}
-                      className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3"
-                    >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-black text-white">
-                        {index + 1}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-black text-blue-600">
-                          {question.bookNumber}
-                          {question.topic ? ` · ${question.topic}` : ""}
+                  {selectedQuestions.map((question, index) => {
+                    const topic = visibleTopic(question);
+
+                    return (
+                      <div
+                        key={question.id}
+                        className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3"
+                      >
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-black text-white">
+                          {index + 1}
                         </div>
-                        <p className="truncate text-sm font-black text-slate-800">
-                          {question.prompt}
-                        </p>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-black text-blue-600">
+                            {question.bookNumber}
+                            {question.lesson ? ` · ${question.lesson}` : ""}
+                            {topic ? ` · ${topic}` : ""}
+                          </div>
+                          <p className="truncate text-sm font-black text-slate-800">
+                            {question.prompt}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 gap-1">
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            onClick={() => moveSelected(index, -1)}
+                            className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-black disabled:opacity-30"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === selectedQuestions.length - 1}
+                            onClick={() => moveSelected(index, 1)}
+                            className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-black disabled:opacity-30"
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeFromAssignment(question.id)}
+                            className="rounded-lg border border-red-100 bg-white px-2 py-1.5 text-xs font-black text-red-500"
+                          >
+                            빼기
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex shrink-0 gap-1">
-                        <button
-                          type="button"
-                          disabled={index === 0}
-                          onClick={() => moveSelected(index, -1)}
-                          className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-black disabled:opacity-30"
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          disabled={index === selectedQuestions.length - 1}
-                          onClick={() => moveSelected(index, 1)}
-                          className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-black disabled:opacity-30"
-                        >
-                          ↓
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeFromAssignment(question.id)}
-                          className="rounded-lg border border-red-100 bg-white px-2 py-1.5 text-xs font-black text-red-500"
-                        >
-                          빼기
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
