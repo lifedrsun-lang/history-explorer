@@ -59,7 +59,7 @@ const serializeQuestion = async (
     topic: normalizeText(data?.topic),
     prompt: normalizeText(data?.prompt),
     options: Array.isArray(data?.options)
-      ? data.options.slice(0, 5).map((item: unknown) => normalizeText(item))
+      ? data.options.slice(0, 4).map((item: unknown) => normalizeText(item))
       : [],
     correctIndex: Number(data?.correctIndex || 0),
     explanation: normalizeText(data?.explanation),
@@ -140,11 +140,11 @@ const parseQuestionBody = (body: Record<string, unknown>) => {
     throw new Error("exam_image_or_prompt_required");
   }
 
-  const options = rawOptions.slice(0, 5);
-  if (options.length !== 5 || options.some((item) => !item)) {
+  const options = rawOptions.slice(0, 4);
+  if (options.length !== 4 || options.some((item) => !item)) {
     throw new Error("invalid_options");
   }
-  if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex > 4) {
+  if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex > 3) {
     throw new Error("invalid_correct_index");
   }
 
