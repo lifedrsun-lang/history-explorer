@@ -6,6 +6,7 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { useRouter } from "next/navigation";
 
 import { auth } from "@/lib/firebase";
+import ReviewAssignmentComposer from "./ReviewAssignmentComposer";
 
 type QuestionType = "textbook" | "exam";
 
@@ -901,10 +902,10 @@ export default function ReviewQuestionBankPage() {
                 </div>
               )}
 
-              <div className="mt-5 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-800">
-                현재는 기본 틀 확인 단계입니다. 다음 단계에서 과제 제목·대상 학교/반/학생 지정,
-                백제 배경 팝업, 학생에게 보내기, 복습 완료 기록을 연결합니다.
-              </div>
+              <ReviewAssignmentComposer
+                user={currentUser}
+                questions={selectedQuestions}
+              />
             </section>
           </div>
         </div>
