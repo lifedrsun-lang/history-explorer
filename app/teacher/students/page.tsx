@@ -390,15 +390,22 @@ export default function TeacherStudentsPage() {
     [students]
   );
 
-  const counts = useMemo(() => {
-    return students.reduce(
-      (result, student) => {
-        result[getSimpleStatus(student)] += 1;
-        return result;
-      },
-      { active: 0, paused: 0 } as Record<StudentStatusView, number>
-    );
-  }, [students]);
+  const classCounts = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+    const baseStudents = students.filter((student) => {
+      if (getSimpleStatus(student) !== selectedStatus) return false;
+      if (selectedSchool !== "전체학교" && String(student?.school || "미지정") !== selectedSchool) return false;
+      if (selectedProgram !== "all" && getStudentProgramValue(student?.program) !== selectedProgram) return false;
+      if (keyword && !String(student?.name || "").toLowerCase().includes(keyword)) return false;
+      return true;
+    });
+
+    return {
+      전체: baseStudents.length,
+      A반: baseStudents.filter((student) => getTeachingClass(student) === "A반").length,
+      B반: baseStudents.filter((student) => getTeachingClass(student) === "B반").length,
+    } as Record<(typeof CLASS_OPTIONS)[number], number>;
+  }, [students, searchTerm, selectedProgram, selectedSchool, selectedStatus]);
 
   const visibleStudents = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
@@ -455,7 +462,7 @@ export default function TeacherStudentsPage() {
               </h1>
               <p className="mt-2 text-sm font-bold text-slate-500">
                 {selectedStatus === "active"
-                  ? "출석·진도·코인·교재·학생수정까지 이 화면에서 바로 관리합니다."
+                  ? "진도·코인·교재·학생수정까지 이 화면에서 바로 관리합니다."
                   : "쉬는 친구를 검색하고 수강이력 확인 또는 수강 재개를 할 수 있습니다."}
               </p>
             </div>
@@ -463,21 +470,33 @@ export default function TeacherStudentsPage() {
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3 text-center">
-          <button
-            onClick={() => setSelectedStatus("active")}
-            className={`rounded-3xl p-4 shadow-sm ${selectedStatus === "active" ? "bg-emerald-500 text-white ring-4 ring-emerald-100" : "bg-emerald-50 text-emerald-700"}`}
-          >
-            <div className="text-sm font-black">🟢 수강생(수강중)</div>
-            <div className="mt-1 text-3xl font-black">{counts.active}명</div>
-          </button>
-          <button
-            onClick={() => setSelectedStatus("paused")}
-            className={`rounded-3xl p-4 shadow-sm ${selectedStatus === "paused" ? "bg-amber-500 text-white ring-4 ring-amber-100" : "bg-amber-50 text-amber-700"}`}
-          >
-            <div className="text-sm font-black">🟡 수강생(쉬는중)</div>
-            <div className="mt-1 text-3xl font-black">{counts.paused}명</div>
-          </button>
+        <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+          {CLASS_OPTIONS.map((className) => {
+            const selected = selectedClass === className;
+            const label = className === "A반" ? "🌙 A반" : className === "B반" ? "⭐ B반" : "전체";
+            const selectedStyle = className === "A반"
+              ? "bg-blue-500 text-white ring-4 ring-blue-100"
+              : className === "B반"
+                ? "bg-pink-500 text-white ring-4 ring-pink-100"
+                : "bg-slate-700 text-white ring-4 ring-slate-200";
+            const idleStyle = className === "A반"
+              ? "bg-blue-50 text-blue-700"
+              : className === "B반"
+                ? "bg-pink-50 text-pink-700"
+                : "bg-white text-slate-700";
+
+            return (
+              <button
+                key={className}
+                type="button"
+                onClick={() => setSelectedClass(className)}
+                className={`rounded-3xl p-3 shadow-sm sm:p-4 ${selected ? selectedStyle : idleStyle}`}
+              >
+                <div className="text-xs font-black sm:text-sm">{label}</div>
+                <div className="mt-1 text-2xl font-black sm:text-3xl">{classCounts[className]}명</div>
+              </button>
+            );
+          })}
         </div>
 
         <div className="mt-4 rounded-3xl bg-white p-4 shadow-md">
@@ -489,26 +508,6 @@ export default function TeacherStudentsPage() {
               {PROGRAM_FILTER_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
             <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="학생 이름 검색" className="rounded-xl border px-3 py-2 text-sm font-bold" />
-          </div>
-
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {CLASS_OPTIONS.map((className) => (
-              <button
-                key={className}
-                onClick={() => setSelectedClass(className)}
-                className={`rounded-xl px-3 py-2 text-sm font-black ${
-                  selectedClass === className
-                    ? className === "A반"
-                      ? "bg-blue-500 text-white"
-                      : className === "B반"
-                        ? "bg-pink-500 text-white"
-                        : "bg-slate-700 text-white"
-                    : "bg-slate-100 text-slate-600"
-                }`}
-              >
-                {className === "A반" ? "🌙 A반" : className === "B반" ? "⭐ B반" : "전체"}
-              </button>
-            ))}
           </div>
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
