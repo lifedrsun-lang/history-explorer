@@ -24,11 +24,16 @@ const normalizeLesson = (value: unknown, topic?: unknown) => {
   return match ? `${match[1]}차시` : "";
 };
 
+const normalizeQuestionType = (value: unknown) => {
+  return normalizeText(value) === "exam" ? "exam" : "textbook";
+};
+
 const serializeQuestion = (
   id: string,
   data: FirebaseFirestore.DocumentData
 ) => ({
   id,
+  questionType: normalizeQuestionType(data?.questionType),
   bookNumber: normalizeText(data?.bookNumber),
   lesson: normalizeLesson(data?.lesson, data?.topic),
   topic: normalizeText(data?.topic),
@@ -51,6 +56,7 @@ const mapError = (error: unknown) => {
 
   if (
     [
+      "invalid_question_type",
       "book_number_required",
       "prompt_required",
       "invalid_options",
@@ -66,6 +72,7 @@ const mapError = (error: unknown) => {
 };
 
 const parseQuestionBody = (body: Record<string, unknown>) => {
+  const rawQuestionType = normalizeText(body?.questionType) || "textbook";
   const bookNumber = normalizeText(body?.bookNumber);
   const lesson = normalizeLesson(body?.lesson);
   const topic = normalizeText(body?.topic);
@@ -76,6 +83,9 @@ const parseQuestionBody = (body: Record<string, unknown>) => {
     : [];
   const correctIndex = Number(body?.correctIndex);
 
+  if (rawQuestionType !== "textbook" && rawQuestionType !== "exam") {
+    throw new Error("invalid_question_type");
+  }
   if (!bookNumber) throw new Error("book_number_required");
   if (!prompt) throw new Error("prompt_required");
   if (options.length !== 3 || options.some((item: string) => !item)) {
@@ -86,6 +96,7 @@ const parseQuestionBody = (body: Record<string, unknown>) => {
   }
 
   return {
+    questionType: rawQuestionType,
     bookNumber,
     lesson,
     topic,
