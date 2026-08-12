@@ -12,14 +12,14 @@ const menuItems = [
     href: "/teacher/students?status=active",
     icon: "🟢",
     title: "수강생(수강중)",
-    description: "현재 수강중인 학생, 분기별 수강이력과 학생 검색",
+    description: "전체·A반·B반 조회, 출석·진도·코인·교재·학생수정",
     className: "border-emerald-200 bg-emerald-50 text-emerald-900",
   },
   {
     href: "/teacher/students?status=paused",
     icon: "🟡",
     title: "수강생(쉬는중)",
-    description: "이번 분기 쉬는 학생과 기존 숨김 학생 확인·재수강 관리",
+    description: "쉬는 학생과 기존 숨김 학생 검색, 수강이력·재수강 관리",
     className: "border-amber-200 bg-amber-50 text-amber-900",
   },
   {
@@ -80,23 +80,13 @@ export default function TeacherDashboardGate() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Link
-                href="/"
-                className="rounded-2xl bg-blue-50 px-4 py-2 text-sm font-black text-blue-700"
-              >
+              <Link href="/" className="rounded-2xl bg-blue-50 px-4 py-2 text-sm font-black text-blue-700">
                 🏝 맵으로
               </Link>
-              <Link
-                href="/teacher?fees=1"
-                className="rounded-2xl bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-700"
-              >
+              <Link href="/teacher?fees=1" className="rounded-2xl bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-700">
                 💰 강사료
               </Link>
-              <button
-                type="button"
-                onClick={() => signOut(auth)}
-                className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-600"
-              >
+              <button type="button" onClick={() => signOut(auth)} className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-600">
                 로그아웃
               </button>
             </div>
@@ -105,24 +95,17 @@ export default function TeacherDashboardGate() {
 
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           {menuItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`group rounded-[30px] border p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${item.className}`}
-            >
+            <Link key={item.href} href={item.href} className={`group rounded-[30px] border p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${item.className}`}>
               <div className="text-4xl">{item.icon}</div>
               <div className="mt-4 text-2xl font-black">{item.title}</div>
-              <div className="mt-2 text-sm font-bold leading-relaxed opacity-70">
-                {item.description}
-              </div>
+              <div className="mt-2 text-sm font-bold leading-relaxed opacity-70">{item.description}</div>
               <div className="mt-5 text-sm font-black opacity-80">들어가기 →</div>
             </Link>
           ))}
         </div>
 
         <div className="mt-4 rounded-3xl border border-slate-200 bg-white px-5 py-4 text-sm font-bold leading-relaxed text-slate-500 shadow-sm">
-          출석·진도·코인·학생 수정은 수강생 화면의
-          <span className="font-black text-slate-700"> 상세 학생관리</span>에서 그대로 사용할 수 있습니다.
+          수강중 학생의 출석·진도·코인·교재·학생 수정은 수강생 화면에서 바로 처리할 수 있습니다.
         </div>
       </div>
     </div>
