@@ -70,6 +70,10 @@ function questionTypeLabel(type: QuestionType) {
   return type === "exam" ? "기출" : "교재";
 }
 
+function makeOptions(options: string[], count: number) {
+  return Array.from({ length: count }, (_, index) => options[index] || "");
+}
+
 async function teacherFetch(user: User, url: string, init: RequestInit = {}) {
   const token = await user.getIdToken();
   const response = await fetch(url, {
@@ -104,14 +108,21 @@ export default function ReviewQuestionBankPage() {
   const [notice, setNotice] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
+  const optionCount = draft.questionType === "exam" ? 5 : 3;
+
   const isValid = useMemo(() => {
     if (!draft.bookNumber.trim()) return false;
+
     if (draft.questionType === "exam") {
-      return Boolean(draft.imageStoragePath || draft.prompt.trim());
+      return (
+        Boolean(draft.imageStoragePath || draft.prompt.trim()) &&
+        makeOptions(draft.options, 5).every((option) => option.trim())
+      );
     }
+
     return (
       Boolean(draft.prompt.trim()) &&
-      draft.options.slice(0, 3).every((option) => option.trim())
+      makeOptions(draft.options, 3).every((option) => option.trim())
     );
   }, [draft]);
 
@@ -181,11 +192,11 @@ export default function ReviewQuestionBankPage() {
     setDraft((current) => ({
       ...current,
       questionType,
-      options:
+      options: makeOptions(current.options, questionType === "exam" ? 5 : 3),
+      correctIndex:
         questionType === "exam"
-          ? ["1", "2", "3", "4", "5"]
-          : [current.options[0] || "", current.options[1] || "", current.options[2] || ""],
-      correctIndex: questionType === "exam" ? Math.min(current.correctIndex, 4) : Math.min(current.correctIndex, 2),
+          ? Math.min(current.correctIndex, 4)
+          : Math.min(current.correctIndex, 2),
     }));
     setNotice("");
     setErrorMessage("");
@@ -193,10 +204,12 @@ export default function ReviewQuestionBankPage() {
 
   const updateOption = (index: number, value: string) => {
     setDraft((current) => {
-      const options = [...current.options];
+      const options = makeOptions(current.options, current.questionType === "exam" ? 5 : 3);
       options[index] = value;
       return { ...current, options };
     });
+    setNotice("");
+    setErrorMessage("");
   };
 
   const uploadImage = async (file: File | null) => {
@@ -233,7 +246,7 @@ export default function ReviewQuestionBankPage() {
         imageOriginalName: String(data?.originalName || file.name),
         imageUrl: String(data?.previewUrl || ""),
       }));
-      setNotice("문제 사진을 올렸습니다. 문제 저장까지 눌러 주세요.");
+      setNotice("문제 사진을 올렸습니다. 보기와 정답을 입력한 뒤 문제 저장을 눌러 주세요.");
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "문제 사진 업로드에 실패했습니다."
@@ -245,21 +258,24 @@ export default function ReviewQuestionBankPage() {
 
   const startEditing = (question: ReviewQuestion) => {
     const lesson = question.lesson || normalizeLessonFromTopic(question.topic);
-    const topic = lesson && normalizeLessonFromTopic(question.topic) === lesson ? "" : question.topic;
+    const topic =
+      lesson && normalizeLessonFromTopic(question.topic) === lesson
+        ? ""
+        : question.topic;
+
     setEditingId(question.id);
     setDraft({
       ...question,
       lesson,
       topic,
-      options:
-        question.questionType === "exam"
-          ? ["1", "2", "3", "4", "5"]
-          : [question.options[0] || "", question.options[1] || "", question.options[2] || ""],
+      options: makeOptions(question.options, question.questionType === "exam" ? 5 : 3),
     });
     setNotice("");
     setErrorMessage("");
     window.setTimeout(() => {
-      document.getElementById("review-question-editor")?.scrollIntoView({ behavior: "smooth" });
+      document
+        .getElementById("review-question-editor")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
   };
 
@@ -291,7 +307,7 @@ export default function ReviewQuestionBankPage() {
             lesson: draft.lesson.trim(),
             topic: draft.topic.trim(),
             prompt: draft.prompt.trim(),
-            options: draft.options,
+            options: makeOptions(draft.options, optionCount).map((option) => option.trim()),
             correctIndex: draft.correctIndex,
             explanation: draft.explanation.trim(),
             imageStoragePath: draft.imageStoragePath,
@@ -368,26 +384,38 @@ export default function ReviewQuestionBankPage() {
             <div className="text-sm font-black text-blue-600">복습문제 관리</div>
             <h1 className="mt-1 text-2xl font-black md:text-3xl">📝 문제은행</h1>
             <p className="mt-2 text-sm font-bold text-slate-500">
-              교재 문제는 텍스트로, 한능검 기출은 문제 사진과 정답 번호로 등록할 수 있습니다.
+              교재 문제는 3지선다, 한능검 기출은 문제 사진과 5개 보기를 함께 등록합니다.
             </p>
           </div>
-          <Link href="/teacher/presentations" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm font-black text-slate-700">
+          <Link
+            href="/teacher/presentations"
+            className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm font-black text-slate-700"
+          >
             ← 수업 PPT로 돌아가기
           </Link>
         </header>
 
         <div className="grid gap-4 xl:grid-cols-[0.95fr_1.35fr]">
-          <section id="review-question-editor" className="scroll-mt-4 rounded-3xl bg-white p-5 shadow-md">
+          <section
+            id="review-question-editor"
+            className="scroll-mt-4 rounded-3xl bg-white p-5 shadow-md"
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-xl font-black">{editingId ? "문제 수정" : "문제 만들기"}</h2>
+                <h2 className="text-xl font-black">
+                  {editingId ? "문제 수정" : "문제 만들기"}
+                </h2>
                 <p className="mt-1 text-sm font-bold text-slate-500">
                   {draft.questionType === "exam"
-                    ? "한능검 문제 사진을 올리고 정답 번호만 체크하면 됩니다."
+                    ? "한능검 문제 사진 + 보기 ①~⑤ + 정답을 등록합니다."
                     : "문제·보기 3개·정답을 입력합니다."}
                 </p>
               </div>
-              {editingId && <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-black text-amber-800">수정 중</span>}
+              {editingId && (
+                <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-black text-amber-800">
+                  수정 중
+                </span>
+              )}
             </div>
 
             <div className="mt-5 grid gap-4">
@@ -409,7 +437,7 @@ export default function ReviewQuestionBankPage() {
                     >
                       [{questionTypeLabel(type)}]
                       <div className="mt-1 text-xs opacity-80">
-                        {type === "exam" ? "한능검 기출 · 사진형" : "교재 중심 퀴즈"}
+                        {type === "exam" ? "한능검 기출 · 사진 + 5지선다" : "교재 중심 퀴즈"}
                       </div>
                     </button>
                   ))}
@@ -421,11 +449,14 @@ export default function ReviewQuestionBankPage() {
                   호수
                   <input
                     value={draft.bookNumber}
-                    onChange={(e) => setDraft((c) => ({ ...c, bookNumber: e.target.value }))}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, bookNumber: event.target.value }))
+                    }
                     placeholder="예: 6호"
                     className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
                   />
                 </label>
+
                 <div>
                   <div className="text-sm font-black text-slate-700">차시</div>
                   <div className="mt-2 grid grid-cols-4 gap-2">
@@ -433,8 +464,12 @@ export default function ReviewQuestionBankPage() {
                       <button
                         key={lesson}
                         type="button"
-                        onClick={() => setDraft((c) => ({ ...c, lesson }))}
-                        className={`rounded-2xl border px-3 py-3 text-sm font-black ${draft.lesson === lesson ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700"}`}
+                        onClick={() => setDraft((current) => ({ ...current, lesson }))}
+                        className={`rounded-2xl border px-3 py-3 text-sm font-black ${
+                          draft.lesson === lesson
+                            ? "border-blue-600 bg-blue-600 text-white"
+                            : "border-slate-200 bg-white text-slate-700"
+                        }`}
                       >
                         {index + 1}
                       </button>
@@ -447,7 +482,9 @@ export default function ReviewQuestionBankPage() {
                 진도 / 주제 (선택)
                 <input
                   value={draft.topic}
-                  onChange={(e) => setDraft((c) => ({ ...c, topic: e.target.value }))}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, topic: event.target.value }))
+                  }
                   placeholder="예: 도림~무왕"
                   className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
                 />
@@ -456,94 +493,132 @@ export default function ReviewQuestionBankPage() {
               {draft.questionType === "exam" && (
                 <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-4">
                   <div className="text-sm font-black text-violet-800">📷 한능검 문제 사진</div>
-                  <p className="mt-1 text-xs font-bold text-violet-600">JPG, PNG, WEBP · 10MB 이하 · 문제와 보기까지 보이게 올려 주세요.</p>
+                  <p className="mt-1 text-xs font-bold text-violet-600">
+                    JPG, PNG, WEBP · 10MB 이하 · 문제와 자료가 잘 보이게 올려 주세요.
+                  </p>
                   <label className="mt-3 inline-flex cursor-pointer rounded-2xl bg-violet-600 px-4 py-3 text-sm font-black text-white">
-                    {isUploadingImage ? "사진 올리는 중..." : draft.imageStoragePath ? "사진 바꾸기" : "문제 사진 선택"}
+                    {isUploadingImage
+                      ? "사진 올리는 중..."
+                      : draft.imageStoragePath
+                        ? "사진 바꾸기"
+                        : "문제 사진 선택"}
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
                       disabled={isUploadingImage}
-                      onChange={(e) => void uploadImage(e.target.files?.[0] || null)}
+                      onChange={(event) => void uploadImage(event.target.files?.[0] || null)}
                       className="sr-only"
                     />
                   </label>
                   {draft.imageUrl && (
                     <div className="mt-3 overflow-hidden rounded-2xl border border-violet-100 bg-white p-2">
-                      <img src={draft.imageUrl} alt="기출문제 미리보기" className="max-h-[420px] w-full object-contain" />
-                      <div className="mt-2 truncate px-2 text-xs font-bold text-slate-500">{draft.imageOriginalName}</div>
+                      <img
+                        src={draft.imageUrl}
+                        alt="기출문제 미리보기"
+                        className="max-h-[420px] w-full object-contain"
+                      />
+                      <div className="mt-2 truncate px-2 text-xs font-bold text-slate-500">
+                        {draft.imageOriginalName}
+                      </div>
                     </div>
                   )}
                 </div>
               )}
 
               <label className="text-sm font-black text-slate-700">
-                {draft.questionType === "exam" ? "문제 메모 / 제목 (선택)" : "문제 / 지문"}
+                {draft.questionType === "exam"
+                  ? "문제 / 지문 (선택 - 사진에 있으면 생략 가능)"
+                  : "문제 / 지문"}
                 <textarea
                   value={draft.prompt}
                   rows={draft.questionType === "exam" ? 2 : 4}
-                  onChange={(e) => setDraft((c) => ({ ...c, prompt: e.target.value }))}
-                  placeholder={draft.questionType === "exam" ? "예: 제80회 한능검 기본 12번" : "문제를 입력하세요."}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, prompt: event.target.value }))
+                  }
+                  placeholder={
+                    draft.questionType === "exam"
+                      ? "예: 제80회 한능검 기본 12번 또는 보충 설명"
+                      : "문제를 입력하세요."
+                  }
                   className="mt-2 w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold leading-6 outline-none focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
                 />
               </label>
 
-              {draft.questionType === "textbook" ? (
-                <div>
-                  <div className="text-sm font-black text-slate-700">보기와 정답</div>
-                  <div className="mt-3 grid gap-3">
-                    {draft.options.slice(0, 3).map((option, index) => (
-                      <div key={index} className="flex items-center gap-3">
-                        <input
-                          type="radio"
-                          name="correct-answer"
-                          checked={draft.correctIndex === index}
-                          onChange={() => setDraft((c) => ({ ...c, correctIndex: index }))}
-                          className="h-5 w-5"
+              <div>
+                <div className="text-sm font-black text-slate-700">
+                  보기와 정답 {draft.questionType === "exam" ? "(①~⑤)" : "(①~③)"}
+                </div>
+                <p className="mt-1 text-xs font-bold text-slate-500">
+                  {draft.questionType === "exam"
+                    ? "사진에 보기가 있어도 학생이 누를 수 있도록 보기 내용을 입력하고 정답을 체크하세요."
+                    : "보기 내용을 입력하고 정답인 보기 왼쪽 동그라미를 체크하세요."}
+                </p>
+
+                <div className="mt-3 grid gap-3">
+                  {makeOptions(draft.options, optionCount).map((option, index) => (
+                    <div key={index} className="flex items-start gap-3">
+                      <input
+                        type="radio"
+                        name="correct-answer"
+                        checked={draft.correctIndex === index}
+                        onChange={() =>
+                          setDraft((current) => ({ ...current, correctIndex: index }))
+                        }
+                        className="mt-3 h-5 w-5 shrink-0"
+                        aria-label={`${index + 1}번 보기를 정답으로 선택`}
+                      />
+                      <span
+                        className={`mt-2.5 w-7 shrink-0 text-base font-black ${
+                          draft.questionType === "exam" ? "text-violet-600" : "text-blue-600"
+                        }`}
+                      >
+                        {OPTION_LABELS[index]}
+                      </span>
+                      {draft.questionType === "exam" ? (
+                        <textarea
+                          value={option}
+                          rows={2}
+                          onChange={(event) => updateOption(index, event.target.value)}
+                          placeholder={`${index + 1}번 보기 내용`}
+                          className="min-w-0 flex-1 resize-y rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold leading-5 outline-none focus:border-violet-300 focus:ring-4 focus:ring-violet-100"
                         />
-                        <span className="w-7 font-black text-blue-600">{OPTION_LABELS[index]}</span>
+                      ) : (
                         <input
                           value={option}
-                          onChange={(e) => updateOption(index, e.target.value)}
+                          onChange={(event) => updateOption(index, event.target.value)}
                           placeholder={`${index + 1}번 보기`}
-                          className="min-w-0 flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none"
+                          className="min-w-0 flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
                         />
-                      </div>
-                    ))}
-                  </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <div>
-                  <div className="text-sm font-black text-slate-700">정답 번호</div>
-                  <p className="mt-1 text-xs font-bold text-slate-500">사진 속 문제의 정답 번호만 체크하세요.</p>
-                  <div className="mt-3 grid grid-cols-5 gap-2">
-                    {OPTION_LABELS.map((label, index) => (
-                      <button
-                        key={label}
-                        type="button"
-                        onClick={() => setDraft((c) => ({ ...c, correctIndex: index }))}
-                        className={`rounded-2xl border py-3 text-xl font-black ${draft.correctIndex === index ? "border-violet-600 bg-violet-600 text-white" : "border-slate-200 bg-white text-slate-700"}`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              </div>
 
               <label className="text-sm font-black text-slate-700">
                 정답 해설 (선택)
                 <textarea
                   value={draft.explanation}
                   rows={3}
-                  onChange={(e) => setDraft((c) => ({ ...c, explanation: e.target.value }))}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, explanation: event.target.value }))
+                  }
                   placeholder="정답 이유나 간단한 해설"
                   className="mt-2 w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold leading-6 outline-none"
                 />
               </label>
             </div>
 
-            {notice && <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700">{notice}</div>}
-            {errorMessage && <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-black text-red-600">{errorMessage}</div>}
+            {notice && (
+              <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700">
+                {notice}
+              </div>
+            )}
+            {errorMessage && (
+              <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-black text-red-600">
+                {errorMessage}
+              </div>
+            )}
 
             <div className={`mt-5 grid gap-2 ${editingId ? "sm:grid-cols-[1fr_auto]" : ""}`}>
               <button
@@ -555,7 +630,13 @@ export default function ReviewQuestionBankPage() {
                 {isSaving ? "저장 중..." : editingId ? "수정 저장" : "문제은행에 저장"}
               </button>
               {editingId && (
-                <button type="button" onClick={resetEditor} className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-black text-slate-600">수정 취소</button>
+                <button
+                  type="button"
+                  onClick={resetEditor}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-black text-slate-600"
+                >
+                  수정 취소
+                </button>
               )}
             </div>
           </section>
@@ -565,54 +646,164 @@ export default function ReviewQuestionBankPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <h2 className="text-xl font-black">저장된 문제</h2>
-                  <p className="mt-1 text-sm font-bold text-slate-500">유형·호수·차시로 찾고 원하는 순서대로 과제에 담으세요.</p>
+                  <p className="mt-1 text-sm font-bold text-slate-500">
+                    유형·호수·차시로 찾고 원하는 순서대로 과제에 담으세요.
+                  </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <label className="text-xs font-black text-slate-600">유형
-                    <select value={questionTypeFilter} onChange={(e) => setQuestionTypeFilter(e.target.value as "all" | QuestionType)} className="ml-1 rounded-xl border border-slate-200 px-2 py-2 text-sm"><option value="all">전체</option><option value="textbook">교재</option><option value="exam">기출</option></select>
+                  <label className="text-xs font-black text-slate-600">
+                    유형
+                    <select
+                      value={questionTypeFilter}
+                      onChange={(event) =>
+                        setQuestionTypeFilter(event.target.value as "all" | QuestionType)
+                      }
+                      className="ml-1 rounded-xl border border-slate-200 px-2 py-2 text-sm"
+                    >
+                      <option value="all">전체</option>
+                      <option value="textbook">교재</option>
+                      <option value="exam">기출</option>
+                    </select>
                   </label>
-                  <label className="text-xs font-black text-slate-600">호수
-                    <select value={bookFilter} onChange={(e) => setBookFilter(e.target.value)} className="ml-1 rounded-xl border border-slate-200 px-2 py-2 text-sm"><option value="all">전체</option>{bookOptions.map((book) => <option key={book} value={book}>{book}</option>)}</select>
+                  <label className="text-xs font-black text-slate-600">
+                    호수
+                    <select
+                      value={bookFilter}
+                      onChange={(event) => setBookFilter(event.target.value)}
+                      className="ml-1 rounded-xl border border-slate-200 px-2 py-2 text-sm"
+                    >
+                      <option value="all">전체</option>
+                      {bookOptions.map((book) => (
+                        <option key={book} value={book}>
+                          {book}
+                        </option>
+                      ))}
+                    </select>
                   </label>
-                  <label className="text-xs font-black text-slate-600">차시
-                    <select value={lessonFilter} onChange={(e) => setLessonFilter(e.target.value)} className="ml-1 rounded-xl border border-slate-200 px-2 py-2 text-sm"><option value="all">전체</option>{LESSON_OPTIONS.map((lesson) => <option key={lesson} value={lesson}>{lesson}</option>)}</select>
+                  <label className="text-xs font-black text-slate-600">
+                    차시
+                    <select
+                      value={lessonFilter}
+                      onChange={(event) => setLessonFilter(event.target.value)}
+                      className="ml-1 rounded-xl border border-slate-200 px-2 py-2 text-sm"
+                    >
+                      <option value="all">전체</option>
+                      {LESSON_OPTIONS.map((lesson) => (
+                        <option key={lesson} value={lesson}>
+                          {lesson}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                 </div>
               </div>
 
               {isLoading ? (
-                <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-8 text-center text-sm font-black text-slate-500">문제은행을 불러오는 중입니다...</div>
+                <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-8 text-center text-sm font-black text-slate-500">
+                  문제은행을 불러오는 중입니다...
+                </div>
               ) : filteredQuestions.length === 0 ? (
-                <div className="mt-5 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm font-black text-slate-500">선택한 조건에 저장된 문제가 없습니다.</div>
+                <div className="mt-5 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm font-black text-slate-500">
+                  선택한 조건에 저장된 문제가 없습니다.
+                </div>
               ) : (
                 <div className="mt-5 grid gap-3 md:grid-cols-2">
                   {filteredQuestions.map((question) => {
                     const selectedOrder = selectedIds.indexOf(question.id);
                     const isSelected = selectedOrder >= 0;
                     const topic = visibleTopic(question);
+                    const cardOptionCount = question.questionType === "exam" ? 5 : 3;
+                    const cardOptions = makeOptions(question.options, cardOptionCount);
+
                     return (
-                      <article key={question.id} className={`rounded-2xl border p-4 ${isSelected ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-slate-50"}`}>
+                      <article
+                        key={question.id}
+                        className={`rounded-2xl border p-4 ${
+                          isSelected
+                            ? "border-blue-300 bg-blue-50"
+                            : "border-slate-200 bg-slate-50"
+                        }`}
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex flex-wrap items-center gap-1.5 text-xs font-black text-blue-600">
-                            <span className={`rounded-full px-2 py-1 ${question.questionType === "exam" ? "bg-violet-100 text-violet-700" : "bg-blue-100 text-blue-700"}`}>[{questionTypeLabel(question.questionType)}]</span>
-                            <span>{question.bookNumber}{question.lesson ? ` · ${question.lesson}` : ""}{topic ? ` · ${topic}` : ""}</span>
+                            <span
+                              className={`rounded-full px-2 py-1 ${
+                                question.questionType === "exam"
+                                  ? "bg-violet-100 text-violet-700"
+                                  : "bg-blue-100 text-blue-700"
+                              }`}
+                            >
+                              [{questionTypeLabel(question.questionType)}]
+                            </span>
+                            <span>
+                              {question.bookNumber}
+                              {question.lesson ? ` · ${question.lesson}` : ""}
+                              {topic ? ` · ${topic}` : ""}
+                            </span>
                           </div>
-                          {isSelected && <span className="rounded-full bg-blue-600 px-2.5 py-1 text-xs font-black text-white">과제 {selectedOrder + 1}번</span>}
+                          {isSelected && (
+                            <span className="rounded-full bg-blue-600 px-2.5 py-1 text-xs font-black text-white">
+                              과제 {selectedOrder + 1}번
+                            </span>
+                          )}
                         </div>
-                        {question.imageUrl && <img src={question.imageUrl} alt="기출문제" className="mt-3 max-h-56 w-full rounded-xl bg-white object-contain" />}
-                        <p className="mt-2 text-sm font-black leading-6 text-slate-800">{question.prompt || (question.questionType === "exam" ? "한능검 기출문제" : "")}</p>
-                        {question.questionType === "exam" ? (
-                          <div className="mt-3 text-sm font-black text-violet-700">정답 {OPTION_LABELS[question.correctIndex]}</div>
-                        ) : (
-                          <div className="mt-3 grid gap-1.5 text-xs font-bold text-slate-600">
-                            {question.options.slice(0, 3).map((option, index) => <div key={index} className={index === question.correctIndex ? "text-emerald-700" : ""}>{OPTION_LABELS[index]} {option}{index === question.correctIndex ? " ✓ 정답" : ""}</div>)}
-                          </div>
+
+                        {question.imageUrl && (
+                          <img
+                            src={question.imageUrl}
+                            alt="기출문제"
+                            className="mt-3 max-h-56 w-full rounded-xl bg-white object-contain"
+                          />
                         )}
-                        {question.explanation && <p className="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-bold leading-5 text-slate-500">해설: {question.explanation}</p>}
+
+                        <p className="mt-2 text-sm font-black leading-6 text-slate-800">
+                          {question.prompt ||
+                            (question.questionType === "exam" ? "한능검 기출문제" : "")}
+                        </p>
+
+                        <div className="mt-3 grid gap-1.5 text-xs font-bold text-slate-600">
+                          {cardOptions.map((option, index) => (
+                            <div
+                              key={index}
+                              className={
+                                index === question.correctIndex ? "text-emerald-700" : ""
+                              }
+                            >
+                              {OPTION_LABELS[index]} {option}
+                              {index === question.correctIndex ? " ✓ 정답" : ""}
+                            </div>
+                          ))}
+                        </div>
+
+                        {question.explanation && (
+                          <p className="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-bold leading-5 text-slate-500">
+                            해설: {question.explanation}
+                          </p>
+                        )}
+
                         <div className="mt-4 grid grid-cols-3 gap-2">
-                          <button type="button" disabled={isSelected} onClick={() => addToAssignment(question.id)} className="rounded-xl bg-blue-600 px-2 py-2.5 text-xs font-black text-white disabled:opacity-40">{isSelected ? `${selectedOrder + 1}번 선택됨` : "과제에 담기"}</button>
-                          <button type="button" onClick={() => startEditing(question)} className="rounded-xl border border-amber-200 bg-white px-2 py-2.5 text-xs font-black text-amber-700">수정</button>
-                          <button type="button" onClick={() => void removeQuestion(question)} className="rounded-xl border border-red-100 bg-white px-2 py-2.5 text-xs font-black text-red-500">삭제</button>
+                          <button
+                            type="button"
+                            disabled={isSelected}
+                            onClick={() => addToAssignment(question.id)}
+                            className="rounded-xl bg-blue-600 px-2 py-2.5 text-xs font-black text-white disabled:opacity-40"
+                          >
+                            {isSelected ? `${selectedOrder + 1}번 선택됨` : "과제에 담기"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => startEditing(question)}
+                            className="rounded-xl border border-amber-200 bg-white px-2 py-2.5 text-xs font-black text-amber-700"
+                          >
+                            수정
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void removeQuestion(question)}
+                            className="rounded-xl border border-red-100 bg-white px-2 py-2.5 text-xs font-black text-red-500"
+                          >
+                            삭제
+                          </button>
                         </div>
                       </article>
                     );
@@ -623,22 +814,76 @@ export default function ReviewQuestionBankPage() {
 
             <section className="rounded-3xl bg-white p-5 shadow-md">
               <div className="flex items-center justify-between gap-3">
-                <div><h2 className="text-xl font-black">과제 구성 미리보기</h2><p className="mt-1 text-sm font-bold text-slate-500">담은 순서가 학생에게 보이는 문제 번호입니다.</p></div>
-                {selectedIds.length > 0 && <button type="button" onClick={() => setSelectedIds([])} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-600">전체 비우기</button>}
+                <div>
+                  <h2 className="text-xl font-black">과제 구성 미리보기</h2>
+                  <p className="mt-1 text-sm font-bold text-slate-500">
+                    담은 순서가 학생에게 보이는 문제 번호입니다.
+                  </p>
+                </div>
+                {selectedIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIds([])}
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-600"
+                  >
+                    전체 비우기
+                  </button>
+                )}
               </div>
+
               {selectedQuestions.length === 0 ? (
-                <div className="mt-5 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-black text-slate-500">위 문제은행에서 문제를 과제에 담아 주세요.</div>
+                <div className="mt-5 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-black text-slate-500">
+                  위 문제은행에서 문제를 과제에 담아 주세요.
+                </div>
               ) : (
                 <div className="mt-5 grid gap-2">
                   {selectedQuestions.map((question, index) => (
-                    <div key={question.id} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-black text-white">{index + 1}</div>
-                      <div className="min-w-0 flex-1"><div className="text-xs font-black text-blue-600">[{questionTypeLabel(question.questionType)}] {question.bookNumber}{question.lesson ? ` · ${question.lesson}` : ""}</div><p className="truncate text-sm font-black text-slate-800">{question.prompt || "한능검 기출문제"}</p></div>
-                      <div className="flex gap-1"><button type="button" disabled={index === 0} onClick={() => moveSelected(index, -1)} className="rounded-lg border bg-white px-2 py-1.5 text-xs font-black disabled:opacity-30">↑</button><button type="button" disabled={index === selectedQuestions.length - 1} onClick={() => moveSelected(index, 1)} className="rounded-lg border bg-white px-2 py-1.5 text-xs font-black disabled:opacity-30">↓</button><button type="button" onClick={() => removeFromAssignment(question.id)} className="rounded-lg border border-red-100 bg-white px-2 py-1.5 text-xs font-black text-red-500">빼기</button></div>
+                    <div
+                      key={question.id}
+                      className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3"
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-black text-white">
+                        {index + 1}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-black text-blue-600">
+                          [{questionTypeLabel(question.questionType)}] {question.bookNumber}
+                          {question.lesson ? ` · ${question.lesson}` : ""}
+                        </div>
+                        <p className="truncate text-sm font-black text-slate-800">
+                          {question.prompt || "한능검 기출문제"}
+                        </p>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          disabled={index === 0}
+                          onClick={() => moveSelected(index, -1)}
+                          className="rounded-lg border bg-white px-2 py-1.5 text-xs font-black disabled:opacity-30"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          disabled={index === selectedQuestions.length - 1}
+                          onClick={() => moveSelected(index, 1)}
+                          className="rounded-lg border bg-white px-2 py-1.5 text-xs font-black disabled:opacity-30"
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeFromAssignment(question.id)}
+                          className="rounded-lg border border-red-100 bg-white px-2 py-1.5 text-xs font-black text-red-500"
+                        >
+                          빼기
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
+
               <ReviewAssignmentComposer user={currentUser} questions={selectedQuestions} />
             </section>
           </div>
