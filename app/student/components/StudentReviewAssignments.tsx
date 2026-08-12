@@ -37,6 +37,9 @@ export default function StudentReviewAssignments({ student }: Props) {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [checked, setChecked] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [completionError, setCompletionError] = useState("");
+  const [completionMessage, setCompletionMessage] = useState("");
 
   const activeAssignment = useMemo(
     () => assignments.find((item) => item.id === activeAssignmentId) || null,
@@ -96,6 +99,57 @@ export default function StudentReviewAssignments({ student }: Props) {
     setQuestionIndex(0);
     setSelectedIndex(null);
     setChecked(false);
+    setCompletionError("");
+    setCompletionMessage("");
+  };
+
+  const completeAssignment = async () => {
+    if (!activeAssignment || isCompleting) return;
+
+    setIsCompleting(true);
+    setCompletionError("");
+
+    try {
+      const response = await fetch("/api/student/review-assignments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assignmentId: activeAssignment.id,
+          studentId: student?.id,
+          studentCollection: student?.collectionName,
+          studentPassword: student?.password,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.error || "복습 완료 보상을 지급하지 못했습니다.");
+      }
+
+      if (data?.alreadyRewarded) {
+        setCompletionMessage(
+          "✅ 이미 완료한 복습문제예요. 동엽전은 처음 완료할 때 1개만 지급돼요."
+        );
+      } else if (Number(data?.exchangeCount || 0) > 0) {
+        setCompletionMessage(
+          "🎉 복습 완료! 동엽전 1개가 지급되고 은엽전으로 자동 교환됐어요."
+        );
+      } else {
+        setCompletionMessage("🎉 복습 완료! 동엽전 1개를 받았어요.");
+      }
+
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 1200);
+    } catch (error) {
+      setCompletionError(
+        error instanceof Error
+          ? error.message
+          : "복습 완료 보상을 지급하지 못했습니다."
+      );
+    } finally {
+      setIsCompleting(false);
+    }
   };
 
   const goToNext = () => {
@@ -103,16 +157,14 @@ export default function StudentReviewAssignments({ student }: Props) {
 
     const isLast = questionIndex >= activeAssignment.questions.length - 1;
     if (isLast) {
-      setActiveAssignmentId("");
-      setQuestionIndex(0);
-      setSelectedIndex(null);
-      setChecked(false);
+      void completeAssignment();
       return;
     }
 
     setQuestionIndex((current) => current + 1);
     setSelectedIndex(null);
     setChecked(false);
+    setCompletionError("");
   };
 
   if (isLoading) {
@@ -143,6 +195,10 @@ export default function StudentReviewAssignments({ student }: Props) {
           </div>
         ) : (
           <div className="grid gap-3">
+            <div className="rounded-2xl border border-yellow-100 bg-yellow-50 px-4 py-3 text-xs font-black leading-5 text-yellow-800">
+              🪙 복습문제를 끝까지 풀면 동엽전 1개를 받을 수 있어요. 같은 복습문제의 보상은 한 번만 지급돼요.
+            </div>
+
             {assignments.map((assignment) => (
               <button
                 key={assignment.id}
@@ -201,7 +257,7 @@ export default function StudentReviewAssignments({ student }: Props) {
               <button
                 key={`${currentQuestion.questionId}-${index}`}
                 type="button"
-                disabled={checked}
+                disabled={checked || isCompleting}
                 onClick={() => setSelectedIndex(index)}
                 className={`rounded-2xl border px-4 py-3 text-left text-sm font-black transition ${
                   correct
@@ -222,7 +278,7 @@ export default function StudentReviewAssignments({ student }: Props) {
         {!checked ? (
           <button
             type="button"
-            disabled={selectedIndex === null}
+            disabled={selectedIndex === null || isCompleting}
             onClick={() => setChecked(true)}
             className="mt-5 w-full rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-white transition enabled:hover:bg-yellow-500 disabled:opacity-40"
           >
@@ -245,20 +301,38 @@ export default function StudentReviewAssignments({ student }: Props) {
               )}
             </div>
 
+            {completionError && (
+              <div className="mt-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-xs font-black leading-5 text-red-600">
+                {completionError}
+              </div>
+            )}
+
+            {completionMessage && (
+              <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-black leading-6 text-emerald-700">
+                {completionMessage}
+              </div>
+            )}
+
             <button
               type="button"
+              disabled={isCompleting || Boolean(completionMessage)}
               onClick={goToNext}
-              className="mt-4 w-full rounded-2xl bg-sky-600 px-4 py-3 text-sm font-black text-white transition hover:bg-sky-700"
+              className="mt-4 w-full rounded-2xl bg-sky-600 px-4 py-3 text-sm font-black text-white transition enabled:hover:bg-sky-700 disabled:opacity-50"
             >
-              {isLast ? "복습 끝!" : "다음 문제"}
+              {isCompleting
+                ? "동엽전 지급 중..."
+                : isLast
+                  ? "복습 끝!"
+                  : "다음 문제"}
             </button>
           </>
         )}
 
         <button
           type="button"
+          disabled={isCompleting}
           onClick={() => setActiveAssignmentId("")}
-          className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-500"
+          className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-500 disabled:opacity-50"
         >
           문제 목록으로
         </button>
