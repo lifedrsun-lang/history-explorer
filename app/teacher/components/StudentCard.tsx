@@ -13,9 +13,7 @@ export default function StudentCard({
   addBonusBronze,
   removeBronze,
   useSilver,
-  addAttendanceRecord,
   addMaterialRecord,
-  changeStage,
   toggleStudentVisible,
   deleteStudent,
   openEditModal,
@@ -23,45 +21,55 @@ export default function StudentCard({
   const router = useRouter();
   const stage = getStageInfo(student?.stage).current;
   const enrollmentTerms = getEnrollmentTerms(student);
-
-  const coinHistoryCount = Array.isArray(student?.coinHistory)
-    ? student.coinHistory.length
-    : 0;
-  const attendanceHistoryCount = Array.isArray(student?.attendanceHistory)
-    ? student.attendanceHistory.length
-    : 0;
-  const materialHistoryCount = Array.isArray(student?.materialHistory)
-    ? student.materialHistory.length
-    : 0;
-  const classHistoryCount = coinHistoryCount + attendanceHistoryCount + materialHistoryCount;
+  const materialHistory = Array.isArray(student?.materialHistory)
+    ? student.materialHistory
+    : [];
+  const hasCurrentMaterial = materialHistory.some(
+    (item: any) => String(item?.stageId || "") === String(student?.stage || "")
+  );
   const programLabel = getStudentProgramLabel(student?.program);
 
   return (
     <div className="w-full min-w-0 bg-white rounded-[24px] p-3 sm:rounded-[30px] sm:p-4 shadow-md">
       <div className="text-xl sm:text-3xl font-bold truncate">{student.name}</div>
 
-      <div className="mt-1 mb-2 inline-flex max-w-full rounded-full bg-sky-50 px-2 py-1 text-[11px] font-bold text-sky-700">
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => {
+            if (!hasCurrentMaterial) {
+              addMaterialRecord(student);
+            }
+          }}
+          disabled={hasCurrentMaterial}
+          title={hasCurrentMaterial ? "현재 교재 지급 완료" : "현재 교재 지급하기"}
+          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black transition ${
+            hasCurrentMaterial
+              ? "bg-indigo-100 text-indigo-700"
+              : "bg-slate-100 text-slate-400 hover:bg-indigo-50 hover:text-indigo-500"
+          }`}
+        >
+          <span className={hasCurrentMaterial ? "opacity-100" : "opacity-30"}>📘</span>
+          <span>{hasCurrentMaterial ? "교재 지급완료" : "교재 미지급"}</span>
+        </button>
+
+        {enrollmentTerms.map((term) => (
+          <span
+            key={term}
+            className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-black text-indigo-700"
+          >
+            {formatEnrollmentTerm(term)}
+          </span>
+        ))}
+      </div>
+
+      <div className="mt-2 mb-2 inline-flex max-w-full rounded-full bg-sky-50 px-2 py-1 text-[11px] font-bold text-sky-700">
         <span className="truncate">프로그램: {programLabel}</span>
       </div>
 
       <div className="text-sm text-gray-500 truncate">{student.school}</div>
       <div className="text-sm text-gray-500 mb-2 truncate">
         {student.grade}학년 {student.class}반 / {student.studentNumber}번
-      </div>
-
-      <div className="mb-2 rounded-2xl bg-indigo-50 p-2 sm:p-3">
-        <div className="text-[11px] font-black text-indigo-500">수강이력</div>
-        <div className="mt-1 flex flex-wrap gap-1">
-          {enrollmentTerms.length === 0 ? (
-            <span className="text-[11px] font-bold text-slate-400">분기 이력 미입력</span>
-          ) : (
-            enrollmentTerms.map((term) => (
-              <span key={term} className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-indigo-700 ring-1 ring-indigo-100">
-                {formatEnrollmentTerm(term)}
-              </span>
-            ))
-          )}
-        </div>
       </div>
 
       <div className="bg-blue-50 rounded-2xl p-2 sm:p-3 mb-2 text-sm truncate">
@@ -72,18 +80,12 @@ export default function StudentCard({
         <div className="font-bold text-yellow-700 truncate">🟡 동엽전: {student.bronze ?? 0}개</div>
         <div className="font-bold text-purple-700 mt-1 truncate">⚪ 은엽전: {student.silver ?? 0}개</div>
         <div className="font-bold text-green-700 mt-1 truncate">📈 누적 동엽전: {student.totalBronze ?? 0}개</div>
-        <div className="text-[11px] sm:text-xs font-bold text-indigo-700 mt-1 truncate">📒 수업 기록: {classHistoryCount}개</div>
       </div>
 
       <div className="bg-gray-100 rounded-2xl p-2 sm:p-3 mb-2">
         <div className="text-xs text-gray-400">현재 진도</div>
         <div className="text-xs text-gray-500 truncate">{stage?.short || "별꼼역사 1권"}</div>
         <div className="text-yellow-600 font-bold text-base sm:text-2xl truncate">{stage?.title || "진도 없음"}</div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mb-2">
-        <button onClick={() => changeStage(student, -1)} className="bg-indigo-500 text-white rounded-xl py-2 px-1 text-[11px] sm:text-sm font-bold whitespace-nowrap">◀ 이전</button>
-        <button onClick={() => changeStage(student, 1)} className="bg-green-500 text-white rounded-xl py-2 px-1 text-[11px] sm:text-sm font-bold whitespace-nowrap">다음 ▶</button>
       </div>
 
       <div className="bg-orange-50 rounded-2xl p-2 sm:p-3 mb-2">
@@ -97,17 +99,6 @@ export default function StudentCard({
           <button onClick={() => useSilver(student)} className="bg-pink-500 text-white rounded-xl py-2 px-1 text-[11px] sm:text-sm font-bold whitespace-nowrap">은사용</button>
         </div>
         <div className="text-[11px] text-gray-500 mt-2 leading-snug">동엽전이 10개가 되면 은엽전 1개로 자동 교환됩니다.</div>
-      </div>
-
-      <div className="bg-slate-50 rounded-2xl p-2 sm:p-3 mb-2">
-        <div className="font-bold text-slate-700 mb-2 text-sm">📒 수업 기록</div>
-        <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-          <button onClick={() => addAttendanceRecord(student, "출석")} className="bg-emerald-500 text-white rounded-xl py-2 px-1 text-[11px] sm:text-sm font-bold whitespace-nowrap">출석</button>
-          <button onClick={() => addAttendanceRecord(student, "결석(병가)")} className="bg-rose-500 text-white rounded-xl py-2 px-1 text-[11px] sm:text-sm font-bold whitespace-nowrap">병가</button>
-          <button onClick={() => addAttendanceRecord(student, "결석(체험학습)")} className="bg-sky-500 text-white rounded-xl py-2 px-1 text-[11px] sm:text-sm font-bold whitespace-nowrap">체험</button>
-          <button onClick={() => addAttendanceRecord(student, "지각")} className="bg-orange-500 text-white rounded-xl py-2 px-1 text-[11px] sm:text-sm font-bold whitespace-nowrap">지각</button>
-          <button onClick={() => addMaterialRecord(student)} className="col-span-2 bg-indigo-500 text-white rounded-xl py-2 px-1 text-[11px] sm:text-sm font-bold whitespace-nowrap">교재 지급</button>
-        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
