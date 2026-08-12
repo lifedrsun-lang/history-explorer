@@ -30,6 +30,13 @@ const menuItems = [
     className: "border-sky-200 bg-sky-50 text-sky-900",
   },
   {
+    href: "/teacher/presentations/review",
+    icon: "📝",
+    title: "복습문제",
+    description: "수업 복습문제를 확인하고 문제은행을 관리",
+    className: "border-blue-200 bg-blue-50 text-blue-900",
+  },
+  {
     href: "/teacher/assignments",
     icon: "📸",
     title: "과제 관리",
