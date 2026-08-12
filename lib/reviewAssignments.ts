@@ -17,6 +17,9 @@ export type ReviewAssignmentQuestion = {
   options: string[];
   correctIndex: number;
   explanation: string;
+  imageStoragePath: string;
+  imageOriginalName: string;
+  imageUrl?: string;
 };
 
 export type ReviewAssignmentSummary = {
