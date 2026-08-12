@@ -9,31 +9,31 @@ import { auth } from "@/lib/firebase";
 
 const menuItems = [
   {
-    href: "/teacher/students",
-    icon: "👧",
-    title: "수강생 관리",
-    description: "수강중·쉬는중·종료, 분기별 수강이력과 학생 검색",
-    className: "border-sky-200 bg-sky-50 text-sky-900",
+    href: "/teacher/students?status=active",
+    icon: "🟢",
+    title: "수강생(수강중)",
+    description: "현재 수강중인 학생, 분기별 수강이력과 학생 검색",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+  },
+  {
+    href: "/teacher/students?status=paused",
+    icon: "🟡",
+    title: "수강생(쉬는중)",
+    description: "이번 분기 쉬는 학생과 기존 숨김 학생 확인·재수강 관리",
+    className: "border-amber-200 bg-amber-50 text-amber-900",
   },
   {
     href: "/teacher/presentations",
     icon: "📽️",
     title: "수업자료 관리",
     description: "PPT·수업자료 링크를 등록하고 수업용 자료를 관리",
-    className: "border-amber-200 bg-amber-50 text-amber-900",
+    className: "border-sky-200 bg-sky-50 text-sky-900",
   },
   {
     href: "/teacher/assignments",
     icon: "📸",
     title: "과제 관리",
     description: "과제 등록, 제출 확인, 승인·다시 해오기 관리",
-    className: "border-emerald-200 bg-emerald-50 text-emerald-900",
-  },
-  {
-    href: "/teacher?fees=1",
-    icon: "💰",
-    title: "강사료",
-    description: "현재 수강중인 학생 기준 학교·반별 예상 강사료 확인",
     className: "border-violet-200 bg-violet-50 text-violet-900",
   },
 ];
@@ -64,10 +64,6 @@ export default function TeacherDashboardGate() {
     );
   }
 
-  if (searchParams.get("fees") === "1") {
-    return null;
-  }
-
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#f5f7fb] p-4 sm:p-6">
       <div className="mx-auto max-w-5xl">
@@ -84,10 +80,23 @@ export default function TeacherDashboardGate() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Link href="/" className="rounded-2xl bg-blue-50 px-4 py-2 text-sm font-black text-blue-700">
+              <Link
+                href="/"
+                className="rounded-2xl bg-blue-50 px-4 py-2 text-sm font-black text-blue-700"
+              >
                 🏝 맵으로
               </Link>
-              <button type="button" onClick={() => signOut(auth)} className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-600">
+              <Link
+                href="/teacher?fees=1"
+                className="rounded-2xl bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-700"
+              >
+                💰 강사료
+              </Link>
+              <button
+                type="button"
+                onClick={() => signOut(auth)}
+                className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-600"
+              >
                 로그아웃
               </button>
             </div>
@@ -103,15 +112,17 @@ export default function TeacherDashboardGate() {
             >
               <div className="text-4xl">{item.icon}</div>
               <div className="mt-4 text-2xl font-black">{item.title}</div>
-              <div className="mt-2 text-sm font-bold leading-relaxed opacity-70">{item.description}</div>
+              <div className="mt-2 text-sm font-bold leading-relaxed opacity-70">
+                {item.description}
+              </div>
               <div className="mt-5 text-sm font-black opacity-80">들어가기 →</div>
             </Link>
           ))}
         </div>
 
         <div className="mt-4 rounded-3xl border border-slate-200 bg-white px-5 py-4 text-sm font-bold leading-relaxed text-slate-500 shadow-sm">
-          기존 출석·진도·코인·학생 수정 기능은 그대로 보존되어 있습니다. 수강생 관리에서 필요한 경우
-          <span className="font-black text-slate-700"> 상세 학생관리</span>로 들어갈 수 있습니다.
+          출석·진도·코인·학생 수정은 수강생 화면의
+          <span className="font-black text-slate-700"> 상세 학생관리</span>에서 그대로 사용할 수 있습니다.
         </div>
       </div>
     </div>
