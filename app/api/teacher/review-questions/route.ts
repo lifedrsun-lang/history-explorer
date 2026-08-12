@@ -55,6 +55,35 @@ const mapError = (error: unknown) => {
   return handleRouteError(error);
 };
 
+const parseQuestionBody = (body: Record<string, unknown>) => {
+  const bookNumber = normalizeText(body?.bookNumber);
+  const topic = normalizeText(body?.topic);
+  const prompt = normalizeText(body?.prompt);
+  const explanation = normalizeText(body?.explanation);
+  const options = Array.isArray(body?.options)
+    ? body.options.slice(0, 3).map((item: unknown) => normalizeText(item))
+    : [];
+  const correctIndex = Number(body?.correctIndex);
+
+  if (!bookNumber) throw new Error("book_number_required");
+  if (!prompt) throw new Error("prompt_required");
+  if (options.length !== 3 || options.some((item: string) => !item)) {
+    throw new Error("invalid_options");
+  }
+  if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex > 2) {
+    throw new Error("invalid_correct_index");
+  }
+
+  return {
+    bookNumber,
+    topic,
+    prompt,
+    options,
+    correctIndex,
+    explanation,
+  };
+};
+
 export async function GET(request: Request) {
   try {
     await verifyTeacherRequest(request);
@@ -78,34 +107,12 @@ export async function POST(request: Request) {
   try {
     const teacher = await verifyTeacherRequest(request);
     const body = await request.json();
-
-    const bookNumber = normalizeText(body?.bookNumber);
-    const topic = normalizeText(body?.topic);
-    const prompt = normalizeText(body?.prompt);
-    const explanation = normalizeText(body?.explanation);
-    const options = Array.isArray(body?.options)
-      ? body.options.slice(0, 3).map((item: unknown) => normalizeText(item))
-      : [];
-    const correctIndex = Number(body?.correctIndex);
-
-    if (!bookNumber) throw new Error("book_number_required");
-    if (!prompt) throw new Error("prompt_required");
-    if (options.length !== 3 || options.some((item: string) => !item)) {
-      throw new Error("invalid_options");
-    }
-    if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex > 2) {
-      throw new Error("invalid_correct_index");
-    }
+    const payload = parseQuestionBody(body);
 
     const { db } = getFirebaseAdmin();
     const docRef = await db.collection(REVIEW_QUESTIONS_COLLECTION).add({
       schemaVersion: 1,
-      bookNumber,
-      topic,
-      prompt,
-      options,
-      correctIndex,
-      explanation,
+      ...payload,
       createdBy: teacher.uid,
       updatedBy: teacher.uid,
       createdAt: FieldValue.serverTimestamp(),
@@ -113,6 +120,34 @@ export async function POST(request: Request) {
     });
 
     return Response.json({ ok: true, questionId: docRef.id }, { status: 201 });
+  } catch (error) {
+    return mapError(error);
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const teacher = await verifyTeacherRequest(request);
+    const url = new URL(request.url);
+    const questionId = normalizeText(url.searchParams.get("id"));
+
+    if (!questionId) throw new Error("question_id_required");
+
+    const body = await request.json();
+    const payload = parseQuestionBody(body);
+    const { db } = getFirebaseAdmin();
+    const docRef = db.collection(REVIEW_QUESTIONS_COLLECTION).doc(questionId);
+    const snapshot = await docRef.get();
+
+    if (!snapshot.exists) throw new Error("question_not_found");
+
+    await docRef.update({
+      ...payload,
+      updatedBy: teacher.uid,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    return Response.json({ ok: true, questionId });
   } catch (error) {
     return mapError(error);
   }
