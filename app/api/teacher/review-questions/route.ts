@@ -139,6 +139,11 @@ const parseQuestionBody = (body: Record<string, unknown>) => {
   if (!prompt && !imageStoragePath) {
     throw new Error("exam_image_or_prompt_required");
   }
+
+  const options = rawOptions.slice(0, 5);
+  if (options.length !== 5 || options.some((item) => !item)) {
+    throw new Error("invalid_options");
+  }
   if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex > 4) {
     throw new Error("invalid_correct_index");
   }
@@ -149,7 +154,7 @@ const parseQuestionBody = (body: Record<string, unknown>) => {
     lesson,
     topic,
     prompt,
-    options: ["1", "2", "3", "4", "5"],
+    options,
     correctIndex,
     explanation,
     imageStoragePath,
