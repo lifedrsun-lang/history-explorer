@@ -24,6 +24,10 @@ import {
   REVIEW_COMPLETION_REWARD_AMOUNT,
   REVIEW_COMPLETION_REWARD_TEXT,
 } from "@/lib/reviewAssignments";
+import {
+  getAssignmentBucketName,
+  getSupabaseServer,
+} from "@/lib/supabaseServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,6 +45,35 @@ const serializeAssignment = (
   createdAt: serializeDate(data?.createdAt),
   isActive: data?.isActive !== false,
 });
+
+const addQuestionImageUrls = async <T extends { questions: any[] }>(assignment: T) => {
+  const supabase = getSupabaseServer();
+  const bucketName = getAssignmentBucketName();
+  const questions = await Promise.all(
+    assignment.questions.map(async (question) => {
+      const imageStoragePath = normalizeText(question?.imageStoragePath);
+      if (!imageStoragePath) {
+        return { ...question, imageUrl: "" };
+      }
+
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .createSignedUrl(imageStoragePath, 60 * 30);
+
+      if (error) {
+        console.error("Review assignment image signed URL failed:", error);
+      }
+
+      return {
+        ...question,
+        imageStoragePath,
+        imageUrl: data?.signedUrl || "",
+      };
+    })
+  );
+
+  return { ...assignment, questions };
+};
 
 const mapStudentError = (error: unknown) => {
   const message = error instanceof Error ? error.message : "";
@@ -84,12 +117,14 @@ export async function POST(request: Request) {
       .where("targetStudentKeys", "array-contains", student.studentKey)
       .get();
 
-    const assignments = snapshot.docs
+    const baseAssignments = snapshot.docs
       .map((docItem) => serializeAssignment(docItem.id, docItem.data()))
       .filter((assignment) => assignment.isActive)
       .sort((a, b) =>
         String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
       );
+
+    const assignments = await Promise.all(baseAssignments.map(addQuestionImageUrls));
 
     return Response.json({ assignments });
   } catch (error) {
