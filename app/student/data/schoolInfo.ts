@@ -1,13 +1,14 @@
 export type SchoolClassTime = {
   label: "A반" | "B반";
   semester: string;
-  vacation: string;
+  vacation?: string;
 };
 
 export type SchoolNoticeInfo = {
   title: string;
   location: string;
   period?: string;
+  message?: string;
   breakNotice?: string;
   noBreakNotice?: string;
   classTimes: SchoolClassTime[];
@@ -43,20 +44,19 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
       location: "2F 컴퓨터실",
     },
     notice: {
-      title: "2분기 수업 안내",
-      location: "2F 컴퓨터실",
-      period: "5/26~8/14",
-      noBreakNotice: "방학 기간 내 휴강 없음",
+      title: "3분기 수업 안내",
+      location: "2F 맞춤3교실",
+      period: "8/19 개강",
+      message:
+        "학교 사정으로 3분기부터 수업 장소가 기존 컴퓨터실에서 2층 맞춤3교실로 변경됩니다. 양해 부탁드립니다.",
       classTimes: [
         {
           label: "A반",
           semester: "13:50~14:50",
-          vacation: "09:30~10:30",
         },
         {
           label: "B반",
           semester: "15:00~16:20",
-          vacation: "10:40~12:00",
         },
       ],
     },
