@@ -1,7 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 
 import {
-  ALLOWED_STUDENT_COLLECTIONS,
   isAllowedStudentCollection,
   normalizeText,
 } from "@/lib/assignments";
@@ -122,7 +121,7 @@ export async function POST(request: Request) {
     const title = normalizeText(body?.title);
     const school = normalizeText(body?.school);
     const targetTeachingClass = normalizeText(body?.targetTeachingClass);
-    const targetStudentKeys = Array.isArray(body?.targetStudentKeys)
+    const targetStudentKeys = (Array.isArray(body?.targetStudentKeys)
       ? Array.from(
           new Set(
             body.targetStudentKeys
@@ -130,8 +129,8 @@ export async function POST(request: Request) {
               .filter(Boolean)
           )
         )
-      : [];
-    const questionIds = Array.isArray(body?.questionIds)
+      : []) as string[];
+    const questionIds = (Array.isArray(body?.questionIds)
       ? Array.from(
           new Set(
             body.questionIds
@@ -139,7 +138,7 @@ export async function POST(request: Request) {
               .filter(Boolean)
           )
         )
-      : [];
+      : []) as string[];
 
     if (!title) throw new Error("title_required");
     if (!school) throw new Error("school_required");
