@@ -40,7 +40,7 @@ const serializeQuestionSnapshot = (
   topic: normalizeText(data?.topic),
   prompt: normalizeText(data?.prompt),
   options: Array.isArray(data?.options)
-    ? data.options.slice(0, 5).map((item: unknown) => normalizeText(item))
+    ? data.options.slice(0, data?.questionType === "exam" ? 4 : 3).map((item: unknown) => normalizeText(item))
     : [],
   correctIndex: Number(data?.correctIndex || 0),
   explanation: normalizeText(data?.explanation),
