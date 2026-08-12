@@ -39,6 +39,7 @@ import StudentCard from "../components/StudentCard";
 import StudentEditModal from "../components/StudentEditModal";
 
 const CLASS_OPTIONS = ["전체", "A반", "B반"] as const;
+const BULK_CLASS_OPTIONS = ["A반", "B반"] as const;
 type StudentStatusView = "active" | "paused";
 type CoinSource = "quiz" | "homework" | "bonus" | "making";
 type AttendanceStatus = "출석" | "결석(병가)" | "결석(체험학습)" | "지각";
@@ -80,6 +81,11 @@ export default function TeacherStudentsPage() {
   const [editingStudent, setEditingStudent] = useState<any>(null);
 
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
+  const [isBulkStageOpen, setIsBulkStageOpen] = useState(false);
+  const [bulkProgram, setBulkProgram] = useState<StudentProgram>(DEFAULT_STUDENT_PROGRAM);
+  const [bulkSchool, setBulkSchool] = useState("");
+  const [bulkClass, setBulkClass] = useState<(typeof BULK_CLASS_OPTIONS)[number]>("A반");
+  const [bulkStage, setBulkStage] = useState(DEFAULT_STAGE_ID);
   const [newSchool, setNewSchool] = useState("");
   const [newGrade, setNewGrade] = useState("");
   const [newClass, setNewClass] = useState("");
@@ -390,6 +396,92 @@ export default function TeacherStudentsPage() {
     [students]
   );
 
+  const bulkSchoolOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          students
+            .filter(
+              (student) =>
+                getSimpleStatus(student) === "active" &&
+                getStudentProgramValue(student?.program) === bulkProgram
+            )
+            .map((student) => String(student?.school || "미지정"))
+        )
+      ).sort((a, b) => a.localeCompare(b, "ko-KR")),
+    [bulkProgram, students]
+  );
+
+  const bulkTargetStudents = useMemo(
+    () =>
+      students.filter((student) => {
+        if (getSimpleStatus(student) !== "active") return false;
+        if (getStudentProgramValue(student?.program) !== bulkProgram) return false;
+        if (String(student?.school || "미지정") !== bulkSchool) return false;
+        return getTeachingClass(student) === bulkClass;
+      }),
+    [bulkClass, bulkProgram, bulkSchool, students]
+  );
+
+  const selectedBulkStage =
+    STAGE_DATA.find((stage) => stage.id === bulkStage) || STAGE_DATA[0];
+
+  const openBulkStageModal = () => {
+    const nextProgram =
+      selectedProgram !== "all"
+        ? (selectedProgram as StudentProgram)
+        : DEFAULT_STUDENT_PROGRAM;
+    const nextSchools = Array.from(
+      new Set(
+        students
+          .filter(
+            (student) =>
+              getSimpleStatus(student) === "active" &&
+              getStudentProgramValue(student?.program) === nextProgram
+          )
+          .map((student) => String(student?.school || "미지정"))
+      )
+    ).sort((a, b) => a.localeCompare(b, "ko-KR"));
+
+    setBulkProgram(nextProgram);
+    setBulkSchool(
+      selectedSchool !== "전체학교" && nextSchools.includes(selectedSchool)
+        ? selectedSchool
+        : nextSchools[0] || ""
+    );
+    setBulkClass(selectedClass === "B반" ? "B반" : "A반");
+    setIsBulkStageOpen(true);
+  };
+
+  const changeBulkStage = async () => {
+    if (!bulkSchool || !bulkClass || !selectedBulkStage) {
+      alert("프로그램, 학교, 반, 변경할 진도를 모두 선택해주세요.");
+      return;
+    }
+
+    if (bulkTargetStudents.length === 0) {
+      alert("변경할 수강중 학생이 없습니다.");
+      return;
+    }
+
+    const check = confirm(
+      `${getStudentProgramLabel(bulkProgram)} ${bulkSchool} ${bulkClass} 학생 ${bulkTargetStudents.length}명의 진도를 ${selectedBulkStage.label}으로 변경할까요?`
+    );
+    if (!check) return;
+
+    const studentsToUpdate = bulkTargetStudents.filter(
+      (student) => String(student?.stage || "") !== selectedBulkStage.id
+    );
+
+    for (const student of studentsToUpdate) {
+      await updateDoc(getStudentRef(student), { stage: selectedBulkStage.id });
+    }
+
+    setIsBulkStageOpen(false);
+    showToast(`📚 ${studentsToUpdate.length}명 진도 변경 완료`);
+    await loadStudents();
+  };
+
   const classCounts = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
     const baseStudents = students.filter((student) => {
@@ -516,7 +608,10 @@ export default function TeacherStudentsPage() {
               <span className="text-xs font-black text-slate-600">수강이력 연도</span>
               <input type="number" min="2020" max="2035" value={termYear} onChange={(e) => setTermYear(Number(e.target.value) || new Date().getFullYear())} className="w-24 rounded-xl border px-2 py-1.5 text-center text-xs font-bold" />
               {selectedStatus === "active" && (
-                <button onClick={() => setIsStudentModalOpen(true)} className="rounded-xl bg-yellow-500 px-3 py-2 text-xs font-black text-white">➕ 신규 학생</button>
+                <>
+                  <button onClick={openBulkStageModal} className="rounded-xl bg-sky-600 px-3 py-2 text-xs font-black text-white">📚 전체 진도변경</button>
+                  <button onClick={() => setIsStudentModalOpen(true)} className="rounded-xl bg-yellow-500 px-3 py-2 text-xs font-black text-white">➕ 신규 학생</button>
+                </>
               )}
               <button onClick={loadStudents} disabled={loading} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 disabled:opacity-50">{loading ? "불러오는 중" : "↻ 새로고침"}</button>
             </div>
@@ -605,6 +700,78 @@ export default function TeacherStudentsPage() {
                 <button type="submit" className="rounded-xl bg-yellow-500 px-4 py-2 font-bold text-white">지급</button>
               </div>
             </form>
+          </div>
+        )}
+
+        {isBulkStageOpen && (
+          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/45 p-3">
+            <div className="w-full max-w-lg rounded-3xl bg-white p-5 shadow-2xl">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-2xl font-black text-slate-900">📚 전체 진도변경</div>
+                  <div className="mt-1 text-sm font-bold text-slate-500">학교와 수업반 학생의 진도를 한 번에 변경합니다.</div>
+                </div>
+                <button onClick={() => setIsBulkStageOpen(false)} className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold">닫기</button>
+              </div>
+
+              <div className="mt-5 grid gap-3">
+                <label className="grid gap-1.5 text-sm font-black text-slate-600">
+                  프로그램
+                  <select
+                    value={bulkProgram}
+                    onChange={(e) => {
+                      const nextProgram = e.target.value as StudentProgram;
+                      setBulkProgram(nextProgram);
+                      const nextSchools = Array.from(
+                        new Set(
+                          students
+                            .filter(
+                              (student) =>
+                                getSimpleStatus(student) === "active" &&
+                                getStudentProgramValue(student?.program) === nextProgram
+                            )
+                            .map((student) => String(student?.school || "미지정"))
+                        )
+                      ).sort((a, b) => a.localeCompare(b, "ko-KR"));
+                      setBulkSchool(nextSchools[0] || "");
+                    }}
+                    className="rounded-xl border px-3 py-2 font-bold"
+                  >
+                    {STUDENT_PROGRAM_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="grid gap-1.5 text-sm font-black text-slate-600">
+                  학교
+                  <select value={bulkSchool} onChange={(e) => setBulkSchool(e.target.value)} className="rounded-xl border px-3 py-2 font-bold">
+                    {bulkSchoolOptions.length === 0 && <option value="">학교 없음</option>}
+                    {bulkSchoolOptions.map((school) => <option key={school} value={school}>{school}</option>)}
+                  </select>
+                </label>
+
+                <label className="grid gap-1.5 text-sm font-black text-slate-600">
+                  수업반
+                  <select value={bulkClass} onChange={(e) => setBulkClass(e.target.value as (typeof BULK_CLASS_OPTIONS)[number])} className="rounded-xl border px-3 py-2 font-bold">
+                    {BULK_CLASS_OPTIONS.map((className) => <option key={className} value={className}>{className}</option>)}
+                  </select>
+                </label>
+
+                <label className="grid gap-1.5 text-sm font-black text-slate-600">
+                  변경할 진도
+                  <select value={bulkStage} onChange={(e) => setBulkStage(e.target.value)} className="rounded-xl border px-3 py-2 font-bold">
+                    {STAGE_DATA.map((stage) => <option key={stage.id} value={stage.id}>{stage.label} {stage.title}</option>)}
+                  </select>
+                </label>
+              </div>
+
+              <div className="mt-4 rounded-2xl bg-sky-50 px-4 py-3 text-sm font-black text-sky-800">
+                변경 대상: 수강중 학생 {bulkTargetStudents.length}명
+              </div>
+
+              <button onClick={changeBulkStage} className="mt-4 w-full rounded-xl bg-sky-600 px-4 py-3 font-black text-white">선택한 학생 진도 변경</button>
+            </div>
           </div>
         )}
 
