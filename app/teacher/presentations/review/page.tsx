@@ -7,8 +7,11 @@ import { useRouter } from "next/navigation";
 
 import { auth } from "@/lib/firebase";
 
+type QuestionType = "textbook" | "exam";
+
 type ReviewQuestion = {
   id: string;
+  questionType: QuestionType;
   bookNumber: string;
   lesson: string;
   topic: string;
@@ -19,6 +22,7 @@ type ReviewQuestion = {
 };
 
 type QuestionDraft = {
+  questionType: QuestionType;
   bookNumber: string;
   lesson: string;
   topic: string;
@@ -29,6 +33,7 @@ type QuestionDraft = {
 };
 
 const EMPTY_DRAFT: QuestionDraft = {
+  questionType: "textbook",
   bookNumber: "",
   lesson: "",
   topic: "",
@@ -40,6 +45,14 @@ const EMPTY_DRAFT: QuestionDraft = {
 
 const OPTION_LABELS = ["①", "②", "③"];
 const LESSON_OPTIONS = ["1차시", "2차시", "3차시", "4차시"];
+const QUESTION_TYPE_OPTIONS: Array<{
+  value: QuestionType;
+  label: string;
+  description: string;
+}> = [
+  { value: "textbook", label: "교재", description: "교재 중심 퀴즈" },
+  { value: "exam", label: "기출", description: "한능검 기출문제" },
+];
 
 function bookNumberValue(value: string) {
   const match = value.match(/\d+/);
@@ -66,6 +79,10 @@ function visibleTopic(question: ReviewQuestion) {
   }
 
   return topic;
+}
+
+function questionTypeLabel(questionType: QuestionType) {
+  return questionType === "exam" ? "기출" : "교재";
 }
 
 async function teacherFetch(
@@ -100,6 +117,7 @@ export default function ReviewQuestionBankPage() {
   const [draft, setDraft] = useState<QuestionDraft>(EMPTY_DRAFT);
   const [questions, setQuestions] = useState<ReviewQuestion[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [questionTypeFilter, setQuestionTypeFilter] = useState<"all" | QuestionType>("all");
   const [bookFilter, setBookFilter] = useState("all");
   const [lessonFilter, setLessonFilter] = useState("all");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -124,12 +142,14 @@ export default function ReviewQuestionBankPage() {
 
   const filteredQuestions = useMemo(() => {
     const filtered = questions.filter((question) => {
+      const matchesType =
+        questionTypeFilter === "all" || question.questionType === questionTypeFilter;
       const matchesBook =
         bookFilter === "all" || question.bookNumber === bookFilter;
       const matchesLesson =
         lessonFilter === "all" || question.lesson === lessonFilter;
 
-      return matchesBook && matchesLesson;
+      return matchesType && matchesBook && matchesLesson;
     });
 
     return [...filtered].sort((a, b) => {
@@ -141,7 +161,7 @@ export default function ReviewQuestionBankPage() {
 
       return a.prompt.localeCompare(b.prompt, "ko");
     });
-  }, [bookFilter, lessonFilter, questions]);
+  }, [bookFilter, lessonFilter, questionTypeFilter, questions]);
 
   const selectedQuestions = useMemo(
     () =>
@@ -157,7 +177,14 @@ export default function ReviewQuestionBankPage() {
 
     try {
       const data = await teacherFetch(user, "/api/teacher/review-questions");
-      setQuestions(Array.isArray(data?.questions) ? data.questions : []);
+      setQuestions(
+        Array.isArray(data?.questions)
+          ? data.questions.map((question: ReviewQuestion) => ({
+              ...question,
+              questionType: question.questionType === "exam" ? "exam" : "textbook",
+            }))
+          : []
+      );
     } catch (error) {
       console.error("Review question load failed:", error);
       setErrorMessage(
@@ -214,6 +241,7 @@ export default function ReviewQuestionBankPage() {
 
     setEditingId(question.id);
     setDraft({
+      questionType: question.questionType === "exam" ? "exam" : "textbook",
       bookNumber: question.bookNumber,
       lesson,
       topic,
@@ -262,6 +290,7 @@ export default function ReviewQuestionBankPage() {
       await teacherFetch(currentUser, url, {
         method: isEditing ? "PATCH" : "POST",
         body: JSON.stringify({
+          questionType: draft.questionType,
           bookNumber: draft.bookNumber.trim(),
           lesson: draft.lesson.trim(),
           topic: draft.topic.trim(),
@@ -363,7 +392,7 @@ export default function ReviewQuestionBankPage() {
             <div className="text-sm font-black text-blue-600">복습문제 기본 틀</div>
             <h1 className="mt-1 text-2xl font-black md:text-3xl">📝 문제은행</h1>
             <p className="mt-2 text-sm font-bold text-slate-500">
-              문제와 보기를 입력하고 정답 번호만 체크해 저장합니다.
+              교재 퀴즈와 한능검 기출을 구분해 저장하고 필요한 문제만 골라 사용합니다.
             </p>
           </div>
           <Link
@@ -387,7 +416,7 @@ export default function ReviewQuestionBankPage() {
                 <p className="mt-1 text-sm font-bold text-slate-500">
                   {editingId
                     ? "저장된 내용을 고친 뒤 수정 저장을 누르세요."
-                    : "객관식 3지선다 기본형입니다. 이미지 문제는 다음 단계에서 추가할 수 있습니다."}
+                    : "문제 유형을 고르고 문제·보기·정답을 입력하세요."}
                 </p>
               </div>
               {editingId && (
@@ -398,6 +427,43 @@ export default function ReviewQuestionBankPage() {
             </div>
 
             <div className="mt-5 grid gap-4">
+              <div>
+                <div className="text-sm font-black text-slate-700">문제 유형</div>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {QUESTION_TYPE_OPTIONS.map((type) => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() =>
+                        setDraft((current) => ({
+                          ...current,
+                          questionType: type.value,
+                        }))
+                      }
+                      className={`rounded-2xl border px-4 py-3 text-left transition ${
+                        draft.questionType === type.value
+                          ? type.value === "exam"
+                            ? "border-violet-600 bg-violet-600 text-white"
+                            : "border-blue-600 bg-blue-600 text-white"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      }`}
+                      aria-pressed={draft.questionType === type.value}
+                    >
+                      <div className="text-sm font-black">[{type.label}]</div>
+                      <div
+                        className={`mt-1 text-xs font-bold ${
+                          draft.questionType === type.value
+                            ? "text-white/80"
+                            : "text-slate-500"
+                        }`}
+                      >
+                        {type.description}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-sm font-black text-slate-700">
                   호수
@@ -572,11 +638,28 @@ export default function ReviewQuestionBankPage() {
                 <div>
                   <h2 className="text-xl font-black">저장된 문제</h2>
                   <p className="mt-1 text-sm font-bold text-slate-500">
-                    호수와 차시로 찾은 뒤 과제로 낼 문제를 원하는 순서대로 눌러 주세요.
+                    유형·호수·차시로 찾은 뒤 과제로 낼 문제를 원하는 순서대로 눌러 주세요.
                   </p>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
+                  <label className="text-sm font-black text-slate-700">
+                    유형 보기
+                    <select
+                      value={questionTypeFilter}
+                      onChange={(event) =>
+                        setQuestionTypeFilter(
+                          event.target.value as "all" | QuestionType
+                        )
+                      }
+                      className="mt-1 block rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold"
+                    >
+                      <option value="all">전체</option>
+                      <option value="textbook">교재</option>
+                      <option value="exam">기출</option>
+                    </select>
+                  </label>
+
                   <label className="text-sm font-black text-slate-700">
                     호수 보기
                     <select
@@ -619,7 +702,7 @@ export default function ReviewQuestionBankPage() {
 
               {!isLoading && filteredQuestions.length === 0 && (
                 <div className="mt-5 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm font-black text-slate-500">
-                  이 호수·차시에 저장된 문제가 없습니다.
+                  선택한 조건에 저장된 문제가 없습니다.
                 </div>
               )}
 
@@ -642,11 +725,22 @@ export default function ReviewQuestionBankPage() {
                               : "border-slate-200 bg-slate-50"
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="text-xs font-black text-blue-600">
-                            {question.bookNumber}
-                            {question.lesson ? ` · ${question.lesson}` : ""}
-                            {topic ? ` · ${topic}` : ""}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5 text-xs font-black text-blue-600">
+                            <span
+                              className={`rounded-full px-2 py-1 text-[11px] font-black ${
+                                question.questionType === "exam"
+                                  ? "bg-violet-100 text-violet-700"
+                                  : "bg-blue-100 text-blue-700"
+                              }`}
+                            >
+                              [{questionTypeLabel(question.questionType)}]
+                            </span>
+                            <span>
+                              {question.bookNumber}
+                              {question.lesson ? ` · ${question.lesson}` : ""}
+                              {topic ? ` · ${topic}` : ""}
+                            </span>
                           </div>
                           <div className="flex flex-wrap justify-end gap-1">
                             {isEditing && (
@@ -756,10 +850,21 @@ export default function ReviewQuestionBankPage() {
                           {index + 1}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="text-xs font-black text-blue-600">
-                            {question.bookNumber}
-                            {question.lesson ? ` · ${question.lesson}` : ""}
-                            {topic ? ` · ${topic}` : ""}
+                          <div className="flex flex-wrap items-center gap-1.5 text-xs font-black text-blue-600">
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
+                                question.questionType === "exam"
+                                  ? "bg-violet-100 text-violet-700"
+                                  : "bg-blue-100 text-blue-700"
+                              }`}
+                            >
+                              [{questionTypeLabel(question.questionType)}]
+                            </span>
+                            <span>
+                              {question.bookNumber}
+                              {question.lesson ? ` · ${question.lesson}` : ""}
+                              {topic ? ` · ${topic}` : ""}
+                            </span>
                           </div>
                           <p className="truncate text-sm font-black text-slate-800">
                             {question.prompt}
