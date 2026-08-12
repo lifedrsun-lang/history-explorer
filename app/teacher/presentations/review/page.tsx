@@ -3,19 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  orderBy,
-  query,
-  serverTimestamp,
-} from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 
 type ReviewQuestion = {
   id: string;
@@ -50,6 +40,30 @@ const OPTION_LABELS = ["①", "②", "③"];
 function bookNumberValue(value: string) {
   const match = value.match(/\d+/);
   return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
+}
+
+async function teacherFetch(
+  user: User,
+  url: string,
+  init: RequestInit = {}
+) {
+  const token = await user.getIdToken();
+  const response = await fetch(url, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...(init.headers || {}),
+    },
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(String(data?.error || "요청을 처리하지 못했습니다."));
+  }
+
+  return data;
 }
 
 export default function ReviewQuestionBankPage() {
@@ -101,35 +115,19 @@ export default function ReviewQuestionBankPage() {
     [questions, selectedIds]
   );
 
-  const fetchQuestions = async () => {
+  const fetchQuestions = async (user: User) => {
     setIsLoading(true);
     setErrorMessage("");
 
     try {
-      const snapshot = await getDocs(
-        query(collection(db, "reviewQuestions"), orderBy("createdAt", "desc"))
-      );
-
-      setQuestions(
-        snapshot.docs.map((item) => {
-          const data = item.data();
-          const rawOptions = Array.isArray(data?.options) ? data.options : [];
-
-          return {
-            id: item.id,
-            bookNumber: String(data?.bookNumber || ""),
-            topic: String(data?.topic || ""),
-            prompt: String(data?.prompt || ""),
-            options: rawOptions.slice(0, 3).map((option) => String(option || "")),
-            correctIndex: Number(data?.correctIndex || 0),
-            explanation: String(data?.explanation || ""),
-          };
-        })
-      );
+      const data = await teacherFetch(user, "/api/teacher/review-questions");
+      setQuestions(Array.isArray(data?.questions) ? data.questions : []);
     } catch (error) {
       console.error("Review question load failed:", error);
       setErrorMessage(
-        "문제은행을 불러오지 못했습니다. Firestore 권한 상태를 함께 확인해 주세요."
+        error instanceof Error
+          ? error.message
+          : "문제은행을 불러오지 못했습니다."
       );
     } finally {
       setIsLoading(false);
@@ -146,7 +144,7 @@ export default function ReviewQuestionBankPage() {
       setAuthorized(true);
       setCurrentUser(user);
       setAuthChecking(false);
-      fetchQuestions();
+      fetchQuestions(user);
     });
 
     return unsubscribe;
@@ -170,27 +168,25 @@ export default function ReviewQuestionBankPage() {
     setErrorMessage("");
 
     try {
-      await addDoc(collection(db, "reviewQuestions"), {
-        schemaVersion: 1,
-        bookNumber: draft.bookNumber.trim(),
-        topic: draft.topic.trim(),
-        prompt: draft.prompt.trim(),
-        options: draft.options.map((option) => option.trim()),
-        correctIndex: draft.correctIndex,
-        explanation: draft.explanation.trim(),
-        createdBy: currentUser.uid,
-        updatedBy: currentUser.uid,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+      await teacherFetch(currentUser, "/api/teacher/review-questions", {
+        method: "POST",
+        body: JSON.stringify({
+          bookNumber: draft.bookNumber.trim(),
+          topic: draft.topic.trim(),
+          prompt: draft.prompt.trim(),
+          options: draft.options.map((option) => option.trim()),
+          correctIndex: draft.correctIndex,
+          explanation: draft.explanation.trim(),
+        }),
       });
 
       setDraft(EMPTY_DRAFT);
       setNotice("문제를 문제은행에 저장했습니다.");
-      await fetchQuestions();
+      await fetchQuestions(currentUser);
     } catch (error) {
       console.error("Review question save failed:", error);
       setErrorMessage(
-        "문제 저장에 실패했습니다. Firestore 권한 상태를 함께 확인해 주세요."
+        error instanceof Error ? error.message : "문제 저장에 실패했습니다."
       );
     } finally {
       setIsSaving(false);
@@ -198,6 +194,8 @@ export default function ReviewQuestionBankPage() {
   };
 
   const removeQuestion = async (question: ReviewQuestion) => {
+    if (!currentUser) return;
+
     const confirmed = window.confirm("이 문제를 문제은행에서 삭제할까요?");
     if (!confirmed) return;
 
@@ -205,13 +203,19 @@ export default function ReviewQuestionBankPage() {
     setNotice("");
 
     try {
-      await deleteDoc(doc(db, "reviewQuestions", question.id));
+      await teacherFetch(
+        currentUser,
+        `/api/teacher/review-questions?id=${encodeURIComponent(question.id)}`,
+        { method: "DELETE" }
+      );
       setSelectedIds((current) => current.filter((id) => id !== question.id));
       setNotice("문제를 삭제했습니다.");
-      await fetchQuestions();
+      await fetchQuestions(currentUser);
     } catch (error) {
       console.error("Review question delete failed:", error);
-      setErrorMessage("문제 삭제에 실패했습니다.");
+      setErrorMessage(
+        error instanceof Error ? error.message : "문제 삭제에 실패했습니다."
+      );
     }
   };
 
