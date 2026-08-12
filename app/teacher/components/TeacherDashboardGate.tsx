@@ -72,46 +72,52 @@ export default function TeacherDashboardGate() {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#f5f7fb] p-4 sm:p-6">
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#f5f7fb] p-3 sm:p-6">
       <div className="mx-auto max-w-5xl">
-        <div className="rounded-[32px] bg-white p-6 shadow-xl sm:p-8">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+        <div className="rounded-[28px] bg-white p-5 shadow-xl sm:rounded-[32px] sm:p-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
             <div>
-              <div className="text-sm font-black text-slate-400">TEACHER HOME</div>
-              <h1 className="mt-1 text-3xl font-black text-slate-900 sm:text-4xl">
+              <div className="text-xs font-black text-slate-400 sm:text-sm">TEACHER HOME</div>
+              <h1 className="mt-1 text-2xl font-black text-slate-900 sm:text-4xl">
                 🏫 역사 탐험 관리소
               </h1>
-              <p className="mt-2 text-sm font-bold leading-relaxed text-slate-500">
+              <p className="mt-1 text-xs font-bold leading-relaxed text-slate-500 sm:mt-2 sm:text-sm">
                 오늘 필요한 관리 메뉴를 선택해 주세요.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Link href="/" className="rounded-2xl bg-blue-50 px-4 py-2 text-sm font-black text-blue-700">
+              <Link href="/" className="rounded-2xl bg-blue-50 px-3 py-2 text-xs font-black text-blue-700 sm:px-4 sm:text-sm">
                 🏝 맵으로
               </Link>
-              <Link href="/teacher?fees=1" className="rounded-2xl bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-700">
+              <Link href="/teacher?fees=1" className="rounded-2xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 sm:px-4 sm:text-sm">
                 💰 강사료
               </Link>
-              <button type="button" onClick={() => signOut(auth)} className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-600">
+              <button type="button" onClick={() => signOut(auth)} className="rounded-2xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600 sm:px-4 sm:text-sm">
                 로그아웃
               </button>
             </div>
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          {menuItems.map((item) => (
-            <Link key={item.href} href={item.href} className={`group rounded-[30px] border p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${item.className}`}>
-              <div className="text-4xl">{item.icon}</div>
-              <div className="mt-4 text-2xl font-black">{item.title}</div>
-              <div className="mt-2 text-sm font-bold leading-relaxed opacity-70">{item.description}</div>
-              <div className="mt-5 text-sm font-black opacity-80">들어가기 →</div>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:mt-4 sm:gap-4 md:grid-cols-2">
+          {menuItems.map((item, index) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`group rounded-[24px] border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:rounded-[30px] sm:p-6 ${
+                index === menuItems.length - 1 ? "col-span-2 md:col-span-1" : ""
+              } ${item.className}`}
+            >
+              <div className="text-3xl sm:text-4xl">{item.icon}</div>
+              <div className="mt-2 text-base font-black leading-tight sm:mt-4 sm:text-2xl">{item.title}</div>
+              <div className="mt-2 hidden text-sm font-bold leading-relaxed opacity-70 sm:block">{item.description}</div>
+              <div className="mt-3 text-xs font-black opacity-80 sm:mt-5 sm:text-sm">들어가기 →</div>
             </Link>
           ))}
         </div>
 
-        <div className="mt-4 rounded-3xl border border-slate-200 bg-white px-5 py-4 text-sm font-bold leading-relaxed text-slate-500 shadow-sm">
+        <div className="mt-4 hidden rounded-3xl border border-slate-200 bg-white px-5 py-4 text-sm font-bold leading-relaxed text-slate-500 shadow-sm sm:block">
           수강중 학생의 출석·진도·코인·교재·학생 수정은 수강생 화면에서 바로 처리할 수 있습니다.
         </div>
       </div>
