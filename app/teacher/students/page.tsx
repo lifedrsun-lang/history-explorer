@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, doc, getDocs, updateDoc } from "firebase/firestore";
@@ -41,7 +40,6 @@ const getSimpleStatus = (student: any): StudentStatusView => {
 };
 
 export default function TeacherStudentsPage() {
-  const searchParams = useSearchParams();
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const [students, setStudents] = useState<any[]>([]);
@@ -74,14 +72,14 @@ export default function TeacherStudentsPage() {
   };
 
   useEffect(() => {
-    const status = searchParams.get("status");
+    const status = new URLSearchParams(window.location.search).get("status");
 
     if (status === "paused") {
       setSelectedStatus("paused");
     } else if (status === "active") {
       setSelectedStatus("active");
     }
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     return onAuthStateChanged(auth, (user) => {
