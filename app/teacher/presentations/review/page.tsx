@@ -41,7 +41,7 @@ const makeEmptyDraft = (): QuestionDraft => ({
   imageUrl: "",
 });
 
-const OPTION_LABELS = ["①", "②", "③", "④", "⑤"];
+const OPTION_LABELS = ["①", "②", "③", "④"];
 const LESSON_OPTIONS = ["1차시", "2차시", "3차시", "4차시"];
 
 function bookNumberValue(value: string) {
@@ -108,7 +108,7 @@ export default function ReviewQuestionBankPage() {
   const [notice, setNotice] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const optionCount = draft.questionType === "exam" ? 5 : 3;
+  const optionCount = draft.questionType === "exam" ? 4 : 3;
 
   const isValid = useMemo(() => {
     if (!draft.bookNumber.trim()) return false;
@@ -116,7 +116,7 @@ export default function ReviewQuestionBankPage() {
     if (draft.questionType === "exam") {
       return (
         Boolean(draft.imageStoragePath || draft.prompt.trim()) &&
-        makeOptions(draft.options, 5).every((option) => option.trim())
+        makeOptions(draft.options, 4).every((option) => option.trim())
       );
     }
 
@@ -192,10 +192,10 @@ export default function ReviewQuestionBankPage() {
     setDraft((current) => ({
       ...current,
       questionType,
-      options: makeOptions(current.options, questionType === "exam" ? 5 : 3),
+      options: makeOptions(current.options, questionType === "exam" ? 4 : 3),
       correctIndex:
         questionType === "exam"
-          ? Math.min(current.correctIndex, 4)
+          ? Math.min(current.correctIndex, 3)
           : Math.min(current.correctIndex, 2),
     }));
     setNotice("");
@@ -204,7 +204,7 @@ export default function ReviewQuestionBankPage() {
 
   const updateOption = (index: number, value: string) => {
     setDraft((current) => {
-      const options = makeOptions(current.options, current.questionType === "exam" ? 5 : 3);
+      const options = makeOptions(current.options, current.questionType === "exam" ? 4 : 3);
       options[index] = value;
       return { ...current, options };
     });
@@ -268,7 +268,11 @@ export default function ReviewQuestionBankPage() {
       ...question,
       lesson,
       topic,
-      options: makeOptions(question.options, question.questionType === "exam" ? 5 : 3),
+      options: makeOptions(question.options, question.questionType === "exam" ? 4 : 3),
+      correctIndex: Math.min(
+        question.correctIndex,
+        question.questionType === "exam" ? 3 : 2
+      ),
     });
     setNotice("");
     setErrorMessage("");
@@ -384,7 +388,7 @@ export default function ReviewQuestionBankPage() {
             <div className="text-sm font-black text-blue-600">복습문제 관리</div>
             <h1 className="mt-1 text-2xl font-black md:text-3xl">📝 문제은행</h1>
             <p className="mt-2 text-sm font-bold text-slate-500">
-              교재 문제는 3지선다, 한능검 기출은 문제 사진과 5개 보기를 함께 등록합니다.
+              교재 문제는 3지선다, 한능검 기출은 문제 사진과 4개 보기를 함께 등록합니다.
             </p>
           </div>
           <Link
@@ -407,7 +411,7 @@ export default function ReviewQuestionBankPage() {
                 </h2>
                 <p className="mt-1 text-sm font-bold text-slate-500">
                   {draft.questionType === "exam"
-                    ? "한능검 문제 사진 + 보기 ①~⑤ + 정답을 등록합니다."
+                    ? "한능검 문제 사진 + 보기 ①~④ + 정답을 등록합니다."
                     : "문제·보기 3개·정답을 입력합니다."}
                 </p>
               </div>
@@ -437,7 +441,7 @@ export default function ReviewQuestionBankPage() {
                     >
                       [{questionTypeLabel(type)}]
                       <div className="mt-1 text-xs opacity-80">
-                        {type === "exam" ? "한능검 기출 · 사진 + 5지선다" : "교재 중심 퀴즈"}
+                        {type === "exam" ? "한능검 기출 · 사진 + 4지선다" : "교재 중심 퀴즈"}
                       </div>
                     </button>
                   ))}
@@ -546,7 +550,7 @@ export default function ReviewQuestionBankPage() {
 
               <div>
                 <div className="text-sm font-black text-slate-700">
-                  보기와 정답 {draft.questionType === "exam" ? "(①~⑤)" : "(①~③)"}
+                  보기와 정답 {draft.questionType === "exam" ? "(①~④)" : "(①~③)"}
                 </div>
                 <p className="mt-1 text-xs font-bold text-slate-500">
                   {draft.questionType === "exam"
@@ -712,7 +716,7 @@ export default function ReviewQuestionBankPage() {
                     const selectedOrder = selectedIds.indexOf(question.id);
                     const isSelected = selectedOrder >= 0;
                     const topic = visibleTopic(question);
-                    const cardOptionCount = question.questionType === "exam" ? 5 : 3;
+                    const cardOptionCount = question.questionType === "exam" ? 4 : 3;
                     const cardOptions = makeOptions(question.options, cardOptionCount);
 
                     return (
