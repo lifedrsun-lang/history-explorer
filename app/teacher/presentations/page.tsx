@@ -172,6 +172,13 @@ export default function TeacherPresentationsPage() {
               </div>
 
               <Link
+                href="/teacher/presentations/review"
+                className="inline-flex items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-black text-blue-700 transition hover:bg-blue-100"
+              >
+                📝 복습문제
+              </Link>
+
+              <Link
                 href="/teacher/presentations/new"
                 className="inline-flex items-center justify-center rounded-2xl bg-yellow-400 px-4 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-yellow-500"
               >
