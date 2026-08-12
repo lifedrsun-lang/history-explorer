@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { SchoolNoticeInfo } from "../data/schoolInfo";
 import CoinExchangeRequest from "./CoinExchangeRequest";
 import StudentAssignments from "./StudentAssignments";
+import StudentReviewAssignments from "./StudentReviewAssignments";
 
 interface Props {
   student: any;
@@ -18,7 +19,7 @@ interface Props {
   ) => void;
 }
 
-type StudentPopup = "assignments" | "exchange" | null;
+type StudentPopup = "assignments" | "review" | "exchange" | null;
 
 export default function StudentProfile({
   student,
@@ -252,6 +253,19 @@ export default function StudentProfile({
     ? [selectedNoticeClassTime]
     : noticeClassTimes;
 
+  const popupTitle =
+    studentPopup === "assignments"
+      ? "📘 나의 과제"
+      : studentPopup === "review"
+        ? "📝 복습문제"
+        : "🎁 은엽전 교환신청";
+  const popupDescription =
+    studentPopup === "assignments"
+      ? "현재 공개된 과제를 확인하고 사진을 제출할 수 있어요."
+      : studentPopup === "review"
+        ? "선생님이 보낸 복습문제를 한 문제씩 풀어 보세요."
+        : "은엽전 1개는 1,000원 상품권으로 교환할 수 있어요.";
+
   return (
     <div className="space-y-4">
       <div className="rounded-[32px] border border-white/80 bg-white/95 p-4 shadow-sm">
@@ -370,11 +384,11 @@ export default function StudentProfile({
         </div>
 
         {/* 학생 빠른 메뉴 */}
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-4 grid grid-cols-3 gap-2">
           <button
             type="button"
             onClick={() => setStudentPopup("assignments")}
-            className="rounded-[22px] border border-emerald-200 bg-emerald-50 px-3 py-4 text-center font-black text-emerald-700 shadow-sm transition hover:bg-emerald-100"
+            className="rounded-[22px] border border-emerald-200 bg-emerald-50 px-2 py-4 text-center font-black text-emerald-700 shadow-sm transition hover:bg-emerald-100"
           >
             <span className="block text-2xl">📘</span>
             <span className="mt-1 block text-sm">과제 확인</span>
@@ -382,8 +396,17 @@ export default function StudentProfile({
 
           <button
             type="button"
+            onClick={() => setStudentPopup("review")}
+            className="rounded-[22px] border border-sky-200 bg-sky-50 px-2 py-4 text-center font-black text-sky-700 shadow-sm transition hover:bg-sky-100"
+          >
+            <span className="block text-2xl">📝</span>
+            <span className="mt-1 block text-sm">복습문제</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setStudentPopup("exchange")}
-            className="rounded-[22px] border border-violet-200 bg-violet-50 px-3 py-4 text-center font-black text-violet-700 shadow-sm transition hover:bg-violet-100"
+            className="rounded-[22px] border border-violet-200 bg-violet-50 px-2 py-4 text-center font-black text-violet-700 shadow-sm transition hover:bg-violet-100"
           >
             <span className="block text-2xl">🎁</span>
             <span className="mt-1 block text-sm">은엽전 교환</span>
@@ -398,25 +421,17 @@ export default function StudentProfile({
             <div
               role="dialog"
               aria-modal="true"
-              aria-label={
-                studentPopup === "assignments"
-                  ? "나의 과제"
-                  : "은엽전 교환신청"
-              }
+              aria-label={popupTitle}
               onClick={(event) => event.stopPropagation()}
               className="w-full max-w-xl overflow-hidden rounded-[30px] bg-white shadow-2xl"
             >
               <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-white px-5 py-4">
                 <div>
                   <div className="text-xl font-black text-slate-800">
-                    {studentPopup === "assignments"
-                      ? "📘 나의 과제"
-                      : "🎁 은엽전 교환신청"}
+                    {popupTitle}
                   </div>
                   <div className="mt-1 text-xs font-bold text-slate-500">
-                    {studentPopup === "assignments"
-                      ? "현재 공개된 과제를 확인하고 사진을 제출할 수 있어요."
-                      : "은엽전 1개는 1,000원 상품권으로 교환할 수 있어요."}
+                    {popupDescription}
                   </div>
                 </div>
 
@@ -433,6 +448,8 @@ export default function StudentProfile({
               <div className="max-h-[78dvh] overflow-y-auto px-3 pb-4">
                 {studentPopup === "assignments" ? (
                   <StudentAssignments student={student} />
+                ) : studentPopup === "review" ? (
+                  <StudentReviewAssignments student={student} />
                 ) : (
                   <CoinExchangeRequest student={student} />
                 )}
