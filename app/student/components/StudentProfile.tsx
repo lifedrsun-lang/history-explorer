@@ -19,28 +19,15 @@ interface Props {
   ) => void;
 }
 
-type StudentPopup = "assignments" | "review" | "exchange" | null;
+type StudentPopup = "assignments" | "review" | "exchange" | "history" | null;
 
 export default function StudentProfile({
   student,
-  currentStage,
   stageInfo,
   schoolNotice,
   noticeClassLabel = "",
 }: Props) {
-  const [showAllHistory, setShowAllHistory] = useState(false);
   const [studentPopup, setStudentPopup] = useState<StudentPopup>(null);
-
-  const TOTAL_PROGRESS = 23;
-  const displayedProgressStage = Math.min(
-    TOTAL_PROGRESS,
-    Math.max(1, Number(currentStage || 1))
-  );
-
-  const progressPercent = Math.min(
-    100,
-    Math.max(0, (displayedProgressStage / TOTAL_PROGRESS) * 100)
-  );
 
   const current = stageInfo?.current;
   const stageDescription =
@@ -73,11 +60,7 @@ export default function StudentProfile({
     }))
     .sort((a: any, b: any) => getDateValue(b) - getDateValue(a));
 
-  const displayedClassHistory = showAllHistory
-    ? sortedClassHistory
-    : sortedClassHistory.slice(0, 5);
-
-  const hasMoreHistory = sortedClassHistory.length > 5;
+  const recentHistory = sortedClassHistory.slice(0, 3);
 
   const formatDate = (value: any) => {
     if (!value) {
@@ -99,150 +82,72 @@ export default function StudentProfile({
   };
 
   const getCurrencyLabel = (currency: string) => {
-    if (currency === "bronze") {
-      return "동엽전";
-    }
-
-    if (currency === "silver") {
-      return "은엽전";
-    }
-
+    if (currency === "bronze") return "동엽전";
+    if (currency === "silver") return "은엽전";
     return "코인";
-  };
-
-  const getSourceLabel = (source: string) => {
-    if (source === "quiz") {
-      return "퀴즈";
-    }
-
-    if (source === "homework") {
-      return "과제";
-    }
-
-    if (source === "making") {
-      return "만들기 완성";
-    }
-
-    if (source === "bonus") {
-      return "선생님 보너스";
-    }
-
-    return "";
   };
 
   const getHistoryIcon = (item: any) => {
     if (item?.type === "earn") {
-      if (item?.source === "quiz") {
-        return "🧠";
-      }
-
-      if (item?.source === "homework") {
-        return "📘";
-      }
-
-      if (item?.source === "making") {
-        return "🎨";
-      }
-
-      if (item?.source === "bonus") {
-        return "🎁";
-      }
-
+      if (item?.source === "quiz") return "🧠";
+      if (item?.source === "review") return "📝";
+      if (item?.source === "homework") return "📘";
+      if (item?.source === "making") return "🎨";
+      if (item?.source === "bonus") return "🎁";
       return "🪙";
     }
 
-    if (item?.type === "exchange") {
-      return "🔄";
-    }
-
-    if (item?.type === "use") {
-      return "🎁";
-    }
-
-    if (item?.type === "adjust") {
-      return "↩️";
-    }
-
+    if (item?.type === "exchange") return "🔄";
+    if (item?.type === "use") return "🎁";
+    if (item?.type === "adjust") return "↩️";
     return "📝";
   };
 
   const getHistoryTitle = (item: any) => {
-    if (item?.text) {
-      if (item?.type === "earn" && item?.source === "bonus") {
-        const text = String(item.text);
-        return text.startsWith("🎁") ? text : `🎁 ${text}`;
-      }
-
-      return item.text;
-    }
-
     if (item?.type === "earn") {
       const currency = getCurrencyLabel(item?.currency);
       const amount = Number(item?.amount || 0);
-      const source = getSourceLabel(item?.source);
-      const title = `${currency} ${amount}개 획득${
-        source ? ` (${source})` : ""
-      }`;
 
-      return item?.source === "bonus" ? `🎁 ${title}` : title;
-    }
-
-    if (item?.type === "exchange") {
-      const fromCurrency = getCurrencyLabel(item?.fromCurrency);
-      const toCurrency = getCurrencyLabel(item?.toCurrency);
-
-      return `${fromCurrency} ${item?.fromAmount || 0}개를 ${toCurrency} ${
-        item?.toAmount || 0
-      }개로 교환`;
-    }
-
-    if (item?.type === "use") {
-      const currency = getCurrencyLabel(item?.currency);
-      return `${currency} ${item?.amount || 0}개 사용`;
-    }
-
-    if (item?.type === "adjust") {
-      const currency = getCurrencyLabel(item?.currency);
-      return `${currency} ${item?.amount || 0}개 회수`;
-    }
-
-    return "수업 기록";
-  };
-
-  const getHistorySubText = (item: any) => {
-    if (item?.type === "earn") {
       if (item?.source === "quiz") {
-        return "수업 퀴즈 참여로 획득했어요.";
+        return `문제 풀고 ${currency} ${amount}개 획득`;
+      }
+
+      if (item?.source === "review") {
+        return `복습문제 풀고 ${currency} ${amount}개 획득`;
       }
 
       if (item?.source === "homework") {
-        return "과제 수행으로 획득했어요.";
+        return `과제 내고 ${currency} ${amount}개 획득`;
       }
 
       if (item?.source === "making") {
-        return "만들기 활동을 완성해서 획득했어요.";
+        return `만들기 완성하고 ${currency} ${amount}개 획득`;
       }
 
       if (item?.source === "bonus") {
-        return "선생님 보너스로 받은 특별 동엽전이에요.";
+        return `선생님 보너스 · ${currency} ${amount}개 획득`;
       }
 
-      return "코인을 획득했어요.";
+      if (item?.text) return String(item.text);
+      return `${currency} ${amount}개 획득`;
     }
 
     if (item?.type === "exchange") {
-      return "동엽전이 은엽전으로 자동 교환되었어요.";
+      if (item?.text) return String(item.text);
+      return `${getCurrencyLabel(item?.fromCurrency)} ${item?.fromAmount || 0}개 → ${getCurrencyLabel(item?.toCurrency)} ${item?.toAmount || 0}개`;
     }
 
     if (item?.type === "use") {
-      return "보상 또는 환전으로 사용했어요.";
+      if (item?.text) return String(item.text);
+      return `${getCurrencyLabel(item?.currency)} ${item?.amount || 0}개 사용`;
     }
 
     if (item?.type === "adjust") {
-      return "선생님이 코인 수량을 조정했어요.";
+      if (item?.text) return String(item.text);
+      return `${getCurrencyLabel(item?.currency)} ${item?.amount || 0}개 조정`;
     }
 
-    return "";
+    return item?.text ? String(item.text) : "활동 기록";
   };
 
   const noticeClassTimes = schoolNotice?.classTimes || [];
@@ -258,159 +163,170 @@ export default function StudentProfile({
       ? "📘 나의 과제"
       : studentPopup === "review"
         ? "📝 복습문제"
-        : "🎁 은엽전 교환신청";
+        : studentPopup === "history"
+          ? "✨ 나의 활동 기록"
+          : "🎁 은엽전 교환신청";
+
   const popupDescription =
     studentPopup === "assignments"
       ? "현재 공개된 과제를 확인하고 사진을 제출할 수 있어요."
       : studentPopup === "review"
         ? "선생님이 보낸 복습문제를 한 문제씩 풀어 보세요."
-        : "은엽전 1개는 1,000원 상품권으로 교환할 수 있어요.";
+        : studentPopup === "history"
+          ? `지금까지의 코인·과제·복습 활동 ${sortedClassHistory.length}개를 모아봤어요.`
+          : "은엽전 1개는 1,000원 상품권으로 교환할 수 있어요.";
 
-  return (
-    <div className="space-y-4">
-      <div className="rounded-[32px] border border-white/80 bg-white/95 p-4 shadow-sm">
-        {/* 상단 프로필 */}
-        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(260px,0.95fr)] md:items-start">
+  const renderHistoryRows = (items: any[]) => (
+    <div className="space-y-2">
+      {items.map((item: any, index: number) => (
+        <div
+          key={`${item?.id || item?.date || "history"}-${index}`}
+          className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-3 py-2.5 shadow-sm"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-lg">
+            {getHistoryIcon(item)}
+          </div>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-4xl font-black leading-none text-slate-800">
-              {student?.name}
+            <div className="truncate text-sm font-black text-slate-800">
+              {getHistoryTitle(item)}
             </div>
-
-            <div className="mt-3 truncate text-lg text-slate-500">
-              🏫 {student?.school}
-            </div>
-
-            <div className="mt-1 text-lg font-bold text-slate-700">
-              {student?.grade}학년 {student?.class}반
+            <div className="mt-0.5 text-[11px] font-bold text-slate-400">
+              {formatDate(item?.date || item?.createdAt)}
             </div>
           </div>
+        </div>
+      ))}
+    </div>
+  );
 
-          {schoolNotice && (
-            <div className="rounded-[22px] border border-yellow-100 bg-yellow-50/90 p-3">
-              <div className="text-base font-black text-slate-800">
-                📌 {schoolNotice.title}
-              </div>
-
-              <div className="mt-2 space-y-1.5 text-sm font-bold text-slate-700">
-                <div>📍 {schoolNotice.location}</div>
-
-                {schoolNotice.period && <div>📅 {schoolNotice.period}</div>}
-
-                {schoolNotice.message && (
-                  <div className="rounded-2xl border border-amber-100 bg-white/90 px-3 py-2 leading-relaxed text-amber-800">
-                    📣 {schoolNotice.message}
-                  </div>
-                )}
-
-                {displayedNoticeClassTimes.length > 0 ? (
-                  displayedNoticeClassTimes.map((classTime) => (
-                    <div
-                      key={classTime.label}
-                      className="rounded-2xl bg-white/80 px-3 py-2 leading-relaxed text-sky-800 shadow-sm"
-                    >
-                      <div>
-                        ⏰ {classTime.label} 학기중 {classTime.semester}
-                      </div>
-                      {classTime.vacation && (
-                        <div>🌞 방학중 {classTime.vacation}</div>
-                      )}
-                    </div>
-                  ))
-                ) : (
-                  <div className="rounded-2xl bg-white/70 px-3 py-2 text-slate-600">
-                    문화센터 수업 일정은 수업별 안내를 확인해 주세요.
-                  </div>
-                )}
-
-                {schoolNotice.noBreakNotice && (
-                  <div>✅ {schoolNotice.noBreakNotice}</div>
-                )}
-
-                {schoolNotice.breakNotice && (
-                  <div>🚫 {schoolNotice.breakNotice}</div>
-                )}
-              </div>
-            </div>
-          )}
+  return (
+    <div className="space-y-3">
+      <div className="rounded-[28px] border border-white/80 bg-white/95 p-3 shadow-sm">
+        {/* 학생 정보 */}
+        <div>
+          <div className="truncate text-3xl font-black leading-none text-slate-800">
+            {student?.name}
+          </div>
+          <div className="mt-2 truncate text-sm font-bold text-slate-500">
+            🏫 {student?.school} · {student?.grade}학년 {student?.class}반
+          </div>
         </div>
 
+        {/* 공지 */}
+        {schoolNotice && (
+          <div className="mt-3 rounded-[20px] border border-yellow-100 bg-yellow-50/90 p-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-black text-slate-700">
+              <span>📌 {schoolNotice.title}</span>
+              <span>📍 {schoolNotice.location}</span>
+              {schoolNotice.period && <span>📅 {schoolNotice.period}</span>}
+            </div>
+
+            {schoolNotice.message && (
+              <div className="mt-2 rounded-xl bg-white/80 px-2.5 py-2 text-[11px] font-bold leading-4 text-amber-800">
+                📣 {schoolNotice.message}
+              </div>
+            )}
+
+            {displayedNoticeClassTimes.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {displayedNoticeClassTimes.map((classTime) => (
+                  <div
+                    key={classTime.label}
+                    className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-sky-700 shadow-sm"
+                  >
+                    ⏰ {classTime.label} {classTime.semester}
+                    {classTime.vacation ? ` · 방학 ${classTime.vacation}` : ""}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* 지금 배우는 책 */}
-        <div className="mt-5 rounded-[24px] border border-amber-100 bg-amber-50/80 p-4">
-          <div className="text-sm font-bold text-amber-700">📚 지금 배우는 책</div>
-
-          <div className="mt-4">
-            <div className="overflow-hidden text-ellipsis whitespace-nowrap text-base font-black text-sky-700">
-              {current?.short || "별꼼역사 1권"}
-            </div>
-
-            <div className="mt-2 text-[clamp(20px,6vw,36px)] font-black leading-tight text-slate-800">
-              {current?.title || "역사 탐험 준비"}
-            </div>
-
-            <div className="mt-3 text-sm leading-relaxed text-slate-600">
-              {stageDescription}
-            </div>
+        <div className="mt-3 rounded-[20px] border border-amber-100 bg-amber-50/80 p-3">
+          <div className="text-xs font-black text-amber-700">📚 지금 배우는 책</div>
+          <div className="mt-2 text-sm font-black text-sky-700">
+            {current?.short || "별꼼역사 1권"}
+          </div>
+          <div className="mt-1 text-2xl font-black leading-tight text-slate-800">
+            {current?.title || "역사 탐험 준비"}
+          </div>
+          <div className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">
+            {stageDescription}
           </div>
         </div>
 
         {/* 엽전 현황 */}
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          <div className="min-w-0 rounded-[22px] border border-yellow-200 bg-yellow-50 p-3 text-center">
-            <div className="whitespace-nowrap text-sm font-bold text-yellow-700">
-              🥇 동엽전
-            </div>
-            <div className="mt-2 whitespace-nowrap text-4xl font-black text-slate-800">
-              {currentBronze}
-            </div>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="min-w-0 rounded-[18px] border border-yellow-200 bg-yellow-50 px-2 py-2.5 text-center">
+            <div className="whitespace-nowrap text-xs font-black text-yellow-700">🥇 동엽전</div>
+            <div className="mt-1 text-3xl font-black text-slate-800">{currentBronze}</div>
           </div>
-
-          <div className="min-w-0 rounded-[22px] border border-sky-200 bg-sky-50 p-3 text-center">
-            <div className="whitespace-nowrap text-sm font-bold text-sky-700">
-              🥈 은엽전
-            </div>
-            <div className="mt-2 whitespace-nowrap text-4xl font-black text-slate-800">
-              {currentSilver}
-            </div>
+          <div className="min-w-0 rounded-[18px] border border-sky-200 bg-sky-50 px-2 py-2.5 text-center">
+            <div className="whitespace-nowrap text-xs font-black text-sky-700">🥈 은엽전</div>
+            <div className="mt-1 text-3xl font-black text-slate-800">{currentSilver}</div>
           </div>
-
-          <div className="min-w-0 rounded-[22px] border border-emerald-200 bg-emerald-50 p-3 text-center">
-            <div className="whitespace-nowrap text-sm font-bold text-emerald-700">
-              📊 누적
-            </div>
-            <div className="mt-2 whitespace-nowrap text-4xl font-black text-slate-800">
-              {totalCoinValue}
-            </div>
+          <div className="min-w-0 rounded-[18px] border border-emerald-200 bg-emerald-50 px-2 py-2.5 text-center">
+            <div className="whitespace-nowrap text-xs font-black text-emerald-700">📊 누적</div>
+            <div className="mt-1 text-3xl font-black text-slate-800">{totalCoinValue}</div>
           </div>
         </div>
 
-        {/* 학생 빠른 메뉴 */}
-        <div className="mt-4 grid grid-cols-3 gap-2">
+        {/* 빠른 메뉴 */}
+        <div className="mt-3 grid grid-cols-3 gap-2">
           <button
             type="button"
             onClick={() => setStudentPopup("assignments")}
-            className="rounded-[22px] border border-emerald-200 bg-emerald-50 px-2 py-4 text-center font-black text-emerald-700 shadow-sm transition hover:bg-emerald-100"
+            className="rounded-[18px] border border-emerald-200 bg-emerald-50 px-2 py-3 text-center font-black text-emerald-700 shadow-sm transition hover:bg-emerald-100"
           >
-            <span className="block text-2xl">📘</span>
-            <span className="mt-1 block text-sm">과제 확인</span>
+            <span className="block text-xl">📘</span>
+            <span className="mt-1 block text-xs">과제 확인</span>
           </button>
-
           <button
             type="button"
             onClick={() => setStudentPopup("review")}
-            className="rounded-[22px] border border-sky-200 bg-sky-50 px-2 py-4 text-center font-black text-sky-700 shadow-sm transition hover:bg-sky-100"
+            className="rounded-[18px] border border-sky-200 bg-sky-50 px-2 py-3 text-center font-black text-sky-700 shadow-sm transition hover:bg-sky-100"
           >
-            <span className="block text-2xl">📝</span>
-            <span className="mt-1 block text-sm">복습문제</span>
+            <span className="block text-xl">📝</span>
+            <span className="mt-1 block text-xs">복습문제</span>
           </button>
-
           <button
             type="button"
             onClick={() => setStudentPopup("exchange")}
-            className="rounded-[22px] border border-violet-200 bg-violet-50 px-2 py-4 text-center font-black text-violet-700 shadow-sm transition hover:bg-violet-100"
+            className="rounded-[18px] border border-violet-200 bg-violet-50 px-2 py-3 text-center font-black text-violet-700 shadow-sm transition hover:bg-violet-100"
           >
-            <span className="block text-2xl">🎁</span>
-            <span className="mt-1 block text-sm">은엽전 교환</span>
+            <span className="block text-xl">🎁</span>
+            <span className="mt-1 block text-xs">은엽전 교환</span>
           </button>
+        </div>
+
+        {/* 최근 활동 */}
+        <div className="mt-4 border-t border-slate-100 pt-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="text-base font-black text-slate-800">✨ 최근 활동</div>
+            <div className="text-[11px] font-bold text-slate-400">
+              총 {sortedClassHistory.length}개
+            </div>
+          </div>
+
+          {recentHistory.length === 0 ? (
+            <div className="rounded-2xl bg-slate-50 px-3 py-4 text-center text-xs font-bold text-slate-500">
+              아직 활동 기록이 없어요.
+            </div>
+          ) : (
+            renderHistoryRows(recentHistory)
+          )}
+
+          {sortedClassHistory.length > 3 && (
+            <button
+              type="button"
+              onClick={() => setStudentPopup("history")}
+              className="mt-2 w-full rounded-2xl border border-sky-100 bg-sky-50 py-2.5 text-xs font-black text-sky-700"
+            >
+              전체 활동 기록 보기 ({sortedClassHistory.length}개)
+            </button>
+          )}
         </div>
 
         {studentPopup && (
@@ -423,23 +339,20 @@ export default function StudentProfile({
               aria-modal="true"
               aria-label={popupTitle}
               onClick={(event) => event.stopPropagation()}
-              className="w-full max-w-xl overflow-hidden rounded-[30px] bg-white shadow-2xl"
+              className="w-full max-w-xl overflow-hidden rounded-[28px] bg-white shadow-2xl"
             >
-              <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-white px-5 py-4">
-                <div>
-                  <div className="text-xl font-black text-slate-800">
-                    {popupTitle}
-                  </div>
-                  <div className="mt-1 text-xs font-bold text-slate-500">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-white px-4 py-3">
+                <div className="min-w-0">
+                  <div className="text-lg font-black text-slate-800">{popupTitle}</div>
+                  <div className="mt-0.5 text-[11px] font-bold text-slate-500">
                     {popupDescription}
                   </div>
                 </div>
-
                 <button
                   type="button"
                   onClick={() => setStudentPopup(null)}
                   aria-label="팝업 닫기"
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xl font-black text-slate-600"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-lg font-black text-slate-600"
                 >
                   ×
                 </button>
@@ -450,6 +363,8 @@ export default function StudentProfile({
                   <StudentAssignments student={student} />
                 ) : studentPopup === "review" ? (
                   <StudentReviewAssignments student={student} />
+                ) : studentPopup === "history" ? (
+                  <div className="py-3">{renderHistoryRows(sortedClassHistory)}</div>
                 ) : (
                   <CoinExchangeRequest student={student} />
                 )}
@@ -457,93 +372,6 @@ export default function StudentProfile({
             </div>
           </div>
         )}
-
-        {/* 진행률 */}
-        <div className="mt-4 rounded-[24px] border border-sky-100 bg-sky-50/80 p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="text-2xl font-black text-slate-800">🗺 진행률</div>
-            <div className="text-2xl font-black text-sky-700">
-              {displayedProgressStage} / {TOTAL_PROGRESS}
-            </div>
-          </div>
-
-          <div className="h-4 w-full overflow-hidden rounded-full border border-sky-100 bg-white">
-            <div
-              className="h-full bg-gradient-to-r from-sky-300 to-emerald-300 transition-all duration-500"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-        </div>
-
-        {/* 수업 기록 - 학생 화면에는 코인/보상 기록만 공개 */}
-        <div className="mt-5">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="text-2xl font-black text-slate-800">📒 수업 기록</div>
-            <div className="text-sm text-slate-500">
-              총 {sortedClassHistory.length}개
-            </div>
-          </div>
-
-          {sortedClassHistory.length === 0 ? (
-            <div className="rounded-[24px] border border-amber-100 bg-amber-50/80 p-5 text-center">
-              <div className="mb-3 text-4xl">📭</div>
-              <div className="text-lg font-bold text-slate-700">
-                아직 수업 기록이 없습니다.
-              </div>
-              <div className="mt-2 text-sm text-slate-500">
-                퀴즈, 과제, 만들기와 코인 보상 기록이 여기에 모여요.
-              </div>
-            </div>
-          ) : (
-            <>
-              <div
-                className={
-                  showAllHistory
-                    ? "max-h-[420px] space-y-3 overflow-y-auto pr-1"
-                    : "space-y-3"
-                }
-              >
-                {displayedClassHistory.map((item: any, index: number) => (
-                  <div
-                    key={`${item?.id || item?.date || "history"}-${index}`}
-                    className="rounded-[24px] border border-amber-100 bg-white p-4 shadow-sm"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-100 bg-amber-50 text-2xl">
-                        {getHistoryIcon(item)}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-1 text-sm text-slate-500">
-                          {formatDate(item?.date || item?.createdAt)}
-                        </div>
-                        <div className="text-lg font-black leading-snug text-slate-800">
-                          {getHistoryTitle(item)}
-                        </div>
-                        {getHistorySubText(item) && (
-                          <div className="mt-1 text-sm text-slate-500">
-                            {getHistorySubText(item)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {hasMoreHistory && (
-                <button
-                  onClick={() => setShowAllHistory(!showAllHistory)}
-                  className="mt-3 w-full rounded-[20px] border border-sky-200 bg-sky-50 py-3 text-sm font-bold text-sky-700"
-                >
-                  {showAllHistory
-                    ? "최근 기록 5개만 보기"
-                    : `전체 수업 기록 보기 (${sortedClassHistory.length}개)`}
-                </button>
-              )}
-            </>
-          )}
-        </div>
       </div>
     </div>
   );
