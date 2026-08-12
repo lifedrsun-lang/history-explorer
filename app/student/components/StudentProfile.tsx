@@ -27,10 +27,8 @@ export default function StudentProfile({
   schoolNotice,
   noticeClassLabel = "",
 }: Props) {
-  const [showAllHistory, setShowAllHistory] =
-    useState(false);
-  const [studentPopup, setStudentPopup] =
-    useState<StudentPopup>(null);
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const [studentPopup, setStudentPopup] = useState<StudentPopup>(null);
 
   const TOTAL_PROGRESS = 23;
   const displayedProgressStage = Math.min(
@@ -40,43 +38,19 @@ export default function StudentProfile({
 
   const progressPercent = Math.min(
     100,
-    Math.max(
-      0,
-      (displayedProgressStage / TOTAL_PROGRESS) *
-        100
-    )
+    Math.max(0, (displayedProgressStage / TOTAL_PROGRESS) * 100)
   );
 
   const current = stageInfo?.current;
   const stageDescription =
-    current?.description ||
-    "이번 권의 역사 이야기를 탐험하고 있어요.";
+    current?.description || "이번 권의 역사 이야기를 탐험하고 있어요.";
 
-  const currentBronze = Number(
-    student?.bronze || 0
-  );
+  const currentBronze = Number(student?.bronze || 0);
+  const currentSilver = Number(student?.silver || 0);
+  const totalCoinValue = currentBronze + currentSilver * 10;
 
-  const currentSilver = Number(
-    student?.silver || 0
-  );
-
-  const totalCoinValue =
-    currentBronze + currentSilver * 10;
-
-  const coinHistory = Array.isArray(
-    student?.coinHistory
-  )
+  const coinHistory = Array.isArray(student?.coinHistory)
     ? [...student.coinHistory]
-    : [];
-  const attendanceHistory = Array.isArray(
-    student?.attendanceHistory
-  )
-    ? [...student.attendanceHistory]
-    : [];
-  const materialHistory = Array.isArray(
-    student?.materialHistory
-  )
-    ? [...student.materialHistory]
     : [];
 
   const getDateValue = (item: any) => {
@@ -91,33 +65,18 @@ export default function StudentProfile({
     return 0;
   };
 
-  const classHistory = [
-    ...coinHistory.map((item) => ({
+  const sortedClassHistory = coinHistory
+    .map((item) => ({
       ...item,
       historyKind: "coin",
-    })),
-    ...attendanceHistory.map((item) => ({
-      ...item,
-      historyKind: "attendance",
-    })),
-    ...materialHistory.map((item) => ({
-      ...item,
-      historyKind: "material",
-    })),
-  ];
+    }))
+    .sort((a: any, b: any) => getDateValue(b) - getDateValue(a));
 
-  const sortedClassHistory = classHistory.sort(
-    (a: any, b: any) =>
-      getDateValue(b) - getDateValue(a)
-  );
+  const displayedClassHistory = showAllHistory
+    ? sortedClassHistory
+    : sortedClassHistory.slice(0, 5);
 
-  const displayedClassHistory =
-    showAllHistory
-      ? sortedClassHistory
-      : sortedClassHistory.slice(0, 5);
-
-  const hasMoreHistory =
-    sortedClassHistory.length > 5;
+  const hasMoreHistory = sortedClassHistory.length > 5;
 
   const formatDate = (value: any) => {
     if (!value) {
@@ -125,13 +84,8 @@ export default function StudentProfile({
     }
 
     if (value?.seconds) {
-      const date = new Date(
-        value.seconds * 1000
-      );
-
-      return date
-        .toISOString()
-        .slice(2, 10);
+      const date = new Date(value.seconds * 1000);
+      return date.toISOString().slice(2, 10);
     }
 
     const text = String(value);
@@ -143,9 +97,7 @@ export default function StudentProfile({
     return text;
   };
 
-  const getCurrencyLabel = (
-    currency: string
-  ) => {
+  const getCurrencyLabel = (currency: string) => {
     if (currency === "bronze") {
       return "동엽전";
     }
@@ -157,9 +109,7 @@ export default function StudentProfile({
     return "코인";
   };
 
-  const getSourceLabel = (
-    source: string
-  ) => {
+  const getSourceLabel = (source: string) => {
     if (source === "quiz") {
       return "퀴즈";
     }
@@ -180,36 +130,6 @@ export default function StudentProfile({
   };
 
   const getHistoryIcon = (item: any) => {
-    if (
-      item?.historyKind === "attendance" ||
-      item?.type === "attendance"
-    ) {
-      if (item?.status === "출석") {
-        return "✅";
-      }
-
-      if (item?.status === "결석(병가)") {
-        return "🚫";
-      }
-
-      if (item?.status === "결석(체험학습)") {
-        return "🏕";
-      }
-
-      if (item?.status === "지각") {
-        return "⏰";
-      }
-
-      return "✅";
-    }
-
-    if (
-      item?.historyKind === "material" ||
-      item?.type === "material"
-    ) {
-      return "📦";
-    }
-
     if (item?.type === "earn") {
       if (item?.source === "quiz") {
         return "🧠";
@@ -246,121 +166,49 @@ export default function StudentProfile({
   };
 
   const getHistoryTitle = (item: any) => {
-    if (
-      item?.historyKind === "attendance" ||
-      item?.type === "attendance"
-    ) {
-      return item?.status || item?.text || "출결 기록";
-    }
-
-    if (
-      item?.historyKind === "material" ||
-      item?.type === "material"
-    ) {
-      return (
-        item?.text ||
-        `${item?.materialName || "교재"} 지급`
-      );
-    }
-
     if (item?.text) {
-      if (
-        item?.type === "earn" &&
-        item?.source === "bonus"
-      ) {
+      if (item?.type === "earn" && item?.source === "bonus") {
         const text = String(item.text);
-
-        return text.startsWith("🎁")
-          ? text
-          : `🎁 ${text}`;
+        return text.startsWith("🎁") ? text : `🎁 ${text}`;
       }
 
       return item.text;
     }
 
     if (item?.type === "earn") {
-      const currency = getCurrencyLabel(
-        item?.currency
-      );
-
-      const amount = Number(
-        item?.amount || 0
-      );
-
-      const source = getSourceLabel(
-        item?.source
-      );
-
+      const currency = getCurrencyLabel(item?.currency);
+      const amount = Number(item?.amount || 0);
+      const source = getSourceLabel(item?.source);
       const title = `${currency} ${amount}개 획득${
         source ? ` (${source})` : ""
       }`;
 
-      if (item?.source === "bonus") {
-        return `🎁 ${title}`;
-      }
-
-      return title;
+      return item?.source === "bonus" ? `🎁 ${title}` : title;
     }
 
     if (item?.type === "exchange") {
-      const fromCurrency =
-        getCurrencyLabel(
-          item?.fromCurrency
-        );
+      const fromCurrency = getCurrencyLabel(item?.fromCurrency);
+      const toCurrency = getCurrencyLabel(item?.toCurrency);
 
-      const toCurrency =
-        getCurrencyLabel(
-          item?.toCurrency
-        );
-
-      return `${fromCurrency} ${
-        item?.fromAmount || 0
-      }개를 ${toCurrency} ${
+      return `${fromCurrency} ${item?.fromAmount || 0}개를 ${toCurrency} ${
         item?.toAmount || 0
       }개로 교환`;
     }
 
     if (item?.type === "use") {
-      const currency = getCurrencyLabel(
-        item?.currency
-      );
-
-      return `${currency} ${
-        item?.amount || 0
-      }개 사용`;
+      const currency = getCurrencyLabel(item?.currency);
+      return `${currency} ${item?.amount || 0}개 사용`;
     }
 
     if (item?.type === "adjust") {
-      const currency = getCurrencyLabel(
-        item?.currency
-      );
-
-      return `${currency} ${
-        item?.amount || 0
-      }개 회수`;
+      const currency = getCurrencyLabel(item?.currency);
+      return `${currency} ${item?.amount || 0}개 회수`;
     }
 
     return "수업 기록";
   };
 
   const getHistorySubText = (item: any) => {
-    if (
-      item?.historyKind === "attendance" ||
-      item?.type === "attendance"
-    ) {
-      return "수업 출결 기록입니다.";
-    }
-
-    if (
-      item?.historyKind === "material" ||
-      item?.type === "material"
-    ) {
-      return (
-        item?.stageTitle ||
-        "교재 지급 기록입니다."
-      );
-    }
-
     if (item?.type === "earn") {
       if (item?.source === "quiz") {
         return "수업 퀴즈 참여로 획득했어요.";
@@ -396,82 +244,29 @@ export default function StudentProfile({
     return "";
   };
 
-  const getHistoryStyle = (item: any) => {
-    const isAttendance =
-      item?.historyKind === "attendance" ||
-      item?.type === "attendance";
-    const isMaterial =
-      item?.historyKind === "material" ||
-      item?.type === "material";
-
-    if (isAttendance) {
-      if (item?.status === "출석") {
-        return {
-          card: "border-emerald-100 bg-emerald-50/80",
-          icon: "border-emerald-200 bg-emerald-100",
-        };
-      }
-
-      if (item?.status === "결석(병가)") {
-        return {
-          card: "border-rose-100 bg-rose-50/80",
-          icon: "border-rose-200 bg-rose-100",
-        };
-      }
-
-      if (item?.status === "결석(체험학습)") {
-        return {
-          card: "border-sky-100 bg-sky-50/80",
-          icon: "border-sky-200 bg-sky-100",
-        };
-      }
-
-      return {
-        card: "border-orange-100 bg-orange-50/80",
-        icon: "border-orange-200 bg-orange-100",
-      };
-    }
-
-    if (isMaterial) {
-      return {
-        card: "border-indigo-100 bg-indigo-50/80",
-        icon: "border-indigo-200 bg-indigo-100",
-      };
-    }
-
-    return {
-      card: "border-amber-100 bg-white",
-      icon: "border-amber-100 bg-amber-50",
-    };
-  };
-
-  const noticeClassTimes =
-    schoolNotice?.classTimes || [];
-  const selectedNoticeClassTime =
-    noticeClassTimes.find(
-      (classTime) =>
-        classTime.label === noticeClassLabel
-    );
-  const displayedNoticeClassTimes =
-    selectedNoticeClassTime
-      ? [selectedNoticeClassTime]
-      : noticeClassTimes;
+  const noticeClassTimes = schoolNotice?.classTimes || [];
+  const selectedNoticeClassTime = noticeClassTimes.find(
+    (classTime) => classTime.label === noticeClassLabel
+  );
+  const displayedNoticeClassTimes = selectedNoticeClassTime
+    ? [selectedNoticeClassTime]
+    : noticeClassTimes;
 
   return (
     <div className="space-y-4">
       <div className="rounded-[32px] border border-white/80 bg-white/95 p-4 shadow-sm">
         {/* 상단 프로필 */}
         <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(260px,0.95fr)] md:items-start">
-          <div className="flex-1 min-w-0">
-            <div className="text-4xl font-black leading-none truncate text-slate-800">
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-4xl font-black leading-none text-slate-800">
               {student?.name}
             </div>
 
-            <div className="mt-3 text-lg text-slate-500 truncate">
+            <div className="mt-3 truncate text-lg text-slate-500">
               🏫 {student?.school}
             </div>
 
-            <div className="text-lg text-slate-700 mt-1 font-bold">
+            <div className="mt-1 text-lg font-bold text-slate-700">
               {student?.grade}학년 {student?.class}반
             </div>
           </div>
@@ -485,8 +280,12 @@ export default function StudentProfile({
               <div className="mt-2 space-y-1.5 text-sm font-bold text-slate-700">
                 <div>📍 {schoolNotice.location}</div>
 
-                {schoolNotice.period && (
-                  <div>📅 {schoolNotice.period}</div>
+                {schoolNotice.period && <div>📅 {schoolNotice.period}</div>}
+
+                {schoolNotice.message && (
+                  <div className="rounded-2xl border border-amber-100 bg-white/90 px-3 py-2 leading-relaxed text-amber-800">
+                    📣 {schoolNotice.message}
+                  </div>
                 )}
 
                 {displayedNoticeClassTimes.length > 0 ? (
@@ -496,12 +295,11 @@ export default function StudentProfile({
                       className="rounded-2xl bg-white/80 px-3 py-2 leading-relaxed text-sky-800 shadow-sm"
                     >
                       <div>
-                        ⏰ {classTime.label} 학기중{" "}
-                        {classTime.semester}
+                        ⏰ {classTime.label} 학기중 {classTime.semester}
                       </div>
-                      <div>
-                        🌞 방학중 {classTime.vacation}
-                      </div>
+                      {classTime.vacation && (
+                        <div>🌞 방학중 {classTime.vacation}</div>
+                      )}
                     </div>
                   ))
                 ) : (
@@ -524,16 +322,14 @@ export default function StudentProfile({
 
         {/* 지금 배우는 책 */}
         <div className="mt-5 rounded-[24px] border border-amber-100 bg-amber-50/80 p-4">
-          <div className="text-sm text-amber-700 font-bold">
-            📚 지금 배우는 책
-          </div>
+          <div className="text-sm font-bold text-amber-700">📚 지금 배우는 책</div>
 
           <div className="mt-4">
-            <div className="text-base font-black text-sky-700 whitespace-nowrap overflow-hidden text-ellipsis">
+            <div className="overflow-hidden text-ellipsis whitespace-nowrap text-base font-black text-sky-700">
               {current?.short || "별꼼역사 1권"}
             </div>
 
-            <div className="mt-2 text-[clamp(20px,6vw,36px)] leading-tight font-black text-slate-800">
+            <div className="mt-2 text-[clamp(20px,6vw,36px)] font-black leading-tight text-slate-800">
               {current?.title || "역사 탐험 준비"}
             </div>
 
@@ -544,33 +340,30 @@ export default function StudentProfile({
         </div>
 
         {/* 엽전 현황 */}
-        <div className="grid grid-cols-3 gap-2 mt-4">
+        <div className="mt-4 grid grid-cols-3 gap-2">
           <div className="min-w-0 rounded-[22px] border border-yellow-200 bg-yellow-50 p-3 text-center">
-            <div className="text-sm text-yellow-700 font-bold whitespace-nowrap">
+            <div className="whitespace-nowrap text-sm font-bold text-yellow-700">
               🥇 동엽전
             </div>
-
-            <div className="text-4xl font-black mt-2 whitespace-nowrap text-slate-800">
+            <div className="mt-2 whitespace-nowrap text-4xl font-black text-slate-800">
               {currentBronze}
             </div>
           </div>
 
           <div className="min-w-0 rounded-[22px] border border-sky-200 bg-sky-50 p-3 text-center">
-            <div className="text-sm text-sky-700 font-bold whitespace-nowrap">
+            <div className="whitespace-nowrap text-sm font-bold text-sky-700">
               🥈 은엽전
             </div>
-
-            <div className="text-4xl font-black mt-2 whitespace-nowrap text-slate-800">
+            <div className="mt-2 whitespace-nowrap text-4xl font-black text-slate-800">
               {currentSilver}
             </div>
           </div>
 
           <div className="min-w-0 rounded-[22px] border border-emerald-200 bg-emerald-50 p-3 text-center">
-            <div className="text-sm text-emerald-700 font-bold whitespace-nowrap">
+            <div className="whitespace-nowrap text-sm font-bold text-emerald-700">
               📊 누적
             </div>
-
-            <div className="text-4xl font-black mt-2 text-slate-800 whitespace-nowrap">
+            <div className="mt-2 whitespace-nowrap text-4xl font-black text-slate-800">
               {totalCoinValue}
             </div>
           </div>
@@ -650,33 +443,25 @@ export default function StudentProfile({
 
         {/* 진행률 */}
         <div className="mt-4 rounded-[24px] border border-sky-100 bg-sky-50/80 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-2xl font-black text-slate-800">
-              🗺 진행률
-            </div>
-
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-2xl font-black text-slate-800">🗺 진행률</div>
             <div className="text-2xl font-black text-sky-700">
               {displayedProgressStage} / {TOTAL_PROGRESS}
             </div>
           </div>
 
-          <div className="w-full h-4 rounded-full bg-white overflow-hidden border border-sky-100">
+          <div className="h-4 w-full overflow-hidden rounded-full border border-sky-100 bg-white">
             <div
               className="h-full bg-gradient-to-r from-sky-300 to-emerald-300 transition-all duration-500"
-              style={{
-                width: `${progressPercent}%`,
-              }}
+              style={{ width: `${progressPercent}%` }}
             />
           </div>
         </div>
 
-        {/* 수업 기록 */}
+        {/* 수업 기록 - 학생 화면에는 코인/보상 기록만 공개 */}
         <div className="mt-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-2xl font-black text-slate-800">
-              📒 수업 기록
-            </div>
-
+          <div className="mb-4 flex items-center justify-between">
+            <div className="text-2xl font-black text-slate-800">📒 수업 기록</div>
             <div className="text-sm text-slate-500">
               총 {sortedClassHistory.length}개
             </div>
@@ -684,16 +469,12 @@ export default function StudentProfile({
 
           {sortedClassHistory.length === 0 ? (
             <div className="rounded-[24px] border border-amber-100 bg-amber-50/80 p-5 text-center">
-              <div className="text-4xl mb-3">
-                📭
-              </div>
-
+              <div className="mb-3 text-4xl">📭</div>
               <div className="text-lg font-bold text-slate-700">
                 아직 수업 기록이 없습니다.
               </div>
-
-              <div className="text-sm text-slate-500 mt-2">
-                코인, 출결, 교재 지급 기록이 여기에 모여요.
+              <div className="mt-2 text-sm text-slate-500">
+                퀴즈, 과제, 만들기와 코인 보상 기록이 여기에 모여요.
               </div>
             </div>
           ) : (
@@ -701,57 +482,42 @@ export default function StudentProfile({
               <div
                 className={
                   showAllHistory
-                    ? "space-y-3 max-h-[420px] overflow-y-auto pr-1"
+                    ? "max-h-[420px] space-y-3 overflow-y-auto pr-1"
                     : "space-y-3"
                 }
               >
-                {displayedClassHistory.map(
-                  (item: any, index: number) => {
-                    const historyStyle = getHistoryStyle(item);
+                {displayedClassHistory.map((item: any, index: number) => (
+                  <div
+                    key={`${item?.id || item?.date || "history"}-${index}`}
+                    className="rounded-[24px] border border-amber-100 bg-white p-4 shadow-sm"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-100 bg-amber-50 text-2xl">
+                        {getHistoryIcon(item)}
+                      </div>
 
-                    return (
-                    <div
-                      key={`${item?.id || item?.date || "history"}-${index}`}
-                      className={`rounded-[24px] border p-4 shadow-sm ${historyStyle.card}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center text-2xl shrink-0 ${historyStyle.icon}`}>
-                          {getHistoryIcon(item)}
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 text-sm text-slate-500">
+                          {formatDate(item?.date || item?.createdAt)}
                         </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm text-slate-500 mb-1">
-                            {formatDate(
-                              item?.date ||
-                                item?.createdAt
-                            )}
-                          </div>
-
-                          <div className="text-lg font-black text-slate-800 leading-snug">
-                            {getHistoryTitle(item)}
-                          </div>
-
-                          {getHistorySubText(item) && (
-                            <div className="text-sm text-slate-500 mt-1">
-                              {getHistorySubText(item)}
-                            </div>
-                          )}
+                        <div className="text-lg font-black leading-snug text-slate-800">
+                          {getHistoryTitle(item)}
                         </div>
+                        {getHistorySubText(item) && (
+                          <div className="mt-1 text-sm text-slate-500">
+                            {getHistorySubText(item)}
+                          </div>
+                        )}
                       </div>
                     </div>
-                    );
-                  }
-                )}
+                  </div>
+                ))}
               </div>
 
               {hasMoreHistory && (
                 <button
-                  onClick={() =>
-                    setShowAllHistory(
-                      !showAllHistory
-                    )
-                  }
-                  className="w-full mt-3 rounded-[20px] border border-sky-200 bg-sky-50 py-3 text-sm font-bold text-sky-700"
+                  onClick={() => setShowAllHistory(!showAllHistory)}
+                  className="mt-3 w-full rounded-[20px] border border-sky-200 bg-sky-50 py-3 text-sm font-bold text-sky-700"
                 >
                   {showAllHistory
                     ? "최근 기록 5개만 보기"
