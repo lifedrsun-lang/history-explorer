@@ -75,6 +75,7 @@ export default function ReviewQuestionBankPage() {
   const [questions, setQuestions] = useState<ReviewQuestion[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bookFilter, setBookFilter] = useState("all");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState("");
@@ -160,6 +161,40 @@ export default function ReviewQuestionBankPage() {
     setErrorMessage("");
   };
 
+  const startEditing = (question: ReviewQuestion) => {
+    setEditingId(question.id);
+    setDraft({
+      bookNumber: question.bookNumber,
+      topic: question.topic,
+      prompt: question.prompt,
+      options: [
+        question.options[0] || "",
+        question.options[1] || "",
+        question.options[2] || "",
+      ],
+      correctIndex:
+        question.correctIndex >= 0 && question.correctIndex <= 2
+          ? question.correctIndex
+          : 0,
+      explanation: question.explanation,
+    });
+    setNotice("");
+    setErrorMessage("");
+
+    window.setTimeout(() => {
+      document
+        .getElementById("review-question-editor")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setDraft(EMPTY_DRAFT);
+    setNotice("");
+    setErrorMessage("");
+  };
+
   const saveQuestion = async () => {
     if (!isValid || !currentUser || isSaving) return;
 
@@ -167,9 +202,14 @@ export default function ReviewQuestionBankPage() {
     setNotice("");
     setErrorMessage("");
 
+    const isEditing = Boolean(editingId);
+    const url = editingId
+      ? `/api/teacher/review-questions?id=${encodeURIComponent(editingId)}`
+      : "/api/teacher/review-questions";
+
     try {
-      await teacherFetch(currentUser, "/api/teacher/review-questions", {
-        method: "POST",
+      await teacherFetch(currentUser, url, {
+        method: isEditing ? "PATCH" : "POST",
         body: JSON.stringify({
           bookNumber: draft.bookNumber.trim(),
           topic: draft.topic.trim(),
@@ -181,7 +221,12 @@ export default function ReviewQuestionBankPage() {
       });
 
       setDraft(EMPTY_DRAFT);
-      setNotice("문제를 문제은행에 저장했습니다.");
+      setEditingId(null);
+      setNotice(
+        isEditing
+          ? "문제를 수정했습니다."
+          : "문제를 문제은행에 저장했습니다."
+      );
       await fetchQuestions(currentUser);
     } catch (error) {
       console.error("Review question save failed:", error);
@@ -209,6 +254,12 @@ export default function ReviewQuestionBankPage() {
         { method: "DELETE" }
       );
       setSelectedIds((current) => current.filter((id) => id !== question.id));
+
+      if (editingId === question.id) {
+        setEditingId(null);
+        setDraft(EMPTY_DRAFT);
+      }
+
       setNotice("문제를 삭제했습니다.");
       await fetchQuestions(currentUser);
     } catch (error) {
@@ -272,11 +323,27 @@ export default function ReviewQuestionBankPage() {
         </div>
 
         <div className="grid gap-4 xl:grid-cols-[0.95fr_1.35fr]">
-          <section className="rounded-3xl bg-white p-5 shadow-md">
-            <h2 className="text-xl font-black">문제 만들기</h2>
-            <p className="mt-1 text-sm font-bold text-slate-500">
-              객관식 3지선다 기본형입니다. 이미지 문제는 다음 단계에서 추가할 수 있습니다.
-            </p>
+          <section
+            id="review-question-editor"
+            className="scroll-mt-4 rounded-3xl bg-white p-5 shadow-md"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-black">
+                  {editingId ? "문제 수정" : "문제 만들기"}
+                </h2>
+                <p className="mt-1 text-sm font-bold text-slate-500">
+                  {editingId
+                    ? "저장된 내용을 고친 뒤 수정 저장을 누르세요."
+                    : "객관식 3지선다 기본형입니다. 이미지 문제는 다음 단계에서 추가할 수 있습니다."}
+                </p>
+              </div>
+              {editingId && (
+                <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-black text-amber-800">
+                  수정 중
+                </span>
+              )}
+            </div>
 
             <div className="mt-5 grid gap-4">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -395,14 +462,30 @@ export default function ReviewQuestionBankPage() {
               </div>
             )}
 
-            <button
-              type="button"
-              disabled={!isValid || isSaving}
-              onClick={saveQuestion}
-              className="mt-5 w-full rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-white transition enabled:hover:bg-yellow-500 disabled:opacity-50"
-            >
-              {isSaving ? "저장 중..." : "문제은행에 저장"}
-            </button>
+            <div className={`mt-5 grid gap-2 ${editingId ? "sm:grid-cols-[1fr_auto]" : ""}`}>
+              <button
+                type="button"
+                disabled={!isValid || isSaving}
+                onClick={saveQuestion}
+                className="w-full rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-white transition enabled:hover:bg-yellow-500 disabled:opacity-50"
+              >
+                {isSaving
+                  ? "저장 중..."
+                  : editingId
+                    ? "수정 저장"
+                    : "문제은행에 저장"}
+              </button>
+              {editingId && (
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={cancelEditing}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-100 disabled:opacity-50"
+                >
+                  수정 취소
+                </button>
+              )}
+            </div>
           </section>
 
           <div className="grid gap-4">
@@ -449,14 +532,17 @@ export default function ReviewQuestionBankPage() {
                   {filteredQuestions.map((question) => {
                     const selectedOrder = selectedIds.indexOf(question.id);
                     const isSelected = selectedOrder >= 0;
+                    const isEditing = editingId === question.id;
 
                     return (
                       <article
                         key={question.id}
                         className={`rounded-2xl border p-4 ${
-                          isSelected
-                            ? "border-blue-300 bg-blue-50"
-                            : "border-slate-200 bg-slate-50"
+                          isEditing
+                            ? "border-amber-300 bg-amber-50"
+                            : isSelected
+                              ? "border-blue-300 bg-blue-50"
+                              : "border-slate-200 bg-slate-50"
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
@@ -464,11 +550,18 @@ export default function ReviewQuestionBankPage() {
                             {question.bookNumber}
                             {question.topic ? ` · ${question.topic}` : ""}
                           </div>
-                          {isSelected && (
-                            <span className="rounded-full bg-blue-600 px-2.5 py-1 text-xs font-black text-white">
-                              과제 {selectedOrder + 1}번
-                            </span>
-                          )}
+                          <div className="flex flex-wrap justify-end gap-1">
+                            {isEditing && (
+                              <span className="rounded-full bg-amber-500 px-2.5 py-1 text-xs font-black text-white">
+                                수정 중
+                              </span>
+                            )}
+                            {isSelected && (
+                              <span className="rounded-full bg-blue-600 px-2.5 py-1 text-xs font-black text-white">
+                                과제 {selectedOrder + 1}번
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         <p className="mt-2 text-sm font-black leading-6 text-slate-800">
@@ -497,19 +590,26 @@ export default function ReviewQuestionBankPage() {
                           </p>
                         )}
 
-                        <div className="mt-4 grid grid-cols-2 gap-2">
+                        <div className="mt-4 grid grid-cols-3 gap-2">
                           <button
                             type="button"
                             disabled={isSelected}
                             onClick={() => addToAssignment(question.id)}
-                            className="rounded-xl bg-blue-600 px-3 py-2.5 text-xs font-black text-white enabled:hover:bg-blue-700 disabled:opacity-40"
+                            className="rounded-xl bg-blue-600 px-2 py-2.5 text-xs font-black text-white enabled:hover:bg-blue-700 disabled:opacity-40"
                           >
                             {isSelected ? `${selectedOrder + 1}번 선택됨` : "과제에 담기"}
                           </button>
                           <button
                             type="button"
+                            onClick={() => startEditing(question)}
+                            className="rounded-xl border border-amber-200 bg-white px-2 py-2.5 text-xs font-black text-amber-700 hover:bg-amber-50"
+                          >
+                            수정
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => removeQuestion(question)}
-                            className="rounded-xl border border-red-100 bg-white px-3 py-2.5 text-xs font-black text-red-500 hover:bg-red-50"
+                            className="rounded-xl border border-red-100 bg-white px-2 py-2.5 text-xs font-black text-red-500 hover:bg-red-50"
                           >
                             삭제
                           </button>
