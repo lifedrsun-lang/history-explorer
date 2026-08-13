@@ -30,9 +30,15 @@ let cachedAt = 0;
 let pendingRequest: Promise<ActivityStatusMap> | null = null;
 const CACHE_MS = 15_000;
 
-const targetKeys = (data: any) =>
+const targetKeys = (data: any): string[] =>
   Array.isArray(data?.targetStudentKeys)
-    ? Array.from(new Set(data.targetStudentKeys.map((item: unknown) => normalizeText(item)).filter(Boolean)))
+    ? Array.from(
+        new Set<string>(
+          data.targetStudentKeys
+            .map((item: unknown) => normalizeText(item))
+            .filter((item: string) => Boolean(item))
+        )
+      )
     : [];
 
 const loadMap = async () => {
@@ -62,7 +68,7 @@ const loadMap = async () => {
     assignments.docs.forEach((item) => {
       const data = item.data();
       if (data?.isActive === false) return;
-      const targets = new Set(targetKeys(data));
+      const targets = new Set<string>(targetKeys(data));
       homeworkTargets.set(item.id, targets);
       targets.forEach((key) => {
         ensure(key).homework.assigned += 1;
@@ -87,7 +93,7 @@ const loadMap = async () => {
     reviews.docs.forEach((item) => {
       const data = item.data();
       if (data?.isActive === false) return;
-      const targets = new Set(targetKeys(data));
+      const targets = new Set<string>(targetKeys(data));
       reviewTargets.set(item.id, targets);
       targets.forEach((key) => {
         ensure(key).review.assigned += 1;
