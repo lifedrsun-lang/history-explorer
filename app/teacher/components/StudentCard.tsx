@@ -7,6 +7,7 @@ import { formatEnrollmentTerm, getEnrollmentTerms } from "@/lib/studentEnrollmen
 import { doc, updateDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import StudentActivityBadges from "./StudentActivityBadges";
 
 export default function StudentCard({
   student,
@@ -96,6 +97,8 @@ export default function StudentCard({
           <span className={hasCurrentMaterial ? "opacity-100" : "opacity-30"}>📘</span>
           <span>{hasCurrentMaterial ? "교재 지급완료" : "교재 미지급"}</span>
         </button>
+
+        <StudentActivityBadges student={student} />
 
         {enrollmentTerms.map((term) => (
           <span
