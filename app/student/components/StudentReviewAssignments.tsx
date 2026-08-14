@@ -35,7 +35,8 @@ type LocalAnswer = {
   selectedIndex: number;
 };
 
-type Props = { student: any };
+type ReviewMode = "review" | "exam";
+type Props = { student: any; mode?: ReviewMode };
 const OPTION_LABELS = ["①", "②", "③", "④"];
 
 const getStudentCollection = (student: any): StudentCollection => {
@@ -43,7 +44,12 @@ const getStudentCollection = (student: any): StudentCollection => {
   return isAllowedStudentCollection(collectionName) ? collectionName : "students";
 };
 
-export default function StudentReviewAssignments({ student }: Props) {
+const isExamAssignment = (assignment: ReviewAssignment) => {
+  const questions = Array.isArray(assignment?.questions) ? assignment.questions : [];
+  return questions.length > 0 && questions.every((question) => question.questionType === "exam");
+};
+
+export default function StudentReviewAssignments({ student, mode = "review" }: Props) {
   const [assignments, setAssignments] = useState<ReviewAssignment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -59,6 +65,7 @@ export default function StudentReviewAssignments({ student }: Props) {
   const studentId = String(student?.id || "");
   const studentCollection = getStudentCollection(student);
   const studentPassword = String(student?.password || "");
+  const sectionLabel = mode === "exam" ? "기출문제" : "복습문제";
 
   const activeAssignment = useMemo(
     () => assignments.find((item) => item.id === activeAssignmentId) || null,
@@ -81,6 +88,7 @@ export default function StudentReviewAssignments({ student }: Props) {
 
       setIsLoading(true);
       setErrorMessage("");
+      setActiveAssignmentId("");
       try {
         const response = await fetch("/api/student/review-assignments", {
           method: "POST",
@@ -89,15 +97,22 @@ export default function StudentReviewAssignments({ student }: Props) {
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
-          throw new Error(data?.error || "복습문제를 불러오지 못했습니다.");
+          throw new Error(data?.error || `${sectionLabel}를 불러오지 못했습니다.`);
         }
         if (!cancelled) {
-          setAssignments(Array.isArray(data?.assignments) ? data.assignments : []);
+          const loaded = Array.isArray(data?.assignments)
+            ? (data.assignments as ReviewAssignment[])
+            : [];
+          setAssignments(
+            loaded.filter((assignment) =>
+              mode === "exam" ? isExamAssignment(assignment) : !isExamAssignment(assignment)
+            )
+          );
         }
       } catch (error) {
         if (!cancelled) {
           setErrorMessage(
-            error instanceof Error ? error.message : "복습문제를 불러오지 못했습니다."
+            error instanceof Error ? error.message : `${sectionLabel}를 불러오지 못했습니다.`
           );
         }
       } finally {
@@ -109,7 +124,7 @@ export default function StudentReviewAssignments({ student }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [studentCollection, studentId, studentPassword]);
+  }, [mode, sectionLabel, studentCollection, studentId, studentPassword]);
 
   const startAssignment = (assignmentId: string) => {
     setActiveAssignmentId(assignmentId);
@@ -144,7 +159,7 @@ export default function StudentReviewAssignments({ student }: Props) {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data?.error || "복습 완료 보상을 지급하지 못했습니다.");
+        throw new Error(data?.error || `${sectionLabel} 완료 보상을 지급하지 못했습니다.`);
       }
 
       const scoreText = Number.isInteger(data?.correctCount) && Number.isInteger(data?.totalQuestions)
@@ -152,17 +167,17 @@ export default function StudentReviewAssignments({ student }: Props) {
         : "";
 
       if (data?.alreadyRewarded) {
-        setCompletionMessage(`✅ 이미 완료한 복습문제예요${scoreText}. 보상은 처음 완료할 때 한 번만 지급돼요.`);
+        setCompletionMessage(`✅ 이미 완료한 ${sectionLabel}예요${scoreText}. 보상은 처음 완료할 때 한 번만 지급돼요.`);
       } else if (Number(data?.exchangeCount || 0) > 0) {
-        setCompletionMessage(`🎉 복습 완료${scoreText}! 동엽전 1개가 지급되고 은엽전으로 자동 교환됐어요.`);
+        setCompletionMessage(`🎉 ${sectionLabel} 완료${scoreText}! 동엽전 1개가 지급되고 은엽전으로 자동 교환됐어요.`);
       } else {
-        setCompletionMessage(`🎉 복습 완료${scoreText}! 동엽전 1개를 받았어요.`);
+        setCompletionMessage(`🎉 ${sectionLabel} 완료${scoreText}! 동엽전 1개를 받았어요.`);
       }
 
       window.setTimeout(() => window.location.reload(), 1200);
     } catch (error) {
       setCompletionError(
-        error instanceof Error ? error.message : "복습 완료 보상을 지급하지 못했습니다."
+        error instanceof Error ? error.message : `${sectionLabel} 완료 보상을 지급하지 못했습니다.`
       );
     } finally {
       setIsCompleting(false);
@@ -195,7 +210,7 @@ export default function StudentReviewAssignments({ student }: Props) {
   };
 
   if (isLoading) {
-    return <div className="px-2 py-8 text-center text-sm font-black text-slate-500">복습문제를 불러오는 중이에요...</div>;
+    return <div className="px-2 py-8 text-center text-sm font-black text-slate-500">{sectionLabel}를 불러오는 중이에요...</div>;
   }
 
   if (errorMessage) {
@@ -207,20 +222,24 @@ export default function StudentReviewAssignments({ student }: Props) {
       <div className="px-2 py-4">
         {assignments.length === 0 ? (
           <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center">
-            <div className="text-3xl">📝</div>
-            <div className="mt-2 text-sm font-black text-slate-700">지금 풀 복습문제가 없어요.</div>
+            <div className="text-3xl">{mode === "exam" ? "🏆" : "📝"}</div>
+            <div className="mt-2 text-sm font-black text-slate-700">지금 풀 {sectionLabel}가 없어요.</div>
           </div>
         ) : (
           <div className="grid gap-3">
             <div className="rounded-2xl border border-yellow-100 bg-yellow-50 px-4 py-3 text-xs font-black leading-5 text-yellow-800">
-              🪙 복습문제를 끝까지 풀면 동엽전 1개를 받을 수 있어요. 같은 복습문제의 보상은 한 번만 지급돼요.
+              🪙 {sectionLabel}를 끝까지 풀면 동엽전 1개를 받을 수 있어요. 같은 과제의 보상은 한 번만 지급돼요.
             </div>
             {assignments.map((assignment) => (
               <button
                 key={assignment.id}
                 type="button"
                 onClick={() => startAssignment(assignment.id)}
-                className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-4 text-left transition hover:bg-sky-100"
+                className={`rounded-2xl border px-4 py-4 text-left transition ${
+                  mode === "exam"
+                    ? "border-violet-100 bg-violet-50 hover:bg-violet-100"
+                    : "border-sky-100 bg-sky-50 hover:bg-sky-100"
+                }`}
               >
                 <div className="text-base font-black text-slate-800">{assignment.title}</div>
                 <div className="mt-1 text-xs font-bold text-slate-500">문제 {assignment.questions.length}개 · 눌러서 시작하기</div>
@@ -284,7 +303,7 @@ export default function StudentReviewAssignments({ student }: Props) {
                 type="button"
                 disabled={checked || isCompleting}
                 onClick={() => setSelectedIndex(index)}
-                className={`rounded-2xl border px-4 py-3 text-sm font-black transition ${
+                className={`rounded-2xl border px-4 py-3 text-left text-sm font-black transition ${
                   correct
                     ? "border-emerald-300 bg-emerald-50 text-emerald-800"
                     : wrongSelected
@@ -292,7 +311,7 @@ export default function StudentReviewAssignments({ student }: Props) {
                       : selected
                         ? "border-sky-400 bg-sky-50 text-sky-800"
                         : "border-slate-200 bg-white text-slate-700"
-                } text-left`}
+                }`}
               >
                 {OPTION_LABELS[index] || `${index + 1}.`}{optionText ? ` ${optionText}` : ""}
               </button>
@@ -332,7 +351,7 @@ export default function StudentReviewAssignments({ student }: Props) {
               onClick={goToNext}
               className="mt-4 w-full rounded-2xl bg-sky-600 px-4 py-3 text-sm font-black text-white transition enabled:hover:bg-sky-700 disabled:opacity-50"
             >
-              {isCompleting ? "동엽전 지급 중..." : isLast ? "복습 끝!" : "다음 문제"}
+              {isCompleting ? "동엽전 지급 중..." : isLast ? `${sectionLabel} 끝!` : "다음 문제"}
             </button>
           </>
         )}
