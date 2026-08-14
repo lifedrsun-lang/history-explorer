@@ -9,6 +9,7 @@ import ReviewResultsPanel from "./ReviewResultsPanel";
 
 type ReviewQuestion = {
   id: string;
+  questionType?: "textbook" | "exam";
   bookNumber: string;
   lesson: string;
   prompt: string;
@@ -59,14 +60,18 @@ export default function ReviewAssignmentComposer({ user, questions }: Props) {
   const [notice, setNotice] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
+  const isExamAssignment =
+    questions.length > 0 &&
+    questions.every((question) => question.questionType === "exam");
+
   useEffect(() => {
-    if (!questions.length || title.trim()) return;
-    const first = questions[0];
-    const defaultTitle = [first.bookNumber, first.lesson, "복습문제"]
-      .filter(Boolean)
-      .join(" ");
-    setTitle(defaultTitle);
-  }, [questions, title]);
+    if (!questions.length) {
+      setTitle("");
+      return;
+    }
+
+    setTitle(isExamAssignment ? "기출문제" : "교재문제");
+  }, [isExamAssignment, questions]);
 
   useEffect(() => {
     if (!open || !user || students.length > 0 || isLoadingStudents) return;
@@ -173,7 +178,9 @@ export default function ReviewAssignmentComposer({ user, questions }: Props) {
       });
 
       setNotice(
-        `복습과제를 ${Number(data?.targetCount || selectedStudentKeys.length)}명에게 보냈습니다. 아래 복습 결과에서 새로고침하면 확인할 수 있습니다.`
+        `${isExamAssignment ? "기출문제" : "교재문제"}를 ${Number(
+          data?.targetCount || selectedStudentKeys.length
+        )}명에게 보냈습니다. 학생 화면에는 7일 동안 열립니다.`
       );
       setSelectedStudentKeys([]);
     } catch (error) {
@@ -210,7 +217,7 @@ export default function ReviewAssignmentComposer({ user, questions }: Props) {
           <div>
             <div className="text-base font-black text-slate-800">📨 과제 설정</div>
             <div className="mt-1 text-xs font-bold text-slate-500">
-              문제 {questions.length}개 · 학교/반을 고른 뒤 필요한 학생만 체크하세요.
+              문제 {questions.length}개 · {isExamAssignment ? "기출문제" : "교재문제"} · 학생 화면에서 7일간 공개
             </div>
           </div>
           <button
@@ -228,7 +235,7 @@ export default function ReviewAssignmentComposer({ user, questions }: Props) {
             type="text"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder="예: 6호 3차시 복습문제"
+            placeholder={isExamAssignment ? "기출문제" : "교재문제"}
             className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100"
           />
         </label>
