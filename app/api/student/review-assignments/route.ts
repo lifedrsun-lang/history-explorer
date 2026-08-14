@@ -33,6 +33,20 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const REVIEW_OPEN_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+const isWithinReviewWindow = (createdAt: unknown) => {
+  const serialized =
+    typeof createdAt === "string" ? createdAt : serializeDate(createdAt);
+  const createdAtMs = serialized ? Date.parse(serialized) : Number.NaN;
+
+  return (
+    Number.isFinite(createdAtMs) &&
+    Date.now() - createdAtMs >= 0 &&
+    Date.now() - createdAtMs < REVIEW_OPEN_WINDOW_MS
+  );
+};
+
 const serializeAssignment = (
   id: string,
   data: FirebaseFirestore.DocumentData
@@ -95,6 +109,10 @@ const mapStudentError = (error: unknown) => {
     return jsonError("복습문제를 찾을 수 없습니다.", 404, message);
   }
 
+  if (message === "expired_review_assignment") {
+    return jsonError("문제 풀이 기간(7일)이 끝났습니다.", 410, message);
+  }
+
   if (
     [
       "invalid_review_assignment_id",
@@ -121,7 +139,10 @@ export async function POST(request: Request) {
 
     const baseAssignments = snapshot.docs
       .map((docItem) => serializeAssignment(docItem.id, docItem.data()))
-      .filter((assignment) => assignment.isActive)
+      .filter(
+        (assignment) =>
+          assignment.isActive && isWithinReviewWindow(assignment.createdAt)
+      )
       .sort((a, b) =>
         String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
       );
@@ -173,6 +194,10 @@ export async function PATCH(request: Request) {
 
       if (assignmentData?.isActive === false) {
         throw new Error("inactive_review_assignment");
+      }
+
+      if (!isWithinReviewWindow(assignmentData?.createdAt)) {
+        throw new Error("expired_review_assignment");
       }
 
       const targetStudentKeys = Array.isArray(assignmentData?.targetStudentKeys)
