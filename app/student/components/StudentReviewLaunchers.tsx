@@ -68,11 +68,11 @@ export default function StudentReviewLaunchers({ student }: { student: any }) {
     };
   }, [studentCollection, studentId, studentPassword]);
 
-  const popupTitle = activeMode === "exam" ? "🏆 기출문제" : "📝 복습문제";
+  const popupTitle = activeMode === "exam" ? "🏆 기출문제" : "📘 교재문제";
   const popupDescription =
     activeMode === "exam"
-      ? "선생님이 보낸 한능검 기출문제를 풀어 보세요."
-      : "선생님이 보낸 교재 복습문제를 한 문제씩 풀어 보세요.";
+      ? "선생님이 보낸 한능검 기출문제를 바로 풀어 보세요."
+      : "이번 주 교재문제를 바로 풀어 보세요. 받은 날부터 7일 동안 열려요.";
 
   return (
     <>
