@@ -5,6 +5,7 @@ import { User } from "firebase/auth";
 
 import type { AssignmentStudent } from "@/lib/assignments";
 import { getStudentProgramValue } from "@/lib/programs";
+import ReviewResultsPanel from "./ReviewResultsPanel";
 
 type ReviewQuestion = {
   id: string;
@@ -172,7 +173,7 @@ export default function ReviewAssignmentComposer({ user, questions }: Props) {
       });
 
       setNotice(
-        `복습과제를 ${Number(data?.targetCount || selectedStudentKeys.length)}명에게 보냈습니다.`
+        `복습과제를 ${Number(data?.targetCount || selectedStudentKeys.length)}명에게 보냈습니다. 아래 복습 결과에서 새로고침하면 확인할 수 있습니다.`
       );
       setSelectedStudentKeys([]);
     } catch (error) {
@@ -184,16 +185,16 @@ export default function ReviewAssignmentComposer({ user, questions }: Props) {
     }
   };
 
+  let composerContent: React.ReactNode;
+
   if (questions.length === 0) {
-    return (
+    composerContent = (
       <div className="mt-5 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-800">
         문제를 먼저 과제에 담아 주세요. 담은 순서가 학생에게 보이는 문제 번호가 됩니다.
       </div>
     );
-  }
-
-  if (!open) {
-    return (
+  } else if (!open) {
+    composerContent = (
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -202,151 +203,158 @@ export default function ReviewAssignmentComposer({ user, questions }: Props) {
         다음: 과제 설정 →
       </button>
     );
+  } else {
+    composerContent = (
+      <div className="mt-5 rounded-2xl border border-sky-100 bg-sky-50/60 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-base font-black text-slate-800">📨 과제 설정</div>
+            <div className="mt-1 text-xs font-bold text-slate-500">
+              문제 {questions.length}개 · 학교/반을 고른 뒤 필요한 학생만 체크하세요.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-500"
+          >
+            접기
+          </button>
+        </div>
+
+        <label className="mt-4 block text-sm font-black text-slate-700">
+          과제 제목
+          <input
+            type="text"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="예: 6호 3차시 복습문제"
+            className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100"
+          />
+        </label>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="text-sm font-black text-slate-700">
+            학교
+            <select
+              value={school}
+              disabled={isLoadingStudents}
+              onChange={(event) => selectSchool(event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold"
+            >
+              <option value="">
+                {isLoadingStudents ? "학생 목록 불러오는 중..." : "학교 선택"}
+              </option>
+              {schoolOptions.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div>
+            <div className="text-sm font-black text-slate-700">수업반</div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {["A반", "B반"].map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => selectClass(item)}
+                  className={`rounded-2xl border px-4 py-3 text-sm font-black ${
+                    teachingClass === item
+                      ? "border-sky-600 bg-sky-600 text-white"
+                      : "border-slate-200 bg-white text-slate-700"
+                  }`}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {school && (
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-sm font-black text-slate-700">
+                대상 학생 · {selectedStudentKeys.length}명 선택
+              </div>
+              {targetStudents.length > 0 && (
+                <button
+                  type="button"
+                  onClick={toggleAll}
+                  className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600"
+                >
+                  {allSelected ? "전체 해제" : "전체 선택"}
+                </button>
+              )}
+            </div>
+
+            {targetStudents.length === 0 ? (
+              <div className="py-5 text-center text-xs font-bold text-slate-400">
+                이 학교의 {teachingClass} 학생이 없습니다.
+              </div>
+            ) : (
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {targetStudents.map((student) => (
+                  <label
+                    key={student.studentKey}
+                    className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedStudentKeys.includes(student.studentKey)}
+                      onChange={() => toggleStudent(student.studentKey)}
+                      className="h-4 w-4"
+                    />
+                    <span className="text-sm font-black text-slate-700">
+                      {student.name}
+                    </span>
+                    <span className="ml-auto text-xs font-bold text-slate-400">
+                      {student.grade}학년
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {notice && (
+          <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700">
+            {notice}
+          </div>
+        )}
+        {errorMessage && (
+          <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-black text-red-600">
+            {errorMessage}
+          </div>
+        )}
+
+        <button
+          type="button"
+          disabled={
+            isSending ||
+            !title.trim() ||
+            !school ||
+            selectedStudentKeys.length === 0
+          }
+          onClick={sendAssignment}
+          className="mt-4 w-full rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-white transition enabled:hover:bg-yellow-500 disabled:opacity-40"
+        >
+          {isSending
+            ? "보내는 중..."
+            : `학생에게 보내기 (${selectedStudentKeys.length}명)`}
+        </button>
+      </div>
+    );
   }
 
   return (
-    <div className="mt-5 rounded-2xl border border-sky-100 bg-sky-50/60 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-base font-black text-slate-800">📨 과제 설정</div>
-          <div className="mt-1 text-xs font-bold text-slate-500">
-            문제 {questions.length}개 · 학교/반을 고른 뒤 필요한 학생만 체크하세요.
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-500"
-        >
-          접기
-        </button>
-      </div>
-
-      <label className="mt-4 block text-sm font-black text-slate-700">
-        과제 제목
-        <input
-          type="text"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          placeholder="예: 6호 3차시 복습문제"
-          className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100"
-        />
-      </label>
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label className="text-sm font-black text-slate-700">
-          학교
-          <select
-            value={school}
-            disabled={isLoadingStudents}
-            onChange={(event) => selectSchool(event.target.value)}
-            className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold"
-          >
-            <option value="">
-              {isLoadingStudents ? "학생 목록 불러오는 중..." : "학교 선택"}
-            </option>
-            {schoolOptions.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <div>
-          <div className="text-sm font-black text-slate-700">수업반</div>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            {["A반", "B반"].map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => selectClass(item)}
-                className={`rounded-2xl border px-4 py-3 text-sm font-black ${
-                  teachingClass === item
-                    ? "border-sky-600 bg-sky-600 text-white"
-                    : "border-slate-200 bg-white text-slate-700"
-                }`}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {school && (
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-sm font-black text-slate-700">
-              대상 학생 · {selectedStudentKeys.length}명 선택
-            </div>
-            {targetStudents.length > 0 && (
-              <button
-                type="button"
-                onClick={toggleAll}
-                className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600"
-              >
-                {allSelected ? "전체 해제" : "전체 선택"}
-              </button>
-            )}
-          </div>
-
-          {targetStudents.length === 0 ? (
-            <div className="py-5 text-center text-xs font-bold text-slate-400">
-              이 학교의 {teachingClass} 학생이 없습니다.
-            </div>
-          ) : (
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {targetStudents.map((student) => (
-                <label
-                  key={student.studentKey}
-                  className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedStudentKeys.includes(student.studentKey)}
-                    onChange={() => toggleStudent(student.studentKey)}
-                    className="h-4 w-4"
-                  />
-                  <span className="text-sm font-black text-slate-700">
-                    {student.name}
-                  </span>
-                  <span className="ml-auto text-xs font-bold text-slate-400">
-                    {student.grade}학년
-                  </span>
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {notice && (
-        <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700">
-          {notice}
-        </div>
-      )}
-      {errorMessage && (
-        <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-black text-red-600">
-          {errorMessage}
-        </div>
-      )}
-
-      <button
-        type="button"
-        disabled={
-          isSending ||
-          !title.trim() ||
-          !school ||
-          selectedStudentKeys.length === 0
-        }
-        onClick={sendAssignment}
-        className="mt-4 w-full rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-white transition enabled:hover:bg-yellow-500 disabled:opacity-40"
-      >
-        {isSending
-          ? "보내는 중..."
-          : `학생에게 보내기 (${selectedStudentKeys.length}명)`}
-      </button>
-    </div>
+    <>
+      {composerContent}
+      <ReviewResultsPanel user={user} />
+    </>
   );
 }
