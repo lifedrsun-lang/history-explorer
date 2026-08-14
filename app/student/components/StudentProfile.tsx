@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { SchoolNoticeInfo } from "../data/schoolInfo";
 import CoinExchangeRequest from "./CoinExchangeRequest";
 import StudentAssignments from "./StudentAssignments";
-import StudentReviewAssignments from "./StudentReviewAssignments";
+import StudentReviewLaunchers from "./StudentReviewLaunchers";
 
 interface Props {
   student: any;
@@ -19,7 +19,7 @@ interface Props {
   ) => void;
 }
 
-type StudentPopup = "assignments" | "review" | "exchange" | "history" | null;
+type StudentPopup = "assignments" | "exchange" | "history" | null;
 
 export default function StudentProfile({
   student,
@@ -139,20 +139,16 @@ export default function StudentProfile({
   const popupTitle =
     studentPopup === "assignments"
       ? "📘 나의 과제"
-      : studentPopup === "review"
-        ? "📝 복습문제"
-        : studentPopup === "history"
-          ? "✨ 나의 활동 기록"
-          : "🎁 은엽전 교환신청";
+      : studentPopup === "history"
+        ? "✨ 나의 활동 기록"
+        : "🎁 은엽전 교환신청";
 
   const popupDescription =
     studentPopup === "assignments"
       ? "현재 공개된 과제를 확인하고 사진을 제출할 수 있어요."
-      : studentPopup === "review"
-        ? "선생님이 보낸 복습문제를 한 문제씩 풀어 보세요."
-        : studentPopup === "history"
-          ? `지금까지의 코인·과제·복습 활동 ${sortedClassHistory.length}개를 모아봤어요.`
-          : "은엽전 1개는 1,000원 상품권으로 교환할 수 있어요.";
+      : studentPopup === "history"
+        ? `지금까지의 코인·과제·복습 활동 ${sortedClassHistory.length}개를 모아봤어요.`
+        : "은엽전 1개는 1,000원 상품권으로 교환할 수 있어요.";
 
   const renderHistoryRows = (items: any[]) => (
     <div className="space-y-2">
@@ -256,14 +252,9 @@ export default function StudentProfile({
             <span className="block text-xl">📘</span>
             <span className="mt-1 block text-xs">과제 확인</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setStudentPopup("review")}
-            className="rounded-[18px] border border-sky-200 bg-sky-50 px-2 py-3 text-center font-black text-sky-700 shadow-sm transition hover:bg-sky-100"
-          >
-            <span className="block text-xl">📝</span>
-            <span className="mt-1 block text-xs">복습문제</span>
-          </button>
+
+          <StudentReviewLaunchers student={student} />
+
           <button
             type="button"
             onClick={() => setStudentPopup("exchange")}
@@ -333,8 +324,6 @@ export default function StudentProfile({
               <div className="max-h-[78dvh] overflow-y-auto px-3 pb-4">
                 {studentPopup === "assignments" ? (
                   <StudentAssignments student={student} />
-                ) : studentPopup === "review" ? (
-                  <StudentReviewAssignments student={student} />
                 ) : studentPopup === "history" ? (
                   <div className="py-3">{renderHistoryRows(sortedClassHistory)}</div>
                 ) : (
