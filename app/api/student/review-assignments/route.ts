@@ -23,6 +23,7 @@ import {
   REVIEW_ASSIGNMENTS_COLLECTION,
   REVIEW_COMPLETION_REWARD_AMOUNT,
   REVIEW_COMPLETION_REWARD_TEXT,
+  ReviewAnswerResult,
 } from "@/lib/reviewAssignments";
 import {
   getAssignmentBucketName,
@@ -99,6 +100,7 @@ const mapStudentError = (error: unknown) => {
       "invalid_review_assignment_id",
       "inactive_review_assignment",
       "review_assignment_forbidden",
+      "review_answers_incomplete",
     ].includes(message)
   ) {
     return jsonError("복습문제 상태를 다시 확인해 주세요.", 400, message);
@@ -136,6 +138,7 @@ export async function PATCH(request: Request) {
   try {
     const body = await request.json();
     const assignmentId = normalizeText(body?.assignmentId);
+    const rawAnswers = Array.isArray(body?.answers) ? body.answers : [];
 
     if (!assignmentId) {
       throw new Error("invalid_review_assignment_id");
@@ -187,13 +190,56 @@ export async function PATCH(request: Request) {
       }
 
       const studentData = studentSnapshot.data() || {};
+      const questions = Array.isArray(assignmentData?.questions)
+        ? assignmentData.questions
+        : [];
+
+      const answerMap = new Map<string, number>();
+      rawAnswers.forEach((answer: any) => {
+        const questionId = normalizeText(answer?.questionId);
+        const selectedIndex = Number(answer?.selectedIndex);
+        if (questionId && Number.isInteger(selectedIndex)) {
+          answerMap.set(questionId, selectedIndex);
+        }
+      });
+
+      const answers: ReviewAnswerResult[] = questions.map((question: any, index: number) => {
+        const questionId = normalizeText(question?.questionId);
+        const selectedIndex = answerMap.get(questionId);
+        const correctIndex = Number(question?.correctIndex || 0);
+        const optionCount = Array.isArray(question?.options) ? question.options.length : 0;
+
+        if (
+          selectedIndex === undefined ||
+          selectedIndex < 0 ||
+          selectedIndex >= optionCount
+        ) {
+          throw new Error("review_answers_incomplete");
+        }
+
+        return {
+          questionId,
+          order: index + 1,
+          selectedIndex,
+          correctIndex,
+          isCorrect: selectedIndex === correctIndex,
+        };
+      });
+
+      const totalQuestions = answers.length;
+      const correctCount = answers.filter((answer) => answer.isCorrect).length;
+      const wrongCount = totalQuestions - correctCount;
 
       if (completionSnapshot.exists && completionSnapshot.data()?.rewardGranted) {
+        const completionData = completionSnapshot.data() || {};
         return {
           outcome: "already_rewarded",
           bronze: Number(studentData?.bronze || 0),
           silver: Number(studentData?.silver || 0),
           exchangeCount: 0,
+          totalQuestions: Number(completionData?.totalQuestions || totalQuestions),
+          correctCount: Number(completionData?.correctCount ?? correctCount),
+          wrongCount: Number(completionData?.wrongCount ?? wrongCount),
         };
       }
 
@@ -255,7 +301,7 @@ export async function PATCH(request: Request) {
       transaction.set(
         completionRef,
         {
-          schemaVersion: 1,
+          schemaVersion: 2,
           assignmentId,
           studentId: student.id,
           studentCollection: student.collectionName,
@@ -267,6 +313,10 @@ export async function PATCH(request: Request) {
             class: student.class,
             studentNumber: student.studentNumber,
           },
+          answers,
+          totalQuestions,
+          correctCount,
+          wrongCount,
           rewardGranted: true,
           rewardGrantedAt: FieldValue.serverTimestamp(),
           rewardId,
@@ -283,6 +333,9 @@ export async function PATCH(request: Request) {
         bronze: rewardCalculation.bronze,
         silver: rewardCalculation.silver,
         exchangeCount: rewardCalculation.exchangeCount,
+        totalQuestions,
+        correctCount,
+        wrongCount,
       };
     });
 
@@ -292,6 +345,9 @@ export async function PATCH(request: Request) {
       bronze: result.bronze,
       silver: result.silver,
       exchangeCount: result.exchangeCount,
+      totalQuestions: result.totalQuestions,
+      correctCount: result.correctCount,
+      wrongCount: result.wrongCount,
     });
   } catch (error) {
     return mapStudentError(error);
