@@ -65,7 +65,7 @@ export default function StudentReviewAssignments({ student, mode = "review" }: P
   const studentId = String(student?.id || "");
   const studentCollection = getStudentCollection(student);
   const studentPassword = String(student?.password || "");
-  const sectionLabel = mode === "exam" ? "기출문제" : "복습문제";
+  const sectionLabel = mode === "exam" ? "기출문제" : "교재문제";
 
   const activeAssignment = useMemo(
     () => assignments.find((item) => item.id === activeAssignmentId) || null,
@@ -89,6 +89,13 @@ export default function StudentReviewAssignments({ student, mode = "review" }: P
       setIsLoading(true);
       setErrorMessage("");
       setActiveAssignmentId("");
+      setQuestionIndex(0);
+      setSelectedIndex(null);
+      setAnswers({});
+      setChecked(false);
+      setCompletionError("");
+      setCompletionMessage("");
+
       try {
         const response = await fetch("/api/student/review-assignments", {
           method: "POST",
@@ -99,15 +106,17 @@ export default function StudentReviewAssignments({ student, mode = "review" }: P
         if (!response.ok) {
           throw new Error(data?.error || `${sectionLabel}를 불러오지 못했습니다.`);
         }
+
         if (!cancelled) {
           const loaded = Array.isArray(data?.assignments)
             ? (data.assignments as ReviewAssignment[])
             : [];
-          setAssignments(
-            loaded.filter((assignment) =>
-              mode === "exam" ? isExamAssignment(assignment) : !isExamAssignment(assignment)
-            )
+          const matchingAssignments = loaded.filter((assignment) =>
+            mode === "exam" ? isExamAssignment(assignment) : !isExamAssignment(assignment)
           );
+
+          setAssignments(matchingAssignments);
+          setActiveAssignmentId(matchingAssignments[0]?.id || "");
         }
       } catch (error) {
         if (!cancelled) {
@@ -125,16 +134,6 @@ export default function StudentReviewAssignments({ student, mode = "review" }: P
       cancelled = true;
     };
   }, [mode, sectionLabel, studentCollection, studentId, studentPassword]);
-
-  const startAssignment = (assignmentId: string) => {
-    setActiveAssignmentId(assignmentId);
-    setQuestionIndex(0);
-    setSelectedIndex(null);
-    setAnswers({});
-    setChecked(false);
-    setCompletionError("");
-    setCompletionMessage("");
-  };
 
   const completeAssignment = async () => {
     if (!activeAssignment || isCompleting) return;
@@ -220,33 +219,11 @@ export default function StudentReviewAssignments({ student, mode = "review" }: P
   if (!activeAssignment) {
     return (
       <div className="px-2 py-4">
-        {assignments.length === 0 ? (
-          <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center">
-            <div className="text-3xl">{mode === "exam" ? "🏆" : "📝"}</div>
-            <div className="mt-2 text-sm font-black text-slate-700">지금 풀 {sectionLabel}가 없어요.</div>
-          </div>
-        ) : (
-          <div className="grid gap-3">
-            <div className="rounded-2xl border border-yellow-100 bg-yellow-50 px-4 py-3 text-xs font-black leading-5 text-yellow-800">
-              🪙 {sectionLabel}를 끝까지 풀면 동엽전 1개를 받을 수 있어요. 같은 과제의 보상은 한 번만 지급돼요.
-            </div>
-            {assignments.map((assignment) => (
-              <button
-                key={assignment.id}
-                type="button"
-                onClick={() => startAssignment(assignment.id)}
-                className={`rounded-2xl border px-4 py-4 text-left transition ${
-                  mode === "exam"
-                    ? "border-violet-100 bg-violet-50 hover:bg-violet-100"
-                    : "border-sky-100 bg-sky-50 hover:bg-sky-100"
-                }`}
-              >
-                <div className="text-base font-black text-slate-800">{assignment.title}</div>
-                <div className="mt-1 text-xs font-bold text-slate-500">문제 {assignment.questions.length}개 · 눌러서 시작하기</div>
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center">
+          <div className="text-3xl">{mode === "exam" ? "🏆" : "📝"}</div>
+          <div className="mt-2 text-sm font-black text-slate-700">지금 풀 {sectionLabel}가 없어요.</div>
+          <div className="mt-1 text-xs font-bold text-slate-400">과제는 받은 날부터 7일 동안만 열려요.</div>
+        </div>
       </div>
     );
   }
@@ -264,7 +241,9 @@ export default function StudentReviewAssignments({ student, mode = "review" }: P
     <div className="px-2 py-4">
       <div className="rounded-[26px] border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-sky-50 p-4">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-xs font-black text-sky-700">{activeAssignment.title}</div>
+          <div className={`text-xs font-black ${mode === "exam" ? "text-violet-700" : "text-sky-700"}`}>
+            {mode === "exam" ? "🏆 기출문제" : "📘 교재문제"}
+          </div>
           <div className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 shadow-sm">
             {questionIndex + 1} / {activeAssignment.questions.length}
           </div>
@@ -355,18 +334,6 @@ export default function StudentReviewAssignments({ student, mode = "review" }: P
             </button>
           </>
         )}
-
-        <button
-          type="button"
-          disabled={isCompleting}
-          onClick={() => {
-            setActiveAssignmentId("");
-            setAnswers({});
-          }}
-          className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-500 disabled:opacity-50"
-        >
-          문제 목록으로
-        </button>
       </div>
     </div>
   );
