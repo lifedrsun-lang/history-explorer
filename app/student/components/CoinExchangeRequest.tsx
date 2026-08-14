@@ -12,6 +12,7 @@ import {
   SILVER_COIN_WON_VALUE,
   formatCoinExchangeWon,
 } from "@/lib/coinExchange";
+import type { CoinExchangeWindowStatus } from "@/lib/coinExchangeWindow";
 
 type Props = {
   student: StudentLike;
@@ -34,6 +35,7 @@ const getStudentCollection = (student: StudentLike): StudentCollection => {
 
 export default function CoinExchangeRequest({ student }: Props) {
   const [request, setRequest] = useState<CoinExchangeRequestSummary | null>(null);
+  const [exchangeWindow, setExchangeWindow] = useState<CoinExchangeWindowStatus | null>(null);
   const [amountSilver, setAmountSilver] = useState("1");
   const [rewardKind, setRewardKind] = useState<RewardKind>("daiso");
   const [convenienceVendor, setConvenienceVendor] =
@@ -84,6 +86,7 @@ export default function CoinExchangeRequest({ student }: Props) {
       }
 
       setRequest(data?.request || null);
+      setExchangeWindow(data?.exchangeWindow || null);
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -104,7 +107,7 @@ export default function CoinExchangeRequest({ student }: Props) {
   }, [loadStatus]);
 
   const submitExchangeRequest = async () => {
-    if (isSubmitting || request) {
+    if (isSubmitting || request || !exchangeWindow?.isOpen) {
       return;
     }
 
@@ -147,6 +150,7 @@ export default function CoinExchangeRequest({ student }: Props) {
       }
 
       setRequest(data?.request || null);
+      setExchangeWindow(data?.exchangeWindow || exchangeWindow);
       setMessage("교환 신청을 보냈습니다. 선생님 확인을 기다려 주세요.");
     } catch (error) {
       setErrorMessage(
@@ -183,6 +187,16 @@ export default function CoinExchangeRequest({ student }: Props) {
         </div>
       )}
 
+      {!isLoading && exchangeWindow && !exchangeWindow.isOpen && !request && (
+        <div className="mt-4 rounded-[22px] border border-slate-200 bg-white p-4 text-center shadow-sm">
+          <div className="text-3xl">🔒</div>
+          <div className="mt-2 font-black text-slate-700">지금은 교환 신청 기간이 아니에요.</div>
+          <div className="mt-2 text-sm font-bold leading-relaxed text-slate-500">
+            {exchangeWindow.message}
+          </div>
+        </div>
+      )}
+
       {!isLoading && request && (
         <div className="mt-4 rounded-[22px] border border-violet-100 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
@@ -205,8 +219,12 @@ export default function CoinExchangeRequest({ student }: Props) {
         </div>
       )}
 
-      {!isLoading && !request && (
+      {!isLoading && !request && exchangeWindow?.isOpen && (
         <div className="mt-4 space-y-4">
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
+            ✅ {exchangeWindow.message}
+          </div>
+
           {currentSilver <= 0 ? (
             <div className="rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-500">
               은엽전을 모으면 상품권 교환을 신청할 수 있어요.
