@@ -10,6 +10,7 @@ import {
   getCoinExchangeVendorLabel,
   isCoinExchangeVendor,
 } from "@/lib/coinExchange";
+import { getCoinExchangeWindowStatus } from "@/lib/coinExchangeWindow";
 import {
   getVerifiedStudent,
   handleRouteError,
@@ -84,6 +85,14 @@ const mapStudentExchangeError = (error: unknown) => {
     return jsonError("요청 종류를 다시 확인해 주세요.", 400, message);
   }
 
+  if (message === "exchange_window_closed") {
+    return jsonError(
+      "현재 은엽전 교환 신청 기간이 아닙니다. 종강 2주 전부터 종강 전날까지만 신청할 수 있어요.",
+      403,
+      message
+    );
+  }
+
   if (message === "invalid_exchange_amount") {
     return jsonError("교환할 은엽전 개수를 다시 확인해 주세요.", 400, message);
   }
@@ -108,6 +117,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const action = normalizeText(body?.action);
     const student = await getVerifiedStudent(body);
+    const exchangeWindow = getCoinExchangeWindowStatus(student.school);
     const { db } = getFirebaseAdmin();
     const studentRef = db.collection(student.collectionName).doc(student.id);
 
@@ -118,7 +128,7 @@ export async function POST(request: Request) {
       );
 
       if (!pendingRequestId) {
-        return Response.json({ request: null });
+        return Response.json({ request: null, exchangeWindow });
       }
 
       const requestSnapshot = await db
@@ -127,7 +137,7 @@ export async function POST(request: Request) {
         .get();
 
       if (!requestSnapshot.exists) {
-        return Response.json({ request: null });
+        return Response.json({ request: null, exchangeWindow });
       }
 
       const exchangeRequest = serializeRequest(
@@ -139,14 +149,18 @@ export async function POST(request: Request) {
         exchangeRequest.studentKey !== student.studentKey ||
         exchangeRequest.status !== "pending"
       ) {
-        return Response.json({ request: null });
+        return Response.json({ request: null, exchangeWindow });
       }
 
-      return Response.json({ request: exchangeRequest });
+      return Response.json({ request: exchangeRequest, exchangeWindow });
     }
 
     if (action !== "create") {
       throw new Error("invalid_action");
+    }
+
+    if (!exchangeWindow.isOpen) {
+      throw new Error("exchange_window_closed");
     }
 
     const amountSilver = Number(body?.amountSilver);
@@ -227,6 +241,7 @@ export async function POST(request: Request) {
 
     return Response.json({
       ok: true,
+      exchangeWindow,
       request: serializeRequest(
         createdSnapshot.id,
         createdSnapshot.data() || {}
