@@ -30,6 +30,11 @@ type ReviewAssignment = {
   createdAt: string | null;
 };
 
+type LocalAnswer = {
+  questionId: string;
+  selectedIndex: number;
+};
+
 type Props = { student: any };
 const OPTION_LABELS = ["①", "②", "③", "④"];
 
@@ -45,6 +50,7 @@ export default function StudentReviewAssignments({ student }: Props) {
   const [activeAssignmentId, setActiveAssignmentId] = useState("");
   const [questionIndex, setQuestionIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [answers, setAnswers] = useState<Record<string, LocalAnswer>>({});
   const [checked, setChecked] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [completionError, setCompletionError] = useState("");
@@ -109,6 +115,7 @@ export default function StudentReviewAssignments({ student }: Props) {
     setActiveAssignmentId(assignmentId);
     setQuestionIndex(0);
     setSelectedIndex(null);
+    setAnswers({});
     setChecked(false);
     setCompletionError("");
     setCompletionMessage("");
@@ -120,6 +127,10 @@ export default function StudentReviewAssignments({ student }: Props) {
     setCompletionError("");
 
     try {
+      const answerList = activeAssignment.questions
+        .map((question) => answers[question.questionId])
+        .filter((answer): answer is LocalAnswer => Boolean(answer));
+
       const response = await fetch("/api/student/review-assignments", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -128,6 +139,7 @@ export default function StudentReviewAssignments({ student }: Props) {
           studentId,
           studentCollection,
           studentPassword,
+          answers: answerList,
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -135,12 +147,16 @@ export default function StudentReviewAssignments({ student }: Props) {
         throw new Error(data?.error || "복습 완료 보상을 지급하지 못했습니다.");
       }
 
+      const scoreText = Number.isInteger(data?.correctCount) && Number.isInteger(data?.totalQuestions)
+        ? ` · ${data.correctCount}/${data.totalQuestions} 정답`
+        : "";
+
       if (data?.alreadyRewarded) {
-        setCompletionMessage("✅ 이미 완료한 복습문제예요. 보상은 처음 완료할 때 한 번만 지급돼요.");
+        setCompletionMessage(`✅ 이미 완료한 복습문제예요${scoreText}. 보상은 처음 완료할 때 한 번만 지급돼요.`);
       } else if (Number(data?.exchangeCount || 0) > 0) {
-        setCompletionMessage("🎉 복습 완료! 동엽전 1개가 지급되고 은엽전으로 자동 교환됐어요.");
+        setCompletionMessage(`🎉 복습 완료${scoreText}! 동엽전 1개가 지급되고 은엽전으로 자동 교환됐어요.`);
       } else {
-        setCompletionMessage("🎉 복습 완료! 동엽전 1개를 받았어요.");
+        setCompletionMessage(`🎉 복습 완료${scoreText}! 동엽전 1개를 받았어요.`);
       }
 
       window.setTimeout(() => window.location.reload(), 1200);
@@ -151,6 +167,18 @@ export default function StudentReviewAssignments({ student }: Props) {
     } finally {
       setIsCompleting(false);
     }
+  };
+
+  const checkCurrentAnswer = () => {
+    if (!currentQuestion || selectedIndex === null) return;
+    setAnswers((current) => ({
+      ...current,
+      [currentQuestion.questionId]: {
+        questionId: currentQuestion.questionId,
+        selectedIndex,
+      },
+    }));
+    setChecked(true);
   };
 
   const goToNext = () => {
@@ -264,7 +292,7 @@ export default function StudentReviewAssignments({ student }: Props) {
                       : selected
                         ? "border-sky-400 bg-sky-50 text-sky-800"
                         : "border-slate-200 bg-white text-slate-700"
-                } ${isExamImage ? "text-left" : "text-left"}`}
+                } text-left`}
               >
                 {OPTION_LABELS[index] || `${index + 1}.`}{optionText ? ` ${optionText}` : ""}
               </button>
@@ -276,7 +304,7 @@ export default function StudentReviewAssignments({ student }: Props) {
           <button
             type="button"
             disabled={selectedIndex === null || isCompleting}
-            onClick={() => setChecked(true)}
+            onClick={checkCurrentAnswer}
             className="mt-5 w-full rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-white transition enabled:hover:bg-yellow-500 disabled:opacity-40"
           >
             정답 확인
@@ -312,7 +340,10 @@ export default function StudentReviewAssignments({ student }: Props) {
         <button
           type="button"
           disabled={isCompleting}
-          onClick={() => setActiveAssignmentId("")}
+          onClick={() => {
+            setActiveAssignmentId("");
+            setAnswers({});
+          }}
           className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-500 disabled:opacity-50"
         >
           문제 목록으로
