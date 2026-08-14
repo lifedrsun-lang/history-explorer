@@ -6,10 +6,14 @@ export const REVIEW_COMPLETION_REWARD_TEXT =
   "복습문제 완료로 동엽전 1개가 지급되었습니다.";
 
 export type ReviewQuestionType = "textbook" | "exam";
+export type ReviewExamLevel = "" | "basic" | "advanced";
 
 export type ReviewAssignmentQuestion = {
   questionId: string;
   questionType: ReviewQuestionType;
+  examLevel?: ReviewExamLevel;
+  examRound?: string;
+  examQuestionNumber?: string;
   bookNumber: string;
   lesson: string;
   topic: string;
@@ -20,6 +24,14 @@ export type ReviewAssignmentQuestion = {
   imageStoragePath: string;
   imageOriginalName: string;
   imageUrl?: string;
+};
+
+export type ReviewAnswerResult = {
+  questionId: string;
+  order: number;
+  selectedIndex: number;
+  correctIndex: number;
+  isCorrect: boolean;
 };
 
 export type ReviewAssignmentSummary = {
