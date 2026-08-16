@@ -30,6 +30,8 @@ type StudentActivityStatus = {
   review: ActivityCount;
 };
 
+const FIRESTORE_IN_LIMIT = 30;
+
 const makeEmptyStatus = (): StudentActivityStatus => ({
   homework: { assigned: 0, completed: 0 },
   review: { assigned: 0, completed: 0 },
@@ -48,55 +50,62 @@ const getTargetStudentKeys = (
       )
     : [];
 
+const chunkValues = <T,>(values: T[], size: number): T[][] => {
+  const chunks: T[][] = [];
+
+  for (let index = 0; index < values.length; index += size) {
+    chunks.push(values.slice(index, index + size));
+  }
+
+  return chunks;
+};
+
 export async function GET(request: Request) {
   try {
     await verifyTeacherRequest(request);
 
     const { db } = getFirebaseAdmin();
-    const [
-      snapshots,
-      assignmentSnapshot,
-      submissionSnapshot,
-      reviewAssignmentSnapshot,
-      reviewCompletionSnapshot,
-    ] = await Promise.all([
-      Promise.all(
-        ALLOWED_STUDENT_COLLECTIONS.map(async (collectionName) => {
-          const snapshot = await db.collection(collectionName).get();
 
-          return snapshot.docs.map((docItem) => {
-            const data = docItem.data();
+    const [snapshots, assignmentSnapshot, reviewAssignmentSnapshot] =
+      await Promise.all([
+        Promise.all(
+          ALLOWED_STUDENT_COLLECTIONS.map(async (collectionName) => {
+            const snapshot = await db.collection(collectionName).get();
 
-            return {
-              id: docItem.id,
-              collectionName,
-              studentKey: makeStudentKey(collectionName, docItem.id),
-              name: normalizeText(
-                data?.name || data?.studentName || data?.student_name
-              ),
-              school: normalizeText(
-                data?.school || data?.schoolName || data?.school_name
-              ),
-              grade: normalizeText(
-                data?.grade || data?.studentGrade || data?.student_grade
-              ),
-              class: normalizeText(
-                data?.class || data?.studentClass || data?.className
-              ),
-              studentNumber: normalizeText(
-                data?.studentNumber || data?.number || data?.studentNo || data?.no
-              ),
-              program: normalizeText(data?.program),
-              isActive: data?.isActive !== false,
-            } satisfies AssignmentStudent;
-          });
-        })
-      ),
-      db.collection(ASSIGNMENTS_COLLECTION).get(),
-      db.collection(ASSIGNMENT_SUBMISSIONS_COLLECTION).get(),
-      db.collection(REVIEW_ASSIGNMENTS_COLLECTION).get(),
-      db.collection(REVIEW_ASSIGNMENT_COMPLETIONS_COLLECTION).get(),
-    ]);
+            return snapshot.docs.map((docItem) => {
+              const data = docItem.data();
+
+              return {
+                id: docItem.id,
+                collectionName,
+                studentKey: makeStudentKey(collectionName, docItem.id),
+                name: normalizeText(
+                  data?.name || data?.studentName || data?.student_name
+                ),
+                school: normalizeText(
+                  data?.school || data?.schoolName || data?.school_name
+                ),
+                grade: normalizeText(
+                  data?.grade || data?.studentGrade || data?.student_grade
+                ),
+                class: normalizeText(
+                  data?.class || data?.studentClass || data?.className
+                ),
+                studentNumber: normalizeText(
+                  data?.studentNumber ||
+                    data?.number ||
+                    data?.studentNo ||
+                    data?.no
+                ),
+                program: normalizeText(data?.program),
+                isActive: data?.isActive !== false,
+              } satisfies AssignmentStudent;
+            });
+          })
+        ),
+        db.collection(ASSIGNMENTS_COLLECTION).get(),
+        db.collection(REVIEW_ASSIGNMENTS_COLLECTION).get(),
+      ]);
 
     const students = snapshots
       .flat()
@@ -137,8 +146,53 @@ export async function GET(request: Request) {
       });
     });
 
+    const activeReviewTargets = new Map<string, Set<string>>();
+    reviewAssignmentSnapshot.docs.forEach((docItem) => {
+      const data = docItem.data();
+      if (data?.isActive === false) return;
+
+      const targets = new Set<string>(getTargetStudentKeys(data));
+      activeReviewTargets.set(docItem.id, targets);
+      targets.forEach((studentKey) => {
+        ensureStudent(studentKey).review.assigned += 1;
+      });
+    });
+
+    const loadRelatedDocs = async (
+      collectionName: string,
+      assignmentIds: string[]
+    ) => {
+      if (assignmentIds.length === 0) {
+        return [] as FirebaseFirestore.QueryDocumentSnapshot[];
+      }
+
+      const groups = await Promise.all(
+        chunkValues(assignmentIds, FIRESTORE_IN_LIMIT).map(async (ids) => {
+          const snapshot = await db
+            .collection(collectionName)
+            .where("assignmentId", "in", ids)
+            .get();
+
+          return snapshot.docs;
+        })
+      );
+
+      return groups.flat();
+    };
+
+    const [submissionDocs, reviewCompletionDocs] = await Promise.all([
+      loadRelatedDocs(
+        ASSIGNMENT_SUBMISSIONS_COLLECTION,
+        Array.from(activeAssignmentTargets.keys())
+      ),
+      loadRelatedDocs(
+        REVIEW_ASSIGNMENT_COMPLETIONS_COLLECTION,
+        Array.from(activeReviewTargets.keys())
+      ),
+    ]);
+
     const homeworkCompletionPairs = new Set<string>();
-    submissionSnapshot.docs.forEach((docItem) => {
+    submissionDocs.forEach((docItem) => {
       const data = docItem.data();
       const assignmentId = normalizeText(data?.assignmentId);
       const studentKey = normalizeText(data?.studentKey);
@@ -159,20 +213,8 @@ export async function GET(request: Request) {
       ensureStudent(studentKey).homework.completed += 1;
     });
 
-    const activeReviewTargets = new Map<string, Set<string>>();
-    reviewAssignmentSnapshot.docs.forEach((docItem) => {
-      const data = docItem.data();
-      if (data?.isActive === false) return;
-
-      const targets = new Set<string>(getTargetStudentKeys(data));
-      activeReviewTargets.set(docItem.id, targets);
-      targets.forEach((studentKey) => {
-        ensureStudent(studentKey).review.assigned += 1;
-      });
-    });
-
     const reviewCompletionPairs = new Set<string>();
-    reviewCompletionSnapshot.docs.forEach((docItem) => {
+    reviewCompletionDocs.forEach((docItem) => {
       const data = docItem.data();
       const assignmentId = normalizeText(data?.assignmentId);
       const studentKey = normalizeText(data?.studentKey);
