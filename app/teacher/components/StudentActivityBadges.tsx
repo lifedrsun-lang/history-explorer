@@ -10,14 +10,31 @@ type StudentActivityStatus = {
 };
 type ActivityStatusMap = Record<string, StudentActivityStatus>;
 
+export const STUDENT_ACTIVITY_REFRESH_EVENT =
+  "teacher-student-activity-refresh";
+
 let cachedMap: ActivityStatusMap | null = null;
 let cachedAt = 0;
 let pendingRequest: Promise<ActivityStatusMap> | null = null;
-const CACHE_MS = 15_000;
+const CACHE_MS = 5 * 60_000;
 
-const loadMap = async () => {
-  if (cachedMap && Date.now() - cachedAt < CACHE_MS) return cachedMap;
-  if (pendingRequest) return pendingRequest;
+const invalidateCache = () => {
+  cachedMap = null;
+  cachedAt = 0;
+};
+
+const loadMap = async (force = false) => {
+  if (force) {
+    invalidateCache();
+  }
+
+  if (cachedMap && Date.now() - cachedAt < CACHE_MS) {
+    return cachedMap;
+  }
+
+  if (pendingRequest) {
+    return pendingRequest;
+  }
 
   pendingRequest = (async () => {
     const user = auth.currentUser;
@@ -77,9 +94,9 @@ export default function StudentActivityBadges({ student }: { student: any }) {
       student?.collectionName || "students"
     )}:${String(student?.id || "")}`;
 
-    const refresh = async () => {
+    const refresh = async (force = false) => {
       try {
-        const map = await loadMap();
+        const map = await loadMap(force);
         if (!cancelled) {
           setStatus(
             map[studentKey] || {
@@ -95,12 +112,22 @@ export default function StudentActivityBadges({ student }: { student: any }) {
       }
     };
 
+    const handleManualRefresh = () => {
+      void refresh(true);
+    };
+
     void refresh();
-    const timer = window.setInterval(() => void refresh(), 30_000);
+    window.addEventListener(
+      STUDENT_ACTIVITY_REFRESH_EVENT,
+      handleManualRefresh
+    );
 
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
+      window.removeEventListener(
+        STUDENT_ACTIVITY_REFRESH_EVENT,
+        handleManualRefresh
+      );
     };
   }, [student?.collectionName, student?.id]);
 
