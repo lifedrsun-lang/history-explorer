@@ -11,6 +11,8 @@ import {
   CoinExchangeVendor,
   SILVER_COIN_WON_VALUE,
   formatCoinExchangeWon,
+  isValidCouponPhone,
+  normalizeCouponPhone,
 } from "@/lib/coinExchange";
 import type { CoinExchangeWindowStatus } from "@/lib/coinExchangeWindow";
 
@@ -40,6 +42,7 @@ export default function CoinExchangeRequest({ student }: Props) {
   const [rewardKind, setRewardKind] = useState<RewardKind>("daiso");
   const [convenienceVendor, setConvenienceVendor] =
     useState<Extract<CoinExchangeVendor, "cu" | "gs25">>("cu");
+  const [recipientPhone, setRecipientPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
@@ -123,6 +126,11 @@ export default function CoinExchangeRequest({ student }: Props) {
       return;
     }
 
+    if (!isValidCouponPhone(recipientPhone)) {
+      setErrorMessage("모바일 쿠폰을 받을 010 휴대폰번호를 입력해 주세요.");
+      return;
+    }
+
     const vendor: CoinExchangeVendor =
       rewardKind === "daiso" ? "daiso" : convenienceVendor;
 
@@ -141,6 +149,7 @@ export default function CoinExchangeRequest({ student }: Props) {
           ...getStudentAuthBody(),
           amountSilver: amount,
           vendor,
+          recipientPhone,
         }),
       });
       const data = await response.json();
@@ -211,6 +220,9 @@ export default function CoinExchangeRequest({ student }: Props) {
             <div>
               🥈 은엽전 {request.amountSilver}개 → {formatCoinExchangeWon(request.amountWon)}
             </div>
+            {request.recipientPhone && (
+              <div>📱 쿠폰 수신번호 {request.recipientPhone}</div>
+            )}
           </div>
 
           <div className="mt-3 text-xs font-bold leading-relaxed text-slate-500">
@@ -298,6 +310,24 @@ export default function CoinExchangeRequest({ student }: Props) {
                   추가 상품 · 협의중
                 </div>
               </div>
+
+              <label className="block text-sm font-black text-slate-700">
+                📱 모바일 쿠폰 받을 휴대폰번호
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  placeholder="010-1234-5678"
+                  value={recipientPhone}
+                  onChange={(event) =>
+                    setRecipientPhone(normalizeCouponPhone(event.target.value))
+                  }
+                  className="mt-2 w-full rounded-2xl border border-violet-100 bg-white px-4 py-3 text-base font-black outline-none focus:border-violet-300 focus:ring-4 focus:ring-violet-100"
+                />
+                <span className="mt-2 block text-xs font-bold leading-5 text-slate-500">
+                  선택한 상품권을 받을 번호예요. 010 번호를 정확히 입력해 주세요.
+                </span>
+              </label>
 
               <div className="rounded-2xl border border-violet-100 bg-white px-4 py-3 text-center">
                 <div className="text-xs font-bold text-slate-500">신청 금액</div>
