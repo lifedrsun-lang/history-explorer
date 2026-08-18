@@ -164,8 +164,11 @@ export default function TeacherCoinExchangesPage() {
     }
 
     if (action === "complete") {
+      const phoneLine = exchangeRequest.recipientPhone
+        ? `\n쿠폰 수신번호: ${exchangeRequest.recipientPhone}`
+        : "";
       const confirmed = window.confirm(
-        `${exchangeRequest.studentSnapshot.name} 학생의 은엽전 ${exchangeRequest.amountSilver}개를 ${exchangeRequest.vendorLabel} ${formatCoinExchangeWon(exchangeRequest.amountWon)}으로 교환 완료 처리할까요?\n\n완료하면 은엽전이 차감되고 학생 기록에 남습니다.`
+        `${exchangeRequest.studentSnapshot.name} 학생의 은엽전 ${exchangeRequest.amountSilver}개를 ${exchangeRequest.vendorLabel} ${formatCoinExchangeWon(exchangeRequest.amountWon)}으로 교환 완료 처리할까요?${phoneLine}\n\n완료하면 은엽전이 차감되고 학생 기록에 남습니다.`
       );
 
       if (!confirmed) {
@@ -360,6 +363,9 @@ export default function TeacherCoinExchangesPage() {
                         </div>
                         <div className="mt-1 text-sm font-bold text-slate-700">
                           은엽전 {exchangeRequest.amountSilver}개 → {formatCoinExchangeWon(exchangeRequest.amountWon)}
+                        </div>
+                        <div className="mt-2 text-sm font-black text-slate-800">
+                          📱 쿠폰 수신번호 {exchangeRequest.recipientPhone || "기존 신청 · 번호 없음"}
                         </div>
                       </div>
 
