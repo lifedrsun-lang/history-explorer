@@ -9,6 +9,8 @@ import {
   SILVER_COIN_WON_VALUE,
   getCoinExchangeVendorLabel,
   isCoinExchangeVendor,
+  isValidCouponPhone,
+  normalizeCouponPhone,
 } from "@/lib/coinExchange";
 import { getCoinExchangeWindowStatus } from "@/lib/coinExchangeWindow";
 import {
@@ -56,6 +58,7 @@ const serializeRequest = (
       normalizeText(data?.vendorLabel) || getCoinExchangeVendorLabel(vendor),
     amountSilver: Number(data?.amountSilver || 0),
     amountWon: Number(data?.amountWon || 0),
+    recipientPhone: normalizeCouponPhone(data?.recipientPhone),
     status: normalizeStatus(data?.status),
     createdAt: serializeDate(data?.createdAt),
     updatedAt: serializeDate(data?.updatedAt),
@@ -99,6 +102,10 @@ const mapStudentExchangeError = (error: unknown) => {
 
   if (message === "invalid_exchange_vendor") {
     return jsonError("교환할 상품권을 선택해 주세요.", 400, message);
+  }
+
+  if (message === "invalid_recipient_phone") {
+    return jsonError("모바일 쿠폰을 받을 010 휴대폰번호를 확인해 주세요.", 400, message);
   }
 
   if (message === "insufficient_silver") {
@@ -165,6 +172,7 @@ export async function POST(request: Request) {
 
     const amountSilver = Number(body?.amountSilver);
     const vendor = body?.vendor;
+    const recipientPhone = normalizeCouponPhone(body?.recipientPhone);
 
     if (!Number.isInteger(amountSilver) || amountSilver <= 0) {
       throw new Error("invalid_exchange_amount");
@@ -172,6 +180,10 @@ export async function POST(request: Request) {
 
     if (!isCoinExchangeVendor(vendor)) {
       throw new Error("invalid_exchange_vendor");
+    }
+
+    if (!isValidCouponPhone(recipientPhone)) {
+      throw new Error("invalid_recipient_phone");
     }
 
     const requestRef = db.collection(COIN_EXCHANGE_COLLECTION).doc();
@@ -223,6 +235,7 @@ export async function POST(request: Request) {
         vendorLabel: getCoinExchangeVendorLabel(vendor),
         amountSilver,
         amountWon: amountSilver * SILVER_COIN_WON_VALUE,
+        recipientPhone,
         status: "pending",
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
