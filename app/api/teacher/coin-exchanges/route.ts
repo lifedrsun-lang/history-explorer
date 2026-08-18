@@ -15,6 +15,7 @@ import {
   CoinExchangeVendor,
   getCoinExchangeVendorLabel,
   isCoinExchangeVendor,
+  normalizeCouponPhone,
 } from "@/lib/coinExchange";
 import {
   handleRouteError,
@@ -61,6 +62,7 @@ const serializeRequest = (
       normalizeText(data?.vendorLabel) || getCoinExchangeVendorLabel(vendor),
     amountSilver: Number(data?.amountSilver || 0),
     amountWon: Number(data?.amountWon || 0),
+    recipientPhone: normalizeCouponPhone(data?.recipientPhone),
     status: normalizeStatus(data?.status),
     createdAt: serializeDate(data?.createdAt),
     updatedAt: serializeDate(data?.updatedAt),
