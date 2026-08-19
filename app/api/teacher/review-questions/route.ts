@@ -18,6 +18,19 @@ export const dynamic = "force-dynamic";
 const REVIEW_QUESTIONS_COLLECTION = "reviewQuestions";
 const normalizeText = (value: unknown) => String(value || "").trim();
 
+const normalizeBookNumber = (value: unknown) => {
+  const normalized = normalizeText(value);
+  if (!normalized) return "";
+
+  const numberOnly = normalized.match(/^(\d+)$/);
+  if (numberOnly) return `${numberOnly[1]}호`;
+
+  const withHo = normalized.match(/^(\d+)\s*호$/);
+  if (withHo) return `${withHo[1]}호`;
+
+  return normalized;
+};
+
 const normalizeLesson = (value: unknown, topic?: unknown) => {
   const direct = normalizeText(value);
   if (direct) return direct;
@@ -66,7 +79,7 @@ const serializeQuestion = async (
     examLevel: normalizeExamLevel(data?.examLevel),
     examRound: normalizeExamNumber(data?.examRound),
     examQuestionNumber: normalizeExamNumber(data?.examQuestionNumber),
-    bookNumber: normalizeText(data?.bookNumber),
+    bookNumber: normalizeBookNumber(data?.bookNumber),
     lesson: normalizeLesson(data?.lesson, data?.topic),
     topic: normalizeText(data?.topic),
     prompt: normalizeText(data?.prompt),
@@ -114,7 +127,7 @@ const parseQuestionBody = (body: Record<string, unknown>) => {
   const examLevel = normalizeExamLevel(body?.examLevel);
   const examRound = normalizeExamNumber(body?.examRound);
   const examQuestionNumber = normalizeExamNumber(body?.examQuestionNumber);
-  const bookNumber = normalizeText(body?.bookNumber);
+  const bookNumber = normalizeBookNumber(body?.bookNumber);
   const lesson = normalizeLesson(body?.lesson);
   const topic = normalizeText(body?.topic);
   const prompt = normalizeText(body?.prompt);
