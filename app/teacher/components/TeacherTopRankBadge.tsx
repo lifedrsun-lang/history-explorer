@@ -1,7 +1,7 @@
 "use client";
 
 import { collection, getDocs } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { getStudentGroup } from "@/app/student/data/studentGroups";
 import { normalizeSchoolText } from "@/app/student/data/schoolInfo";
@@ -65,9 +65,13 @@ const loadStudents = async (force = false) => {
 
 export default function TeacherTopRankBadge({ student }: { student: any }) {
   const [rank, setRank] = useState<number | null>(null);
+  const coinSignature = `${Number(student?.bronze || 0)}:${Number(student?.silver || 0)}`;
+  const previousCoinSignature = useRef(coinSignature);
 
   useEffect(() => {
     let cancelled = false;
+    const forceRefresh = previousCoinSignature.current !== coinSignature;
+    previousCoinSignature.current = coinSignature;
 
     const calculate = async () => {
       const group = getStudentGroup(student);
@@ -77,7 +81,7 @@ export default function TeacherTopRankBadge({ student }: { student: any }) {
       }
 
       try {
-        const allStudents = await loadStudents(true);
+        const allStudents = await loadStudents(forceRefresh);
         const school = normalizeSchoolText(student?.school);
         const program = getStudentProgramValue(student?.program);
         const score = getScore(student);
@@ -104,7 +108,7 @@ export default function TeacherTopRankBadge({ student }: { student: any }) {
     return () => {
       cancelled = true;
     };
-  }, [student?.id, student?.school, student?.program, student?.grade, student?.class, student?.bronze, student?.silver]);
+  }, [student, coinSignature]);
 
   if (!rank) return null;
 
