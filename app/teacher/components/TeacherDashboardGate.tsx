@@ -52,48 +52,88 @@ const menuItems = [
   },
 ];
 
+type DashboardSummary = {
+  pendingCoinExchangeCount: number;
+  pendingAssignmentCount: number;
+  recentReviewCompletionCount: number;
+};
+
+const EMPTY_SUMMARY: DashboardSummary = {
+  pendingCoinExchangeCount: 0,
+  pendingAssignmentCount: 0,
+  recentReviewCompletionCount: 0,
+};
+
 export default function TeacherDashboardGate() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [authorized, setAuthorized] = useState(false);
-  const [pendingExchangeCount, setPendingExchangeCount] = useState(0);
+  const [summary, setSummary] = useState<DashboardSummary>(EMPTY_SUMMARY);
 
   useEffect(() => {
     return onAuthStateChanged(auth, (user) => {
       setAuthorized(Boolean(user));
 
       if (!user) {
-        setPendingExchangeCount(0);
+        setSummary(EMPTY_SUMMARY);
         return;
       }
 
       void user
         .getIdToken()
         .then((token) =>
-          fetch("/api/teacher/coin-exchanges", {
+          fetch("/api/teacher/dashboard-summary", {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           })
         )
         .then(async (response) => {
-          if (!response.ok) {
-            return null;
-          }
-
+          if (!response.ok) return null;
           return response.json();
         })
         .then((data) => {
-          const requests = Array.isArray(data?.requests) ? data.requests : [];
-          setPendingExchangeCount(
-            requests.filter((item: { status?: string }) => item?.status === "pending").length
-          );
+          if (!data) {
+            setSummary(EMPTY_SUMMARY);
+            return;
+          }
+
+          setSummary({
+            pendingCoinExchangeCount: Math.max(
+              0,
+              Number(data?.pendingCoinExchangeCount || 0)
+            ),
+            pendingAssignmentCount: Math.max(
+              0,
+              Number(data?.pendingAssignmentCount || 0)
+            ),
+            recentReviewCompletionCount: Math.max(
+              0,
+              Number(data?.recentReviewCompletionCount || 0)
+            ),
+          });
         })
         .catch(() => {
-          setPendingExchangeCount(0);
+          setSummary(EMPTY_SUMMARY);
         });
     });
   }, []);
+
+  const getAlertCount = (href: string) => {
+    if (href === "/teacher/assignments") {
+      return summary.pendingAssignmentCount;
+    }
+
+    if (href === "/teacher/presentations/review") {
+      return summary.recentReviewCompletionCount;
+    }
+
+    if (href === "/teacher/coin-exchanges") {
+      return summary.pendingCoinExchangeCount;
+    }
+
+    return 0;
+  };
 
   if (pathname !== "/teacher" || !authorized) {
     return null;
@@ -138,37 +178,41 @@ export default function TeacherDashboardGate() {
             </div>
           </div>
 
-          {pendingExchangeCount > 0 && (
+          {summary.pendingCoinExchangeCount > 0 && (
             <Link
               href="/teacher/coin-exchanges"
               className="mt-4 flex items-center justify-between rounded-2xl border border-fuchsia-200 bg-fuchsia-50 px-4 py-3 text-sm font-black text-fuchsia-800"
             >
               <span>🔔 은엽전 교환 신청이 들어왔어요.</span>
               <span className="rounded-full bg-fuchsia-600 px-3 py-1 text-xs text-white">
-                대기 {pendingExchangeCount}건
+                대기 {summary.pendingCoinExchangeCount}건
               </span>
             </Link>
           )}
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-3 sm:mt-4 sm:gap-4 md:grid-cols-2">
-          {menuItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`group relative rounded-[24px] border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:rounded-[30px] sm:p-6 ${item.className}`}
-            >
-              {item.href === "/teacher/coin-exchanges" && pendingExchangeCount > 0 && (
-                <div className="absolute right-3 top-3 rounded-full bg-red-500 px-2.5 py-1 text-xs font-black text-white shadow-sm">
-                  {pendingExchangeCount}
-                </div>
-              )}
-              <div className="text-3xl sm:text-4xl">{item.icon}</div>
-              <div className="mt-2 text-base font-black leading-tight sm:mt-4 sm:text-2xl">{item.title}</div>
-              <div className="mt-2 hidden text-sm font-bold leading-relaxed opacity-70 sm:block">{item.description}</div>
-              <div className="mt-3 text-xs font-black opacity-80 sm:mt-5 sm:text-sm">들어가기 →</div>
-            </Link>
-          ))}
+          {menuItems.map((item) => {
+            const alertCount = getAlertCount(item.href);
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`group relative rounded-[24px] border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:rounded-[30px] sm:p-6 ${item.className}`}
+              >
+                {alertCount > 0 && (
+                  <div className="absolute right-3 top-3 flex min-h-7 min-w-7 items-center justify-center rounded-full bg-red-500 px-2 text-xs font-black text-white shadow-sm">
+                    {alertCount}
+                  </div>
+                )}
+                <div className="text-3xl sm:text-4xl">{item.icon}</div>
+                <div className="mt-2 text-base font-black leading-tight sm:mt-4 sm:text-2xl">{item.title}</div>
+                <div className="mt-2 hidden text-sm font-bold leading-relaxed opacity-70 sm:block">{item.description}</div>
+                <div className="mt-3 text-xs font-black opacity-80 sm:mt-5 sm:text-sm">들어가기 →</div>
+              </Link>
+            );
+          })}
         </div>
 
         <div className="mt-4 hidden rounded-3xl border border-slate-200 bg-white px-5 py-4 text-sm font-bold leading-relaxed text-slate-500 shadow-sm sm:block">
