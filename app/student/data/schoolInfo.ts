@@ -120,7 +120,7 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     displayName: "부천 원종초등학교",
     loginCard: {
       title: "부천 원종초등학교",
-      location: "수업 장소",
+      location: "해당 학급 교실",
     },
   },
   {
