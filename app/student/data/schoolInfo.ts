@@ -41,7 +41,7 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     password: "2497",
     loginCard: {
       title: "김포 하늘빛초",
-      location: "2F 컴퓨터실",
+      location: "2F 맞춤3실",
     },
     notice: {
       title: "3분기 수업 안내",
