@@ -116,6 +116,14 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     },
   },
   {
+    name: "부천 원종초등학교",
+    displayName: "부천 원종초등학교",
+    loginCard: {
+      title: "부천 원종초등학교",
+      location: "수업 장소",
+    },
+  },
+  {
     name: CULTURE_CENTER_LABEL,
     displayName: CULTURE_CENTER_LABEL,
     aliases: CULTURE_CENTER_SCHOOLS,
