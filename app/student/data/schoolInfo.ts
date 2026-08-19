@@ -142,7 +142,7 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
       location: "문화센터 강의실",
       classTimes: [],
     },
-    hideRanking: true,
+    hideRanking: false,
   },
 ];
 
