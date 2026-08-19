@@ -8,6 +8,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import StudentActivityBadges from "./StudentActivityBadges";
+import TeacherTopRankBadge from "./TeacherTopRankBadge";
 
 export default function StudentCard({
   student,
@@ -84,7 +85,10 @@ export default function StudentCard({
 
   return (
     <div className="w-full min-w-0 bg-white rounded-[24px] p-3 sm:rounded-[30px] sm:p-4 shadow-md">
-      <div className="text-xl sm:text-3xl font-bold truncate">{student.name}</div>
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <div className="min-w-0 truncate text-xl font-bold sm:text-3xl">{student.name}</div>
+        <TeacherTopRankBadge student={student} />
+      </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <button
