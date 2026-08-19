@@ -24,6 +24,27 @@ p.mt-3.rounded-xl.bg-white.px-3.py-2.text-xs.font-bold.leading-5.text-slate-500 
   padding-bottom: 0.75rem;
 }
 
+/* 호수 입력은 숫자만 입력해도 화면에서 바로 '호' 접미사가 보인다.
+   서버 저장 시에도 같은 형식(예: 6호)으로 정규화한다. */
+#review-question-editor label:has(> input[placeholder="예: 6호"]) {
+  position: relative;
+}
+
+#review-question-editor label:has(> input[placeholder="예: 6호"])::after {
+  content: "호";
+  position: absolute;
+  right: 1rem;
+  bottom: 0.78rem;
+  font-size: 0.875rem;
+  font-weight: 900;
+  color: rgb(100 116 139);
+  pointer-events: none;
+}
+
+#review-question-editor input[placeholder="예: 6호"] {
+  padding-right: 2.75rem;
+}
+
 @media (max-width: 767px) {
   #review-question-editor + div > section:first-child {
     max-height: 68dvh;
