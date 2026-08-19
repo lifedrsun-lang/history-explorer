@@ -12,6 +12,7 @@ import { db } from "@/lib/firebase";
 import { getStudentProgramValue } from "@/lib/programs";
 
 const CACHE_MS = 5 * 60_000;
+const NO_TOP_RANK = 999;
 
 type RankStudent = {
   id: string;
@@ -66,6 +67,49 @@ const loadStudents = async (force = false) => {
   }
 };
 
+const reorderVisibleStudentCards = () => {
+  const cards = Array.from(
+    document.querySelectorAll<HTMLElement>(
+      '[data-teacher-student-card="true"]'
+    )
+  );
+  const cardsByParent = new Map<HTMLElement, HTMLElement[]>();
+
+  cards.forEach((card) => {
+    const parent = card.parentElement;
+    if (!parent) return;
+    const group = cardsByParent.get(parent) || [];
+    group.push(card);
+    cardsByParent.set(parent, group);
+  });
+
+  cardsByParent.forEach((group) => {
+    const ordered = [...group].sort((a, b) => {
+      const rankA = Number(a.dataset.coinRank || NO_TOP_RANK);
+      const rankB = Number(b.dataset.coinRank || NO_TOP_RANK);
+      const isTopA = rankA >= 1 && rankA <= 3;
+      const isTopB = rankB >= 1 && rankB <= 3;
+
+      if (isTopA && isTopB && rankA !== rankB) {
+        return rankA - rankB;
+      }
+
+      if (isTopA !== isTopB) {
+        return isTopA ? -1 : 1;
+      }
+
+      return String(a.dataset.studentName || "").localeCompare(
+        String(b.dataset.studentName || ""),
+        "ko-KR"
+      );
+    });
+
+    ordered.forEach((card, index) => {
+      card.style.order = String(index);
+    });
+  });
+};
+
 export default function TeacherTopRankBadge({ student }: { student: any }) {
   const [rank, setRank] = useState<number | null>(null);
   const coinSignature = `${Number(student?.bronze || 0)}:${Number(student?.silver || 0)}`;
@@ -118,6 +162,26 @@ export default function TeacherTopRankBadge({ student }: { student: any }) {
       cancelled = true;
     };
   }, [student, coinSignature]);
+
+  useEffect(() => {
+    const studentId = String(student?.id || "");
+    const cards = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        '[data-teacher-student-card="true"]'
+      )
+    );
+    const card = cards.find(
+      (item) => String(item.dataset.studentId || "") === studentId
+    );
+
+    if (!card) return;
+
+    card.dataset.coinRank = String(rank && rank <= 3 ? rank : NO_TOP_RANK);
+    card.dataset.studentName = String(student?.name || "");
+
+    const frame = window.requestAnimationFrame(reorderVisibleStudentCards);
+    return () => window.cancelAnimationFrame(frame);
+  }, [rank, student?.id, student?.name]);
 
   if (!rank) return null;
 
