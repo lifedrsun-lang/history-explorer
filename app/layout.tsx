@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SUNCLASS",
+  title: "SUN LAB",
   description: "역사논술탐험 학습 플랫폼",
   icons: {
     icon: "/icon.svg",
