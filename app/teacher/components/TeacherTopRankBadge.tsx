@@ -3,8 +3,11 @@
 import { collection, getDocs } from "firebase/firestore";
 import { useEffect, useRef, useState } from "react";
 
+import {
+  isCultureCenterSchool,
+  normalizeSchoolText,
+} from "@/app/student/data/schoolInfo";
 import { getStudentGroup } from "@/app/student/data/studentGroups";
-import { normalizeSchoolText } from "@/app/student/data/schoolInfo";
 import { db } from "@/lib/firebase";
 import { getStudentProgramValue } from "@/lib/programs";
 
@@ -74,6 +77,11 @@ export default function TeacherTopRankBadge({ student }: { student: any }) {
     previousCoinSignature.current = coinSignature;
 
     const calculate = async () => {
+      if (isCultureCenterSchool(String(student?.school || ""))) {
+        if (!cancelled) setRank(null);
+        return;
+      }
+
       const group = getStudentGroup(student);
       if (!group) {
         if (!cancelled) setRank(null);
@@ -88,6 +96,7 @@ export default function TeacherTopRankBadge({ student }: { student: any }) {
 
         const peers = allStudents.filter(
           (candidate) =>
+            !isCultureCenterSchool(candidate.school) &&
             normalizeSchoolText(candidate.school) === school &&
             getStudentProgramValue(candidate.program) === program &&
             getStudentGroup(candidate) === group
