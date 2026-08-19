@@ -360,8 +360,10 @@ export default function ReviewAssignmentComposer({ user, questions }: Props) {
 
   return (
     <>
-      {composerContent}
-      <ReviewResultsPanel user={user} />
+      <div id="review-distribution-composer">{composerContent}</div>
+      <div id="review-results-panel">
+        <ReviewResultsPanel user={user} />
+      </div>
     </>
   );
 }
