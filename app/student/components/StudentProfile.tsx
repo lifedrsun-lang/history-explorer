@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { SchoolNoticeInfo } from "../data/schoolInfo";
 import CoinExchangeRequest from "./CoinExchangeRequest";
 import StudentAssignments from "./StudentAssignments";
+import StudentPrivateRankBadge from "./StudentPrivateRankBadge";
 import StudentReviewLaunchers from "./StudentReviewLaunchers";
 
 interface Props {
@@ -177,8 +178,11 @@ export default function StudentProfile({
     <div className="space-y-3">
       <div className="rounded-[28px] border border-white/80 bg-white/95 p-3 shadow-sm">
         <div>
-          <div className="truncate text-3xl font-black leading-none text-slate-800">
-            {student?.name}
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <div className="min-w-0 truncate text-3xl font-black leading-none text-slate-800">
+              {student?.name}
+            </div>
+            <StudentPrivateRankBadge student={student} />
           </div>
           <div className="mt-2 truncate text-sm font-bold text-slate-500">
             🏫 {student?.school} · {student?.grade}학년 {student?.class}반
