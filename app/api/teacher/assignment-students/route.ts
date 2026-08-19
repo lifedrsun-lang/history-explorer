@@ -25,16 +25,26 @@ type ActivityCount = {
   completed: number;
 };
 
+type ReviewActivityCount = ActivityCount & {
+  wrongCount: number;
+  scoreAvailableCount: number;
+};
+
 type StudentActivityStatus = {
   homework: ActivityCount;
-  review: ActivityCount;
+  review: ReviewActivityCount;
 };
 
 const FIRESTORE_IN_LIMIT = 30;
 
 const makeEmptyStatus = (): StudentActivityStatus => ({
   homework: { assigned: 0, completed: 0 },
-  review: { assigned: 0, completed: 0 },
+  review: {
+    assigned: 0,
+    completed: 0,
+    wrongCount: 0,
+    scoreAvailableCount: 0,
+  },
 });
 
 const getTargetStudentKeys = (
@@ -213,7 +223,11 @@ export async function GET(request: Request) {
       ensureStudent(studentKey).homework.completed += 1;
     });
 
-    const reviewCompletionPairs = new Set<string>();
+    const reviewCompletionByPair = new Map<
+      string,
+      FirebaseFirestore.DocumentData
+    >();
+
     reviewCompletionDocs.forEach((docItem) => {
       const data = docItem.data();
       const assignmentId = normalizeText(data?.assignmentId);
@@ -224,13 +238,24 @@ export async function GET(request: Request) {
       if (!targets?.has(studentKey)) return;
       if (!data?.completedAt && !data?.rewardGranted) return;
 
-      reviewCompletionPairs.add(`${assignmentId}|${studentKey}`);
+      const pair = `${assignmentId}|${studentKey}`;
+      if (!reviewCompletionByPair.has(pair)) {
+        reviewCompletionByPair.set(pair, data);
+      }
     });
 
-    reviewCompletionPairs.forEach((pair) => {
+    reviewCompletionByPair.forEach((data, pair) => {
       const separatorIndex = pair.indexOf("|");
       const studentKey = pair.slice(separatorIndex + 1);
-      ensureStudent(studentKey).review.completed += 1;
+      const reviewStatus = ensureStudent(studentKey).review;
+      reviewStatus.completed += 1;
+
+      const answers = Array.isArray(data?.answers) ? data.answers : [];
+      const totalQuestions = Number(data?.totalQuestions || 0);
+      if (answers.length > 0 && totalQuestions > 0) {
+        reviewStatus.scoreAvailableCount += 1;
+        reviewStatus.wrongCount += Math.max(0, Number(data?.wrongCount || 0));
+      }
     });
 
     return Response.json({ students, activityByStudent });
