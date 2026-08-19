@@ -39,6 +39,9 @@ export default function StudentCard({
     (item: any) => String(item?.stageId || "") === String(student?.stage || "")
   );
   const programLabel = getStudentProgramLabel(student?.program);
+  const hasPendingCoinExchange = Boolean(
+    String(student?.pendingCoinExchangeRequestId || "").trim()
+  );
 
   const undoCurrentMaterial = async () => {
     const currentStageId = String(student?.stage || "");
@@ -99,6 +102,25 @@ export default function StudentCard({
         </button>
 
         <StudentActivityBadges student={student} />
+
+        <button
+          type="button"
+          disabled={!hasPendingCoinExchange}
+          onClick={() => router.push("/teacher/coin-exchanges")}
+          title={
+            hasPendingCoinExchange
+              ? "이 학생의 코인교환 신청 확인"
+              : "대기 중인 코인교환 신청이 없습니다."
+          }
+          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black transition ${
+            hasPendingCoinExchange
+              ? "cursor-pointer bg-fuchsia-100 text-fuchsia-700 ring-2 ring-fuchsia-200 hover:scale-[1.03]"
+              : "cursor-default bg-slate-100 text-slate-400"
+          }`}
+        >
+          <span className={hasPendingCoinExchange ? "opacity-100" : "opacity-30"}>🎁</span>
+          <span>{hasPendingCoinExchange ? "코인교환 1" : "코인교환 없음"}</span>
+        </button>
 
         {enrollmentTerms.map((term) => (
           <span
