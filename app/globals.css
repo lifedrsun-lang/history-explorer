@@ -5,3 +5,27 @@ p.mt-3.rounded-xl.bg-white.px-3.py-2.text-xs.font-bold.leading-5.text-slate-500 
   white-space: pre-wrap;
   line-height: 1.5rem;
 }
+
+/* 복습문제가 많아져도 페이지 전체가 끝없이 길어지지 않도록
+   저장된 문제 영역만 독립적으로 스크롤한다. */
+#review-question-editor + div > section:first-child {
+  max-height: min(74dvh, 820px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+/* 문제은행 필터는 내부 스크롤 중에도 상단에 남겨 빠르게 조건을 바꿀 수 있다. */
+#review-question-editor + div > section:first-child > div:first-child {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: white;
+  padding-bottom: 0.75rem;
+}
+
+@media (max-width: 767px) {
+  #review-question-editor + div > section:first-child {
+    max-height: 68dvh;
+  }
+}
