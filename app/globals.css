@@ -45,6 +45,94 @@ p.mt-3.rounded-xl.bg-white.px-3.py-2.text-xs.font-bold.leading-5.text-slate-500 
   padding-right: 2.75rem;
 }
 
+/* 복습문제는 문제 만들기 / 문제 배포하기 / 결과 중 하나만 보여준다. */
+#review-workspace-tabs[data-mode="create"] + main #review-question-editor {
+  grid-column: 1 / -1;
+}
+
+#review-workspace-tabs[data-mode="create"] + main #review-question-editor + div {
+  display: none;
+}
+
+#review-workspace-tabs[data-mode="distribute"] + main #review-question-editor,
+#review-workspace-tabs[data-mode="results"] + main #review-question-editor {
+  display: none;
+}
+
+#review-workspace-tabs[data-mode="distribute"] + main #review-question-editor + div,
+#review-workspace-tabs[data-mode="results"] + main #review-question-editor + div {
+  grid-column: 1 / -1;
+}
+
+/* 문제 배포에서는 오답 결과 패널을 숨기고 문제 선택·배포만 보인다. */
+#review-workspace-tabs[data-mode="distribute"] + main #review-results-panel {
+  display: none;
+}
+
+/* 호수와 차시를 모두 고르기 전에는 문제카드를 먼저 펼치지 않는다. */
+#review-workspace-tabs[data-mode="distribute"][data-filter-ready="false"]
+  + main
+  #review-question-editor
+  + div
+  > section:first-child
+  > :not(:first-child) {
+  display: none;
+}
+
+#review-workspace-tabs[data-mode="distribute"][data-filter-ready="false"]
+  + main
+  #review-question-editor
+  + div
+  > section:first-child::after {
+  content: "호수와 차시를 선택하면 해당 문제 목록이 표시됩니다.";
+  display: block;
+  margin-top: 1.25rem;
+  border: 2px dashed rgb(226 232 240);
+  border-radius: 1rem;
+  background: rgb(248 250 252);
+  padding: 2.5rem 1rem;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 900;
+  color: rgb(100 116 139);
+}
+
+/* 결과 화면에서는 문제은행·배포 설정을 모두 감추고 결과만 단독으로 보여준다. */
+#review-workspace-tabs[data-mode="results"]
+  + main
+  #review-question-editor
+  + div
+  > section:first-child {
+  display: none;
+}
+
+#review-workspace-tabs[data-mode="results"]
+  + main
+  #review-question-editor
+  + div
+  > section:last-child {
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+#review-workspace-tabs[data-mode="results"]
+  + main
+  #review-question-editor
+  + div
+  > section:last-child
+  > :not(#review-results-panel) {
+  display: none;
+}
+
+#review-workspace-tabs[data-mode="results"] + main #review-distribution-composer {
+  display: none;
+}
+
+#review-workspace-tabs[data-mode="results"] + main #review-results-panel > section {
+  margin-top: 0;
+}
+
 @media (max-width: 767px) {
   #review-question-editor + div > section:first-child {
     max-height: 68dvh;
