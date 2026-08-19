@@ -33,7 +33,7 @@ const menuItems = [
     href: "/teacher/presentations/review",
     icon: "📝",
     title: "복습문제",
-    description: "수업 복습문제를 확인하고 문제은행을 관리",
+    description: "문제 만들기·배포·결과를 나누어 관리",
     className: "border-blue-200 bg-blue-50 text-blue-900",
   },
   {
@@ -116,12 +116,12 @@ export default function TeacherDashboardGate() {
         <div className="rounded-[28px] bg-white p-5 shadow-xl sm:rounded-[32px] sm:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
             <div>
-              <div className="text-xs font-black text-slate-400 sm:text-sm">TEACHER HOME</div>
+              <div className="text-xs font-black text-slate-400 sm:text-sm">SUN LAB TEACHER</div>
               <h1 className="mt-1 text-2xl font-black text-slate-900 sm:text-4xl">
-                🏫 역사 탐험 관리소
+                🏫 SUN LAB 교사 관리실
               </h1>
               <p className="mt-1 text-xs font-bold leading-relaxed text-slate-500 sm:mt-2 sm:text-sm">
-                오늘 필요한 관리 메뉴를 선택해 주세요.
+                수강생과 수업 운영을 한곳에서 관리해요.
               </p>
             </div>
 
