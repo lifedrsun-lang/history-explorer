@@ -214,6 +214,10 @@ export const shouldHideRankingForSchool = (school: string) => {
   return Boolean(getSchoolInfo(school)?.hideRanking);
 };
 
+export const isHaneulbitSchool = (school: string) => {
+  return getSchoolInfo(school)?.name === "김포 하늘빛초등학교";
+};
+
 export const getDefaultSchoolDisplayNames = () => {
   return STUDENT_SCHOOL_INFOS.map(
     (schoolInfo) => schoolInfo.displayName

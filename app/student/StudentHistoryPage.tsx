@@ -18,7 +18,7 @@ import {
 
 import SchoolSelect from "./components/SchoolSelect";
 import StudentProfile from "./components/StudentProfile";
-import RankingCard from "./components/RankingCard";
+import ClassProgressBoard from "./components/ClassProgressBoard";
 import SearchDropdown from "./components/SearchDropdown";
 import LoadingSpinner from "./components/LoadingSpinner";
 
@@ -30,10 +30,9 @@ import {
   getSchoolPassword,
   isCultureCenterSchool,
   normalizeSchoolText,
-  shouldHideRankingForSchool,
+  isHaneulbitSchool,
 } from "./data/schoolInfo";
 import {
-  getStudentGroup,
   getStudentGroupLabel,
 } from "./data/studentGroups";
 
@@ -452,13 +451,6 @@ export default function StudentHistoryPage({
     }
   };
 
-  const getScore = (s: any) => {
-    return (
-      Number(s?.silver || 0) * 10 +
-      Number(s?.bronze || 0)
-    );
-  };
-
   const activeStudents = students.filter((s) => {
     return s?.isActive !== false;
   });
@@ -472,30 +464,11 @@ export default function StudentHistoryPage({
           );
         });
 
-  const moonRanking = activeStudents
-    .filter(
-      (s) => getStudentGroup(s) === "moon"
-    )
-    .sort(
-      (a, b) => getScore(b) - getScore(a)
-    )
-    .slice(0, 3);
-
-  const starRanking = activeStudents
-    .filter(
-      (s) => getStudentGroup(s) === "star"
-    )
-    .sort(
-      (a, b) => getScore(b) - getScore(a)
-    )
-    .slice(0, 3);
-
   const selectedStageInfo = selectedStudent
     ? getStageInfo(selectedStudent?.stage)
     : null;
 
-  const hideRanking =
-    shouldHideRankingForSchool(selectedSchool);
+  const showHaneulbitProgress = isHaneulbitSchool(selectedSchool);
   const selectedSchoolNotice = selectedStudent
     ? getSchoolNotice(selectedStudent?.school)
     : null;
@@ -662,38 +635,7 @@ export default function StudentHistoryPage({
                 )}
             </div>
 
-            {hideRanking ? (
-              <div className="rounded-[28px] border border-amber-100 bg-white/90 px-5 py-5 text-center shadow-sm">
-                <div className="text-lg font-black text-slate-800">
-                  문화센터 수업은 개별 참여 수업이라 랭킹을 운영하지 않아요.
-                </div>
-
-                <div className="mt-2 text-sm font-bold text-slate-500">
-                  나의 코인과 기록을 확인해 주세요.
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* 랭킹 */}
-                <RankingCard
-                  title="A반 랭킹"
-                  icon="🌙"
-                  students={moonRanking}
-                  getScore={getScore}
-                  bgColor="bg-white/90"
-                  borderColor="border-sky-100"
-                />
-
-                <RankingCard
-                  title="B반 랭킹"
-                  icon="⭐"
-                  students={starRanking}
-                  getScore={getScore}
-                  bgColor="bg-white/90"
-                  borderColor="border-amber-100"
-                />
-              </>
-            )}
+            {showHaneulbitProgress && <ClassProgressBoard />}
           </>
         )}
 
