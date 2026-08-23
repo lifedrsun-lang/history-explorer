@@ -57,13 +57,16 @@ export const WORLD_CULTURE_SERIES: Array<{
   { value: "discovery_invention", label: "발견과 발명" },
 ];
 
+const WORLD_PLACEHOLDER = "/covers/worldculture/placeholder.svg";
+
 export const WORLD_CULTURE_BOOKS: WorldCultureBookEntry[] = [
   {
     series: "culture_art",
     seriesLabel: "문화와 예술",
     number: 1,
+    coverUrl: WORLD_PLACEHOLDER,
     lessons: {
-      1: "세계 최고의 성 자금성",
+      1: "세계 최고의 성",
       2: "드디어 완성된 피렌체 대성당",
       3: "그림 속 비밀을 찾아라",
       4: "피렌체에 온 그리스 학자들",
@@ -73,6 +76,7 @@ export const WORLD_CULTURE_BOOKS: WorldCultureBookEntry[] = [
     series: "culture_art",
     seriesLabel: "문화와 예술",
     number: 2,
+    coverUrl: "/covers/worldculture/culture-art-2.svg",
     lessons: {
       1: "비너스의 탄생",
       2: "최후의 만찬을 망친 범인은?",
@@ -84,6 +88,7 @@ export const WORLD_CULTURE_BOOKS: WorldCultureBookEntry[] = [
     series: "culture_art",
     seriesLabel: "문화와 예술",
     number: 3,
+    coverUrl: WORLD_PLACEHOLDER,
     lessons: {
       1: "철학을 그린 화가 라파엘로",
       2: "그림으로 이야기하는 홀바인",
@@ -95,6 +100,7 @@ export const WORLD_CULTURE_BOOKS: WorldCultureBookEntry[] = [
     series: "world_history",
     seriesLabel: "세계의 역사",
     number: 1,
+    coverUrl: "/covers/worldculture/world-history-1.svg",
     lessons: {
       1: "마녀로 오해 받은 아주머니",
       2: "에스파냐 무적함대가 나타났다",
@@ -106,6 +112,7 @@ export const WORLD_CULTURE_BOOKS: WorldCultureBookEntry[] = [
     series: "world_history",
     seriesLabel: "세계의 역사",
     number: 2,
+    coverUrl: "/covers/worldculture/world-history-2.svg",
     lessons: {
       1: "이스탄불에 가면 시장도 있고",
       2: "찬란한 무덤",
@@ -117,6 +124,7 @@ export const WORLD_CULTURE_BOOKS: WorldCultureBookEntry[] = [
     series: "world_history",
     seriesLabel: "세계의 역사",
     number: 3,
+    coverUrl: "/covers/worldculture/world-history-3.svg",
     lessons: {
       1: "아름다운 템스강이 사라지다",
       2: "궁정화가 고야의 낮과 밤",
@@ -128,6 +136,7 @@ export const WORLD_CULTURE_BOOKS: WorldCultureBookEntry[] = [
     series: "world_people",
     seriesLabel: "세계의 인물",
     number: 1,
+    coverUrl: "/covers/worldculture/world-people-1.svg",
     lessons: {
       1: "신의 존재 증명, 토마스아퀴나스",
       2: "세계를 누비는 정화함대",
@@ -139,8 +148,9 @@ export const WORLD_CULTURE_BOOKS: WorldCultureBookEntry[] = [
     series: "world_people",
     seriesLabel: "세계의 인물",
     number: 2,
+    coverUrl: WORLD_PLACEHOLDER,
     lessons: {
-      1: "먹느나 마느냐 그것이 문제로다",
+      1: "먹느냐 마느냐 그것이 문제로다",
       2: "데카르트의 의심",
       3: "렘브란트의 자화상",
       4: "벨라스케스 그림의 비밀",
@@ -150,6 +160,7 @@ export const WORLD_CULTURE_BOOKS: WorldCultureBookEntry[] = [
     series: "world_people",
     seriesLabel: "세계의 인물",
     number: 3,
+    coverUrl: "/covers/worldculture/world-people-3.svg",
     lessons: {
       1: "그림으로 풍자한 호가스",
       2: "천재 음악가 모차르트",
@@ -161,6 +172,7 @@ export const WORLD_CULTURE_BOOKS: WorldCultureBookEntry[] = [
     series: "discovery_invention",
     seriesLabel: "발견과 발명",
     number: 1,
+    coverUrl: "/covers/worldculture/discovery-invention-1.svg",
     lessons: {
       1: "이든과 루 길을 잃다",
       2: "세종대왕 한글을 창제하다",
@@ -172,6 +184,7 @@ export const WORLD_CULTURE_BOOKS: WorldCultureBookEntry[] = [
     series: "discovery_invention",
     seriesLabel: "발견과 발명",
     number: 2,
+    coverUrl: "/covers/worldculture/discovery-invention-2.svg",
     lessons: {
       1: "무지개 색을 발견한 뉴턴",
       2: "증기기관과 산업혁명",
@@ -183,6 +196,7 @@ export const WORLD_CULTURE_BOOKS: WorldCultureBookEntry[] = [
     series: "discovery_invention",
     seriesLabel: "발견과 발명",
     number: 3,
+    coverUrl: "/covers/worldculture/discovery-invention-3.svg",
     lessons: {
       1: "빛으로 그린 그림",
       2: "파브르의 곤충일기",
@@ -239,6 +253,11 @@ export function getWorldCultureLessonTitle(
 
 export function getWorldCultureSeriesLabel(series: unknown) {
   return WORLD_CULTURE_SERIES.find((item) => item.value === series)?.label || "세계문화";
+}
+
+export function getWorldCultureSeriesOrder(series: unknown) {
+  const index = WORLD_CULTURE_SERIES.findIndex((item) => item.value === series);
+  return index < 0 ? Number.MAX_SAFE_INTEGER : index;
 }
 
 export function normalizeBookKey(
