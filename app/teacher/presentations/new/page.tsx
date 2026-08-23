@@ -13,6 +13,7 @@ type PresentationCategory = "history" | "coding";
 type PresentationDraft = {
   category: PresentationCategory;
   bookNumber: string;
+  lessonNumber: string;
   title: string;
   pptUrl: string;
 };
@@ -20,6 +21,7 @@ type PresentationDraft = {
 const EMPTY_DRAFT: PresentationDraft = {
   category: "history",
   bookNumber: "",
+  lessonNumber: "1",
   title: "",
   pptUrl: "",
 };
@@ -54,6 +56,7 @@ export default function NewTeacherPresentationPage() {
   const isValid = useMemo(
     () =>
       draft.bookNumber.trim().length > 0 &&
+      /^[1-4]$/.test(draft.lessonNumber) &&
       draft.title.trim().length > 0 &&
       isValidHttpUrl(draft.pptUrl),
     [draft]
@@ -93,6 +96,7 @@ export default function NewTeacherPresentationPage() {
         schemaVersion: 3,
         category: draft.category,
         bookNumber: draft.bookNumber.trim(),
+        lessonNumber: `${draft.lessonNumber}차시`,
         title: draft.title.trim(),
         pptUrl: draft.pptUrl.trim(),
         createdBy: currentUser.uid,
@@ -170,6 +174,19 @@ export default function NewTeacherPresentationPage() {
                 onChange={(event) => updateDraft("bookNumber", event.target.value)}
                 className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
               />
+            </label>
+
+            <label className="text-sm font-black text-slate-700">
+              차시
+              <select
+                value={draft.lessonNumber}
+                onChange={(event) => updateDraft("lessonNumber", event.target.value)}
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
+              >
+                {[1, 2, 3, 4].map((lesson) => (
+                  <option key={lesson} value={lesson}>{lesson}차시</option>
+                ))}
+              </select>
             </label>
 
             <label className="text-sm font-black text-slate-700">

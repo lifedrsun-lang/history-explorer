@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { deleteDoc, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { useParams, useRouter } from "next/navigation";
 
 import { auth, db } from "@/lib/firebase";
@@ -13,6 +13,7 @@ type PresentationCategory = "history" | "coding";
 type PresentationDraft = {
   category: PresentationCategory;
   bookNumber: string;
+  lessonNumber: string;
   title: string;
   pptUrl: string;
 };
@@ -20,6 +21,7 @@ type PresentationDraft = {
 const EMPTY_DRAFT: PresentationDraft = {
   category: "history",
   bookNumber: "",
+  lessonNumber: "1",
   title: "",
   pptUrl: "",
 };
@@ -57,11 +59,13 @@ export default function EditTeacherPresentationPage() {
   const [draft, setDraft] = useState<PresentationDraft>(EMPTY_DRAFT);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   const isValid = useMemo(
     () =>
       draft.bookNumber.trim().length > 0 &&
+      /^[1-4]$/.test(draft.lessonNumber) &&
       draft.title.trim().length > 0 &&
       isValidHttpUrl(draft.pptUrl),
     [draft]
@@ -90,6 +94,7 @@ export default function EditTeacherPresentationPage() {
         setDraft({
           category: normalizeCategory(data?.category),
           bookNumber: String(data?.bookNumber || ""),
+          lessonNumber: String(data?.lessonNumber || data?.title || "").match(/([1-4])\s*차시/)?.[1] || "1",
           title: String(data?.title || ""),
           pptUrl: String(data?.pptUrl || ""),
         });
@@ -122,6 +127,7 @@ export default function EditTeacherPresentationPage() {
       await updateDoc(doc(db, "presentations", presentationId), {
         category: draft.category,
         bookNumber: draft.bookNumber.trim(),
+        lessonNumber: `${draft.lessonNumber}차시`,
         title: draft.title.trim(),
         pptUrl: draft.pptUrl.trim(),
         updatedBy: currentUser.uid,
@@ -134,6 +140,20 @@ export default function EditTeacherPresentationPage() {
       setErrorMessage("PPT 수정 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (isDeleting || isSaving || !window.confirm("이 PPT를 삭제할까요? 삭제한 자료는 복구할 수 없습니다.")) return;
+    setIsDeleting(true);
+    setErrorMessage("");
+    try {
+      await deleteDoc(doc(db, "presentations", presentationId));
+      router.push("/teacher/presentations");
+    } catch (error) {
+      console.error("Presentation delete failed:", error);
+      setErrorMessage("PPT 삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+      setIsDeleting(false);
     }
   };
 
@@ -200,6 +220,19 @@ export default function EditTeacherPresentationPage() {
             </label>
 
             <label className="text-sm font-black text-slate-700">
+              차시
+              <select
+                value={draft.lessonNumber}
+                onChange={(event) => updateDraft("lessonNumber", event.target.value)}
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
+              >
+                {[1, 2, 3, 4].map((lesson) => (
+                  <option key={lesson} value={lesson}>{lesson}차시</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="text-sm font-black text-slate-700">
               책 제목
               <input
                 type="text"
@@ -228,11 +261,19 @@ export default function EditTeacherPresentationPage() {
 
           <button
             type="button"
-            disabled={!isValid || isSaving}
+            disabled={!isValid || isSaving || isDeleting}
             onClick={handleSubmit}
             className="mt-6 w-full rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-white transition enabled:hover:bg-yellow-500 disabled:opacity-50"
           >
             {isSaving ? "저장 중..." : "수정 저장"}
+          </button>
+          <button
+            type="button"
+            disabled={isSaving || isDeleting}
+            onClick={handleDelete}
+            className="mt-3 w-full rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm font-black text-red-600 transition enabled:hover:bg-red-50 disabled:opacity-50"
+          >
+            {isDeleting ? "삭제 중..." : "PPT 삭제"}
           </button>
         </div>
       </div>
