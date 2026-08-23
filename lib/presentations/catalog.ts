@@ -1,10 +1,24 @@
-export type PresentationCategory = "history" | "coding";
+export type PresentationCategory = "history" | "coding" | "world";
+
+export type WorldCultureSeries =
+  | "culture_art"
+  | "world_history"
+  | "world_people"
+  | "discovery_invention";
 
 export type BookCatalogEntry = {
   number: number;
   shortTitle: string;
   title: string;
   coverUrl?: string;
+};
+
+export type WorldCultureBookEntry = {
+  series: WorldCultureSeries;
+  seriesLabel: string;
+  number: number;
+  coverUrl?: string;
+  lessons: Record<number, string>;
 };
 
 export const HISTORY_BOOKS: BookCatalogEntry[] = [
@@ -33,7 +47,155 @@ export const HISTORY_BOOKS: BookCatalogEntry[] = [
   { number: 23, shortTitle: "대한민국2", title: "민주주의와 경제 발전", coverUrl: "/covers/23.png" },
 ];
 
+export const WORLD_CULTURE_SERIES: Array<{
+  value: WorldCultureSeries;
+  label: string;
+}> = [
+  { value: "culture_art", label: "문화와 예술" },
+  { value: "world_history", label: "세계의 역사" },
+  { value: "world_people", label: "세계의 인물" },
+  { value: "discovery_invention", label: "발견과 발명" },
+];
+
+export const WORLD_CULTURE_BOOKS: WorldCultureBookEntry[] = [
+  {
+    series: "culture_art",
+    seriesLabel: "문화와 예술",
+    number: 1,
+    lessons: {
+      1: "세계 최고의 성 자금성",
+      2: "드디어 완성된 피렌체 대성당",
+      3: "그림 속 비밀을 찾아라",
+      4: "피렌체에 온 그리스 학자들",
+    },
+  },
+  {
+    series: "culture_art",
+    seriesLabel: "문화와 예술",
+    number: 2,
+    lessons: {
+      1: "비너스의 탄생",
+      2: "최후의 만찬을 망친 범인은?",
+      3: "모나리자를 웃겨라",
+      4: "괴짜 화가 미켈란젤로",
+    },
+  },
+  {
+    series: "culture_art",
+    seriesLabel: "문화와 예술",
+    number: 3,
+    lessons: {
+      1: "철학을 그린 화가 라파엘로",
+      2: "그림으로 이야기하는 홀바인",
+      3: "그림으로 반항한 미켈란젤로",
+      4: "신분상승을 하게 된 화가들",
+    },
+  },
+  {
+    series: "world_history",
+    seriesLabel: "세계의 역사",
+    number: 1,
+    lessons: {
+      1: "마녀로 오해 받은 아주머니",
+      2: "에스파냐 무적함대가 나타났다",
+      3: "패배를 모르는 이순신 장군",
+      4: "튤립이 집 한 채 값이라고?",
+    },
+  },
+  {
+    series: "world_history",
+    seriesLabel: "세계의 역사",
+    number: 2,
+    lessons: {
+      1: "이스탄불에 가면 시장도 있고",
+      2: "찬란한 무덤",
+      3: "베르사유 궁전 예법",
+      4: "미국의 독립전쟁과 영국의 차문화",
+    },
+  },
+  {
+    series: "world_history",
+    seriesLabel: "세계의 역사",
+    number: 3,
+    lessons: {
+      1: "아름다운 템스강이 사라지다",
+      2: "궁정화가 고야의 낮과 밤",
+      3: "나폴레옹 러시아 원정",
+      4: "화산재에 묻힌 도시 폼페이",
+    },
+  },
+  {
+    series: "world_people",
+    seriesLabel: "세계의 인물",
+    number: 1,
+    lessons: {
+      1: "신의 존재 증명, 토마스아퀴나스",
+      2: "세계를 누비는 정화함대",
+      3: "인도를 찾아 떠난 콜럼버스",
+      4: "네덜란드 농부의 화가 브뤼헐",
+    },
+  },
+  {
+    series: "world_people",
+    seriesLabel: "세계의 인물",
+    number: 2,
+    lessons: {
+      1: "먹느나 마느냐 그것이 문제로다",
+      2: "데카르트의 의심",
+      3: "렘브란트의 자화상",
+      4: "벨라스케스 그림의 비밀",
+    },
+  },
+  {
+    series: "world_people",
+    seriesLabel: "세계의 인물",
+    number: 3,
+    lessons: {
+      1: "그림으로 풍자한 호가스",
+      2: "천재 음악가 모차르트",
+      3: "스스로 황제가 된 나폴레옹",
+      4: "프랑스 낭만주의 화가",
+    },
+  },
+  {
+    series: "discovery_invention",
+    seriesLabel: "발견과 발명",
+    number: 1,
+    lessons: {
+      1: "이든과 루 길을 잃다",
+      2: "세종대왕 한글을 창제하다",
+      3: "세상을 바꾼 발명품",
+      4: "갈릴레오 갈릴레이의 망원경",
+    },
+  },
+  {
+    series: "discovery_invention",
+    seriesLabel: "발견과 발명",
+    number: 2,
+    lessons: {
+      1: "무지개 색을 발견한 뉴턴",
+      2: "증기기관과 산업혁명",
+      3: "거중기로 지은 수원화성",
+      4: "새로운 세상을 연 증기선",
+    },
+  },
+  {
+    series: "discovery_invention",
+    seriesLabel: "발견과 발명",
+    number: 3,
+    lessons: {
+      1: "빛으로 그린 그림",
+      2: "파브르의 곤충일기",
+      3: "모든 생명은 진화한다",
+      4: "완두콩으로 알아낸 유전원리",
+    },
+  },
+];
+
 const HISTORY_BOOK_MAP = new Map(HISTORY_BOOKS.map((book) => [book.number, book]));
+const WORLD_CULTURE_BOOK_MAP = new Map(
+  WORLD_CULTURE_BOOKS.map((book) => [`${book.series}:${book.number}`, book])
+);
 
 export function getNumber(value: unknown) {
   const match = String(value ?? "").match(/\d+/);
@@ -53,9 +215,42 @@ export function getHistoryBook(bookNumber: unknown) {
   return HISTORY_BOOK_MAP.get(getNumber(bookNumber));
 }
 
-export function normalizeBookKey(category: PresentationCategory, bookNumber: unknown) {
+export function isWorldCultureSeries(value: unknown): value is WorldCultureSeries {
+  return WORLD_CULTURE_SERIES.some((series) => series.value === value);
+}
+
+export function getWorldCultureBook(
+  series: unknown,
+  bookNumber: unknown
+) {
+  if (!isWorldCultureSeries(series)) return undefined;
+  return WORLD_CULTURE_BOOK_MAP.get(`${series}:${getNumber(bookNumber)}`);
+}
+
+export function getWorldCultureLessonTitle(
+  series: unknown,
+  bookNumber: unknown,
+  lessonNumber: unknown
+) {
+  const book = getWorldCultureBook(series, bookNumber);
+  const lesson = getNumber(lessonNumber);
+  return book?.lessons[lesson] || "";
+}
+
+export function getWorldCultureSeriesLabel(series: unknown) {
+  return WORLD_CULTURE_SERIES.find((item) => item.value === series)?.label || "세계문화";
+}
+
+export function normalizeBookKey(
+  category: PresentationCategory,
+  bookNumber: unknown,
+  worldSeries?: unknown
+) {
   const number = getNumber(bookNumber);
+  if (category === "world") {
+    const seriesKey = isWorldCultureSeries(worldSeries) ? worldSeries : "unknown";
+    return `${category}:${seriesKey}:${number}`;
+  }
   if (number !== Number.MAX_SAFE_INTEGER) return `${category}:${number}`;
   return `${category}:${String(bookNumber ?? "").trim().toLocaleLowerCase("ko")}`;
 }
-
