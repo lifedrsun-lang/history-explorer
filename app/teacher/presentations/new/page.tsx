@@ -7,11 +7,16 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 import { auth, db } from "@/lib/firebase";
-
-type PresentationCategory = "history" | "coding";
+import {
+  WORLD_CULTURE_SERIES,
+  getWorldCultureLessonTitle,
+  type PresentationCategory,
+  type WorldCultureSeries,
+} from "@/lib/presentations/catalog";
 
 type PresentationDraft = {
   category: PresentationCategory;
+  worldSeries: WorldCultureSeries | "";
   bookNumber: string;
   lessonNumber: string;
   pptUrl: string;
@@ -19,6 +24,7 @@ type PresentationDraft = {
 
 const EMPTY_DRAFT: PresentationDraft = {
   category: "history",
+  worldSeries: "",
   bookNumber: "",
   lessonNumber: "1",
   pptUrl: "",
@@ -30,6 +36,7 @@ const CATEGORIES: Array<{
   description: string;
 }> = [
   { value: "history", label: "역사", description: "역사 수업 PPT" },
+  { value: "world", label: "세계문화", description: "모나르떼 세계문화 PPT" },
   { value: "coding", label: "코딩", description: "코딩 수업 PPT" },
 ];
 
@@ -51,9 +58,23 @@ export default function NewTeacherPresentationPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  const autoLessonTitle = useMemo(
+    () =>
+      draft.category === "world"
+        ? getWorldCultureLessonTitle(
+            draft.worldSeries,
+            draft.bookNumber,
+            draft.lessonNumber
+          )
+        : "",
+    [draft.bookNumber, draft.category, draft.lessonNumber, draft.worldSeries]
+  );
+
   const isValid = useMemo(
     () =>
-      draft.bookNumber.trim().length > 0 &&
+      (draft.category === "world"
+        ? Boolean(draft.worldSeries) && /^[1-3]$/.test(draft.bookNumber)
+        : draft.bookNumber.trim().length > 0) &&
       /^[1-4]$/.test(draft.lessonNumber) &&
       isValidHttpUrl(draft.pptUrl),
     [draft]
@@ -82,6 +103,16 @@ export default function NewTeacherPresentationPage() {
     setErrorMessage("");
   };
 
+  const selectCategory = (category: PresentationCategory) => {
+    setDraft((current) => ({
+      ...current,
+      category,
+      worldSeries: category === "world" ? current.worldSeries || "culture_art" : "",
+      bookNumber: category === "world" ? (/^[1-3]$/.test(current.bookNumber) ? current.bookNumber : "1") : current.bookNumber,
+    }));
+    setErrorMessage("");
+  };
+
   const handleSubmit = async () => {
     if (!isValid || !currentUser || isSaving) return;
 
@@ -90,10 +121,15 @@ export default function NewTeacherPresentationPage() {
 
     try {
       await addDoc(collection(db, "presentations"), {
-        schemaVersion: 3,
+        schemaVersion: 4,
         category: draft.category,
-        bookNumber: draft.bookNumber.trim(),
+        worldSeries: draft.category === "world" ? draft.worldSeries : "",
+        bookNumber:
+          draft.category === "world"
+            ? `${draft.bookNumber}호`
+            : draft.bookNumber.trim(),
         lessonNumber: `${draft.lessonNumber}차시`,
+        lessonTitle: autoLessonTitle,
         pptUrl: draft.pptUrl.trim(),
         createdBy: currentUser.uid,
         updatedBy: currentUser.uid,
@@ -140,20 +176,20 @@ export default function NewTeacherPresentationPage() {
           <div className="mt-6 grid gap-4">
             <div>
               <div className="text-sm font-black text-slate-700">수업 분류</div>
-              <div className="mt-2 grid grid-cols-2 gap-2">
+              <div className="mt-2 grid grid-cols-3 gap-2">
                 {CATEGORIES.map((category) => (
                   <button
                     key={category.value}
                     type="button"
-                    onClick={() => updateDraft("category", category.value)}
-                    className={`rounded-2xl border px-4 py-3 text-left transition ${
+                    onClick={() => selectCategory(category.value)}
+                    className={`rounded-2xl border px-3 py-3 text-left transition ${
                       draft.category === category.value
                         ? "border-blue-300 bg-blue-50 text-blue-700 ring-2 ring-blue-100"
                         : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                     }`}
                   >
                     <div className="text-sm font-black">{category.label}</div>
-                    <div className="mt-1 text-xs font-bold opacity-70">
+                    <div className="mt-1 text-[11px] font-bold opacity-70">
                       {category.description}
                     </div>
                   </button>
@@ -161,16 +197,53 @@ export default function NewTeacherPresentationPage() {
               </div>
             </div>
 
-            <label className="text-sm font-black text-slate-700">
-              몇 호
-              <input
-                type="text"
-                value={draft.bookNumber}
-                placeholder="예: 6호"
-                onChange={(event) => updateDraft("bookNumber", event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
-              />
-            </label>
+            {draft.category === "world" ? (
+              <>
+                <div>
+                  <div className="text-sm font-black text-slate-700">세계문화 시리즈</div>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {WORLD_CULTURE_SERIES.map((series) => (
+                      <button
+                        key={series.value}
+                        type="button"
+                        onClick={() => updateDraft("worldSeries", series.value)}
+                        className={`rounded-2xl border px-4 py-3 text-sm font-black transition ${
+                          draft.worldSeries === series.value
+                            ? "border-violet-300 bg-violet-50 text-violet-700 ring-2 ring-violet-100"
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {series.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="text-sm font-black text-slate-700">
+                  몇 호
+                  <select
+                    value={draft.bookNumber}
+                    onChange={(event) => updateDraft("bookNumber", event.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
+                  >
+                    {[1, 2, 3].map((book) => (
+                      <option key={book} value={book}>{book}호</option>
+                    ))}
+                  </select>
+                </label>
+              </>
+            ) : (
+              <label className="text-sm font-black text-slate-700">
+                몇 호
+                <input
+                  type="text"
+                  value={draft.bookNumber}
+                  placeholder="예: 6호"
+                  onChange={(event) => updateDraft("bookNumber", event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
+                />
+              </label>
+            )}
 
             <label className="text-sm font-black text-slate-700">
               차시
@@ -184,6 +257,15 @@ export default function NewTeacherPresentationPage() {
                 ))}
               </select>
             </label>
+
+            {draft.category === "world" && (
+              <div className="rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3">
+                <div className="text-xs font-black text-violet-600">자동 차시 제목</div>
+                <div className="mt-1 text-sm font-black leading-6 text-slate-800">
+                  {autoLessonTitle || "시리즈·호수·차시를 선택하면 PDF 목차의 주제가 자동으로 표시됩니다."}
+                </div>
+              </div>
+            )}
 
             <label className="text-sm font-black text-slate-700">
               PPT 링크
