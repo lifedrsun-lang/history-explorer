@@ -11,7 +11,7 @@ import { auth, db } from "@/lib/firebase";
 import { getHistoryBook, getLessonNumber, getNumber, normalizeBookKey, type PresentationCategory } from "@/lib/presentations/catalog";
 
 type CategoryFilter = "all" | PresentationCategory;
-type PresentationListItem = { id: string; category: PresentationCategory; bookNumber: string; lessonNumber: number | null; title: string; pptUrl: string; createdAt: number };
+type PresentationListItem = { id: string; category: PresentationCategory; bookNumber: string; lessonNumber: number | null; pptUrl: string; createdAt: number };
 type PresentationBook = { key: string; category: PresentationCategory; bookNumber: string; title: string; shortTitle: string; coverUrl?: string; lessons: Map<number, PresentationListItem>; extras: PresentationListItem[] };
 
 const CATEGORY_LABELS: Record<PresentationCategory, string> = { history: "역사", coding: "코딩" };
@@ -28,8 +28,8 @@ function groupPresentations(items: PresentationListItem[]) {
     const group = groups.get(key) ?? {
       key, category: item.category,
       bookNumber: catalogBook ? `${catalogBook.number}호` : item.bookNumber,
-      title: catalogBook?.title || item.title || "책 제목 없음",
-      shortTitle: catalogBook?.shortTitle || item.title || "수업자료",
+      title: catalogBook?.title || `${item.bookNumber || "호수 미입력"} 수업자료`,
+      shortTitle: catalogBook?.shortTitle || `${CATEGORY_LABELS[item.category]} 수업자료`,
       coverUrl: catalogBook?.coverUrl,
       lessons: new Map<number, PresentationListItem>(), extras: [],
     };
@@ -67,7 +67,7 @@ export default function TeacherPresentationsPage() {
         const snapshot = await getDocs(query(collection(db, "presentations"), orderBy("createdAt", "desc")));
         setPresentations(snapshot.docs.map((docItem) => {
           const data = docItem.data();
-          return { id: docItem.id, category: normalizeCategory(data?.category), bookNumber: String(data?.bookNumber || ""), lessonNumber: getLessonNumber(data?.lessonNumber, data?.title, data?.bookNumber), title: String(data?.title || ""), pptUrl: String(data?.pptUrl || ""), createdAt: data?.createdAt instanceof Timestamp ? data.createdAt.toMillis() : 0 };
+          return { id: docItem.id, category: normalizeCategory(data?.category), bookNumber: String(data?.bookNumber || ""), lessonNumber: getLessonNumber(data?.lessonNumber, data?.title, data?.bookNumber), pptUrl: String(data?.pptUrl || ""), createdAt: data?.createdAt instanceof Timestamp ? data.createdAt.toMillis() : 0 };
         }).filter((item) => item.pptUrl));
       } catch (error) { console.error("Presentation list load failed:", error); setLoadError("수업자료 목록을 불러오지 못했습니다."); }
       finally { setIsLoading(false); }

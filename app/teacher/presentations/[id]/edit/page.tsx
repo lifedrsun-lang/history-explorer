@@ -14,7 +14,6 @@ type PresentationDraft = {
   category: PresentationCategory;
   bookNumber: string;
   lessonNumber: string;
-  title: string;
   pptUrl: string;
 };
 
@@ -22,7 +21,6 @@ const EMPTY_DRAFT: PresentationDraft = {
   category: "history",
   bookNumber: "",
   lessonNumber: "1",
-  title: "",
   pptUrl: "",
 };
 
@@ -66,7 +64,6 @@ export default function EditTeacherPresentationPage() {
     () =>
       draft.bookNumber.trim().length > 0 &&
       /^[1-4]$/.test(draft.lessonNumber) &&
-      draft.title.trim().length > 0 &&
       isValidHttpUrl(draft.pptUrl),
     [draft]
   );
@@ -95,7 +92,6 @@ export default function EditTeacherPresentationPage() {
           category: normalizeCategory(data?.category),
           bookNumber: String(data?.bookNumber || ""),
           lessonNumber: String(data?.lessonNumber || data?.title || "").match(/([1-4])\s*차시/)?.[1] || "1",
-          title: String(data?.title || ""),
           pptUrl: String(data?.pptUrl || ""),
         });
       } catch (error) {
@@ -128,7 +124,6 @@ export default function EditTeacherPresentationPage() {
         category: draft.category,
         bookNumber: draft.bookNumber.trim(),
         lessonNumber: `${draft.lessonNumber}차시`,
-        title: draft.title.trim(),
         pptUrl: draft.pptUrl.trim(),
         updatedBy: currentUser.uid,
         updatedAt: serverTimestamp(),
@@ -182,7 +177,7 @@ export default function EditTeacherPresentationPage() {
 
           <h1 className="mt-5 text-2xl font-black md:text-3xl">PPT 수정</h1>
           <p className="mt-2 text-sm font-bold text-slate-500">
-            분류와 기본정보를 수정하거나, PPT가 바뀌었으면 새 링크만 교체해서 저장하면 됩니다.
+            분류와 호수·차시를 수정하거나, PPT가 바뀌었으면 새 링크만 교체해서 저장하면 됩니다.
           </p>
 
           <div className="mt-6 grid gap-4">
@@ -230,16 +225,6 @@ export default function EditTeacherPresentationPage() {
                   <option key={lesson} value={lesson}>{lesson}차시</option>
                 ))}
               </select>
-            </label>
-
-            <label className="text-sm font-black text-slate-700">
-              책 제목
-              <input
-                type="text"
-                value={draft.title}
-                onChange={(event) => updateDraft("title", event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
-              />
             </label>
 
             <label className="text-sm font-black text-slate-700">

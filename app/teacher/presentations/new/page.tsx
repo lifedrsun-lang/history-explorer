@@ -14,7 +14,6 @@ type PresentationDraft = {
   category: PresentationCategory;
   bookNumber: string;
   lessonNumber: string;
-  title: string;
   pptUrl: string;
 };
 
@@ -22,7 +21,6 @@ const EMPTY_DRAFT: PresentationDraft = {
   category: "history",
   bookNumber: "",
   lessonNumber: "1",
-  title: "",
   pptUrl: "",
 };
 
@@ -57,7 +55,6 @@ export default function NewTeacherPresentationPage() {
     () =>
       draft.bookNumber.trim().length > 0 &&
       /^[1-4]$/.test(draft.lessonNumber) &&
-      draft.title.trim().length > 0 &&
       isValidHttpUrl(draft.pptUrl),
     [draft]
   );
@@ -97,7 +94,6 @@ export default function NewTeacherPresentationPage() {
         category: draft.category,
         bookNumber: draft.bookNumber.trim(),
         lessonNumber: `${draft.lessonNumber}차시`,
-        title: draft.title.trim(),
         pptUrl: draft.pptUrl.trim(),
         createdBy: currentUser.uid,
         updatedBy: currentUser.uid,
@@ -138,7 +134,7 @@ export default function NewTeacherPresentationPage() {
 
           <h1 className="mt-5 text-2xl font-black md:text-3xl">PPT 등록</h1>
           <p className="mt-2 text-sm font-bold text-slate-500">
-            수업 분류와 권수, 책 제목, OneDrive 등의 PowerPoint 링크를 저장합니다.
+            수업 분류와 호수, 차시, OneDrive 등의 PowerPoint 링크를 저장합니다.
           </p>
 
           <div className="mt-6 grid gap-4">
@@ -187,17 +183,6 @@ export default function NewTeacherPresentationPage() {
                   <option key={lesson} value={lesson}>{lesson}차시</option>
                 ))}
               </select>
-            </label>
-
-            <label className="text-sm font-black text-slate-700">
-              책 제목
-              <input
-                type="text"
-                value={draft.title}
-                placeholder="예: 꺼져가는 불꽃 백제"
-                onChange={(event) => updateDraft("title", event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
-              />
             </label>
 
             <label className="text-sm font-black text-slate-700">
