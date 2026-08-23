@@ -27,6 +27,10 @@ export const HISTORY_BOOKS: BookCatalogEntry[] = [
   { number: 17, shortTitle: "조선4", title: "전쟁이 휘몰아친", coverUrl: "/covers/17.png" },
   { number: 18, shortTitle: "조선5", title: "전쟁의 상처를 딛고 내일을 향해", coverUrl: "/covers/18.png" },
   { number: 19, shortTitle: "조선6", title: "백성을 위한 풍요로운 세상", coverUrl: "/covers/19.png" },
+  { number: 20, shortTitle: "대한제국1", title: "칠흑 같은 어둠의 시대", coverUrl: "/covers/20.png" },
+  { number: 21, shortTitle: "대한제국2", title: "대한 독립 만세", coverUrl: "/covers/21.png" },
+  { number: 22, shortTitle: "대한민국1", title: "세계 속에 떠오르는", coverUrl: "/covers/22.png" },
+  { number: 23, shortTitle: "대한민국2", title: "민주주의와 경제 발전", coverUrl: "/covers/23.png" },
 ];
 
 const HISTORY_BOOK_MAP = new Map(HISTORY_BOOKS.map((book) => [book.number, book]));
