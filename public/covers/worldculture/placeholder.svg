@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="960" viewBox="0 0 720 960">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff7ed"/>
+      <stop offset="0.5" stop-color="#eef6ff"/>
+      <stop offset="1" stop-color="#f5f3ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="720" height="960" rx="36" fill="url(#bg)"/>
+  <circle cx="360" cy="390" r="150" fill="#ffffff" stroke="#93c5fd" stroke-width="8"/>
+  <path d="M250 390h220M360 280c55 58 55 162 0 220M360 280c-55 58-55 162 0 220M225 340c90 35 180 35 270 0M225 440c90-35 180-35 270 0" fill="none" stroke="#60a5fa" stroke-width="8" stroke-linecap="round"/>
+  <text x="360" y="615" text-anchor="middle" font-family="Arial, sans-serif" font-size="54" font-weight="700" fill="#334155">세계문화</text>
+  <text x="360" y="675" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#64748b">표지 준비 중</text>
+</svg>
