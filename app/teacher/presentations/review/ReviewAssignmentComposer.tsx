@@ -180,7 +180,7 @@ export default function ReviewAssignmentComposer({ user, questions }: Props) {
       setNotice(
         `${isExamAssignment ? "기출문제" : "교재문제"}를 ${Number(
           data?.targetCount || selectedStudentKeys.length
-        )}명에게 보냈습니다. 학생 화면에는 7일 동안 열립니다.`
+        )}명에게 보냈습니다. 학생 화면에는 최소 12일 동안 열리고, 이후 처음 오는 일요일에 마감됩니다.`
       );
       setSelectedStudentKeys([]);
     } catch (error) {
@@ -217,7 +217,7 @@ export default function ReviewAssignmentComposer({ user, questions }: Props) {
           <div>
             <div className="text-base font-black text-slate-800">📨 과제 설정</div>
             <div className="mt-1 text-xs font-bold text-slate-500">
-              문제 {questions.length}개 · {isExamAssignment ? "기출문제" : "교재문제"} · 학생 화면에서 7일간 공개
+              문제 {questions.length}개 · {isExamAssignment ? "기출문제" : "교재문제"} · 학생 화면에서 최소 12일 공개 · 이후 첫 일요일 마감
             </div>
           </div>
           <button

@@ -33,17 +33,46 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const REVIEW_OPEN_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const REVIEW_MIN_OPEN_DAYS = 12;
+const KOREA_TIME_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+const getReviewExpirationMs = (createdAt: unknown) => {
+  const serialized =
+    typeof createdAt === "string" ? createdAt : serializeDate(createdAt);
+  const createdAtMs = serialized ? Date.parse(serialized) : Number.NaN;
+
+  if (!Number.isFinite(createdAtMs)) return Number.NaN;
+
+  const koreaDate = new Date(createdAtMs + KOREA_TIME_OFFSET_MS);
+  const minimumDate = new Date(
+    Date.UTC(
+      koreaDate.getUTCFullYear(),
+      koreaDate.getUTCMonth(),
+      koreaDate.getUTCDate() + REVIEW_MIN_OPEN_DAYS
+    )
+  );
+  const daysUntilSunday = (7 - minimumDate.getUTCDay()) % 7;
+
+  return (
+    Date.UTC(
+      minimumDate.getUTCFullYear(),
+      minimumDate.getUTCMonth(),
+      minimumDate.getUTCDate() + daysUntilSunday + 1
+    ) - KOREA_TIME_OFFSET_MS
+  );
+};
 
 const isWithinReviewWindow = (createdAt: unknown) => {
   const serialized =
     typeof createdAt === "string" ? createdAt : serializeDate(createdAt);
   const createdAtMs = serialized ? Date.parse(serialized) : Number.NaN;
+  const expiresAtMs = getReviewExpirationMs(createdAt);
 
   return (
     Number.isFinite(createdAtMs) &&
-    Date.now() - createdAtMs >= 0 &&
-    Date.now() - createdAtMs < REVIEW_OPEN_WINDOW_MS
+    Number.isFinite(expiresAtMs) &&
+    Date.now() >= createdAtMs &&
+    Date.now() < expiresAtMs
   );
 };
 
@@ -110,7 +139,7 @@ const mapStudentError = (error: unknown) => {
   }
 
   if (message === "expired_review_assignment") {
-    return jsonError("문제 풀이 기간(7일)이 끝났습니다.", 410, message);
+    return jsonError("문제 풀이 기간(최소 12일, 일요일 마감)이 끝났습니다.", 410, message);
   }
 
   if (
