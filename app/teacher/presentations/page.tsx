@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, getDocs, orderBy, query, Timestamp } from "firebase/firestore";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { auth, db } from "@/lib/firebase";
 import {
@@ -175,14 +175,10 @@ function groupPresentations(items: PresentationListItem[]) {
 
 export default function TeacherPresentationsPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const requestedCategory = searchParams.get("category");
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const [presentations, setPresentations] = useState<PresentationListItem[]>([]);
-  const [activeLibrary, setActiveLibrary] = useState<PresentationCategory | null>(
-    isCategory(requestedCategory) ? requestedCategory : null
-  );
+  const [activeLibrary, setActiveLibrary] = useState<PresentationCategory | null>(null);
   const [worldSeriesFilter, setWorldSeriesFilter] = useState<WorldSeriesFilter>("all");
   const [worldBookFilter, setWorldBookFilter] = useState("all");
   const [worldLessonFilter, setWorldLessonFilter] = useState("all");
@@ -190,10 +186,11 @@ export default function TeacherPresentationsPage() {
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
+    const requestedCategory = new URLSearchParams(window.location.search).get("category");
     if (isCategory(requestedCategory)) {
       setActiveLibrary(requestedCategory);
     }
-  }, [requestedCategory]);
+  }, []);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<PresentationCategory, number> = {
