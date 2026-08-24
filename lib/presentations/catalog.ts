@@ -57,14 +57,11 @@ export const WORLD_CULTURE_SERIES: Array<{
   { value: "discovery_invention", label: "발견과 발명" },
 ];
 
-const WORLD_PLACEHOLDER = "/covers/worldculture/placeholder.svg";
-
 export const WORLD_CULTURE_BOOKS: WorldCultureBookEntry[] = [
   {
     series: "culture_art",
     seriesLabel: "문화와 예술",
     number: 1,
-    coverUrl: WORLD_PLACEHOLDER,
     lessons: {
       1: "세계 최고의 성",
       2: "드디어 완성된 피렌체 대성당",
@@ -88,7 +85,6 @@ export const WORLD_CULTURE_BOOKS: WorldCultureBookEntry[] = [
     series: "culture_art",
     seriesLabel: "문화와 예술",
     number: 3,
-    coverUrl: WORLD_PLACEHOLDER,
     lessons: {
       1: "철학을 그린 화가 라파엘로",
       2: "그림으로 이야기하는 홀바인",
@@ -148,7 +144,6 @@ export const WORLD_CULTURE_BOOKS: WorldCultureBookEntry[] = [
     series: "world_people",
     seriesLabel: "세계의 인물",
     number: 2,
-    coverUrl: WORLD_PLACEHOLDER,
     lessons: {
       1: "먹느냐 마느냐 그것이 문제로다",
       2: "데카르트의 의심",

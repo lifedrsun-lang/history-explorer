@@ -94,6 +94,7 @@ const LIBRARIES: LibraryCard[] = [
 ];
 
 const LESSONS = [1, 2, 3, 4] as const;
+const DEFAULT_PRESENTATION_COVER_URL = "/covers/default-presentation-cover.png";
 const CATEGORY_ORDER: Record<PresentationCategory, number> = {
   history: 0,
   coding: 1,
@@ -497,35 +498,37 @@ function CompactBookCard({ book }: { book: PresentationBook }) {
       ? "text-emerald-600"
       : "text-blue-600";
 
-  const showCover = Boolean(coverUrl) && !coverFailed;
+  const useDefaultCover = !coverUrl || coverFailed;
 
   return (
     <article className="rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm transition hover:shadow-md">
       <div className="flex gap-3">
         <div className="relative h-28 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
-          {showCover ? (
-            isWorld ? (
-              <img
-                src={coverUrl}
-                alt={`${book.bookNumber} ${book.shortTitle} 표지`}
-                className="h-full w-full object-contain p-1"
-                onError={() => setCoverFailed(true)}
-              />
-            ) : (
-              <Image
-                src={coverUrl!}
-                alt={`${book.bookNumber} ${book.shortTitle} 표지`}
-                fill
-                unoptimized={coverUrl!.endsWith(".svg")}
-                sizes="80px"
-                className="object-contain p-1"
-              />
-            )
+          {useDefaultCover ? (
+            <Image
+              src={DEFAULT_PRESENTATION_COVER_URL}
+              alt={`${book.bookNumber} ${book.shortTitle} 기본 표지`}
+              fill
+              sizes="80px"
+              className="object-contain p-1"
+            />
+          ) : isWorld ? (
+            <img
+              src={coverUrl!}
+              alt={`${book.bookNumber} ${book.shortTitle} 표지`}
+              className="h-full w-full object-contain p-1"
+              onError={() => setCoverFailed(true)}
+            />
           ) : (
-            <div className="flex h-full flex-col items-center justify-center px-1 text-center text-slate-300">
-              <span className="text-3xl">{isWorld ? "🌍" : "📘"}</span>
-              <span className="mt-1 text-[10px] font-black">표지 준비 중</span>
-            </div>
+            <Image
+              src={coverUrl!}
+              alt={`${book.bookNumber} ${book.shortTitle} 표지`}
+              fill
+              unoptimized={coverUrl!.endsWith(".svg")}
+              sizes="80px"
+              className="object-contain p-1"
+              onError={() => setCoverFailed(true)}
+            />
           )}
           <span className="absolute left-1.5 top-1.5 rounded-full bg-white/95 px-2 py-1 text-[10px] font-black text-blue-700 shadow-sm">
             {book.bookNumber || "호수"}
