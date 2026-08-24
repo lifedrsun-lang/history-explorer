@@ -490,27 +490,39 @@ export default function TeacherPresentationsPage() {
 function CompactBookCard({ book }: { book: PresentationBook }) {
   const coverUrl = getDisplayCoverUrl(book.coverUrl);
   const isWorld = book.category === "world";
+  const [coverFailed, setCoverFailed] = useState(false);
   const accentText = isWorld
     ? "text-violet-600"
     : book.category === "coding"
       ? "text-emerald-600"
       : "text-blue-600";
 
+  const showCover = Boolean(coverUrl) && !coverFailed;
+
   return (
     <article className="rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm transition hover:shadow-md">
       <div className="flex gap-3">
         <div className="relative h-28 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
-          {coverUrl ? (
-            <Image
-              src={coverUrl}
-              alt={`${book.bookNumber} ${book.shortTitle} 표지`}
-              fill
-              unoptimized={coverUrl.endsWith(".svg")}
-              sizes="80px"
-              className="object-contain p-1"
-            />
+          {showCover ? (
+            isWorld ? (
+              <img
+                src={coverUrl}
+                alt={`${book.bookNumber} ${book.shortTitle} 표지`}
+                className="h-full w-full object-contain p-1"
+                onError={() => setCoverFailed(true)}
+              />
+            ) : (
+              <Image
+                src={coverUrl!}
+                alt={`${book.bookNumber} ${book.shortTitle} 표지`}
+                fill
+                unoptimized={coverUrl!.endsWith(".svg")}
+                sizes="80px"
+                className="object-contain p-1"
+              />
+            )
           ) : (
-            <div className="flex h-full flex-col items-center justify-center text-slate-300">
+            <div className="flex h-full flex-col items-center justify-center px-1 text-center text-slate-300">
               <span className="text-3xl">{isWorld ? "🌍" : "📘"}</span>
               <span className="mt-1 text-[10px] font-black">표지 준비 중</span>
             </div>
