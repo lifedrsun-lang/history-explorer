@@ -30,15 +30,25 @@ const EMPTY_DRAFT: PresentationDraft = {
   pptUrl: "",
 };
 
+const CATEGORY_LABELS: Record<PresentationCategory, string> = {
+  history: "별꼼역사",
+  world: "세계문화",
+  coding: "코딩",
+};
+
 const CATEGORIES: Array<{
   value: PresentationCategory;
   label: string;
   description: string;
 }> = [
-  { value: "history", label: "역사", description: "역사 수업 PPT" },
+  { value: "history", label: "별꼼역사", description: "한국사 수업 PPT" },
   { value: "world", label: "세계문화", description: "모나르떼 세계문화 PPT" },
   { value: "coding", label: "코딩", description: "코딩 수업 PPT" },
 ];
+
+function isPresentationCategory(value: unknown): value is PresentationCategory {
+  return value === "history" || value === "world" || value === "coding";
+}
 
 function isValidHttpUrl(value: string) {
   try {
@@ -55,6 +65,7 @@ export default function NewTeacherPresentationPage() {
   const [authorized, setAuthorized] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [draft, setDraft] = useState<PresentationDraft>(EMPTY_DRAFT);
+  const [lockedCategory, setLockedCategory] = useState<PresentationCategory | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -81,6 +92,19 @@ export default function NewTeacherPresentationPage() {
   );
 
   useEffect(() => {
+    const categoryParam = new URLSearchParams(window.location.search).get("category");
+    if (!isPresentationCategory(categoryParam)) return;
+
+    setLockedCategory(categoryParam);
+    setDraft((current) => ({
+      ...current,
+      category: categoryParam,
+      worldSeries: categoryParam === "world" ? "culture_art" : "",
+      bookNumber: categoryParam === "world" ? "1" : "",
+    }));
+  }, []);
+
+  useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
         router.replace("/teacher");
@@ -95,20 +119,24 @@ export default function NewTeacherPresentationPage() {
     return unsubscribe;
   }, [router]);
 
-  const updateDraft = (
-    field: keyof PresentationDraft,
-    value: string
-  ) => {
+  const updateDraft = (field: keyof PresentationDraft, value: string) => {
     setDraft((current) => ({ ...current, [field]: value }));
     setErrorMessage("");
   };
 
   const selectCategory = (category: PresentationCategory) => {
+    if (lockedCategory) return;
     setDraft((current) => ({
       ...current,
       category,
-      worldSeries: category === "world" ? current.worldSeries || "culture_art" : "",
-      bookNumber: category === "world" ? (/^[1-3]$/.test(current.bookNumber) ? current.bookNumber : "1") : current.bookNumber,
+      worldSeries:
+        category === "world" ? current.worldSeries || "culture_art" : "",
+      bookNumber:
+        category === "world"
+          ? /^[1-3]$/.test(current.bookNumber)
+            ? current.bookNumber
+            : "1"
+          : current.bookNumber,
     }));
     setErrorMessage("");
   };
@@ -129,14 +157,14 @@ export default function NewTeacherPresentationPage() {
             ? `${draft.bookNumber}호`
             : draft.bookNumber.trim(),
         lessonNumber: `${draft.lessonNumber}차시`,
-        lessonTitle: autoLessonTitle,
+        lessonTitle: draft.category === "world" ? autoLessonTitle : "",
         pptUrl: draft.pptUrl.trim(),
         createdBy: currentUser.uid,
         updatedBy: currentUser.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
-      router.push("/teacher/presentations");
+      router.push(`/teacher/presentations?category=${draft.category}`);
     } catch (error) {
       console.error("Presentation save failed:", error);
       setErrorMessage("PPT 저장에 실패했습니다. 링크와 입력값을 확인해 주세요.");
@@ -149,7 +177,7 @@ export default function NewTeacherPresentationPage() {
     return (
       <main className="flex min-h-[100dvh] items-center justify-center bg-[#f5f7fb] p-3 text-slate-800">
         <div className="rounded-3xl bg-white px-6 py-5 text-sm font-bold text-slate-600 shadow-md">
-          Checking teacher sign-in...
+          교사 로그인을 확인하는 중입니다...
         </div>
       </main>
     );
@@ -157,45 +185,60 @@ export default function NewTeacherPresentationPage() {
 
   if (!authorized) return null;
 
+  const backHref = lockedCategory
+    ? `/teacher/presentations?category=${lockedCategory}`
+    : "/teacher/presentations";
+
   return (
     <main className="min-h-[100dvh] bg-[#f5f7fb] p-3 text-slate-800">
       <div className="mx-auto max-w-2xl">
         <div className="rounded-3xl bg-white p-5 shadow-md">
           <Link
-            href="/teacher/presentations"
+            href={backHref}
             className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-100"
           >
-            ← PPT 목록
+            ← {lockedCategory ? `${CATEGORY_LABELS[lockedCategory]} PPT` : "PPT 자료실"}
           </Link>
 
-          <h1 className="mt-5 text-2xl font-black md:text-3xl">PPT 등록</h1>
+          <h1 className="mt-5 text-2xl font-black md:text-3xl">
+            {lockedCategory ? `${CATEGORY_LABELS[lockedCategory]} PPT 등록` : "PPT 등록"}
+          </h1>
           <p className="mt-2 text-sm font-bold text-slate-500">
-            수업 분류와 호수, 차시, OneDrive 등의 PowerPoint 링크를 저장합니다.
+            호수와 차시, OneDrive 등의 PowerPoint 링크를 저장합니다.
           </p>
 
           <div className="mt-6 grid gap-4">
-            <div>
-              <div className="text-sm font-black text-slate-700">수업 분류</div>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                {CATEGORIES.map((category) => (
-                  <button
-                    key={category.value}
-                    type="button"
-                    onClick={() => selectCategory(category.value)}
-                    className={`rounded-2xl border px-3 py-3 text-left transition ${
-                      draft.category === category.value
-                        ? "border-blue-300 bg-blue-50 text-blue-700 ring-2 ring-blue-100"
-                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
-                  >
-                    <div className="text-sm font-black">{category.label}</div>
-                    <div className="mt-1 text-[11px] font-bold opacity-70">
-                      {category.description}
-                    </div>
-                  </button>
-                ))}
+            {lockedCategory ? (
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3">
+                <div className="text-xs font-black text-blue-500">등록 자료실</div>
+                <div className="mt-1 text-lg font-black text-blue-800">
+                  {CATEGORY_LABELS[lockedCategory]}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <div className="text-sm font-black text-slate-700">수업 분류</div>
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {CATEGORIES.map((category) => (
+                    <button
+                      key={category.value}
+                      type="button"
+                      onClick={() => selectCategory(category.value)}
+                      className={`rounded-2xl border px-3 py-3 text-left transition ${
+                        draft.category === category.value
+                          ? "border-blue-300 bg-blue-50 text-blue-700 ring-2 ring-blue-100"
+                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="text-sm font-black">{category.label}</div>
+                      <div className="mt-1 text-[11px] font-bold opacity-70">
+                        {category.description}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {draft.category === "world" ? (
               <>
@@ -227,7 +270,9 @@ export default function NewTeacherPresentationPage() {
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
                   >
                     {[1, 2, 3].map((book) => (
-                      <option key={book} value={book}>{book}호</option>
+                      <option key={book} value={book}>
+                        {book}호
+                      </option>
                     ))}
                   </select>
                 </label>
@@ -253,7 +298,9 @@ export default function NewTeacherPresentationPage() {
                 className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
               >
                 {[1, 2, 3, 4].map((lesson) => (
-                  <option key={lesson} value={lesson}>{lesson}차시</option>
+                  <option key={lesson} value={lesson}>
+                    {lesson}차시
+                  </option>
                 ))}
               </select>
             </label>
@@ -262,7 +309,8 @@ export default function NewTeacherPresentationPage() {
               <div className="rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3">
                 <div className="text-xs font-black text-violet-600">자동 차시 제목</div>
                 <div className="mt-1 text-sm font-black leading-6 text-slate-800">
-                  {autoLessonTitle || "시리즈·호수·차시를 선택하면 PDF 목차의 주제가 자동으로 표시됩니다."}
+                  {autoLessonTitle ||
+                    "시리즈·호수·차시를 선택하면 PDF 목차의 주제가 자동으로 표시됩니다."}
                 </div>
               </div>
             )}
