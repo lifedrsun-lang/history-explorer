@@ -23,6 +23,7 @@ import {
 } from "@/lib/presentations/catalog";
 
 type WorldSeriesFilter = "all" | WorldCultureSeries;
+
 type PresentationListItem = {
   id: string;
   category: PresentationCategory;
@@ -33,6 +34,7 @@ type PresentationListItem = {
   pptUrl: string;
   createdAt: number;
 };
+
 type PresentationBook = {
   key: string;
   category: PresentationCategory;
@@ -160,12 +162,14 @@ function groupPresentations(items: PresentationListItem[]) {
   return [...groups.values()].sort((a, b) => {
     const categoryDiff = CATEGORY_ORDER[a.category] - CATEGORY_ORDER[b.category];
     if (categoryDiff) return categoryDiff;
+
     if (a.category === "world" || b.category === "world") {
       const seriesDiff =
         getWorldCultureSeriesOrder(a.worldSeries) -
         getWorldCultureSeriesOrder(b.worldSeries);
       if (seriesDiff) return seriesDiff;
     }
+
     return (
       getNumber(a.bookNumber) - getNumber(b.bookNumber) ||
       a.bookNumber.localeCompare(b.bookNumber, "ko", { numeric: true })
@@ -223,6 +227,7 @@ export default function TeacherPresentationsPage() {
         );
       }
     }
+
     return items;
   }, [activeLibrary, presentations, worldBookFilter, worldLessonFilter, worldSeriesFilter]);
 
@@ -237,6 +242,7 @@ export default function TeacherPresentationsPage() {
         router.replace("/teacher");
         return;
       }
+
       setAuthorized(true);
       setAuthChecking(false);
       setIsLoading(true);
@@ -246,6 +252,7 @@ export default function TeacherPresentationsPage() {
         const snapshot = await getDocs(
           query(collection(db, "presentations"), orderBy("createdAt", "desc"))
         );
+
         setPresentations(
           snapshot.docs
             .map((docItem) => {
@@ -261,6 +268,7 @@ export default function TeacherPresentationsPage() {
                 data?.title,
                 data?.bookNumber
               );
+
               return {
                 id: docItem.id,
                 category,
@@ -293,6 +301,7 @@ export default function TeacherPresentationsPage() {
         setIsLoading(false);
       }
     });
+
     return unsubscribe;
   }, [router]);
 
@@ -301,7 +310,7 @@ export default function TeacherPresentationsPage() {
     setWorldSeriesFilter("all");
     setWorldBookFilter("all");
     setWorldLessonFilter("all");
-    router.replace(`/teacher/presentations?category=${category}`, { scroll: false });
+    router.push(`/teacher/presentations?category=${category}`, { scroll: false });
   };
 
   const closeLibrary = () => {
@@ -321,6 +330,7 @@ export default function TeacherPresentationsPage() {
       </main>
     );
   }
+
   if (!authorized) return null;
 
   return (
@@ -333,12 +343,23 @@ export default function TeacherPresentationsPage() {
               수업 종류를 먼저 선택하면 해당 PPT만 볼 수 있습니다.
             </p>
           </div>
-          <Link
-            href="/teacher"
-            className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-100"
-          >
-            교사 관리화면으로 돌아가기
-          </Link>
+
+          {activeLibrary ? (
+            <button
+              type="button"
+              onClick={closeLibrary}
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-100"
+            >
+              ← PPT 자료실로 돌아가기
+            </button>
+          ) : (
+            <Link
+              href="/teacher"
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-100"
+            >
+              교사 관리화면으로 돌아가기
+            </Link>
+          )}
         </header>
 
         {!activeLibrary ? (
@@ -390,13 +411,6 @@ export default function TeacherPresentationsPage() {
           <section className="rounded-3xl bg-white p-4 shadow-md md:p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <button
-                  type="button"
-                  onClick={closeLibrary}
-                  className="mb-3 inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-600 transition hover:bg-slate-100"
-                >
-                  ← PPT 자료실
-                </button>
                 <h2 className="text-2xl font-black">
                   {LIBRARIES.find((item) => item.value === activeLibrary)?.icon}{" "}
                   {CATEGORY_LABELS[activeLibrary]} PPT
@@ -429,6 +443,7 @@ export default function TeacherPresentationsPage() {
                     </option>
                   ))}
                 </select>
+
                 <select
                   value={worldBookFilter}
                   onChange={(event) => setWorldBookFilter(event.target.value)}
@@ -441,6 +456,7 @@ export default function TeacherPresentationsPage() {
                     </option>
                   ))}
                 </select>
+
                 <select
                   value={worldLessonFilter}
                   onChange={(event) => setWorldLessonFilter(event.target.value)}
@@ -587,6 +603,7 @@ export default function TeacherPresentationsPage() {
                               book.category === "coding"
                                 ? "border-emerald-500"
                                 : "border-blue-500";
+
                             return presentation ? (
                               <div
                                 key={lesson}
