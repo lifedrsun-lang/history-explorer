@@ -100,6 +100,14 @@ const CATEGORY_ORDER: Record<PresentationCategory, number> = {
   world: 2,
 };
 
+const DIRECT_WORLD_COVERS: Record<string, string> = {
+  "/covers/worldculture/culture-art-2.svg": "/covers/worldculture/culture-art-2-v2.jpg",
+  "/covers/worldculture/world-history-1.svg": "/covers/worldculture/world-history-1-v2.jpg",
+  "/covers/worldculture/world-history-2.svg": "/covers/worldculture/world-history-2-v2.jpg",
+  "/covers/worldculture/world-history-3.svg": "/covers/worldculture/world-history-3-v2.jpg",
+  "/covers/worldculture/discovery-invention-1.svg": "/covers/worldculture/discovery-invention-1-v2.jpg",
+};
+
 function normalizeCategory(value: unknown): PresentationCategory {
   if (value === "coding") return "coding";
   if (value === "world" || value === "worldculture") return "world";
@@ -108,6 +116,11 @@ function normalizeCategory(value: unknown): PresentationCategory {
 
 function isCategory(value: unknown): value is PresentationCategory {
   return value === "history" || value === "world" || value === "coding";
+}
+
+function getDisplayCoverUrl(coverUrl?: string) {
+  if (!coverUrl) return undefined;
+  return DIRECT_WORLD_COVERS[coverUrl] || coverUrl;
 }
 
 function groupPresentations(items: PresentationListItem[]) {
@@ -217,14 +230,10 @@ export default function TeacherPresentationsPage() {
         items = items.filter((item) => item.worldSeries === worldSeriesFilter);
       }
       if (worldBookFilter !== "all") {
-        items = items.filter(
-          (item) => getNumber(item.bookNumber) === Number(worldBookFilter)
-        );
+        items = items.filter((item) => getNumber(item.bookNumber) === Number(worldBookFilter));
       }
       if (worldLessonFilter !== "all") {
-        items = items.filter(
-          (item) => item.lessonNumber === Number(worldLessonFilter)
-        );
+        items = items.filter((item) => item.lessonNumber === Number(worldLessonFilter));
       }
     }
 
@@ -278,11 +287,7 @@ export default function TeacherPresentationsPage() {
                 lessonTitle: String(
                   data?.lessonTitle ||
                     (category === "world"
-                      ? getWorldCultureLessonTitle(
-                          worldSeries,
-                          data?.bookNumber,
-                          lessonNumber
-                        )
+                      ? getWorldCultureLessonTitle(worldSeries, data?.bookNumber, lessonNumber)
                       : "")
                 ),
                 pptUrl: String(data?.pptUrl || ""),
@@ -364,12 +369,10 @@ export default function TeacherPresentationsPage() {
 
         {!activeLibrary ? (
           <section className="rounded-3xl bg-white p-4 shadow-md md:p-6">
-            <div>
-              <h2 className="text-xl font-black">PPT 자료실 선택</h2>
-              <p className="mt-1 text-sm font-bold text-slate-500">
-                자료가 많아져도 서로 섞이지 않도록 수업별 자료실로 나눴습니다.
-              </p>
-            </div>
+            <h2 className="text-xl font-black">PPT 자료실 선택</h2>
+            <p className="mt-1 text-sm font-bold text-slate-500">
+              자료가 많아져도 서로 섞이지 않도록 수업별 자료실로 나눴습니다.
+            </p>
 
             {isLoading ? <StatusBox>수업자료를 불러오는 중입니다...</StatusBox> : null}
             {loadError ? (
@@ -398,9 +401,7 @@ export default function TeacherPresentationsPage() {
                       <span className="text-sm font-black text-slate-500">
                         등록 PPT {categoryCounts[library.value]}개
                       </span>
-                      <span className={`text-sm font-black ${library.accent}`}>
-                        자료 보기 →
-                      </span>
+                      <span className={`text-sm font-black ${library.accent}`}>자료 보기 →</span>
                     </div>
                   </button>
                 ))}
@@ -416,7 +417,7 @@ export default function TeacherPresentationsPage() {
                   {CATEGORY_LABELS[activeLibrary]} PPT
                 </h2>
                 <p className="mt-1 text-sm font-bold text-slate-500">
-                  한 권의 1~4차시 자료를 한 카드에서 관리합니다.
+                  표지는 작게, 1~4차시는 한눈에 보이도록 압축했습니다.
                 </p>
               </div>
               <Link
@@ -431,19 +432,14 @@ export default function TeacherPresentationsPage() {
               <div className="mt-4 grid gap-2 rounded-2xl border border-violet-100 bg-violet-50/60 p-3 sm:grid-cols-3">
                 <select
                   value={worldSeriesFilter}
-                  onChange={(event) =>
-                    setWorldSeriesFilter(event.target.value as WorldSeriesFilter)
-                  }
+                  onChange={(event) => setWorldSeriesFilter(event.target.value as WorldSeriesFilter)}
                   className="rounded-xl border border-violet-100 bg-white px-3 py-2.5 text-sm font-black text-slate-700"
                 >
                   <option value="all">전체 시리즈</option>
                   {WORLD_CULTURE_SERIES.map((series) => (
-                    <option key={series.value} value={series.value}>
-                      {series.label}
-                    </option>
+                    <option key={series.value} value={series.value}>{series.label}</option>
                   ))}
                 </select>
-
                 <select
                   value={worldBookFilter}
                   onChange={(event) => setWorldBookFilter(event.target.value)}
@@ -451,12 +447,9 @@ export default function TeacherPresentationsPage() {
                 >
                   <option value="all">전체 호수</option>
                   {[1, 2, 3].map((book) => (
-                    <option key={book} value={book}>
-                      {book}호
-                    </option>
+                    <option key={book} value={book}>{book}호</option>
                   ))}
                 </select>
-
                 <select
                   value={worldLessonFilter}
                   onChange={(event) => setWorldLessonFilter(event.target.value)}
@@ -464,9 +457,7 @@ export default function TeacherPresentationsPage() {
                 >
                   <option value="all">전체 차시</option>
                   {LESSONS.map((lesson) => (
-                    <option key={lesson} value={lesson}>
-                      {lesson}차시
-                    </option>
+                    <option key={lesson} value={lesson}>{lesson}차시</option>
                   ))}
                 </select>
               </div>
@@ -479,166 +470,13 @@ export default function TeacherPresentationsPage() {
               </div>
             ) : null}
             {!isLoading && !loadError && presentationBooks.length === 0 ? (
-              <StatusBox>
-                등록된 PPT가 없습니다. 위의 PPT 등록 버튼을 눌러 첫 자료를 추가하세요.
-              </StatusBox>
+              <StatusBox>등록된 PPT가 없습니다. 위의 PPT 등록 버튼을 눌러 첫 자료를 추가하세요.</StatusBox>
             ) : null}
 
             {!isLoading && !loadError && presentationBooks.length > 0 ? (
-              <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {presentationBooks.map((book) => (
-                  <article
-                    key={book.key}
-                    className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                  >
-                    <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
-                      {book.coverUrl ? (
-                        <Image
-                          src={book.coverUrl}
-                          alt={`${book.bookNumber} ${book.shortTitle} 표지`}
-                          fill
-                          unoptimized={book.coverUrl.endsWith(".svg")}
-                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full flex-col items-center justify-center text-slate-400">
-                          <span className="text-5xl">
-                            {book.category === "world" ? "🌍" : "📘"}
-                          </span>
-                          <span className="mt-2 text-sm font-black">표지 준비 중</span>
-                        </div>
-                      )}
-                      <span className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1.5 text-xs font-black text-blue-700 shadow-sm">
-                        {book.bookNumber || "호수 미입력"}
-                      </span>
-                    </div>
-
-                    <div className="p-4">
-                      <p
-                        className={`text-xs font-black ${
-                          book.category === "world"
-                            ? "text-violet-600"
-                            : book.category === "coding"
-                              ? "text-emerald-600"
-                              : "text-blue-600"
-                        }`}
-                      >
-                        {book.shortTitle}
-                      </p>
-                      <h3 className="mt-1 min-h-12 text-base font-black leading-snug text-slate-800">
-                        {book.title}
-                      </h3>
-
-                      {book.category === "world" ? (
-                        <div className="mt-3 grid grid-cols-2 gap-2">
-                          {LESSONS.map((lesson) => {
-                            const presentation = book.lessons.get(lesson);
-                            const lessonTitle =
-                              presentation?.lessonTitle ||
-                              getWorldCultureLessonTitle(
-                                book.worldSeries,
-                                book.bookNumber,
-                                lesson
-                              );
-
-                            if (!presentation) {
-                              return (
-                                <div
-                                  key={lesson}
-                                  className="min-h-24 rounded-xl border border-dashed border-slate-200 bg-white px-3 py-2.5"
-                                >
-                                  <div className="text-[11px] font-black text-slate-300">
-                                    {lesson}차시
-                                  </div>
-                                  <div className="mt-1 line-clamp-2 text-xs font-bold leading-5 text-slate-300">
-                                    {lessonTitle || "PPT 미등록"}
-                                  </div>
-                                </div>
-                              );
-                            }
-
-                            return (
-                              <div
-                                key={lesson}
-                                className="flex min-h-28 flex-col overflow-hidden rounded-xl border border-violet-100 bg-white shadow-sm"
-                              >
-                                <div className="flex-1 px-3 py-2">
-                                  <div className="text-[11px] font-black text-violet-600">
-                                    {lesson}차시
-                                  </div>
-                                  <div className="mt-1 line-clamp-2 text-xs font-black leading-5 text-slate-700">
-                                    {lessonTitle}
-                                  </div>
-                                </div>
-                                <div className="grid grid-cols-[1fr_auto] bg-violet-600">
-                                  <a
-                                    href={presentation.pptUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex min-h-8 items-center justify-center px-2 text-[11px] font-black text-white transition hover:bg-violet-700"
-                                  >
-                                    열기 ↗
-                                  </a>
-                                  <Link
-                                    href={`/teacher/presentations/${presentation.id}/edit`}
-                                    className="inline-flex min-h-8 items-center justify-center border-l border-violet-500 px-2 text-[11px] font-black text-violet-50 transition hover:bg-violet-700"
-                                  >
-                                    수정
-                                  </Link>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="mt-4 grid grid-cols-2 gap-2">
-                          {LESSONS.map((lesson) => {
-                            const presentation = book.lessons.get(lesson);
-                            const buttonClass =
-                              book.category === "coding"
-                                ? "bg-emerald-600 hover:bg-emerald-700"
-                                : "bg-blue-600 hover:bg-blue-700";
-                            const borderClass =
-                              book.category === "coding"
-                                ? "border-emerald-500"
-                                : "border-blue-500";
-
-                            return presentation ? (
-                              <div
-                                key={lesson}
-                                className={`grid grid-cols-[1fr_auto] overflow-hidden rounded-xl ${buttonClass} shadow-sm`}
-                              >
-                                <a
-                                  href={presentation.pptUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex min-h-11 items-center justify-center px-2 text-sm font-black text-white"
-                                >
-                                  {lesson}차시 ↗
-                                </a>
-                                <Link
-                                  href={`/teacher/presentations/${presentation.id}/edit`}
-                                  className={`inline-flex min-h-11 items-center justify-center border-l ${borderClass} px-2 text-xs font-black text-white/90`}
-                                >
-                                  수정
-                                </Link>
-                              </div>
-                            ) : (
-                              <button
-                                key={lesson}
-                                type="button"
-                                disabled
-                                className="min-h-11 rounded-xl border border-dashed border-slate-200 bg-white text-sm font-black text-slate-300"
-                              >
-                                {lesson}차시
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </article>
+                  <CompactBookCard key={book.key} book={book} />
                 ))}
               </div>
             ) : null}
@@ -646,6 +484,113 @@ export default function TeacherPresentationsPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function CompactBookCard({ book }: { book: PresentationBook }) {
+  const coverUrl = getDisplayCoverUrl(book.coverUrl);
+  const isWorld = book.category === "world";
+  const accentText = isWorld
+    ? "text-violet-600"
+    : book.category === "coding"
+      ? "text-emerald-600"
+      : "text-blue-600";
+
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm transition hover:shadow-md">
+      <div className="flex gap-3">
+        <div className="relative h-28 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+          {coverUrl ? (
+            <Image
+              src={coverUrl}
+              alt={`${book.bookNumber} ${book.shortTitle} 표지`}
+              fill
+              unoptimized={coverUrl.endsWith(".svg")}
+              sizes="80px"
+              className="object-contain p-1"
+            />
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center text-slate-300">
+              <span className="text-3xl">{isWorld ? "🌍" : "📘"}</span>
+              <span className="mt-1 text-[10px] font-black">표지 준비 중</span>
+            </div>
+          )}
+          <span className="absolute left-1.5 top-1.5 rounded-full bg-white/95 px-2 py-1 text-[10px] font-black text-blue-700 shadow-sm">
+            {book.bookNumber || "호수"}
+          </span>
+        </div>
+
+        <div className="min-w-0 flex-1 py-1">
+          <p className={`text-xs font-black ${accentText}`}>{book.shortTitle}</p>
+          <h3 className="mt-1 text-base font-black leading-6 text-slate-800">{book.title}</h3>
+          <p className="mt-2 text-xs font-bold text-slate-400">
+            등록 {LESSONS.filter((lesson) => book.lessons.has(lesson)).length}/4차시
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {LESSONS.map((lesson) => {
+          const presentation = book.lessons.get(lesson);
+          const lessonTitle = isWorld
+            ? presentation?.lessonTitle ||
+              getWorldCultureLessonTitle(book.worldSeries, book.bookNumber, lesson)
+            : "";
+
+          if (!presentation) {
+            return (
+              <div
+                key={lesson}
+                className="min-h-14 rounded-xl border border-dashed border-slate-200 bg-white px-2.5 py-2 text-slate-300"
+              >
+                <div className="text-[10px] font-black">{lesson}차시</div>
+                {isWorld && lessonTitle ? (
+                  <div className="mt-0.5 line-clamp-1 text-[11px] font-bold">{lessonTitle}</div>
+                ) : null}
+              </div>
+            );
+          }
+
+          const buttonColor = isWorld
+            ? "bg-violet-600 hover:bg-violet-700"
+            : book.category === "coding"
+              ? "bg-emerald-600 hover:bg-emerald-700"
+              : "bg-blue-600 hover:bg-blue-700";
+          const dividerColor = isWorld
+            ? "border-violet-500"
+            : book.category === "coding"
+              ? "border-emerald-500"
+              : "border-blue-500";
+
+          return (
+            <div key={lesson} className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm">
+              <div className="min-h-10 px-2.5 py-2">
+                <div className={`text-[10px] font-black ${accentText}`}>{lesson}차시</div>
+                {isWorld && lessonTitle ? (
+                  <div className="mt-0.5 line-clamp-1 text-[11px] font-black text-slate-700">{lessonTitle}</div>
+                ) : null}
+              </div>
+              <div className={`grid grid-cols-[1fr_auto] ${buttonColor}`}>
+                <a
+                  href={presentation.pptUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-8 items-center justify-center px-2 text-[11px] font-black text-white"
+                >
+                  {isWorld ? "열기 ↗" : `${lesson}차시 ↗`}
+                </a>
+                <Link
+                  href={`/teacher/presentations/${presentation.id}/edit`}
+                  className={`inline-flex min-h-8 items-center justify-center border-l ${dividerColor} px-2 text-[10px] font-black text-white/90`}
+                >
+                  수정
+                </Link>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </article>
   );
 }
 
