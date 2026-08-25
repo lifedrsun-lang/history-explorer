@@ -15,6 +15,7 @@ import {
   normalizeCouponPhone,
 } from "@/lib/coinExchange";
 import type { CoinExchangeWindowStatus } from "@/lib/coinExchangeWindow";
+import { normalizeSchoolText } from "../data/schoolInfo";
 
 type Props = {
   student: StudentLike;
@@ -25,15 +26,19 @@ type StudentLike = {
   collectionName?: unknown;
   password?: unknown;
   silver?: unknown;
+  school?: unknown;
 };
 
-type RewardKind = "daiso" | "convenience";
+type RewardKind = "daiso" | "convenience" | "imo_snack";
 
 const getStudentCollection = (student: StudentLike): StudentCollection => {
   const collectionName = String(student?.collectionName || "students");
 
   return isAllowedStudentCollection(collectionName) ? collectionName : "students";
 };
+
+const isSaesolSchool = (school: unknown) =>
+  normalizeSchoolText(school) === normalizeSchoolText("화성 새솔초등학교");
 
 export default function CoinExchangeRequest({ student }: Props) {
   const [request, setRequest] = useState<CoinExchangeRequestSummary | null>(null);
@@ -52,6 +57,7 @@ export default function CoinExchangeRequest({ student }: Props) {
   const studentCollection = getStudentCollection(student);
   const studentPassword = String(student?.password || "");
   const currentSilver = Math.max(0, Number(student?.silver || 0));
+  const isSaesolStudent = isSaesolSchool(student?.school);
 
   const getStudentAuthBody = useCallback(() => {
     return {
@@ -109,6 +115,12 @@ export default function CoinExchangeRequest({ student }: Props) {
     return () => clearTimeout(timer);
   }, [loadStatus]);
 
+  useEffect(() => {
+    if (!isSaesolStudent && rewardKind === "imo_snack") {
+      setRewardKind("daiso");
+    }
+  }, [isSaesolStudent, rewardKind]);
+
   const submitExchangeRequest = async () => {
     if (isSubmitting || request || !exchangeWindow?.isOpen) {
       return;
@@ -132,7 +144,11 @@ export default function CoinExchangeRequest({ student }: Props) {
     }
 
     const vendor: CoinExchangeVendor =
-      rewardKind === "daiso" ? "daiso" : convenienceVendor;
+      rewardKind === "daiso"
+        ? "daiso"
+        : rewardKind === "imo_snack"
+          ? "imo_snack"
+          : convenienceVendor;
 
     setIsSubmitting(true);
     setMessage("");
@@ -304,6 +320,19 @@ export default function CoinExchangeRequest({ student }: Props) {
                       GS25
                     </label>
                   </div>
+                )}
+
+                {isSaesolStudent && (
+                  <label className="mt-2 flex cursor-pointer items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 px-3 py-3">
+                    <input
+                      type="radio"
+                      name="coin-exchange-kind"
+                      checked={rewardKind === "imo_snack"}
+                      onChange={() => setRewardKind("imo_snack")}
+                      className="h-4 w-4"
+                    />
+                    <span className="font-bold text-amber-800">이모분식이용권</span>
+                  </label>
                 )}
 
                 <div className="mt-2 rounded-2xl border border-dashed border-slate-200 px-3 py-3 text-sm font-bold text-slate-400">
