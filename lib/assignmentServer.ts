@@ -5,7 +5,6 @@ import { FieldValue } from "firebase-admin/firestore";
 
 import {
   ASSIGNMENTS_COLLECTION,
-  AssignmentStatus,
   AssignmentFile,
   AssignmentStudent,
   AssignmentSubmissionSummary,
@@ -14,6 +13,7 @@ import {
   isAllowedStudentCollection,
   makeStorageSafeStudentKey,
   makeStudentKey,
+  normalizeAssignmentStatus,
   normalizeText,
   validateHomeworkPhotoFile,
   validateHomeworkPhotoInput,
@@ -126,14 +126,6 @@ export const serializeAssignment = (
   };
 };
 
-const normalizeSubmissionStatus = (value: unknown): AssignmentStatus => {
-  if (value === "revision" || value === "approved") {
-    return value;
-  }
-
-  return "submitted";
-};
-
 export const serializeSubmission = (
   id: string,
   data: FirebaseFirestore.DocumentData
@@ -163,7 +155,7 @@ export const serializeSubmission = (
       class: normalizeText(data?.studentSnapshot?.class),
       studentNumber: normalizeText(data?.studentSnapshot?.studentNumber),
     },
-    status: normalizeSubmissionStatus(data?.status),
+    status: normalizeAssignmentStatus(data?.status),
     submissionAttemptId: normalizeText(data?.submissionAttemptId),
     files,
     submittedAt: serializeDate(data?.submittedAt),
@@ -418,3 +410,4 @@ export const normalizeUploadedFiles = (files: UploadedFileInput[]) => {
     return item;
   });
 };
+

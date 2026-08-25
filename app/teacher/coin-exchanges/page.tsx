@@ -10,6 +10,7 @@ import {
   CoinExchangeRequestSummary,
   formatCoinExchangeWon,
 } from "@/lib/coinExchange";
+import { requestTeacherDashboardSummaryRefresh } from "@/lib/teacherDashboard";
 
 type Filter = "pending" | "all";
 
@@ -198,6 +199,8 @@ export default function TeacherCoinExchangesPage() {
           requestId: exchangeRequest.id,
         }),
       });
+
+      requestTeacherDashboardSummaryRefresh();
 
       setNotice(
         action === "complete"
@@ -414,3 +417,4 @@ export default function TeacherCoinExchangesPage() {
     </main>
   );
 }
+

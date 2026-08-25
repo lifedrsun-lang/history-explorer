@@ -12,6 +12,22 @@ export type StudentCollection = (typeof ALLOWED_STUDENT_COLLECTIONS)[number];
 
 export type AssignmentStatus = "submitted" | "revision" | "approved";
 
+export const normalizeAssignmentStatus = (
+  value: unknown
+): AssignmentStatus => {
+  const status = String(value || "").trim();
+
+  if (status === "revision" || status === "approved") {
+    return status;
+  }
+
+  return "submitted";
+};
+
+export const isAssignmentSubmissionAwaitingReview = (value: unknown) => {
+  return normalizeAssignmentStatus(value) === "submitted";
+};
+
 export type AssignmentFile = {
   fileId: string;
   storagePath: string;
@@ -193,3 +209,4 @@ export const validateHomeworkPhotoFile = (file: {
 export const normalizeText = (value: unknown) => {
   return String(value || "").trim();
 };
+

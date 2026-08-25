@@ -4,6 +4,22 @@ export const SILVER_COIN_WON_VALUE = 1000;
 export type CoinExchangeVendor = "daiso" | "cu" | "gs25";
 export type CoinExchangeStatus = "pending" | "completed" | "cancelled";
 
+export const normalizeCoinExchangeStatus = (
+  value: unknown
+): CoinExchangeStatus => {
+  const status = String(value || "").trim();
+
+  if (status === "completed" || status === "cancelled") {
+    return status;
+  }
+
+  return "pending";
+};
+
+export const isPendingCoinExchange = (value: unknown) => {
+  return normalizeCoinExchangeStatus(value) === "pending";
+};
+
 export const COIN_EXCHANGE_VENDOR_OPTIONS: Array<{
   value: CoinExchangeVendor;
   label: string;
@@ -80,3 +96,4 @@ export type CoinExchangeRequestSummary = {
   cancelledAt: string | null;
   cancelledBy: string | null;
 };
+

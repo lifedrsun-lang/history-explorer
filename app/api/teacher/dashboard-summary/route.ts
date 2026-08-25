@@ -1,9 +1,12 @@
 import {
   ASSIGNMENT_SUBMISSIONS_COLLECTION,
-  normalizeText,
+  isAssignmentSubmissionAwaitingReview,
 } from "@/lib/assignments";
 import { verifyTeacherRequest, handleRouteError, jsonError } from "@/lib/assignmentServer";
-import { COIN_EXCHANGE_COLLECTION } from "@/lib/coinExchange";
+import {
+  COIN_EXCHANGE_COLLECTION,
+  isPendingCoinExchange,
+} from "@/lib/coinExchange";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { REVIEW_ASSIGNMENT_COMPLETIONS_COLLECTION } from "@/lib/reviewAssignments";
 
@@ -47,13 +50,11 @@ export async function GET(request: Request) {
       ]);
 
     const pendingCoinExchangeCount = exchangeSnapshot.docs.filter((docItem) => {
-      const status = normalizeText(docItem.data()?.status);
-      return !status || status === "pending";
+      return isPendingCoinExchange(docItem.data()?.status);
     }).length;
 
     const pendingAssignmentCount = submissionSnapshot.docs.filter((docItem) => {
-      const status = normalizeText(docItem.data()?.status);
-      return !status || status === "submitted";
+      return isAssignmentSubmissionAwaitingReview(docItem.data()?.status);
     }).length;
 
     const cutoff = Date.now() - RECENT_REVIEW_WINDOW_MS;
@@ -84,3 +85,4 @@ export async function GET(request: Request) {
     return handleRouteError(error);
   }
 }
+

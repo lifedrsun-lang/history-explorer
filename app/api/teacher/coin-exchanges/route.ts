@@ -11,10 +11,10 @@ import {
 import {
   COIN_EXCHANGE_COLLECTION,
   CoinExchangeRequestSummary,
-  CoinExchangeStatus,
   CoinExchangeVendor,
   getCoinExchangeVendorLabel,
   isCoinExchangeVendor,
+  normalizeCoinExchangeStatus,
   normalizeCouponPhone,
 } from "@/lib/coinExchange";
 import {
@@ -27,14 +27,6 @@ import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const normalizeStatus = (value: unknown): CoinExchangeStatus => {
-  if (value === "completed" || value === "cancelled") {
-    return value;
-  }
-
-  return "pending";
-};
 
 const serializeRequest = (
   id: string,
@@ -63,7 +55,7 @@ const serializeRequest = (
     amountSilver: Number(data?.amountSilver || 0),
     amountWon: Number(data?.amountWon || 0),
     recipientPhone: normalizeCouponPhone(data?.recipientPhone),
-    status: normalizeStatus(data?.status),
+    status: normalizeCoinExchangeStatus(data?.status),
     createdAt: serializeDate(data?.createdAt),
     updatedAt: serializeDate(data?.updatedAt),
     completedAt: serializeDate(data?.completedAt),
@@ -165,7 +157,7 @@ export async function POST(request: Request) {
 
       const requestData = requestSnapshot.data() || {};
 
-      if (normalizeStatus(requestData?.status) !== "pending") {
+      if (normalizeCoinExchangeStatus(requestData?.status) !== "pending") {
         throw new Error("request_already_processed");
       }
 
@@ -269,3 +261,4 @@ export async function POST(request: Request) {
     return mapTeacherExchangeError(error);
   }
 }
+

@@ -19,6 +19,7 @@ import {
   getStudentProgramLabel,
   getStudentProgramValue,
 } from "@/lib/programs";
+import { requestTeacherDashboardSummaryRefresh } from "@/lib/teacherDashboard";
 
 type AssignmentDetail = {
   assignment: AssignmentSummary;
@@ -381,6 +382,8 @@ export default function TeacherAssignmentsPage() {
           }),
         }
       );
+
+      requestTeacherDashboardSummaryRefresh();
 
       if (data.outcome === "already_rewarded") {
         setNotice("이미 승인 및 보상 지급이 완료된 과제입니다.");
@@ -903,3 +906,4 @@ export default function TeacherAssignmentsPage() {
     </main>
   );
 }
+

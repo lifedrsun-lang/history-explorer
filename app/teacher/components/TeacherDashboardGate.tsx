@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { onAuthStateChanged, signOut } from "firebase/auth";
-import { useEffect, useState } from "react";
+import { onAuthStateChanged, signOut, User } from "firebase/auth";
+import { useCallback, useEffect, useState } from "react";
 
 import { auth } from "@/lib/firebase";
+import { TEACHER_DASHBOARD_SUMMARY_REFRESH_EVENT } from "@/lib/teacherDashboard";
 
 const menuItems = [
   {
@@ -68,56 +69,81 @@ export default function TeacherDashboardGate() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [authorized, setAuthorized] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const [summary, setSummary] = useState<DashboardSummary>(EMPTY_SUMMARY);
 
-  useEffect(() => {
-    return onAuthStateChanged(auth, (user) => {
-      setAuthorized(Boolean(user));
+  const loadSummary = useCallback(async (currentUser: User) => {
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await fetch("/api/teacher/dashboard-summary", {
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      if (!user) {
+      if (!response.ok) {
         setSummary(EMPTY_SUMMARY);
         return;
       }
 
-      void user
-        .getIdToken()
-        .then((token) =>
-          fetch("/api/teacher/dashboard-summary", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          })
-        )
-        .then(async (response) => {
-          if (!response.ok) return null;
-          return response.json();
-        })
-        .then((data) => {
-          if (!data) {
-            setSummary(EMPTY_SUMMARY);
-            return;
-          }
+      const data = await response.json();
 
-          setSummary({
-            pendingCoinExchangeCount: Math.max(
-              0,
-              Number(data?.pendingCoinExchangeCount || 0)
-            ),
-            pendingAssignmentCount: Math.max(
-              0,
-              Number(data?.pendingAssignmentCount || 0)
-            ),
-            recentReviewCompletionCount: Math.max(
-              0,
-              Number(data?.recentReviewCompletionCount || 0)
-            ),
-          });
-        })
-        .catch(() => {
-          setSummary(EMPTY_SUMMARY);
-        });
+      setSummary({
+        pendingCoinExchangeCount: Math.max(
+          0,
+          Number(data?.pendingCoinExchangeCount || 0)
+        ),
+        pendingAssignmentCount: Math.max(
+          0,
+          Number(data?.pendingAssignmentCount || 0)
+        ),
+        recentReviewCompletionCount: Math.max(
+          0,
+          Number(data?.recentReviewCompletionCount || 0)
+        ),
+      });
+    } catch {
+      setSummary(EMPTY_SUMMARY);
+    }
+  }, []);
+
+  useEffect(() => {
+    return onAuthStateChanged(auth, (currentUser) => {
+      setAuthorized(Boolean(currentUser));
+      setUser(currentUser);
+
+      if (!currentUser) {
+        setSummary(EMPTY_SUMMARY);
+      }
     });
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const refreshSummary = () => {
+      void loadSummary(user);
+    };
+
+    if (pathname === "/teacher") {
+      refreshSummary();
+    }
+
+    window.addEventListener(
+      TEACHER_DASHBOARD_SUMMARY_REFRESH_EVENT,
+      refreshSummary
+    );
+
+    return () => {
+      window.removeEventListener(
+        TEACHER_DASHBOARD_SUMMARY_REFRESH_EVENT,
+        refreshSummary
+      );
+    };
+  }, [loadSummary, pathname, user]);
 
   const getAlertCount = (href: string) => {
     if (href === "/teacher/assignments") {
@@ -222,3 +248,4 @@ export default function TeacherDashboardGate() {
     </div>
   );
 }
+
