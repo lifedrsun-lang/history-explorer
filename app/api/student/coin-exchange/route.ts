@@ -1,5 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 
+import { normalizeSchoolText } from "@/app/student/data/schoolInfo";
 import { normalizeText } from "@/lib/assignments";
 import {
   COIN_EXCHANGE_COLLECTION,
@@ -23,6 +24,11 @@ import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const SAESOL_SCHOOL = "화성 새솔초등학교";
+
+const isSaesolSchool = (school: unknown) =>
+  normalizeSchoolText(school) === normalizeSchoolText(SAESOL_SCHOOL);
 
 const normalizeStatus = (value: unknown): CoinExchangeStatus => {
   if (value === "completed" || value === "cancelled") {
@@ -182,6 +188,10 @@ export async function POST(request: Request) {
       throw new Error("invalid_exchange_vendor");
     }
 
+    if (vendor === "imo_snack" && !isSaesolSchool(student.school)) {
+      throw new Error("invalid_exchange_vendor");
+    }
+
     if (!isValidCouponPhone(recipientPhone)) {
       throw new Error("invalid_recipient_phone");
     }
@@ -200,6 +210,16 @@ export async function POST(request: Request) {
       const pendingRequestId = normalizeText(
         studentData?.pendingCoinExchangeRequestId
       );
+      const currentSchool =
+        studentData?.school ||
+        studentData?.schoolName ||
+        studentData?.school_name ||
+        studentData?.학교 ||
+        "";
+
+      if (vendor === "imo_snack" && !isSaesolSchool(currentSchool)) {
+        throw new Error("invalid_exchange_vendor");
+      }
 
       if (pendingRequestId) {
         const existingRequestRef = db
