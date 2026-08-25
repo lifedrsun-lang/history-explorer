@@ -1,7 +1,7 @@
 export const COIN_EXCHANGE_COLLECTION = "coinExchangeRequests";
 export const SILVER_COIN_WON_VALUE = 1000;
 
-export type CoinExchangeVendor = "daiso" | "cu" | "gs25";
+export type CoinExchangeVendor = "daiso" | "cu" | "gs25" | "imo_snack";
 export type CoinExchangeStatus = "pending" | "completed" | "cancelled";
 
 export const normalizeCoinExchangeStatus = (
@@ -27,6 +27,7 @@ export const COIN_EXCHANGE_VENDOR_OPTIONS: Array<{
   { value: "daiso", label: "다이소 상품권" },
   { value: "cu", label: "CU 편의점 상품권" },
   { value: "gs25", label: "GS25 편의점 상품권" },
+  { value: "imo_snack", label: "이모분식이용권" },
 ];
 
 export const isCoinExchangeVendor = (
@@ -96,4 +97,3 @@ export type CoinExchangeRequestSummary = {
   cancelledAt: string | null;
   cancelledBy: string | null;
 };
-
