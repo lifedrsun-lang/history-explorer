@@ -125,7 +125,15 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     password: "0905",
     loginCard: {
       title: "부천 원종초등학교",
-      location: "해당 학급 교실",
+      location: "컴퓨터실",
+    },
+  },
+  {
+    name: "개봉초",
+    displayName: "개봉초",
+    loginCard: {
+      title: "개봉초",
+      location: "컴퓨터실",
     },
   },
   {
