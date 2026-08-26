@@ -37,11 +37,11 @@ export const CULTURE_CENTER_SCHOOLS = [
 export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
   {
     name: "김포 하늘빛초등학교",
-    displayName: "김포 하늘빛초등학교",
+    displayName: "김포 하늘빛초",
     aliases: ["김포 하늘빛초"],
     password: "2497",
     loginCard: {
-      title: "김포 하늘빛초등학교",
+      title: "김포 하늘빛초",
       location: "2F 맞춤3실",
     },
     notice: {
@@ -64,11 +64,11 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
   },
   {
     name: "화성 새솔초등학교",
-    displayName: "화성 새솔초등학교",
+    displayName: "화성 새솔초",
     aliases: ["화성 새솔초"],
     password: "0602",
     loginCard: {
-      title: "화성 새솔초등학교",
+      title: "화성 새솔초",
       location: "5F 음악실",
     },
     notice: {
@@ -92,11 +92,11 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
   },
   {
     name: "김포 사우초등학교",
-    displayName: "김포 사우초등학교",
+    displayName: "김포 사우초",
     aliases: ["김포 사우초"],
     password: "0605",
     loginCard: {
-      title: "김포 사우초등학교",
+      title: "김포 사우초",
       location: "4F 특기적성2실",
     },
     notice: {
@@ -120,19 +120,20 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
   },
   {
     name: "부천 원종초등학교",
-    displayName: "부천 원종초등학교",
+    displayName: "부천 원종초",
     aliases: ["부천 원종초"],
     password: "0905",
     loginCard: {
-      title: "부천 원종초등학교",
+      title: "부천 원종초",
       location: "컴퓨터실",
     },
   },
   {
-    name: "개봉초",
-    displayName: "개봉초",
+    name: "서울 개봉초등학교",
+    displayName: "서울 개봉초",
+    aliases: ["서울 개봉초", "개봉초"],
     loginCard: {
-      title: "개봉초",
+      title: "서울 개봉초",
       location: "컴퓨터실",
     },
   },
