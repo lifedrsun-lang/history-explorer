@@ -1,5 +1,9 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import {
+  browserSessionPersistence,
+  getAuth,
+  setPersistence,
+} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -19,3 +23,13 @@ const app =
 
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+
+// Teacher authentication must not remain signed in indefinitely on shared
+// school computers. Keep the Firebase Auth session only for the lifetime of
+// the current browser session. Refreshing the page stays signed in, while
+// closing the browser requires a fresh teacher sign-in next time.
+if (typeof window !== "undefined") {
+  void setPersistence(auth, browserSessionPersistence).catch((error) => {
+    console.error("Failed to configure Firebase Auth session persistence:", error);
+  });
+}
