@@ -24,20 +24,6 @@ const menuItems = [
     className: "border-emerald-200 bg-emerald-50 text-emerald-900",
   },
   {
-    href: "/teacher/fees",
-    icon: "💰",
-    title: "수강료",
-    description: "방과후 학생별 참여월과 계약강의 차시별 강사료 계산",
-    className: "border-teal-200 bg-teal-50 text-teal-900",
-  },
-  {
-    href: "/teacher/students?status=paused",
-    icon: "🟡",
-    title: "수강생(쉬는중)",
-    description: "쉬는 학생과 기존 숨김 학생 검색, 수강이력·재수강 관리",
-    className: "border-amber-200 bg-amber-50 text-amber-900",
-  },
-  {
     href: "/teacher/presentations",
     icon: "📽️",
     title: "수업자료 관리",
@@ -64,6 +50,20 @@ const menuItems = [
     title: "은엽전 교환",
     description: "학생의 상품권 교환 신청을 확인하고 완료·취소 처리",
     className: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-900",
+  },
+  {
+    href: "/teacher/fees",
+    icon: "💰",
+    title: "수강료",
+    description: "방과후 학생별 참여월과 계약강의 차시별 강사료 계산",
+    className: "border-teal-200 bg-teal-50 text-teal-900",
+  },
+  {
+    href: "/teacher/students?status=paused",
+    icon: "🟡",
+    title: "수강생(쉬는중)",
+    description: "쉬는 학생과 기존 숨김 학생 검색, 수강이력·재수강 관리",
+    className: "border-amber-200 bg-amber-50 text-amber-900",
   },
 ];
 
@@ -196,7 +196,9 @@ export default function TeacherDashboardGate() {
         <div className="rounded-[28px] bg-white p-5 shadow-xl sm:rounded-[32px] sm:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
             <div>
-              <div className="text-xs font-black text-slate-400 sm:text-sm">SUN LAB TEACHER</div>
+              <div className="text-xs font-black text-slate-400 sm:text-sm">
+                SUN LAB TEACHER
+              </div>
               <h1 className="mt-1 text-2xl font-black text-slate-900 sm:text-4xl">
                 🏫 SUN LAB 교사 관리실
               </h1>
@@ -206,10 +208,17 @@ export default function TeacherDashboardGate() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Link href="/" className="rounded-2xl bg-blue-50 px-3 py-2 text-xs font-black text-blue-700 sm:px-4 sm:text-sm">
+              <Link
+                href="/"
+                className="rounded-2xl bg-blue-50 px-3 py-2 text-xs font-black text-blue-700 sm:px-4 sm:text-sm"
+              >
                 🏝 맵으로
               </Link>
-              <button type="button" onClick={() => signOut(auth)} className="rounded-2xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600 sm:px-4 sm:text-sm">
+              <button
+                type="button"
+                onClick={() => signOut(auth)}
+                className="rounded-2xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600 sm:px-4 sm:text-sm"
+              >
                 로그아웃
               </button>
             </div>
@@ -244,9 +253,15 @@ export default function TeacherDashboardGate() {
                   </div>
                 )}
                 <div className="text-3xl sm:text-4xl">{item.icon}</div>
-                <div className="mt-2 text-base font-black leading-tight sm:mt-4 sm:text-2xl">{item.title}</div>
-                <div className="mt-2 hidden text-sm font-bold leading-relaxed opacity-70 sm:block">{item.description}</div>
-                <div className="mt-3 text-xs font-black opacity-80 sm:mt-5 sm:text-sm">들어가기 →</div>
+                <div className="mt-2 text-base font-black leading-tight sm:mt-4 sm:text-2xl">
+                  {item.title}
+                </div>
+                <div className="mt-2 hidden text-sm font-bold leading-relaxed opacity-70 sm:block">
+                  {item.description}
+                </div>
+                <div className="mt-3 text-xs font-black opacity-80 sm:mt-5 sm:text-sm">
+                  들어가기 →
+                </div>
               </Link>
             );
           })}
