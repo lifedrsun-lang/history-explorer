@@ -1,4 +1,45 @@
-export type PresentationCategory = "history" | "coding" | "world";
+export type PresentationCategory =
+  | "history"
+  | "coding"
+  | "world"
+  | "boardgame"
+  | "personal_study";
+
+export function isPresentationCategory(
+  value: unknown
+): value is PresentationCategory {
+  return (
+    value === "history" ||
+    value === "coding" ||
+    value === "world" ||
+    value === "boardgame" ||
+    value === "personal_study"
+  );
+}
+
+export function normalizePresentationCategory(
+  value: unknown
+): PresentationCategory {
+  if (value === "worldculture") return "world";
+  return isPresentationCategory(value) ? value : "history";
+}
+
+export function isNamedCardCategory(
+  category: PresentationCategory
+): category is "boardgame" | "personal_study" {
+  return category === "boardgame" || category === "personal_study";
+}
+
+export function normalizeCardDisplayName(value: unknown) {
+  return String(value ?? "").trim();
+}
+
+export function normalizeCardKey(value: unknown) {
+  return normalizeCardDisplayName(value)
+    .normalize("NFKC")
+    .replace(/\s+/gu, " ")
+    .toLocaleLowerCase("ko");
+}
 
 export type WorldCultureSeries =
   | "culture_art"

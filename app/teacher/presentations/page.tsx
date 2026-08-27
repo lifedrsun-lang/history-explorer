@@ -16,8 +16,13 @@ import {
   getWorldCultureBook,
   getWorldCultureLessonTitle,
   getWorldCultureSeriesOrder,
+  isNamedCardCategory,
+  isPresentationCategory,
   isWorldCultureSeries,
+  normalizeCardDisplayName,
+  normalizeCardKey,
   normalizeBookKey,
+  normalizePresentationCategory,
   type PresentationCategory,
   type WorldCultureSeries,
 } from "@/lib/presentations/catalog";
@@ -31,6 +36,9 @@ type PresentationListItem = {
   bookNumber: string;
   lessonNumber: number | null;
   lessonTitle: string;
+  resourceTitle: string;
+  cardName: string;
+  cardKey: string;
   pptUrl: string;
   createdAt: number;
 };
@@ -45,6 +53,13 @@ type PresentationBook = {
   coverUrl?: string;
   lessons: Map<number, PresentationListItem>;
   extras: PresentationListItem[];
+};
+
+type PresentationNamedCard = {
+  key: string;
+  category: PresentationCategory;
+  displayName: string;
+  resources: PresentationListItem[];
 };
 
 type LibraryCard = {
@@ -75,9 +90,29 @@ const CATEGORY_LABELS: Record<PresentationCategory, string> = {
   history: "별꼼역사",
   coding: "코딩",
   world: "세계문화",
+  boardgame: "보드게임",
+  personal_study: "엄마도 공부중",
 };
 
 const LIBRARIES: LibraryCard[] = [
+  {
+    value: "boardgame",
+    label: "보드게임",
+    icon: "🎲",
+    description: "보드게임 수업과 활동에 필요한 자료를 카드별로 모아 둡니다.",
+    accent: "text-orange-700",
+    soft: "bg-orange-50",
+    border: "border-orange-100 hover:border-orange-300",
+  },
+  {
+    value: "personal_study",
+    label: "엄마도 공부중",
+    icon: "🌱",
+    description: "공부하며 받은 PPT와 자료를 보관하고 필요할 때 꺼내 씁니다.",
+    accent: "text-rose-700",
+    soft: "bg-rose-50",
+    border: "border-rose-100 hover:border-rose-300",
+  },
   {
     value: "history",
     label: "별꼼역사",
@@ -126,9 +161,11 @@ const LINKED_LIBRARY_RESOURCES: LinkedLibraryResource[] = [
 const LESSONS = [1, 2, 3, 4] as const;
 const DEFAULT_PRESENTATION_COVER_URL = "/covers/default-presentation-cover.png";
 const CATEGORY_ORDER: Record<PresentationCategory, number> = {
-  history: 0,
-  coding: 1,
-  world: 2,
+  boardgame: 0,
+  personal_study: 1,
+  history: 2,
+  coding: 3,
+  world: 4,
 };
 
 const DIRECT_WORLD_COVERS: Record<string, string> = {
@@ -138,16 +175,6 @@ const DIRECT_WORLD_COVERS: Record<string, string> = {
   "/covers/worldculture/world-history-3.svg": "/covers/worldculture/world-history-3-v2.jpg",
   "/covers/worldculture/discovery-invention-1.svg": "/covers/worldculture/discovery-invention-1-v2.jpg",
 };
-
-function normalizeCategory(value: unknown): PresentationCategory {
-  if (value === "coding") return "coding";
-  if (value === "world" || value === "worldculture") return "world";
-  return "history";
-}
-
-function isCategory(value: unknown): value is PresentationCategory {
-  return value === "history" || value === "world" || value === "coding";
-}
 
 function getDisplayCoverUrl(coverUrl?: string) {
   if (!coverUrl) return undefined;
@@ -221,6 +248,28 @@ function groupPresentations(items: PresentationListItem[]) {
   });
 }
 
+function groupNamedCards(items: PresentationListItem[]) {
+  const groups = new Map<string, PresentationNamedCard>();
+  const oldestFirst = [...items].sort((a, b) => a.createdAt - b.createdAt);
+
+  for (const item of oldestFirst) {
+    if (!item.cardKey) continue;
+    const key = `${item.category}:card:${item.cardKey}`;
+    const group = groups.get(key) ?? {
+      key,
+      category: item.category,
+      displayName: item.cardName,
+      resources: [],
+    };
+    group.resources.push(item);
+    groups.set(key, group);
+  }
+
+  return [...groups.values()].sort((a, b) =>
+    a.displayName.localeCompare(b.displayName, "ko", { numeric: true })
+  );
+}
+
 export default function TeacherPresentationsPage() {
   const router = useRouter();
   const [authChecking, setAuthChecking] = useState(true);
@@ -235,7 +284,9 @@ export default function TeacherPresentationsPage() {
 
   useEffect(() => {
     const requestedCategory = new URLSearchParams(window.location.search).get("category");
-    if (isCategory(requestedCategory)) {
+    if (isPresentationCategory(requestedCategory)) {
+      // The URL is the external source of truth for a deep-linked library.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveLibrary(requestedCategory);
     }
   }, []);
@@ -245,6 +296,8 @@ export default function TeacherPresentationsPage() {
       history: 0,
       world: 0,
       coding: 0,
+      boardgame: 0,
+      personal_study: 0,
     };
     presentations.forEach((item) => {
       counts[item.category] += 1;
@@ -272,7 +325,11 @@ export default function TeacherPresentationsPage() {
   }, [activeLibrary, presentations, worldBookFilter, worldLessonFilter, worldSeriesFilter]);
 
   const presentationBooks = useMemo(
-    () => groupPresentations(filteredPresentations),
+    () => groupPresentations(filteredPresentations.filter((item) => !item.cardKey)),
+    [filteredPresentations]
+  );
+  const namedCards = useMemo(
+    () => groupNamedCards(filteredPresentations.filter((item) => item.cardKey)),
     [filteredPresentations]
   );
   const linkedLibraryResources = activeLibrary
@@ -300,7 +357,7 @@ export default function TeacherPresentationsPage() {
           snapshot.docs
             .map((docItem) => {
               const data = docItem.data();
-              const category = normalizeCategory(data?.category);
+              const category = normalizePresentationCategory(data?.category);
               const worldSeries =
                 category === "world" &&
                 isWorldCultureSeries(data?.worldSeries ?? data?.series)
@@ -311,6 +368,14 @@ export default function TeacherPresentationsPage() {
                 data?.title,
                 data?.bookNumber
               );
+
+              const storedCardName = normalizeCardDisplayName(data?.cardName);
+              const fallbackCardName = isNamedCardCategory(category)
+                ? normalizeCardDisplayName(
+                    data?.resourceTitle || data?.title || data?.bookNumber
+                  ) || "이름 없는 카드"
+                : "";
+              const cardName = storedCardName || fallbackCardName;
 
               return {
                 id: docItem.id,
@@ -324,6 +389,9 @@ export default function TeacherPresentationsPage() {
                       ? getWorldCultureLessonTitle(worldSeries, data?.bookNumber, lessonNumber)
                       : "")
                 ),
+                resourceTitle: String(data?.resourceTitle || data?.title || "").trim(),
+                cardName,
+                cardKey: cardName ? normalizeCardKey(cardName) : "",
                 pptUrl: String(data?.pptUrl || ""),
                 createdAt:
                   data?.createdAt instanceof Timestamp
@@ -377,9 +445,9 @@ export default function TeacherPresentationsPage() {
       <div className="mx-auto max-w-7xl">
         <header className="mb-4 flex flex-col gap-3 rounded-3xl bg-white p-5 shadow-md md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-black md:text-3xl">📽️ 수업 PPT 자료실</h1>
+            <h1 className="text-2xl font-black md:text-3xl">🗂️ 교사 자료관리</h1>
             <p className="mt-2 text-sm font-bold text-slate-500">
-              수업 종류를 먼저 선택하면 해당 PPT만 볼 수 있습니다.
+              수업자료와 개인 학습자료를 자료실별로 나누어 관리합니다.
             </p>
           </div>
 
@@ -389,7 +457,7 @@ export default function TeacherPresentationsPage() {
               onClick={closeLibrary}
               className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-100"
             >
-              ← PPT 자료실로 돌아가기
+              ← 전체 자료실로 돌아가기
             </button>
           ) : (
             <Link
@@ -403,7 +471,7 @@ export default function TeacherPresentationsPage() {
 
         {!activeLibrary ? (
           <section className="rounded-3xl bg-white p-4 shadow-md md:p-6">
-            <h2 className="text-xl font-black">PPT 자료실 선택</h2>
+            <h2 className="text-xl font-black">자료실 선택</h2>
             <p className="mt-1 text-sm font-bold text-slate-500">
               자료가 많아져도 서로 섞이지 않도록 수업별 자료실로 나눴습니다.
             </p>
@@ -416,7 +484,7 @@ export default function TeacherPresentationsPage() {
             ) : null}
 
             {!isLoading && !loadError ? (
-              <div className="mt-5 grid gap-4 md:grid-cols-3">
+              <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                 {LIBRARIES.map((library) => (
                   <button
                     key={library.value}
@@ -433,7 +501,7 @@ export default function TeacherPresentationsPage() {
                     </p>
                     <div className="mt-5 flex items-center justify-between border-t border-black/5 pt-4">
                       <span className="text-sm font-black text-slate-500">
-                        등록 PPT {categoryCounts[library.value]}개
+                        등록 자료 {categoryCounts[library.value]}개
                       </span>
                       <span className={`text-sm font-black ${library.accent}`}>자료 보기 →</span>
                     </div>
@@ -448,19 +516,23 @@ export default function TeacherPresentationsPage() {
               <div>
                 <h2 className="text-2xl font-black">
                   {LIBRARIES.find((item) => item.value === activeLibrary)?.icon}{" "}
-                  {CATEGORY_LABELS[activeLibrary]} PPT
+                  {CATEGORY_LABELS[activeLibrary]}
                 </h2>
                 <p className="mt-1 text-sm font-bold text-slate-500">
-                  {activeLibrary === "coding"
-                    ? "코딩 수업별 1~4차시 자료와 원본 콘텐츠 자료실을 함께 관리합니다."
-                    : "표지는 작게, 1~4차시는 한눈에 보이도록 압축했습니다."}
+                  {activeLibrary === "personal_study"
+                    ? "배우며 받은 PPT와 참고자료를 카드이름별로 차곡차곡 보관합니다."
+                    : activeLibrary === "boardgame"
+                      ? "같은 보드게임 이름의 자료는 한 카드 안에 함께 모입니다."
+                      : activeLibrary === "coding"
+                        ? "코딩 수업별 1~4차시 자료와 원본 콘텐츠 자료실을 함께 관리합니다."
+                        : "표지는 작게, 1~4차시는 한눈에 보이도록 압축했습니다."}
                 </p>
               </div>
               <Link
                 href={`/teacher/presentations/new?category=${activeLibrary}`}
                 className="inline-flex items-center justify-center rounded-2xl bg-yellow-400 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-yellow-500"
               >
-                + {CATEGORY_LABELS[activeLibrary]} PPT 등록
+                + {CATEGORY_LABELS[activeLibrary]} 자료 등록
               </Link>
             </div>
 
@@ -508,14 +580,18 @@ export default function TeacherPresentationsPage() {
             {!isLoading &&
             !loadError &&
             presentationBooks.length === 0 &&
+            namedCards.length === 0 &&
             linkedLibraryResources.length === 0 ? (
-              <StatusBox>등록된 PPT가 없습니다. 위의 PPT 등록 버튼을 눌러 첫 자료를 추가하세요.</StatusBox>
+              <StatusBox>등록된 자료가 없습니다. 위의 자료 등록 버튼을 눌러 첫 자료를 추가하세요.</StatusBox>
             ) : null}
 
             {!isLoading &&
             !loadError &&
-            (presentationBooks.length > 0 || linkedLibraryResources.length > 0) ? (
+            (presentationBooks.length > 0 || namedCards.length > 0 || linkedLibraryResources.length > 0) ? (
               <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {namedCards.map((card) => (
+                  <NamedResourceCard key={card.key} card={card} />
+                ))}
                 {presentationBooks.map((book) => (
                   <CompactBookCard key={book.key} book={book} />
                 ))}
@@ -528,6 +604,92 @@ export default function TeacherPresentationsPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function NamedResourceCard({ card }: { card: PresentationNamedCard }) {
+  const icon =
+    card.category === "boardgame"
+      ? "🎲"
+      : card.category === "personal_study"
+        ? "🌱"
+        : "📁";
+  const accent =
+    card.category === "boardgame"
+      ? "text-orange-700"
+      : card.category === "personal_study"
+        ? "text-rose-700"
+        : "text-blue-700";
+  const soft =
+    card.category === "boardgame"
+      ? "bg-orange-50"
+      : card.category === "personal_study"
+        ? "bg-rose-50"
+        : "bg-blue-50";
+
+  return (
+    <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+      <div className="flex items-start gap-3">
+        <div
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${soft} text-2xl`}
+        >
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className={`text-xs font-black ${accent}`}>
+            {CATEGORY_LABELS[card.category]}
+          </p>
+          <h3 className="mt-1 break-words text-lg font-black leading-6 text-slate-800">
+            {card.displayName}
+          </h3>
+          <p className="mt-1 text-xs font-bold text-slate-400">
+            자료 {card.resources.length}개
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2">
+        {card.resources.map((resource, index) => {
+          const lessonLabel = resource.lessonNumber
+            ? `${resource.lessonNumber}차시`
+            : "";
+          const resourceLabel =
+            resource.resourceTitle || lessonLabel || `자료 ${index + 1}`;
+          const meta = [resource.bookNumber, lessonLabel]
+            .filter(Boolean)
+            .join(" · ");
+
+          return (
+            <div
+              key={resource.id}
+              className="grid grid-cols-[minmax(0,1fr)_auto] overflow-hidden rounded-xl border border-slate-100 bg-slate-50"
+            >
+              <a
+                href={resource.pptUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="min-w-0 px-3 py-2.5 transition hover:bg-white"
+              >
+                <div className="truncate text-sm font-black text-slate-700">
+                  {resourceLabel} ↗
+                </div>
+                {meta && meta !== resourceLabel ? (
+                  <div className="mt-0.5 truncate text-[11px] font-bold text-slate-400">
+                    {meta}
+                  </div>
+                ) : null}
+              </a>
+              <Link
+                href={`/teacher/presentations/${resource.id}/edit`}
+                className="inline-flex items-center justify-center border-l border-slate-200 px-3 text-xs font-black text-slate-500 transition hover:bg-white hover:text-slate-800"
+              >
+                수정
+              </Link>
+            </div>
+          );
+        })}
+      </div>
+    </article>
   );
 }
 

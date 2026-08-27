@@ -10,6 +10,10 @@ import { auth, db } from "@/lib/firebase";
 import {
   WORLD_CULTURE_SERIES,
   getWorldCultureLessonTitle,
+  isNamedCardCategory,
+  isPresentationCategory,
+  normalizeCardDisplayName,
+  normalizeCardKey,
   type PresentationCategory,
   type WorldCultureSeries,
 } from "@/lib/presentations/catalog";
@@ -19,6 +23,8 @@ type PresentationDraft = {
   worldSeries: WorldCultureSeries | "";
   bookNumber: string;
   lessonNumber: string;
+  cardName: string;
+  resourceTitle: string;
   pptUrl: string;
 };
 
@@ -27,6 +33,8 @@ const EMPTY_DRAFT: PresentationDraft = {
   worldSeries: "",
   bookNumber: "",
   lessonNumber: "1",
+  cardName: "",
+  resourceTitle: "",
   pptUrl: "",
 };
 
@@ -34,6 +42,8 @@ const CATEGORY_LABELS: Record<PresentationCategory, string> = {
   history: "별꼼역사",
   world: "세계문화",
   coding: "코딩",
+  boardgame: "보드게임",
+  personal_study: "엄마도 공부중",
 };
 
 const CATEGORIES: Array<{
@@ -44,11 +54,9 @@ const CATEGORIES: Array<{
   { value: "history", label: "별꼼역사", description: "한국사 수업 PPT" },
   { value: "world", label: "세계문화", description: "모나르떼 세계문화 PPT" },
   { value: "coding", label: "코딩", description: "코딩 수업 PPT" },
+  { value: "boardgame", label: "보드게임", description: "게임별 수업·활동 자료" },
+  { value: "personal_study", label: "엄마도 공부중", description: "개인 학습 자료 아카이브" },
 ];
-
-function isPresentationCategory(value: unknown): value is PresentationCategory {
-  return value === "history" || value === "world" || value === "coding";
-}
 
 function isValidHttpUrl(value: string) {
   try {
@@ -82,12 +90,22 @@ export default function NewTeacherPresentationPage() {
   );
 
   const isValid = useMemo(
-    () =>
-      (draft.category === "world"
-        ? Boolean(draft.worldSeries) && /^[1-3]$/.test(draft.bookNumber)
-        : draft.bookNumber.trim().length > 0) &&
-      /^[1-4]$/.test(draft.lessonNumber) &&
-      isValidHttpUrl(draft.pptUrl),
+    () => {
+      if (!isValidHttpUrl(draft.pptUrl)) return false;
+      if (isNamedCardCategory(draft.category)) {
+        return (
+          normalizeCardDisplayName(draft.cardName).length > 0 &&
+          draft.resourceTitle.trim().length > 0
+        );
+      }
+
+      return (
+        (draft.category === "world"
+          ? Boolean(draft.worldSeries) && /^[1-3]$/.test(draft.bookNumber)
+          : draft.bookNumber.trim().length > 0) &&
+        /^[1-4]$/.test(draft.lessonNumber)
+      );
+    },
     [draft]
   );
 
@@ -95,6 +113,8 @@ export default function NewTeacherPresentationPage() {
     const categoryParam = new URLSearchParams(window.location.search).get("category");
     if (!isPresentationCategory(categoryParam)) return;
 
+    // The URL is the external source of truth for the locked upload category.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLockedCategory(categoryParam);
     setDraft((current) => ({
       ...current,
@@ -137,6 +157,7 @@ export default function NewTeacherPresentationPage() {
             ? current.bookNumber
             : "1"
           : current.bookNumber,
+      resourceTitle: isNamedCardCategory(category) ? current.resourceTitle : "",
     }));
     setErrorMessage("");
   };
@@ -148,15 +169,22 @@ export default function NewTeacherPresentationPage() {
     setErrorMessage("");
 
     try {
+      const cardName = normalizeCardDisplayName(draft.cardName);
+      const isNamedCategory = isNamedCardCategory(draft.category);
       await addDoc(collection(db, "presentations"), {
-        schemaVersion: 4,
+        schemaVersion: 5,
         category: draft.category,
+        cardName,
+        cardKey: cardName ? normalizeCardKey(cardName) : "",
+        resourceTitle: isNamedCategory ? draft.resourceTitle.trim() : "",
         worldSeries: draft.category === "world" ? draft.worldSeries : "",
         bookNumber:
-          draft.category === "world"
+          isNamedCategory
+            ? ""
+            : draft.category === "world"
             ? `${draft.bookNumber}호`
             : draft.bookNumber.trim(),
-        lessonNumber: `${draft.lessonNumber}차시`,
+        lessonNumber: isNamedCategory ? "" : `${draft.lessonNumber}차시`,
         lessonTitle: draft.category === "world" ? autoLessonTitle : "",
         pptUrl: draft.pptUrl.trim(),
         createdBy: currentUser.uid,
@@ -167,7 +195,7 @@ export default function NewTeacherPresentationPage() {
       router.push(`/teacher/presentations?category=${draft.category}`);
     } catch (error) {
       console.error("Presentation save failed:", error);
-      setErrorMessage("PPT 저장에 실패했습니다. 링크와 입력값을 확인해 주세요.");
+      setErrorMessage("자료 저장에 실패했습니다. 링크와 입력값을 확인해 주세요.");
     } finally {
       setIsSaving(false);
     }
@@ -197,14 +225,14 @@ export default function NewTeacherPresentationPage() {
             href={backHref}
             className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-100"
           >
-            ← {lockedCategory ? `${CATEGORY_LABELS[lockedCategory]} PPT` : "PPT 자료실"}
+            ← {lockedCategory ? CATEGORY_LABELS[lockedCategory] : "자료실"}
           </Link>
 
           <h1 className="mt-5 text-2xl font-black md:text-3xl">
-            {lockedCategory ? `${CATEGORY_LABELS[lockedCategory]} PPT 등록` : "PPT 등록"}
+            {lockedCategory ? `${CATEGORY_LABELS[lockedCategory]} 자료 등록` : "자료 등록"}
           </h1>
           <p className="mt-2 text-sm font-bold text-slate-500">
-            호수와 차시, OneDrive 등의 PowerPoint 링크를 저장합니다.
+            자료실과 카드이름을 정한 뒤 OneDrive 등의 PPT·자료 링크를 저장합니다.
           </p>
 
           <div className="mt-6 grid gap-4">
@@ -217,8 +245,8 @@ export default function NewTeacherPresentationPage() {
               </div>
             ) : (
               <div>
-                <div className="text-sm font-black text-slate-700">수업 분류</div>
-                <div className="mt-2 grid grid-cols-3 gap-2">
+                <div className="text-sm font-black text-slate-700">자료 유형</div>
+                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {CATEGORIES.map((category) => (
                     <button
                       key={category.value}
@@ -240,7 +268,42 @@ export default function NewTeacherPresentationPage() {
               </div>
             )}
 
-            {draft.category === "world" ? (
+            <label className="text-sm font-black text-slate-700">
+              카드이름{isNamedCardCategory(draft.category) ? " (필수)" : " (선택)"}
+              <input
+                type="text"
+                value={draft.cardName}
+                maxLength={80}
+                placeholder={
+                  draft.category === "boardgame"
+                    ? "예: 카탄"
+                    : draft.category === "personal_study"
+                      ? "예: 한국사 지도사 공부"
+                      : "비워두면 기존 호수별 카드에 표시"
+                }
+                onChange={(event) => updateDraft("cardName", event.target.value)}
+                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
+              />
+              <span className="mt-2 block text-xs font-bold leading-5 text-slate-400">
+                같은 이름은 띄어쓰기·대소문자 차이를 정리해 한 카드 안에 모읍니다.
+              </span>
+            </label>
+
+            {isNamedCardCategory(draft.category) ? (
+              <label className="text-sm font-black text-slate-700">
+                자료이름
+                <input
+                  type="text"
+                  value={draft.resourceTitle}
+                  maxLength={120}
+                  placeholder="예: 규칙 설명 PPT"
+                  onChange={(event) => updateDraft("resourceTitle", event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
+                />
+              </label>
+            ) : null}
+
+            {!isNamedCardCategory(draft.category) && draft.category === "world" ? (
               <>
                 <div>
                   <div className="text-sm font-black text-slate-700">세계문화 시리즈</div>
@@ -277,7 +340,7 @@ export default function NewTeacherPresentationPage() {
                   </select>
                 </label>
               </>
-            ) : (
+            ) : !isNamedCardCategory(draft.category) ? (
               <label className="text-sm font-black text-slate-700">
                 몇 호
                 <input
@@ -288,9 +351,10 @@ export default function NewTeacherPresentationPage() {
                   className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
                 />
               </label>
-            )}
+            ) : null}
 
-            <label className="text-sm font-black text-slate-700">
+            {!isNamedCardCategory(draft.category) ? (
+              <label className="text-sm font-black text-slate-700">
               차시
               <select
                 value={draft.lessonNumber}
@@ -303,7 +367,8 @@ export default function NewTeacherPresentationPage() {
                   </option>
                 ))}
               </select>
-            </label>
+              </label>
+            ) : null}
 
             {draft.category === "world" && (
               <div className="rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3">
@@ -316,7 +381,7 @@ export default function NewTeacherPresentationPage() {
             )}
 
             <label className="text-sm font-black text-slate-700">
-              PPT 링크
+              PPT·자료 링크
               <input
                 type="url"
                 value={draft.pptUrl}
@@ -339,7 +404,7 @@ export default function NewTeacherPresentationPage() {
             onClick={handleSubmit}
             className="mt-6 w-full rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-white transition enabled:hover:bg-yellow-500 disabled:opacity-50"
           >
-            {isSaving ? "저장 중..." : "PPT 저장"}
+            {isSaving ? "저장 중..." : "자료 저장"}
           </button>
         </div>
       </div>
