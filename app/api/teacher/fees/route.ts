@@ -67,6 +67,15 @@ const serializeContract = (
   ...docItem.data(),
 });
 
+const hasCheckedParticipation = (contracts: any[], studentId: string) =>
+  contracts.some((contract) => {
+    const checks = contract?.participation?.[studentId];
+    return (
+      Array.isArray(checks) &&
+      checks.slice(0, 3).some((value: unknown) => Boolean(value))
+    );
+  });
+
 export async function GET(request: Request) {
   try {
     await verifyTeacherRequest(request);
@@ -112,6 +121,11 @@ export async function GET(request: Request) {
         };
       })
       .filter((student) => student.name && student.school)
+      .filter(
+        (student) =>
+          student.enrollmentStatus !== "paused" ||
+          hasCheckedParticipation(contracts, student.id)
+      )
       .sort((a, b) => {
         if (a.school !== b.school) return a.school.localeCompare(b.school, "ko-KR");
         if (a.teachingClass !== b.teachingClass) {
