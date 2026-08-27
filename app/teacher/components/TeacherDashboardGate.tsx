@@ -10,11 +10,25 @@ import { TEACHER_DASHBOARD_SUMMARY_REFRESH_EVENT } from "@/lib/teacherDashboard"
 
 const menuItems = [
   {
+    href: "/teacher/schedule",
+    icon: "📅",
+    title: "교사일정",
+    description: "학교별 안내·제출·행정 일정을 타임라인으로 관리",
+    className: "border-rose-200 bg-rose-50 text-rose-900",
+  },
+  {
     href: "/teacher/students?status=active",
     icon: "🟢",
     title: "수강생(수강중)",
     description: "전체·A반·B반 조회, 출석·진도·코인·교재·학생수정",
     className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+  },
+  {
+    href: "/teacher/fees",
+    icon: "💰",
+    title: "수강료",
+    description: "방과후 학생별 참여월과 계약강의 차시별 강사료 계산",
+    className: "border-teal-200 bg-teal-50 text-teal-900",
   },
   {
     href: "/teacher/students?status=paused",
@@ -195,9 +209,6 @@ export default function TeacherDashboardGate() {
               <Link href="/" className="rounded-2xl bg-blue-50 px-3 py-2 text-xs font-black text-blue-700 sm:px-4 sm:text-sm">
                 🏝 맵으로
               </Link>
-              <Link href="/teacher?fees=1" className="rounded-2xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 sm:px-4 sm:text-sm">
-                💰 강사료
-              </Link>
               <button type="button" onClick={() => signOut(auth)} className="rounded-2xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600 sm:px-4 sm:text-sm">
                 로그아웃
               </button>
@@ -248,4 +259,3 @@ export default function TeacherDashboardGate() {
     </div>
   );
 }
-
