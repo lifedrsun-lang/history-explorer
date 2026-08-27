@@ -18,6 +18,36 @@ const toNumber = (value: unknown) => {
   return Number.isFinite(number) && number >= 0 ? number : 0;
 };
 
+const DEFAULT_AFTER_SCHOOL_CONTRACTS = [
+  {
+    type: "afterschool",
+    schoolName: "하늘빛초",
+    title: "역사탐험",
+    rateA: 18000,
+    rateB: 22411,
+    monthLabels: ["1차월", "2차월", "3차월"],
+    participation: {},
+  },
+  {
+    type: "afterschool",
+    schoolName: "새솔초",
+    title: "역사탐구/역사논술",
+    rateA: 21520,
+    rateB: 21520,
+    monthLabels: ["1차월", "2차월", "3차월"],
+    participation: {},
+  },
+  {
+    type: "afterschool",
+    schoolName: "사우초",
+    title: "독서역사논술",
+    rateA: 22000,
+    rateB: 22000,
+    monthLabels: ["1차월", "2차월", "3차월"],
+    participation: {},
+  },
+] as const;
+
 const getGradeNumber = (value: unknown) => {
   const match = normalize(value).match(/\d+/);
   return match ? Number(match[0]) : 0;
@@ -42,10 +72,26 @@ export async function GET(request: Request) {
     await verifyTeacherRequest(request);
     const { db } = getFirebaseAdmin();
 
-    const [contractSnapshot, studentSnapshot] = await Promise.all([
-      db.collection(COLLECTION).get(),
-      db.collection("students").get(),
-    ]);
+    let contractSnapshot = await db.collection(COLLECTION).get();
+
+    // 기존 강사료 모듈에서 이미 운영하던 방과후 3개 학교를
+    // 새 수강료 모듈의 최초 데이터로 한 번만 옮긴다.
+    // 개봉초/원종초는 기존 방과후 단가 대상이 아니므로 자동 등록하지 않는다.
+    if (contractSnapshot.empty) {
+      await Promise.all(
+        DEFAULT_AFTER_SCHOOL_CONTRACTS.map((contract) =>
+          db.collection(COLLECTION).add({
+            ...contract,
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+            seededFromLegacyFeeModule: true,
+          })
+        )
+      );
+      contractSnapshot = await db.collection(COLLECTION).get();
+    }
+
+    const studentSnapshot = await db.collection("students").get();
 
     const contracts = contractSnapshot.docs
       .map(serializeContract)
