@@ -9,13 +9,14 @@ export function proxy(request: NextRequest) {
     searchParams.get("category") === "coding"
   ) {
     const referer = request.headers.get("referer") || "";
+    const target = request.nextUrl.clone();
 
-    // Keep the existing "코딩 PPT로" back link usable from the source catalog.
     if (referer.includes("/teacher/presentations/coding-source")) {
-      return NextResponse.next();
+      target.pathname = "/teacher/presentations";
+      target.search = "";
+      return NextResponse.redirect(target);
     }
 
-    const target = request.nextUrl.clone();
     target.pathname = "/teacher/presentations/coding-source";
     target.search = "";
     return NextResponse.redirect(target);
