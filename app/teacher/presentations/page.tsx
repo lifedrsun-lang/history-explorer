@@ -57,6 +57,20 @@ type LibraryCard = {
   border: string;
 };
 
+type LinkedLibraryResource = {
+  id: string;
+  category: PresentationCategory;
+  href: string;
+  icon: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  meta: string;
+  accent: string;
+  soft: string;
+  border: string;
+};
+
 const CATEGORY_LABELS: Record<PresentationCategory, string> = {
   history: "별꼼역사",
   coding: "코딩",
@@ -87,6 +101,22 @@ const LIBRARIES: LibraryCard[] = [
     label: "코딩",
     icon: "💻",
     description: "코딩 수업 PPT를 관리합니다.",
+    accent: "text-emerald-700",
+    soft: "bg-emerald-50",
+    border: "border-emerald-100 hover:border-emerald-300",
+  },
+];
+
+const LINKED_LIBRARY_RESOURCES: LinkedLibraryResource[] = [
+  {
+    id: "hello-maple-source",
+    category: "coding",
+    href: "/teacher/presentations/coding-source",
+    icon: "🍁",
+    eyebrow: "헬로메이플",
+    title: "헬로메이플 원본 콘텐츠 자료실",
+    description: "방문·캠프, 범교과, 인공지능, 실과 연계 등 원본 수업자료를 확인합니다.",
+    meta: "콘텐츠별 원본 자료",
     accent: "text-emerald-700",
     soft: "bg-emerald-50",
     border: "border-emerald-100 hover:border-emerald-300",
@@ -245,6 +275,9 @@ export default function TeacherPresentationsPage() {
     () => groupPresentations(filteredPresentations),
     [filteredPresentations]
   );
+  const linkedLibraryResources = activeLibrary
+    ? LINKED_LIBRARY_RESOURCES.filter((resource) => resource.category === activeLibrary)
+    : [];
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -312,11 +345,6 @@ export default function TeacherPresentationsPage() {
   }, [router]);
 
   const openLibrary = (category: PresentationCategory) => {
-    if (category === "coding") {
-      router.push("/teacher/presentations/coding-source");
-      return;
-    }
-
     setActiveLibrary(category);
     setWorldSeriesFilter("all");
     setWorldBookFilter("all");
@@ -423,7 +451,9 @@ export default function TeacherPresentationsPage() {
                   {CATEGORY_LABELS[activeLibrary]} PPT
                 </h2>
                 <p className="mt-1 text-sm font-bold text-slate-500">
-                  표지는 작게, 1~4차시는 한눈에 보이도록 압축했습니다.
+                  {activeLibrary === "coding"
+                    ? "코딩 수업별 1~4차시 자료와 원본 콘텐츠 자료실을 함께 관리합니다."
+                    : "표지는 작게, 1~4차시는 한눈에 보이도록 압축했습니다."}
                 </p>
               </div>
               <Link
@@ -475,14 +505,22 @@ export default function TeacherPresentationsPage() {
                 {loadError}
               </div>
             ) : null}
-            {!isLoading && !loadError && presentationBooks.length === 0 ? (
+            {!isLoading &&
+            !loadError &&
+            presentationBooks.length === 0 &&
+            linkedLibraryResources.length === 0 ? (
               <StatusBox>등록된 PPT가 없습니다. 위의 PPT 등록 버튼을 눌러 첫 자료를 추가하세요.</StatusBox>
             ) : null}
 
-            {!isLoading && !loadError && presentationBooks.length > 0 ? (
+            {!isLoading &&
+            !loadError &&
+            (presentationBooks.length > 0 || linkedLibraryResources.length > 0) ? (
               <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {presentationBooks.map((book) => (
                   <CompactBookCard key={book.key} book={book} />
+                ))}
+                {linkedLibraryResources.map((resource) => (
+                  <LinkedResourceCard key={resource.id} resource={resource} />
                 ))}
               </div>
             ) : null}
@@ -490,6 +528,31 @@ export default function TeacherPresentationsPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function LinkedResourceCard({ resource }: { resource: LinkedLibraryResource }) {
+  return (
+    <Link
+      href={resource.href}
+      className={`group flex h-full flex-col rounded-2xl border-2 ${resource.border} ${resource.soft} p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md`}
+    >
+      <div className="flex gap-3">
+        <div className="flex h-28 w-20 shrink-0 items-center justify-center rounded-xl border border-white/80 bg-white text-4xl shadow-sm">
+          {resource.icon}
+        </div>
+        <div className="min-w-0 flex-1 py-1">
+          <p className={`text-xs font-black ${resource.accent}`}>{resource.eyebrow}</p>
+          <h3 className="mt-1 text-base font-black leading-6 text-slate-800">{resource.title}</h3>
+          <p className="mt-2 text-xs font-bold leading-5 text-slate-500">{resource.description}</p>
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between rounded-xl bg-white px-3 py-3 shadow-sm">
+        <span className="text-xs font-black text-slate-500">{resource.meta}</span>
+        <span className={`text-xs font-black ${resource.accent}`}>자료 보기 →</span>
+      </div>
+    </Link>
   );
 }
 
