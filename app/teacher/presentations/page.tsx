@@ -312,6 +312,11 @@ export default function TeacherPresentationsPage() {
   }, [router]);
 
   const openLibrary = (category: PresentationCategory) => {
+    if (category === "coding") {
+      router.push("/teacher/presentations/coding-source");
+      return;
+    }
+
     setActiveLibrary(category);
     setWorldSeriesFilter("all");
     setWorldBookFilter("all");
