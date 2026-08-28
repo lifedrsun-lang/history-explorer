@@ -19,16 +19,23 @@ const menuItems = [
   {
     href: "/teacher/students?status=active",
     icon: "🟢",
-    title: "수강생(수강중)",
+    title: "수강생",
     description: "전체·A반·B반 조회, 출석·진도·코인·교재·학생수정",
     className: "border-emerald-200 bg-emerald-50 text-emerald-900",
   },
   {
     href: "/teacher/presentations",
     icon: "📽️",
-    title: "수업자료 관리",
+    title: "수업자료",
     description: "PPT·수업자료 링크를 등록하고 수업용 자료를 관리",
     className: "border-sky-200 bg-sky-50 text-sky-900",
+  },
+  {
+    href: "/teacher/presentations?category=personal_study",
+    icon: "📁",
+    title: "자료실",
+    description: "개인 학습 PPT와 참고자료를 카드별로 보관",
+    className: "border-rose-200 bg-rose-50 text-rose-900",
   },
   {
     href: "/teacher/presentations/review",
@@ -40,7 +47,7 @@ const menuItems = [
   {
     href: "/teacher/assignments",
     icon: "📸",
-    title: "과제 관리",
+    title: "과제관리",
     description: "과제 등록, 제출 확인, 승인·다시 해오기 관리",
     className: "border-violet-200 bg-violet-50 text-violet-900",
   },

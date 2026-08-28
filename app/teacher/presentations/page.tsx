@@ -98,7 +98,7 @@ const CATEGORY_LABELS: Record<PresentationCategory, string> = {
   coding: "코딩",
   world: "세계문화",
   boardgame: "보드게임",
-  personal_study: "엄마도 공부중",
+  personal_study: "자료실",
 };
 
 const LIBRARIES: LibraryCard[] = [
@@ -110,15 +110,6 @@ const LIBRARIES: LibraryCard[] = [
     accent: "text-orange-700",
     soft: "bg-orange-50",
     border: "border-orange-100 hover:border-orange-300",
-  },
-  {
-    value: "personal_study",
-    label: "엄마도 공부중",
-    icon: "🌱",
-    description: "공부하며 받은 PPT와 자료를 보관하고 필요할 때 꺼내 씁니다.",
-    accent: "text-rose-700",
-    soft: "bg-rose-50",
-    border: "border-rose-100 hover:border-rose-300",
   },
   {
     value: "history",

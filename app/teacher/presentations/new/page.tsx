@@ -44,7 +44,7 @@ const CATEGORY_LABELS: Record<PresentationCategory, string> = {
   world: "세계문화",
   coding: "코딩",
   boardgame: "보드게임",
-  personal_study: "엄마도 공부중",
+  personal_study: "자료실",
 };
 
 const CATEGORIES: Array<{
@@ -56,7 +56,7 @@ const CATEGORIES: Array<{
   { value: "world", label: "세계문화", description: "모나르떼 세계문화 PPT" },
   { value: "coding", label: "코딩", description: "코딩 수업 PPT" },
   { value: "boardgame", label: "보드게임", description: "게임별 수업·활동 자료" },
-  { value: "personal_study", label: "엄마도 공부중", description: "개인 학습 자료 아카이브" },
+  { value: "personal_study", label: "자료실", description: "개인 학습 자료 아카이브" },
 ];
 
 function isValidHttpUrl(value: string) {
