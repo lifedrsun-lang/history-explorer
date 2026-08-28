@@ -289,9 +289,9 @@ function groupPresentations(items: PresentationListItem[]) {
 
   for (const group of groups.values()) {
     for (const resources of group.lessons.values()) {
-      resources.sort((a, b) => a.createdAt - b.createdAt);
+      resources.sort(comparePresentationResources);
     }
-    group.extras.sort((a, b) => a.createdAt - b.createdAt);
+    group.extras.sort(comparePresentationResources);
   }
 
   return [...groups.values()].sort((a, b) => {
@@ -312,6 +312,17 @@ function groupPresentations(items: PresentationListItem[]) {
   });
 }
 
+function comparePresentationResources(a: PresentationListItem, b: PresentationListItem) {
+  const aLabel = a.resourceTitle || a.bookNumber || String(a.lessonNumber ?? "");
+  const bLabel = b.resourceTitle || b.bookNumber || String(b.lessonNumber ?? "");
+  const labelDiff = aLabel.localeCompare(bLabel, "ko", {
+    numeric: true,
+    sensitivity: "base",
+  });
+
+  return labelDiff || a.createdAt - b.createdAt;
+}
+
 function groupNamedCards(items: PresentationListItem[]) {
   const groups = new Map<string, PresentationNamedCard>();
   const oldestFirst = [...items].sort((a, b) => a.createdAt - b.createdAt);
@@ -327,6 +338,10 @@ function groupNamedCards(items: PresentationListItem[]) {
     };
     group.resources.push(item);
     groups.set(key, group);
+  }
+
+  for (const group of groups.values()) {
+    group.resources.sort(comparePresentationResources);
   }
 
   return [...groups.values()].sort((a, b) =>
