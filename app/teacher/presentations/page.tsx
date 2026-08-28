@@ -62,6 +62,16 @@ type PresentationNamedCard = {
   resources: PresentationListItem[];
 };
 
+type PersonalStudyResourceKind = "pdf" | "video" | "ppt" | "link";
+
+type PersonalStudyLecture = {
+  key: string;
+  label: string;
+  week: number | null;
+  lecture: number | null;
+  resources: PresentationListItem[];
+};
+
 type LibraryCard = {
   value: PresentationCategory;
   label: string;
@@ -98,7 +108,7 @@ const CATEGORY_LABELS: Record<PresentationCategory, string> = {
   coding: "코딩",
   world: "세계문화",
   boardgame: "보드게임",
-  personal_study: "자료실",
+  personal_study: "내 공부자료",
 };
 
 const LIBRARIES: LibraryCard[] = [
@@ -162,6 +172,15 @@ const BASE_LESSON_COUNT = 4;
 const DEFAULT_PRESENTATION_COVER_URL = "/covers/default-presentation-cover.png";
 const FAVORITE_CARDS_STORAGE_KEY = "sun-lab:presentation-card-favorites:v1";
 const HIDDEN_CODING_CARDS_STORAGE_KEY = "sun-lab:hidden-coding-cards:v1";
+const PERSONAL_STUDY_RESOURCE_META: Record<
+  PersonalStudyResourceKind,
+  { label: string; icon: string; badge: string }
+> = {
+  pdf: { label: "PDF", icon: "📄", badge: "bg-red-50 text-red-700" },
+  video: { label: "영상", icon: "🎬", badge: "bg-violet-50 text-violet-700" },
+  ppt: { label: "PPT", icon: "📊", badge: "bg-amber-50 text-amber-700" },
+  link: { label: "링크", icon: "🔗", badge: "bg-blue-50 text-blue-700" },
+};
 const CATEGORY_ORDER: Record<PresentationCategory, number> = {
   boardgame: 0,
   personal_study: 1,
@@ -321,6 +340,95 @@ function comparePresentationResources(a: PresentationListItem, b: PresentationLi
   });
 
   return labelDiff || a.createdAt - b.createdAt;
+}
+
+function getPersonalStudyResourceKind(
+  resource: PresentationListItem
+): PersonalStudyResourceKind {
+  const hint = `${resource.resourceTitle} ${resource.pptUrl}`.toLowerCase();
+
+  if (/\bpdf\b|\.pdf(?:$|[?#])/u.test(hint)) return "pdf";
+  if (
+    /youtube|youtu\.be|vimeo|영상|동영상|\bvideo\b|\.(?:mp4|mov|webm)(?:$|[?#])/u.test(
+      hint
+    )
+  ) {
+    return "video";
+  }
+  if (/powerpoint|pptx?|슬라이드|프레젠테이션/u.test(hint)) return "ppt";
+  return "link";
+}
+
+function getPersonalStudyResourceCounts(resources: PresentationListItem[]) {
+  return resources.reduce<Record<PersonalStudyResourceKind, number>>(
+    (counts, resource) => {
+      counts[getPersonalStudyResourceKind(resource)] += 1;
+      return counts;
+    },
+    { pdf: 0, video: 0, ppt: 0, link: 0 }
+  );
+}
+
+function groupPersonalStudyLectures(resources: PresentationListItem[]) {
+  const groups = new Map<string, PersonalStudyLecture>();
+
+  for (const resource of resources) {
+    const source = `${resource.resourceTitle} ${resource.bookNumber} ${resource.lessonTitle}`;
+    const weekAndLecture = source.match(
+      /(\d+)\s*주(?:차)?\s*[-·_\/]?\s*(\d+)\s*(?:강|차시)/u
+    );
+    const weekOnly = weekAndLecture ? null : source.match(/(\d+)\s*주(?:차)?/u);
+    const lectureOnly = weekAndLecture || weekOnly ? null : source.match(/(\d+)\s*(?:강|차시)/u);
+    const week = weekAndLecture ? Number(weekAndLecture[1]) : weekOnly ? Number(weekOnly[1]) : null;
+    const lecture = weekAndLecture
+      ? Number(weekAndLecture[2])
+      : lectureOnly
+        ? Number(lectureOnly[1])
+        : null;
+    const key = weekAndLecture
+      ? `week-${week}-lecture-${lecture}`
+      : week !== null
+        ? `week-${week}`
+        : lecture !== null
+          ? `lecture-${lecture}`
+          : "other";
+    const label = weekAndLecture
+      ? `${week}주 ${lecture}강`
+      : week !== null
+        ? `${week}주 자료`
+        : lecture !== null
+          ? `${lecture}강`
+          : "기타 자료";
+    const group = groups.get(key) ?? {
+      key,
+      label,
+      week,
+      lecture,
+      resources: [],
+    };
+
+    group.resources.push(resource);
+    groups.set(key, group);
+  }
+
+  for (const group of groups.values()) {
+    group.resources.sort(comparePresentationResources);
+  }
+
+  return [...groups.values()].sort((a, b) => {
+    if (a.week !== null || b.week !== null) {
+      const weekDiff = (a.week ?? Number.MAX_SAFE_INTEGER) - (b.week ?? Number.MAX_SAFE_INTEGER);
+      if (weekDiff) return weekDiff;
+    }
+
+    if (a.lecture !== null || b.lecture !== null) {
+      const lectureDiff =
+        (a.lecture ?? Number.MAX_SAFE_INTEGER) - (b.lecture ?? Number.MAX_SAFE_INTEGER);
+      if (lectureDiff) return lectureDiff;
+    }
+
+    return a.label.localeCompare(b.label, "ko", { numeric: true });
+  });
 }
 
 function groupNamedCards(items: PresentationListItem[]) {
@@ -655,9 +763,18 @@ function TeacherPresentationsPageContent() {
       <div className="mx-auto max-w-7xl">
         <header className="mb-4 flex flex-col gap-3 rounded-3xl bg-white p-5 shadow-md md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-black md:text-3xl">🗂️ 교사 자료관리</h1>
+            {activeLibrary === "personal_study" ? (
+              <div className="text-xs font-black text-rose-600">
+                자료실 <span className="mx-1 text-slate-300">›</span> 내 공부자료
+              </div>
+            ) : null}
+            <h1 className={`${activeLibrary === "personal_study" ? "mt-2" : ""} text-2xl font-black md:text-3xl`}>
+              {activeLibrary === "personal_study" ? "🌱 내 공부자료" : "🗂️ 교사 자료관리"}
+            </h1>
             <p className="mt-2 text-sm font-bold text-slate-500">
-              수업자료와 개인 학습자료를 자료실별로 나누어 관리합니다.
+              {activeLibrary === "personal_study"
+                ? "과목을 누르면 강의 목록이, 강의를 누르면 실제 자료가 펼쳐집니다."
+                : "수업자료와 개인 학습자료를 자료실별로 나누어 관리합니다."}
             </p>
           </div>
 
@@ -809,12 +926,27 @@ function TeacherPresentationsPageContent() {
             {!isLoading &&
             !loadError &&
             (presentationBooks.length > 0 || namedCards.length > 0 || linkedLibraryResources.length > 0) ? (
-              <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <div
+                className={`mt-5 grid gap-3 ${
+                  activeLibrary === "personal_study" ? "" : "md:grid-cols-2 xl:grid-cols-3"
+                }`}
+              >
                 {displayLibraryCards.map((item) => {
                   const isFavorite = favoriteCardKeys.has(item.favoriteKey);
                   const onToggleFavorite = () => toggleFavoriteCard(item.favoriteKey);
 
                   if (item.kind === "named") {
+                    if (item.card.category === "personal_study") {
+                      return (
+                        <PersonalStudySubjectCard
+                          key={item.favoriteKey}
+                          card={item.card}
+                          isFavorite={isFavorite}
+                          onToggleFavorite={onToggleFavorite}
+                        />
+                      );
+                    }
+
                     return (
                       <NamedResourceCard
                         key={item.favoriteKey}
@@ -877,6 +1009,194 @@ export default function TeacherPresentationsPage() {
     >
       <TeacherPresentationsPageContent />
     </Suspense>
+  );
+}
+
+function PersonalStudySubjectCard({
+  card,
+  isFavorite,
+  onToggleFavorite,
+}: {
+  card: PresentationNamedCard;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
+}) {
+  const [isSubjectExpanded, setIsSubjectExpanded] = useState(false);
+  const [expandedLectureKey, setExpandedLectureKey] = useState<string | null>(null);
+  const lectures = groupPersonalStudyLectures(card.resources);
+
+  return (
+    <article className="overflow-hidden rounded-2xl border border-rose-100 bg-white shadow-sm transition hover:shadow-md">
+      <div className="flex items-start gap-2 p-3 md:items-center md:gap-3 md:p-4">
+        <button
+          type="button"
+          onClick={() => setIsSubjectExpanded((current) => !current)}
+          aria-expanded={isSubjectExpanded}
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left outline-none focus-visible:ring-4 focus-visible:ring-rose-100"
+        >
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-2xl">
+            🌱
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block break-words text-lg font-black leading-6 text-slate-800">
+              {card.displayName}
+            </span>
+            <span className="mt-1 block text-xs font-bold text-slate-400">
+              강의 {lectures.length}개 · 자료 {card.resources.length}개
+            </span>
+            <PersonalStudyResourceBadges resources={card.resources} className="mt-2" />
+          </span>
+          <span
+            aria-hidden="true"
+            className={`shrink-0 text-lg font-black text-rose-400 transition-transform ${
+              isSubjectExpanded ? "rotate-180" : ""
+            }`}
+          >
+            ⌄
+          </span>
+        </button>
+
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Link
+            href={buildNamedCardAddHref(card)}
+            className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-black text-slate-600 transition hover:bg-white hover:text-slate-900"
+          >
+            + 추가
+          </Link>
+          <FavoriteButton
+            label={card.displayName}
+            isFavorite={isFavorite}
+            onToggle={onToggleFavorite}
+          />
+        </div>
+      </div>
+
+      {isSubjectExpanded ? (
+        <div className="grid gap-2 border-t border-rose-100 bg-rose-50/30 p-2 md:p-3">
+          {lectures.map((lecture) => {
+            const isExpanded = expandedLectureKey === lecture.key;
+
+            return (
+              <div
+                key={lecture.key}
+                className="overflow-hidden rounded-xl border border-slate-200 bg-white"
+              >
+                <button
+                  type="button"
+                  onClick={() => setExpandedLectureKey(isExpanded ? null : lecture.key)}
+                  aria-expanded={isExpanded}
+                  className="flex w-full items-center gap-3 px-3 py-3 text-left transition hover:bg-slate-50 md:px-4"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-black text-rose-700">{lecture.label}</span>
+                    <span className="mt-1 block text-[11px] font-bold text-slate-400">
+                      자료 {lecture.resources.length}개
+                    </span>
+                  </span>
+                  <PersonalStudyResourceBadges resources={lecture.resources} compact />
+                  <span
+                    aria-hidden="true"
+                    className={`shrink-0 text-base font-black text-slate-400 transition-transform ${
+                      isExpanded ? "rotate-180" : ""
+                    }`}
+                  >
+                    ⌄
+                  </span>
+                </button>
+
+                {isExpanded ? (
+                  <div className="grid gap-1.5 border-t border-slate-100 bg-slate-50/70 p-2">
+                    {lecture.resources.map((resource, index) => (
+                      <PersonalStudyResourceRow
+                        key={resource.id}
+                        resource={resource}
+                        fallbackLabel={`${lecture.label} 자료 ${index + 1}`}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function PersonalStudyResourceBadges({
+  resources,
+  compact = false,
+  className = "",
+}: {
+  resources: PresentationListItem[];
+  compact?: boolean;
+  className?: string;
+}) {
+  const counts = getPersonalStudyResourceCounts(resources);
+
+  return (
+    <span className={`flex flex-wrap items-center gap-1.5 ${className}`}>
+      {(Object.keys(PERSONAL_STUDY_RESOURCE_META) as PersonalStudyResourceKind[]).map(
+        (kind) =>
+          counts[kind] > 0 ? (
+            <span
+              key={kind}
+              className={`rounded-full font-black ${PERSONAL_STUDY_RESOURCE_META[kind].badge} ${
+                compact ? "px-2 py-1 text-[10px]" : "px-2 py-0.5 text-[10px]"
+              }`}
+            >
+              {PERSONAL_STUDY_RESOURCE_META[kind].label} {counts[kind]}
+            </span>
+          ) : null
+      )}
+    </span>
+  );
+}
+
+function PersonalStudyResourceRow({
+  resource,
+  fallbackLabel,
+}: {
+  resource: PresentationListItem;
+  fallbackLabel: string;
+}) {
+  const kind = getPersonalStudyResourceKind(resource);
+  const meta = PERSONAL_STUDY_RESOURCE_META[kind];
+  const label = resource.resourceTitle || fallbackLabel;
+
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-slate-100 bg-white p-2.5 sm:flex-row sm:items-center">
+      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        <span className="text-lg" aria-hidden="true">
+          {meta.icon}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-black text-slate-700">{label}</span>
+          <span
+            className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black ${meta.badge}`}
+          >
+            {meta.label}
+          </span>
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5 sm:flex sm:shrink-0">
+        <a
+          href={resource.pptUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex min-h-9 items-center justify-center rounded-xl bg-slate-800 px-3 text-xs font-black text-white transition hover:bg-slate-950"
+        >
+          자료 열기 ↗
+        </a>
+        <Link
+          href={`/teacher/presentations/${resource.id}/edit`}
+          className="inline-flex min-h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-600 transition hover:bg-slate-100"
+        >
+          수정
+        </Link>
+      </div>
+    </div>
   );
 }
 
