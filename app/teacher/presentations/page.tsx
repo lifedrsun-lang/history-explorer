@@ -86,6 +86,11 @@ type LinkedLibraryResource = {
   border: string;
 };
 
+type DisplayLibraryCard =
+  | { kind: "named"; favoriteKey: string; card: PresentationNamedCard }
+  | { kind: "book"; favoriteKey: string; book: PresentationBook }
+  | { kind: "linked"; favoriteKey: string; resource: LinkedLibraryResource };
+
 const CATEGORY_LABELS: Record<PresentationCategory, string> = {
   history: "별꼼역사",
   coding: "코딩",
@@ -160,6 +165,7 @@ const LINKED_LIBRARY_RESOURCES: LinkedLibraryResource[] = [
 
 const BASE_LESSON_COUNT = 4;
 const DEFAULT_PRESENTATION_COVER_URL = "/covers/default-presentation-cover.png";
+const FAVORITE_CARDS_STORAGE_KEY = "sun-lab:presentation-card-favorites:v1";
 const CATEGORY_ORDER: Record<PresentationCategory, number> = {
   boardgame: 0,
   personal_study: 1,
@@ -319,24 +325,40 @@ function groupNamedCards(items: PresentationListItem[]) {
   );
 }
 
+function getInitialLibrary() {
+  if (typeof window === "undefined") return null;
+  const requestedCategory = new URLSearchParams(window.location.search).get("category");
+  return isPresentationCategory(requestedCategory) ? requestedCategory : null;
+}
+
+function getStoredFavoriteCardKeys() {
+  if (typeof window === "undefined") return new Set<string>();
+
+  try {
+    const storedKeys = JSON.parse(localStorage.getItem(FAVORITE_CARDS_STORAGE_KEY) || "[]");
+    return new Set(
+      Array.isArray(storedKeys)
+        ? storedKeys.filter((key): key is string => typeof key === "string")
+        : []
+    );
+  } catch (error) {
+    console.warn("Presentation favorites could not be loaded:", error);
+    return new Set<string>();
+  }
+}
+
 export default function TeacherPresentationsPage() {
   const router = useRouter();
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const [presentations, setPresentations] = useState<PresentationListItem[]>([]);
-  const [activeLibrary, setActiveLibrary] = useState<PresentationCategory | null>(null);
+  const [activeLibrary, setActiveLibrary] = useState<PresentationCategory | null>(getInitialLibrary);
   const [worldSeriesFilter, setWorldSeriesFilter] = useState<WorldSeriesFilter>("all");
   const [worldBookFilter, setWorldBookFilter] = useState("all");
   const [worldLessonFilter, setWorldLessonFilter] = useState("all");
+  const [favoriteCardKeys, setFavoriteCardKeys] = useState<Set<string>>(getStoredFavoriteCardKeys);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
-
-  useEffect(() => {
-    const requestedCategory = new URLSearchParams(window.location.search).get("category");
-    if (isPresentationCategory(requestedCategory)) {
-      setActiveLibrary(requestedCategory);
-    }
-  }, []);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<PresentationCategory, number> = {
@@ -379,9 +401,36 @@ export default function TeacherPresentationsPage() {
     () => groupNamedCards(filteredPresentations.filter((item) => item.cardKey)),
     [filteredPresentations]
   );
-  const linkedLibraryResources = activeLibrary
-    ? LINKED_LIBRARY_RESOURCES.filter((resource) => resource.category === activeLibrary)
-    : [];
+  const linkedLibraryResources = useMemo(
+    () =>
+      activeLibrary
+        ? LINKED_LIBRARY_RESOURCES.filter((resource) => resource.category === activeLibrary)
+        : [],
+    [activeLibrary]
+  );
+  const displayLibraryCards = useMemo(() => {
+    const cards: DisplayLibraryCard[] = [
+      ...namedCards.map((card) => ({
+        kind: "named" as const,
+        favoriteKey: `named:${card.key}`,
+        card,
+      })),
+      ...presentationBooks.map((book) => ({
+        kind: "book" as const,
+        favoriteKey: `book:${book.key}`,
+        book,
+      })),
+      ...linkedLibraryResources.map((resource) => ({
+        kind: "linked" as const,
+        favoriteKey: `linked:${resource.category}:${resource.id}`,
+        resource,
+      })),
+    ];
+
+    return [...cards].sort(
+      (a, b) => Number(favoriteCardKeys.has(b.favoriteKey)) - Number(favoriteCardKeys.has(a.favoriteKey))
+    );
+  }, [favoriteCardKeys, linkedLibraryResources, namedCards, presentationBooks]);
   const worldLessonOptions = useMemo(
     () =>
       getLessonNumbers(
@@ -482,6 +531,25 @@ export default function TeacherPresentationsPage() {
     setWorldBookFilter("all");
     setWorldLessonFilter("all");
     router.replace("/teacher/presentations", { scroll: false });
+  };
+
+  const toggleFavoriteCard = (favoriteKey: string) => {
+    setFavoriteCardKeys((current) => {
+      const next = new Set(current);
+      if (next.has(favoriteKey)) {
+        next.delete(favoriteKey);
+      } else {
+        next.add(favoriteKey);
+      }
+
+      try {
+        localStorage.setItem(FAVORITE_CARDS_STORAGE_KEY, JSON.stringify([...next]));
+      } catch (error) {
+        console.warn("Presentation favorites could not be saved:", error);
+      }
+
+      return next;
+    });
   };
 
   if (authChecking) {
@@ -645,15 +713,41 @@ export default function TeacherPresentationsPage() {
             !loadError &&
             (presentationBooks.length > 0 || namedCards.length > 0 || linkedLibraryResources.length > 0) ? (
               <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {namedCards.map((card) => (
-                  <NamedResourceCard key={card.key} card={card} />
-                ))}
-                {presentationBooks.map((book) => (
-                  <CompactBookCard key={book.key} book={book} />
-                ))}
-                {linkedLibraryResources.map((resource) => (
-                  <LinkedResourceCard key={resource.id} resource={resource} />
-                ))}
+                {displayLibraryCards.map((item) => {
+                  const isFavorite = favoriteCardKeys.has(item.favoriteKey);
+                  const onToggleFavorite = () => toggleFavoriteCard(item.favoriteKey);
+
+                  if (item.kind === "named") {
+                    return (
+                      <NamedResourceCard
+                        key={item.favoriteKey}
+                        card={item.card}
+                        isFavorite={isFavorite}
+                        onToggleFavorite={onToggleFavorite}
+                      />
+                    );
+                  }
+
+                  if (item.kind === "book") {
+                    return (
+                      <CompactBookCard
+                        key={item.favoriteKey}
+                        book={item.book}
+                        isFavorite={isFavorite}
+                        onToggleFavorite={onToggleFavorite}
+                      />
+                    );
+                  }
+
+                  return (
+                    <LinkedResourceCard
+                      key={item.favoriteKey}
+                      resource={item.resource}
+                      isFavorite={isFavorite}
+                      onToggleFavorite={onToggleFavorite}
+                    />
+                  );
+                })}
               </div>
             ) : null}
           </section>
@@ -663,7 +757,15 @@ export default function TeacherPresentationsPage() {
   );
 }
 
-function NamedResourceCard({ card }: { card: PresentationNamedCard }) {
+function NamedResourceCard({
+  card,
+  isFavorite,
+  onToggleFavorite,
+}: {
+  card: PresentationNamedCard;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
+}) {
   const [expandedLesson, setExpandedLesson] = useState<number | null>(null);
   const isLessonCard = card.category === "coding";
   const isWonjongHelloMaple = isWonjongHelloMapleCard(card);
@@ -724,12 +826,19 @@ function NamedResourceCard({ card }: { card: PresentationNamedCard }) {
           ) : null}
           <p className="mt-1 text-xs font-bold text-slate-400">자료 {card.resources.length}개</p>
         </div>
-        <Link
-          href={buildNamedCardAddHref(card)}
-          className="inline-flex h-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-black text-slate-600 transition hover:bg-white hover:text-slate-900"
-        >
-          + 추가
-        </Link>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Link
+            href={buildNamedCardAddHref(card)}
+            className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-black text-slate-600 transition hover:bg-white hover:text-slate-900"
+          >
+            + 추가
+          </Link>
+          <FavoriteButton
+            label={card.displayName}
+            isFavorite={isFavorite}
+            onToggle={onToggleFavorite}
+          />
+        </div>
       </div>
 
       {isLessonCard ? (
@@ -855,32 +964,57 @@ function ResourceRow({
   );
 }
 
-function LinkedResourceCard({ resource }: { resource: LinkedLibraryResource }) {
+function LinkedResourceCard({
+  resource,
+  isFavorite,
+  onToggleFavorite,
+}: {
+  resource: LinkedLibraryResource;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
+}) {
   return (
-    <Link
-      href={resource.href}
-      className={`group flex h-full flex-col rounded-2xl border-2 ${resource.border} ${resource.soft} p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md`}
-    >
-      <div className="flex gap-3">
-        <div className="flex h-28 w-20 shrink-0 items-center justify-center rounded-xl border border-white/80 bg-white text-4xl shadow-sm">
-          {resource.icon}
-        </div>
-        <div className="min-w-0 flex-1 py-1">
-          <p className={`text-xs font-black ${resource.accent}`}>{resource.eyebrow}</p>
-          <h3 className="mt-1 text-base font-black leading-6 text-slate-800">{resource.title}</h3>
-          <p className="mt-2 text-xs font-bold leading-5 text-slate-500">{resource.description}</p>
-        </div>
+    <article className="relative h-full">
+      <div className="absolute right-3 top-3 z-10">
+        <FavoriteButton
+          label={resource.title}
+          isFavorite={isFavorite}
+          onToggle={onToggleFavorite}
+        />
       </div>
+      <Link
+        href={resource.href}
+        className={`group flex h-full flex-col rounded-2xl border-2 ${resource.border} ${resource.soft} p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md`}
+      >
+        <div className="flex gap-3">
+          <div className="flex h-28 w-20 shrink-0 items-center justify-center rounded-xl border border-white/80 bg-white text-4xl shadow-sm">
+            {resource.icon}
+          </div>
+          <div className="min-w-0 flex-1 py-1 pr-10">
+            <p className={`text-xs font-black ${resource.accent}`}>{resource.eyebrow}</p>
+            <h3 className="mt-1 text-base font-black leading-6 text-slate-800">{resource.title}</h3>
+            <p className="mt-2 text-xs font-bold leading-5 text-slate-500">{resource.description}</p>
+          </div>
+        </div>
 
-      <div className="mt-3 flex items-center justify-between rounded-xl bg-white px-3 py-3 shadow-sm">
-        <span className="text-xs font-black text-slate-500">{resource.meta}</span>
-        <span className={`text-xs font-black ${resource.accent}`}>자료 보기 →</span>
-      </div>
-    </Link>
+        <div className="mt-3 flex items-center justify-between rounded-xl bg-white px-3 py-3 shadow-sm">
+          <span className="text-xs font-black text-slate-500">{resource.meta}</span>
+          <span className={`text-xs font-black ${resource.accent}`}>자료 보기 →</span>
+        </div>
+      </Link>
+    </article>
   );
 }
 
-function CompactBookCard({ book }: { book: PresentationBook }) {
+function CompactBookCard({
+  book,
+  isFavorite,
+  onToggleFavorite,
+}: {
+  book: PresentationBook;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
+}) {
   const coverUrl = getDisplayCoverUrl(book.coverUrl);
   const isWorld = book.category === "world";
   const [coverFailed, setCoverFailed] = useState(false);
@@ -950,12 +1084,19 @@ function CompactBookCard({ book }: { book: PresentationBook }) {
               <p className={`text-xs font-black ${accentText}`}>{book.shortTitle}</p>
               <h3 className="mt-1 text-base font-black leading-6 text-slate-800">{book.title}</h3>
             </div>
-            <Link
-              href={buildBookAddHref(book)}
-              className="inline-flex h-8 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-2.5 text-[11px] font-black text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
-            >
-              + 추가
-            </Link>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <Link
+                href={buildBookAddHref(book)}
+                className="inline-flex h-8 items-center justify-center rounded-xl border border-slate-200 bg-white px-2.5 text-[11px] font-black text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+              >
+                + 추가
+              </Link>
+              <FavoriteButton
+                label={book.title}
+                isFavorite={isFavorite}
+                onToggle={onToggleFavorite}
+              />
+            </div>
           </div>
           <p className="mt-2 text-xs font-bold text-slate-400">
             등록 {registeredLessons}/{lessonNumbers.length}차시 · 자료 {totalResources}개
@@ -1089,3 +1230,33 @@ function StatusBox({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+function FavoriteButton({
+  label,
+  isFavorite,
+  onToggle,
+}: {
+  label: string;
+  isFavorite: boolean;
+  onToggle: () => void;
+}) {
+  const actionLabel = isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가";
+
+  return (
+    <button
+      type="button"
+      aria-label={`${label} ${actionLabel}`}
+      aria-pressed={isFavorite}
+      title={actionLabel}
+      onClick={onToggle}
+      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-xl font-black shadow-sm transition ${
+        isFavorite
+          ? "border-amber-300 bg-amber-100 text-amber-500 hover:bg-amber-50"
+          : "border-slate-200 bg-white text-slate-400 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-500"
+      }`}
+    >
+      <span aria-hidden="true">{isFavorite ? "★" : "☆"}</span>
+    </button>
+  );
+}
+
