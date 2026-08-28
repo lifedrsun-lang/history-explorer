@@ -18,7 +18,7 @@ export default function CodingSourceLayout({ children }: { children: React.React
           <div className="flex flex-wrap gap-2">
             <Link
               href="/teacher/presentations/coding-source"
-              className={`rounded-2xl px-4 py-2.5 text-sm font-black transition ${
+              className={`order-1 rounded-2xl px-4 py-2.5 text-sm font-black transition ${
                 !is2026
                   ? "bg-emerald-600 text-white shadow-sm"
                   : "border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
@@ -28,7 +28,7 @@ export default function CodingSourceLayout({ children }: { children: React.React
             </Link>
             <Link
               href="/teacher/presentations/coding-source/2026"
-              className={`rounded-2xl px-4 py-2.5 text-sm font-black transition ${
+              className={`order-2 rounded-2xl px-4 py-2.5 text-sm font-black transition ${
                 is2026
                   ? "bg-emerald-600 text-white shadow-sm"
                   : "border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
@@ -38,7 +38,7 @@ export default function CodingSourceLayout({ children }: { children: React.React
             </Link>
             <Link
               href="/teacher/presentations?category=coding"
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-600 transition hover:bg-slate-50"
+              className="order-3 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-600 transition hover:bg-slate-50"
             >
               ← 코딩 자료실
             </Link>
