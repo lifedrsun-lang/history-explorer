@@ -76,6 +76,8 @@ type LinkedLibraryResource = {
   id: string;
   category: PresentationCategory;
   href: string;
+  secondaryHref?: string;
+  secondaryMeta?: string;
   icon: string;
   eyebrow: string;
   title: string;
@@ -152,6 +154,8 @@ const LINKED_LIBRARY_RESOURCES: LinkedLibraryResource[] = [
     id: "hello-maple-source",
     category: "coding",
     href: "/teacher/presentations/coding-source",
+    secondaryHref: "/teacher/presentations/coding-source/2026",
+    secondaryMeta: "2026 자료",
     icon: "🍁",
     eyebrow: "헬로메이플",
     title: "헬로메이플 원본 콘텐츠 자료실",
@@ -166,6 +170,7 @@ const LINKED_LIBRARY_RESOURCES: LinkedLibraryResource[] = [
 const BASE_LESSON_COUNT = 4;
 const DEFAULT_PRESENTATION_COVER_URL = "/covers/default-presentation-cover.png";
 const FAVORITE_CARDS_STORAGE_KEY = "sun-lab:presentation-card-favorites:v1";
+const HIDDEN_CODING_CARDS_STORAGE_KEY = "sun-lab:hidden-coding-cards:v1";
 const CATEGORY_ORDER: Record<PresentationCategory, number> = {
   boardgame: 0,
   personal_study: 1,
@@ -234,6 +239,19 @@ function getLessonNumbers(values: Iterable<number>) {
 function isWonjongHelloMapleCard(card: PresentationNamedCard) {
   const compactName = normalizeCardKey(card.displayName).replace(/\s*\/\s*/gu, "/");
   return card.category === "coding" && compactName === "원종초/헬로메이플";
+}
+
+function isLegacyHelloMapleBasicCard(card: PresentationNamedCard) {
+  return (
+    card.category === "coding" &&
+    normalizeCardKey(card.displayName) === normalizeCardKey("헬로메이플 기본")
+  );
+}
+
+function isHideableCodingCard(item: DisplayLibraryCard) {
+  if (item.kind === "named") return item.card.category === "coding";
+  if (item.kind === "book") return item.book.category === "coding";
+  return false;
 }
 
 function groupPresentations(items: PresentationListItem[]) {
@@ -347,6 +365,24 @@ function getStoredFavoriteCardKeys() {
   }
 }
 
+function getStoredHiddenCodingCardKeys() {
+  if (typeof window === "undefined") return new Set<string>();
+
+  try {
+    const storedKeys = JSON.parse(
+      localStorage.getItem(HIDDEN_CODING_CARDS_STORAGE_KEY) || "[]"
+    );
+    return new Set(
+      Array.isArray(storedKeys)
+        ? storedKeys.filter((key): key is string => typeof key === "string")
+        : []
+    );
+  } catch (error) {
+    console.warn("Hidden coding cards could not be loaded:", error);
+    return new Set<string>();
+  }
+}
+
 export default function TeacherPresentationsPage() {
   const router = useRouter();
   const [authChecking, setAuthChecking] = useState(true);
@@ -357,6 +393,9 @@ export default function TeacherPresentationsPage() {
   const [worldBookFilter, setWorldBookFilter] = useState("all");
   const [worldLessonFilter, setWorldLessonFilter] = useState("all");
   const [favoriteCardKeys, setFavoriteCardKeys] = useState<Set<string>>(getStoredFavoriteCardKeys);
+  const [hiddenCodingCardKeys, setHiddenCodingCardKeys] = useState<Set<string>>(
+    getStoredHiddenCodingCardKeys
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
 
@@ -408,8 +447,8 @@ export default function TeacherPresentationsPage() {
         : [],
     [activeLibrary]
   );
-  const displayLibraryCards = useMemo(() => {
-    const cards: DisplayLibraryCard[] = [
+  const allLibraryCards = useMemo<DisplayLibraryCard[]>(
+    () => [
       ...namedCards.map((card) => ({
         kind: "named" as const,
         favoriteKey: `named:${card.key}`,
@@ -425,12 +464,29 @@ export default function TeacherPresentationsPage() {
         favoriteKey: `linked:${resource.category}:${resource.id}`,
         resource,
       })),
-    ];
+    ],
+    [linkedLibraryResources, namedCards, presentationBooks]
+  );
+  const hiddenCodingCardCount = useMemo(
+    () =>
+      allLibraryCards.filter(
+        (item) =>
+          isHideableCodingCard(item) && hiddenCodingCardKeys.has(item.favoriteKey)
+      ).length,
+    [allLibraryCards, hiddenCodingCardKeys]
+  );
+  const displayLibraryCards = useMemo(() => {
+    const visibleCards = allLibraryCards.filter((item) => {
+      if (item.kind === "named" && isLegacyHelloMapleBasicCard(item.card)) {
+        return false;
+      }
+      return !isHideableCodingCard(item) || !hiddenCodingCardKeys.has(item.favoriteKey);
+    });
 
-    return [...cards].sort(
+    return [...visibleCards].sort(
       (a, b) => Number(favoriteCardKeys.has(b.favoriteKey)) - Number(favoriteCardKeys.has(a.favoriteKey))
     );
-  }, [favoriteCardKeys, linkedLibraryResources, namedCards, presentationBooks]);
+  }, [allLibraryCards, favoriteCardKeys, hiddenCodingCardKeys]);
   const worldLessonOptions = useMemo(
     () =>
       getLessonNumbers(
@@ -552,6 +608,36 @@ export default function TeacherPresentationsPage() {
     });
   };
 
+  const hideCodingCard = (cardKey: string, label: string) => {
+    const shouldHide = window.confirm(
+      `${label} 카드를 목록에서 숨길까요?\n\n연결된 자료와 링크는 삭제되지 않습니다. 숨긴 카드는 위의 복원 버튼으로 다시 표시할 수 있습니다.`
+    );
+    if (!shouldHide) return;
+
+    setHiddenCodingCardKeys((current) => {
+      const next = new Set(current);
+      next.add(cardKey);
+
+      try {
+        localStorage.setItem(HIDDEN_CODING_CARDS_STORAGE_KEY, JSON.stringify([...next]));
+      } catch (error) {
+        console.warn("Hidden coding cards could not be saved:", error);
+      }
+
+      return next;
+    });
+  };
+
+  const restoreHiddenCodingCards = () => {
+    setHiddenCodingCardKeys(new Set());
+
+    try {
+      localStorage.removeItem(HIDDEN_CODING_CARDS_STORAGE_KEY);
+    } catch (error) {
+      console.warn("Hidden coding cards could not be restored:", error);
+    }
+  };
+
   if (authChecking) {
     return (
       <main className="flex min-h-[100dvh] items-center justify-center bg-[#f5f7fb] p-3">
@@ -652,12 +738,23 @@ export default function TeacherPresentationsPage() {
                         : "한 차시에 여러 자료를 넣고 차시를 눌러 목록으로 확인할 수 있습니다."}
                 </p>
               </div>
-              <Link
-                href={`/teacher/presentations/new?category=${activeLibrary}`}
-                className="inline-flex items-center justify-center rounded-2xl bg-yellow-400 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-yellow-500"
-              >
-                + {CATEGORY_LABELS[activeLibrary]} 자료 등록
-              </Link>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {activeLibrary === "coding" && hiddenCodingCardCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={restoreHiddenCodingCards}
+                    className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-100"
+                  >
+                    숨긴 카드 {hiddenCodingCardCount}개 복원
+                  </button>
+                ) : null}
+                <Link
+                  href={`/teacher/presentations/new?category=${activeLibrary}`}
+                  className="inline-flex items-center justify-center rounded-2xl bg-yellow-400 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-yellow-500"
+                >
+                  + {CATEGORY_LABELS[activeLibrary]} 자료 등록
+                </Link>
+              </div>
             </div>
 
             {activeLibrary === "world" && (
@@ -724,6 +821,11 @@ export default function TeacherPresentationsPage() {
                         card={item.card}
                         isFavorite={isFavorite}
                         onToggleFavorite={onToggleFavorite}
+                        onHide={
+                          item.card.category === "coding"
+                            ? () => hideCodingCard(item.favoriteKey, item.card.displayName)
+                            : undefined
+                        }
                       />
                     );
                   }
@@ -735,6 +837,11 @@ export default function TeacherPresentationsPage() {
                         book={item.book}
                         isFavorite={isFavorite}
                         onToggleFavorite={onToggleFavorite}
+                        onHide={
+                          item.book.category === "coding"
+                            ? () => hideCodingCard(item.favoriteKey, item.book.title)
+                            : undefined
+                        }
                       />
                     );
                   }
@@ -761,10 +868,12 @@ function NamedResourceCard({
   card,
   isFavorite,
   onToggleFavorite,
+  onHide,
 }: {
   card: PresentationNamedCard;
   isFavorite: boolean;
   onToggleFavorite: () => void;
+  onHide?: () => void;
 }) {
   const [expandedLesson, setExpandedLesson] = useState<number | null>(null);
   const isLessonCard = card.category === "coding";
@@ -838,6 +947,7 @@ function NamedResourceCard({
             isFavorite={isFavorite}
             onToggle={onToggleFavorite}
           />
+          {onHide ? <CardHideButton label={card.displayName} onHide={onHide} /> : null}
         </div>
       </div>
 
@@ -974,7 +1084,9 @@ function LinkedResourceCard({
   onToggleFavorite: () => void;
 }) {
   return (
-    <article className="relative h-full">
+    <article
+      className={`relative flex h-full flex-col rounded-2xl border-2 ${resource.border} ${resource.soft} p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md`}
+    >
       <div className="absolute right-3 top-3 z-10">
         <FavoriteButton
           label={resource.title}
@@ -984,7 +1096,7 @@ function LinkedResourceCard({
       </div>
       <Link
         href={resource.href}
-        className={`group flex h-full flex-col rounded-2xl border-2 ${resource.border} ${resource.soft} p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md`}
+        className="group flex flex-1 flex-col"
       >
         <div className="flex gap-3">
           <div className="flex h-28 w-20 shrink-0 items-center justify-center rounded-xl border border-white/80 bg-white text-4xl shadow-sm">
@@ -1002,6 +1114,15 @@ function LinkedResourceCard({
           <span className={`text-xs font-black ${resource.accent}`}>자료 보기 →</span>
         </div>
       </Link>
+      {resource.secondaryHref && resource.secondaryMeta ? (
+        <Link
+          href={resource.secondaryHref}
+          className="mt-2 flex items-center justify-between rounded-xl border border-emerald-100 bg-white px-3 py-3 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50"
+        >
+          <span className="text-xs font-black text-slate-600">{resource.secondaryMeta}</span>
+          <span className={`text-xs font-black ${resource.accent}`}>자료 보기 →</span>
+        </Link>
+      ) : null}
     </article>
   );
 }
@@ -1010,10 +1131,12 @@ function CompactBookCard({
   book,
   isFavorite,
   onToggleFavorite,
+  onHide,
 }: {
   book: PresentationBook;
   isFavorite: boolean;
   onToggleFavorite: () => void;
+  onHide?: () => void;
 }) {
   const coverUrl = getDisplayCoverUrl(book.coverUrl);
   const isWorld = book.category === "world";
@@ -1096,6 +1219,7 @@ function CompactBookCard({
                 isFavorite={isFavorite}
                 onToggle={onToggleFavorite}
               />
+              {onHide ? <CardHideButton label={book.title} onHide={onHide} /> : null}
             </div>
           </div>
           <p className="mt-2 text-xs font-bold text-slate-400">
@@ -1256,6 +1380,20 @@ function FavoriteButton({
       }`}
     >
       <span aria-hidden="true">{isFavorite ? "★" : "☆"}</span>
+    </button>
+  );
+}
+
+function CardHideButton({ label, onHide }: { label: string; onHide: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label={`${label} 카드 숨기기`}
+      title="카드 숨기기"
+      onClick={onHide}
+      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-base font-black text-slate-400 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-500"
+    >
+      <span aria-hidden="true">🗑</span>
     </button>
   );
 }
