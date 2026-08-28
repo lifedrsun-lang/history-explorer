@@ -2,10 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, getDocs, orderBy, query, Timestamp } from "firebase/firestore";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { auth, db } from "@/lib/firebase";
 import {
@@ -334,12 +334,6 @@ function groupNamedCards(items: PresentationListItem[]) {
   );
 }
 
-function getInitialLibrary() {
-  if (typeof window === "undefined") return null;
-  const requestedCategory = new URLSearchParams(window.location.search).get("category");
-  return isPresentationCategory(requestedCategory) ? requestedCategory : null;
-}
-
 function getStoredFavoriteCardKeys() {
   if (typeof window === "undefined") return new Set<string>();
 
@@ -374,12 +368,14 @@ function getStoredHiddenCodingCardKeys() {
   }
 }
 
-export default function TeacherPresentationsPage() {
+function TeacherPresentationsPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedCategory = searchParams.get("category");
+  const activeLibrary = isPresentationCategory(requestedCategory) ? requestedCategory : null;
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const [presentations, setPresentations] = useState<PresentationListItem[]>([]);
-  const [activeLibrary, setActiveLibrary] = useState<PresentationCategory | null>(getInitialLibrary);
   const [worldSeriesFilter, setWorldSeriesFilter] = useState<WorldSeriesFilter>("all");
   const [worldBookFilter, setWorldBookFilter] = useState("all");
   const [worldLessonFilter, setWorldLessonFilter] = useState("all");
@@ -565,7 +561,6 @@ export default function TeacherPresentationsPage() {
   }, [router]);
 
   const openLibrary = (category: PresentationCategory) => {
-    setActiveLibrary(category);
     setWorldSeriesFilter("all");
     setWorldBookFilter("all");
     setWorldLessonFilter("all");
@@ -573,7 +568,6 @@ export default function TeacherPresentationsPage() {
   };
 
   const closeLibrary = () => {
-    setActiveLibrary(null);
     setWorldSeriesFilter("all");
     setWorldBookFilter("all");
     setWorldLessonFilter("all");
@@ -852,6 +846,22 @@ export default function TeacherPresentationsPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function TeacherPresentationsPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-[100dvh] items-center justify-center bg-[#f5f7fb] p-3">
+          <div className="rounded-3xl bg-white px-6 py-5 text-sm font-bold text-slate-600 shadow-md">
+            자료실을 여는 중입니다...
+          </div>
+        </main>
+      }
+    >
+      <TeacherPresentationsPageContent />
+    </Suspense>
   );
 }
 
