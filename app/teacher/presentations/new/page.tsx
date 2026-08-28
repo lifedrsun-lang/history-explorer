@@ -108,9 +108,7 @@ export default function NewTeacherPresentationPage() {
     if (!isValidHttpUrl(draft.pptUrl)) return false;
 
     if (isNamedCardCategory(draft.category)) {
-      const hasCard = normalizeCardDisplayName(draft.cardName).length > 0;
-      if (!hasCard) return false;
-      return lockedCardName ? true : draft.resourceTitle.trim().length > 0;
+      return normalizeCardDisplayName(draft.cardName).length > 0;
     }
 
     return (
@@ -119,7 +117,7 @@ export default function NewTeacherPresentationPage() {
         : draft.bookNumber.trim().length > 0) &&
       /^[1-4]$/.test(draft.lessonNumber)
     );
-  }, [draft, lockedCardName]);
+  }, [draft]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -188,7 +186,6 @@ export default function NewTeacherPresentationPage() {
             ? current.bookNumber
             : "1"
           : current.bookNumber,
-      resourceTitle: isNamedCardCategory(category) ? current.resourceTitle : "",
     }));
     setErrorMessage("");
   };
@@ -251,7 +248,7 @@ export default function NewTeacherPresentationPage() {
     : "/teacher/presentations";
   const isBookContext = Boolean(lockedBookNumber) && !isNamedCardCategory(draft.category);
   const isLessonContext = Boolean(lockedLessonNumber) && isBookContext;
-  const isNamedCardContext = Boolean(lockedCardName) && isNamedCardCategory(draft.category);
+  const isNamedCardContext = Boolean(lockedCardName);
 
   return (
     <main className="min-h-[100dvh] bg-[#f5f7fb] p-3 text-slate-800">
@@ -310,6 +307,11 @@ export default function NewTeacherPresentationPage() {
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <div className="text-xs font-black text-slate-400">추가할 카드</div>
                 <div className="mt-1 text-base font-black text-slate-800">{lockedCardName}</div>
+                {isBookContext ? (
+                  <div className="mt-1 text-xs font-bold text-slate-400">
+                    {lockedBookNumber}{isLessonContext ? ` · ${lockedLessonNumber}차시` : ""}
+                  </div>
+                ) : null}
               </div>
             ) : isBookContext ? (
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -347,19 +349,20 @@ export default function NewTeacherPresentationPage() {
               </label>
             ) : null}
 
-            {isNamedCardCategory(draft.category) && !isNamedCardContext ? (
-              <label className="text-sm font-black text-slate-700">
-                자료이름
-                <input
-                  type="text"
-                  value={draft.resourceTitle}
-                  maxLength={120}
-                  placeholder="예: 규칙 설명 PPT"
-                  onChange={(event) => updateDraft("resourceTitle", event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
-                />
-              </label>
-            ) : null}
+            <label className="text-sm font-black text-slate-700">
+              자료이름 (선택)
+              <input
+                type="text"
+                value={draft.resourceTitle}
+                maxLength={120}
+                placeholder="예: 수업 PPT, 지도안, 워크북"
+                onChange={(event) => updateDraft("resourceTitle", event.target.value)}
+                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
+              />
+              <span className="mt-2 block text-xs font-bold leading-5 text-slate-400">
+                비워두면 차시 안에서 자료 1, 자료 2처럼 자동 표시됩니다.
+              </span>
+            </label>
 
             {!isNamedCardCategory(draft.category) && !isBookContext && draft.category === "world" ? (
               <>

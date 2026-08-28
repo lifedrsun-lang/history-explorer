@@ -194,14 +194,28 @@ function buildBookAddHref(book: PresentationBook, lessonNumber?: number) {
   return `/teacher/presentations/new?${params.toString()}`;
 }
 
-function buildNamedCardAddHref(card: PresentationNamedCard) {
+function buildNamedCardAddHref(card: PresentationNamedCard, lessonNumber?: number) {
   const params = new URLSearchParams({
     category: card.category,
     cardName: card.displayName,
     quick: "1",
   });
 
+  const contextResource = card.resources[0];
+  if (!isNamedCardCategory(card.category) && contextResource?.bookNumber) {
+    params.set("bookNumber", contextResource.bookNumber);
+  }
+  if (contextResource?.worldSeries) {
+    params.set("worldSeries", contextResource.worldSeries);
+  }
+  if (lessonNumber) params.set("lessonNumber", String(lessonNumber));
+
   return `/teacher/presentations/new?${params.toString()}`;
+}
+
+function isWonjongHelloMapleCard(card: PresentationNamedCard) {
+  const compactName = normalizeCardKey(card.displayName).replace(/\s*\/\s*/gu, "/");
+  return card.category === "coding" && compactName === "원종초/헬로메이플";
 }
 
 function groupPresentations(items: PresentationListItem[]) {
@@ -629,24 +643,50 @@ export default function TeacherPresentationsPage() {
 }
 
 function NamedResourceCard({ card }: { card: PresentationNamedCard }) {
+  const [expandedLesson, setExpandedLesson] = useState<number | null>(null);
+  const isLessonCard = card.category === "coding";
+  const isWonjongHelloMaple = isWonjongHelloMapleCard(card);
   const icon =
     card.category === "boardgame"
       ? "🎲"
       : card.category === "personal_study"
         ? "🌱"
+        : card.category === "coding"
+          ? "💻"
         : "📁";
   const accent =
     card.category === "boardgame"
       ? "text-orange-700"
       : card.category === "personal_study"
         ? "text-rose-700"
+        : card.category === "coding"
+          ? "text-emerald-700"
         : "text-blue-700";
   const soft =
     card.category === "boardgame"
       ? "bg-orange-50"
       : card.category === "personal_study"
         ? "bg-rose-50"
+        : card.category === "coding"
+          ? "bg-emerald-50"
         : "bg-blue-50";
+  const lessonResources = new Map<number, PresentationListItem[]>();
+  const extraResources: PresentationListItem[] = [];
+
+  if (isLessonCard) {
+    for (const resource of card.resources) {
+      if (
+        resource.lessonNumber &&
+        LESSONS.includes(resource.lessonNumber as (typeof LESSONS)[number])
+      ) {
+        const resources = lessonResources.get(resource.lessonNumber) ?? [];
+        resources.push(resource);
+        lessonResources.set(resource.lessonNumber, resources);
+      } else {
+        extraResources.push(resource);
+      }
+    }
+  }
 
   return (
     <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
@@ -659,6 +699,9 @@ function NamedResourceCard({ card }: { card: PresentationNamedCard }) {
           <h3 className="mt-1 break-words text-lg font-black leading-6 text-slate-800">
             {card.displayName}
           </h3>
+          {isWonjongHelloMaple ? (
+            <p className="mt-1 text-xs font-black text-emerald-600">클래스포에듀 협력 수업</p>
+          ) : null}
           <p className="mt-1 text-xs font-bold text-slate-400">자료 {card.resources.length}개</p>
         </div>
         <Link
@@ -669,39 +712,119 @@ function NamedResourceCard({ card }: { card: PresentationNamedCard }) {
         </Link>
       </div>
 
-      <div className="mt-4 grid gap-2">
-        {card.resources.map((resource, index) => {
-          const lessonLabel = resource.lessonNumber ? `${resource.lessonNumber}차시` : "";
-          const resourceLabel = resource.resourceTitle || lessonLabel || `자료 ${index + 1}`;
-          const meta = [resource.bookNumber, lessonLabel].filter(Boolean).join(" · ");
+      {isLessonCard ? (
+        <div className="mt-4 grid gap-2">
+          {LESSONS.map((lesson) => {
+            const resources = lessonResources.get(lesson) ?? [];
+            const isExpanded = expandedLesson === lesson;
 
-          return (
-            <div
-              key={resource.id}
-              className="grid grid-cols-[minmax(0,1fr)_auto] overflow-hidden rounded-xl border border-slate-100 bg-slate-50"
-            >
-              <a
-                href={resource.pptUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="min-w-0 px-3 py-2.5 transition hover:bg-white"
+            return (
+              <div
+                key={lesson}
+                className={`overflow-hidden rounded-xl border bg-white ${resources.length ? "border-emerald-200" : "border-dashed border-slate-200"}`}
               >
-                <div className="truncate text-sm font-black text-slate-700">{resourceLabel} ↗</div>
-                {meta && meta !== resourceLabel ? (
-                  <div className="mt-0.5 truncate text-[11px] font-bold text-slate-400">{meta}</div>
+                <div className="grid grid-cols-[minmax(0,1fr)_auto]">
+                  <button
+                    type="button"
+                    onClick={() => resources.length && setExpandedLesson(isExpanded ? null : lesson)}
+                    disabled={resources.length === 0}
+                    className={`min-w-0 px-3 py-2.5 text-left ${resources.length ? "bg-emerald-50 transition hover:brightness-[0.99]" : "text-slate-300"}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-xs font-black ${resources.length ? "text-emerald-700" : "text-slate-300"}`}>
+                        {lesson}차시
+                      </span>
+                      <span className="text-[10px] font-black text-slate-500">
+                        {resources.length
+                          ? `자료 ${resources.length}개 ${isExpanded ? "▲" : "▼"}`
+                          : "자료 없음"}
+                      </span>
+                    </div>
+                  </button>
+                  <Link
+                    href={buildNamedCardAddHref(card, lesson)}
+                    title={`${lesson}차시에 자료 추가`}
+                    className="inline-flex min-w-11 items-center justify-center border-l border-slate-200 bg-white px-3 text-lg font-black text-slate-500 transition hover:bg-yellow-50 hover:text-yellow-600"
+                  >
+                    +
+                  </Link>
+                </div>
+
+                {isExpanded ? (
+                  <div className="grid gap-1.5 border-t border-slate-100 p-2">
+                    {resources.map((resource, index) => (
+                      <ResourceRow
+                        key={resource.id}
+                        resource={resource}
+                        label={resource.resourceTitle || `자료 ${index + 1}`}
+                      />
+                    ))}
+                  </div>
                 ) : null}
-              </a>
-              <Link
-                href={`/teacher/presentations/${resource.id}/edit`}
-                className="inline-flex items-center justify-center border-l border-slate-200 px-3 text-xs font-black text-slate-500 transition hover:bg-white hover:text-slate-800"
-              >
-                수정
-              </Link>
+              </div>
+            );
+          })}
+
+          {extraResources.length > 0 ? (
+            <div className="grid gap-1.5 rounded-xl border border-slate-200 bg-white p-2">
+              <div className="text-[10px] font-black text-slate-400">차시 미지정 자료</div>
+              {extraResources.map((resource, index) => (
+                <ResourceRow
+                  key={resource.id}
+                  resource={resource}
+                  label={resource.resourceTitle || `기타 자료 ${index + 1}`}
+                />
+              ))}
             </div>
-          );
-        })}
-      </div>
+          ) : null}
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-2">
+          {card.resources.map((resource, index) => (
+            <ResourceRow
+              key={resource.id}
+              resource={resource}
+              label={resource.resourceTitle || `자료 ${index + 1}`}
+              meta={[resource.bookNumber, resource.lessonNumber ? `${resource.lessonNumber}차시` : ""]
+                .filter(Boolean)
+                .join(" · ")}
+            />
+          ))}
+        </div>
+      )}
     </article>
+  );
+}
+
+function ResourceRow({
+  resource,
+  label,
+  meta,
+}: {
+  resource: PresentationListItem;
+  label: string;
+  meta?: string;
+}) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] overflow-hidden rounded-xl border border-slate-100 bg-slate-50">
+      <a
+        href={resource.pptUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="min-w-0 px-3 py-2.5 transition hover:bg-white"
+      >
+        <div className="truncate text-sm font-black text-slate-700">{label} ↗</div>
+        {meta && meta !== label ? (
+          <div className="mt-0.5 truncate text-[11px] font-bold text-slate-400">{meta}</div>
+        ) : null}
+      </a>
+      <Link
+        href={`/teacher/presentations/${resource.id}/edit`}
+        className="inline-flex items-center justify-center border-l border-slate-200 px-3 text-xs font-black text-slate-500 transition hover:bg-white hover:text-slate-800"
+      >
+        수정
+      </Link>
+    </div>
   );
 }
 

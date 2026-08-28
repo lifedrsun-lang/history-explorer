@@ -91,10 +91,7 @@ export default function EditTeacherPresentationPage() {
     () => {
       if (!isValidHttpUrl(draft.pptUrl)) return false;
       if (isNamedCardCategory(draft.category)) {
-        return (
-          normalizeCardDisplayName(draft.cardName).length > 0 &&
-          draft.resourceTitle.trim().length > 0
-        );
+        return normalizeCardDisplayName(draft.cardName).length > 0;
       }
 
       return (
@@ -172,7 +169,6 @@ export default function EditTeacherPresentationPage() {
       category,
       worldSeries: category === "world" ? current.worldSeries || "culture_art" : "",
       bookNumber: category === "world" ? (/^[1-3]$/.test(current.bookNumber) ? current.bookNumber : "1") : current.bookNumber,
-      resourceTitle: isNamedCardCategory(category) ? current.resourceTitle : "",
     }));
     setErrorMessage("");
   };
@@ -187,11 +183,11 @@ export default function EditTeacherPresentationPage() {
       const cardName = normalizeCardDisplayName(draft.cardName);
       const isNamedCategory = isNamedCardCategory(draft.category);
       await updateDoc(doc(db, "presentations", presentationId), {
-        schemaVersion: 5,
+        schemaVersion: 6,
         category: draft.category,
         cardName,
         cardKey: cardName ? normalizeCardKey(cardName) : "",
-        resourceTitle: isNamedCategory ? draft.resourceTitle.trim() : "",
+        resourceTitle: draft.resourceTitle.trim(),
         worldSeries: draft.category === "world" ? draft.worldSeries : "",
         bookNumber:
           isNamedCategory
@@ -282,18 +278,17 @@ export default function EditTeacherPresentationPage() {
               </span>
             </label>
 
-            {isNamedCardCategory(draft.category) ? (
-              <label className="text-sm font-black text-slate-700">
-                자료이름
-                <input
-                  type="text"
-                  value={draft.resourceTitle}
-                  maxLength={120}
-                  onChange={(event) => updateDraft("resourceTitle", event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
-                />
-              </label>
-            ) : null}
+            <label className="text-sm font-black text-slate-700">
+              자료이름 (선택)
+              <input
+                type="text"
+                value={draft.resourceTitle}
+                maxLength={120}
+                placeholder="예: 수업 PPT, 지도안, 워크북"
+                onChange={(event) => updateDraft("resourceTitle", event.target.value)}
+                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
+              />
+            </label>
 
             {!isNamedCardCategory(draft.category) && draft.category === "world" ? (
               <>
