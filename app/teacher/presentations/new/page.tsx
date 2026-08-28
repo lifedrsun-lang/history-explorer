@@ -12,6 +12,7 @@ import {
   getWorldCultureLessonTitle,
   isNamedCardCategory,
   isPresentationCategory,
+  isWorldCultureSeries,
   normalizeCardDisplayName,
   normalizeCardKey,
   type PresentationCategory,
@@ -67,6 +68,16 @@ function isValidHttpUrl(value: string) {
   }
 }
 
+function normalizeWorldBookParam(value: string) {
+  const match = value.match(/[1-3]/);
+  return match?.[0] || "1";
+}
+
+function normalizeLessonParam(value: string) {
+  const match = value.match(/[1-4]/);
+  return match?.[0] || "1";
+}
+
 export default function NewTeacherPresentationPage() {
   const router = useRouter();
   const [authChecking, setAuthChecking] = useState(true);
@@ -74,6 +85,10 @@ export default function NewTeacherPresentationPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [draft, setDraft] = useState<PresentationDraft>(EMPTY_DRAFT);
   const [lockedCategory, setLockedCategory] = useState<PresentationCategory | null>(null);
+  const [lockedBookNumber, setLockedBookNumber] = useState("");
+  const [lockedLessonNumber, setLockedLessonNumber] = useState("");
+  const [lockedCardName, setLockedCardName] = useState("");
+  const [isQuickAdd, setIsQuickAdd] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -89,38 +104,54 @@ export default function NewTeacherPresentationPage() {
     [draft.bookNumber, draft.category, draft.lessonNumber, draft.worldSeries]
   );
 
-  const isValid = useMemo(
-    () => {
-      if (!isValidHttpUrl(draft.pptUrl)) return false;
-      if (isNamedCardCategory(draft.category)) {
-        return (
-          normalizeCardDisplayName(draft.cardName).length > 0 &&
-          draft.resourceTitle.trim().length > 0
-        );
-      }
+  const isValid = useMemo(() => {
+    if (!isValidHttpUrl(draft.pptUrl)) return false;
 
-      return (
-        (draft.category === "world"
-          ? Boolean(draft.worldSeries) && /^[1-3]$/.test(draft.bookNumber)
-          : draft.bookNumber.trim().length > 0) &&
-        /^[1-4]$/.test(draft.lessonNumber)
-      );
-    },
-    [draft]
-  );
+    if (isNamedCardCategory(draft.category)) {
+      const hasCard = normalizeCardDisplayName(draft.cardName).length > 0;
+      if (!hasCard) return false;
+      return lockedCardName ? true : draft.resourceTitle.trim().length > 0;
+    }
+
+    return (
+      (draft.category === "world"
+        ? Boolean(draft.worldSeries) && /^[1-3]$/.test(draft.bookNumber)
+        : draft.bookNumber.trim().length > 0) &&
+      /^[1-4]$/.test(draft.lessonNumber)
+    );
+  }, [draft, lockedCardName]);
 
   useEffect(() => {
-    const categoryParam = new URLSearchParams(window.location.search).get("category");
+    const params = new URLSearchParams(window.location.search);
+    const categoryParam = params.get("category");
     if (!isPresentationCategory(categoryParam)) return;
 
-    // The URL is the external source of truth for the locked upload category.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    const cardNameParam = normalizeCardDisplayName(params.get("cardName"));
+    const bookNumberParam = String(params.get("bookNumber") || "").trim();
+    const lessonNumberParam = String(params.get("lessonNumber") || "").trim();
+    const worldSeriesParam = params.get("worldSeries");
+    const validWorldSeries = isWorldCultureSeries(worldSeriesParam)
+      ? worldSeriesParam
+      : "culture_art";
+    const normalizedBookNumber =
+      categoryParam === "world"
+        ? normalizeWorldBookParam(bookNumberParam || "1")
+        : bookNumberParam;
+    const normalizedLessonNumber = normalizeLessonParam(lessonNumberParam || "1");
+
     setLockedCategory(categoryParam);
+    setLockedCardName(cardNameParam);
+    setLockedBookNumber(bookNumberParam);
+    setLockedLessonNumber(lessonNumberParam ? normalizedLessonNumber : "");
+    setIsQuickAdd(params.get("quick") === "1");
     setDraft((current) => ({
       ...current,
       category: categoryParam,
-      worldSeries: categoryParam === "world" ? "culture_art" : "",
-      bookNumber: categoryParam === "world" ? "1" : "",
+      worldSeries: categoryParam === "world" ? validWorldSeries : "",
+      bookNumber:
+        normalizedBookNumber || (categoryParam === "world" ? "1" : ""),
+      lessonNumber: normalizedLessonNumber,
+      cardName: cardNameParam,
     }));
   }, []);
 
@@ -171,19 +202,20 @@ export default function NewTeacherPresentationPage() {
     try {
       const cardName = normalizeCardDisplayName(draft.cardName);
       const isNamedCategory = isNamedCardCategory(draft.category);
+
       await addDoc(collection(db, "presentations"), {
-        schemaVersion: 5,
+        schemaVersion: 6,
         category: draft.category,
         cardName,
         cardKey: cardName ? normalizeCardKey(cardName) : "",
-        resourceTitle: isNamedCategory ? draft.resourceTitle.trim() : "",
+        resourceTitle: draft.resourceTitle.trim(),
         worldSeries: draft.category === "world" ? draft.worldSeries : "",
         bookNumber:
           isNamedCategory
             ? ""
             : draft.category === "world"
-            ? `${draft.bookNumber}호`
-            : draft.bookNumber.trim(),
+              ? `${draft.bookNumber}호`
+              : draft.bookNumber.trim(),
         lessonNumber: isNamedCategory ? "" : `${draft.lessonNumber}차시`,
         lessonTitle: draft.category === "world" ? autoLessonTitle : "",
         pptUrl: draft.pptUrl.trim(),
@@ -192,6 +224,7 @@ export default function NewTeacherPresentationPage() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+
       router.push(`/teacher/presentations?category=${draft.category}`);
     } catch (error) {
       console.error("Presentation save failed:", error);
@@ -216,6 +249,9 @@ export default function NewTeacherPresentationPage() {
   const backHref = lockedCategory
     ? `/teacher/presentations?category=${lockedCategory}`
     : "/teacher/presentations";
+  const isBookContext = Boolean(lockedBookNumber) && !isNamedCardCategory(draft.category);
+  const isLessonContext = Boolean(lockedLessonNumber) && isBookContext;
+  const isNamedCardContext = Boolean(lockedCardName) && isNamedCardCategory(draft.category);
 
   return (
     <main className="min-h-[100dvh] bg-[#f5f7fb] p-3 text-slate-800">
@@ -229,10 +265,14 @@ export default function NewTeacherPresentationPage() {
           </Link>
 
           <h1 className="mt-5 text-2xl font-black md:text-3xl">
-            {lockedCategory ? `${CATEGORY_LABELS[lockedCategory]} 자료 등록` : "자료 등록"}
+            {isQuickAdd ? "자료 바로 추가" : lockedCategory ? `${CATEGORY_LABELS[lockedCategory]} 자료 등록` : "자료 등록"}
           </h1>
           <p className="mt-2 text-sm font-bold text-slate-500">
-            자료실과 카드이름을 정한 뒤 OneDrive 등의 PPT·자료 링크를 저장합니다.
+            {isLessonContext
+              ? "선택한 차시에 링크만 추가하면 기존 자료 아래에 함께 모입니다."
+              : isBookContext || isNamedCardContext
+                ? "현재 카드 정보는 자동으로 적용됩니다. 추가할 자료 링크를 입력하세요."
+                : "자료실과 카드이름을 정한 뒤 OneDrive 등의 PPT·자료 링크를 저장합니다."}
           </p>
 
           <div className="mt-6 grid gap-4">
@@ -259,37 +299,55 @@ export default function NewTeacherPresentationPage() {
                       }`}
                     >
                       <div className="text-sm font-black">{category.label}</div>
-                      <div className="mt-1 text-[11px] font-bold opacity-70">
-                        {category.description}
-                      </div>
+                      <div className="mt-1 text-[11px] font-bold opacity-70">{category.description}</div>
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            <label className="text-sm font-black text-slate-700">
-              카드이름{isNamedCardCategory(draft.category) ? " (필수)" : " (선택)"}
-              <input
-                type="text"
-                value={draft.cardName}
-                maxLength={80}
-                placeholder={
-                  draft.category === "boardgame"
-                    ? "예: 카탄"
-                    : draft.category === "personal_study"
-                      ? "예: 한국사 지도사 공부"
-                      : "비워두면 기존 호수별 카드에 표시"
-                }
-                onChange={(event) => updateDraft("cardName", event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
-              />
-              <span className="mt-2 block text-xs font-bold leading-5 text-slate-400">
-                같은 이름은 띄어쓰기·대소문자 차이를 정리해 한 카드 안에 모읍니다.
-              </span>
-            </label>
+            {isNamedCardContext ? (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="text-xs font-black text-slate-400">추가할 카드</div>
+                <div className="mt-1 text-base font-black text-slate-800">{lockedCardName}</div>
+              </div>
+            ) : isBookContext ? (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="text-xs font-black text-slate-400">추가할 카드</div>
+                <div className="mt-1 text-base font-black text-slate-800">
+                  {draft.category === "world" && draft.worldSeries
+                    ? `${WORLD_CULTURE_SERIES.find((series) => series.value === draft.worldSeries)?.label || "세계문화"} · `
+                    : ""}
+                  {lockedBookNumber}
+                  {isLessonContext ? ` · ${lockedLessonNumber}차시` : ""}
+                </div>
+              </div>
+            ) : null}
 
-            {isNamedCardCategory(draft.category) ? (
+            {!isNamedCardContext && !isBookContext ? (
+              <label className="text-sm font-black text-slate-700">
+                카드이름{isNamedCardCategory(draft.category) ? " (필수)" : " (선택)"}
+                <input
+                  type="text"
+                  value={draft.cardName}
+                  maxLength={80}
+                  placeholder={
+                    draft.category === "boardgame"
+                      ? "예: 카탄"
+                      : draft.category === "personal_study"
+                        ? "예: 한국사 지도사 공부"
+                        : "비워두면 기존 호수별 카드에 표시"
+                  }
+                  onChange={(event) => updateDraft("cardName", event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
+                />
+                <span className="mt-2 block text-xs font-bold leading-5 text-slate-400">
+                  같은 이름은 띄어쓰기·대소문자 차이를 정리해 한 카드 안에 모읍니다.
+                </span>
+              </label>
+            ) : null}
+
+            {isNamedCardCategory(draft.category) && !isNamedCardContext ? (
               <label className="text-sm font-black text-slate-700">
                 자료이름
                 <input
@@ -303,7 +361,7 @@ export default function NewTeacherPresentationPage() {
               </label>
             ) : null}
 
-            {!isNamedCardCategory(draft.category) && draft.category === "world" ? (
+            {!isNamedCardCategory(draft.category) && !isBookContext && draft.category === "world" ? (
               <>
                 <div>
                   <div className="text-sm font-black text-slate-700">세계문화 시리즈</div>
@@ -333,44 +391,40 @@ export default function NewTeacherPresentationPage() {
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
                   >
                     {[1, 2, 3].map((book) => (
-                      <option key={book} value={book}>
-                        {book}호
-                      </option>
+                      <option key={book} value={book}>{book}호</option>
                     ))}
                   </select>
                 </label>
               </>
-            ) : !isNamedCardCategory(draft.category) ? (
+            ) : !isNamedCardCategory(draft.category) && !isBookContext ? (
               <label className="text-sm font-black text-slate-700">
                 몇 호
                 <input
                   type="text"
                   value={draft.bookNumber}
-                  placeholder="예: 6호"
+                  placeholder="예: 15호"
                   onChange={(event) => updateDraft("bookNumber", event.target.value)}
                   className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
                 />
               </label>
             ) : null}
 
-            {!isNamedCardCategory(draft.category) ? (
+            {!isNamedCardCategory(draft.category) && !isLessonContext ? (
               <label className="text-sm font-black text-slate-700">
-              차시
-              <select
-                value={draft.lessonNumber}
-                onChange={(event) => updateDraft("lessonNumber", event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
-              >
-                {[1, 2, 3, 4].map((lesson) => (
-                  <option key={lesson} value={lesson}>
-                    {lesson}차시
-                  </option>
-                ))}
-              </select>
+                차시
+                <select
+                  value={draft.lessonNumber}
+                  onChange={(event) => updateDraft("lessonNumber", event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
+                >
+                  {[1, 2, 3, 4].map((lesson) => (
+                    <option key={lesson} value={lesson}>{lesson}차시</option>
+                  ))}
+                </select>
               </label>
             ) : null}
 
-            {draft.category === "world" && (
+            {draft.category === "world" && !isNamedCardCategory(draft.category) ? (
               <div className="rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3">
                 <div className="text-xs font-black text-violet-600">자동 차시 제목</div>
                 <div className="mt-1 text-sm font-black leading-6 text-slate-800">
@@ -378,7 +432,7 @@ export default function NewTeacherPresentationPage() {
                     "시리즈·호수·차시를 선택하면 PDF 목차의 주제가 자동으로 표시됩니다."}
                 </div>
               </div>
-            )}
+            ) : null}
 
             <label className="text-sm font-black text-slate-700">
               PPT·자료 링크
@@ -386,17 +440,18 @@ export default function NewTeacherPresentationPage() {
                 type="url"
                 value={draft.pptUrl}
                 placeholder="https://1drv.ms/..."
+                autoFocus={isQuickAdd}
                 onChange={(event) => updateDraft("pptUrl", event.target.value)}
                 className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
               />
             </label>
           </div>
 
-          {errorMessage && (
+          {errorMessage ? (
             <div className="mt-5 rounded-3xl border border-red-100 bg-red-50 p-4 text-sm font-black text-red-600">
               {errorMessage}
             </div>
-          )}
+          ) : null}
 
           <button
             type="button"
@@ -404,7 +459,7 @@ export default function NewTeacherPresentationPage() {
             onClick={handleSubmit}
             className="mt-6 w-full rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-white transition enabled:hover:bg-yellow-500 disabled:opacity-50"
           >
-            {isSaving ? "저장 중..." : "자료 저장"}
+            {isSaving ? "저장 중..." : isQuickAdd ? "링크 추가" : "자료 저장"}
           </button>
         </div>
       </div>
