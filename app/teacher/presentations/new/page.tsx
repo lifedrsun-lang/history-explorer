@@ -74,8 +74,9 @@ function normalizeWorldBookParam(value: string) {
 }
 
 function normalizeLessonParam(value: string) {
-  const match = value.match(/[1-4]/);
-  return match?.[0] || "1";
+  const match = value.match(/\d+/);
+  const lessonNumber = Number(match?.[0]);
+  return Number.isInteger(lessonNumber) && lessonNumber > 0 ? String(lessonNumber) : "1";
 }
 
 export default function NewTeacherPresentationPage() {
@@ -115,7 +116,7 @@ export default function NewTeacherPresentationPage() {
       (draft.category === "world"
         ? Boolean(draft.worldSeries) && /^[1-3]$/.test(draft.bookNumber)
         : draft.bookNumber.trim().length > 0) &&
-      /^[1-4]$/.test(draft.lessonNumber)
+      /^[1-9]\d*$/.test(draft.lessonNumber)
     );
   }, [draft]);
 
@@ -415,15 +416,17 @@ export default function NewTeacherPresentationPage() {
             {!isNamedCardCategory(draft.category) && !isLessonContext ? (
               <label className="text-sm font-black text-slate-700">
                 차시
-                <select
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
                   value={draft.lessonNumber}
                   onChange={(event) => updateDraft("lessonNumber", event.target.value)}
                   className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
-                >
-                  {[1, 2, 3, 4].map((lesson) => (
-                    <option key={lesson} value={lesson}>{lesson}차시</option>
-                  ))}
-                </select>
+                />
+                <span className="mt-2 block text-xs font-bold leading-5 text-slate-400">
+                  5차시 이상도 번호를 직접 입력할 수 있습니다.
+                </span>
               </label>
             ) : null}
 

@@ -255,7 +255,7 @@ export function getNumber(value: unknown) {
 export function getLessonNumber(...values: unknown[]) {
   for (const value of values) {
     const text = String(value ?? "");
-    const match = text.match(/(?:^|\D)([1-4])\s*차시(?:\D|$)/);
+    const match = text.match(/(?:^|\D)([1-9]\d*)\s*차시(?:\D|$)/);
     if (match) return Number(match[1]);
   }
   return null;

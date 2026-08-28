@@ -158,7 +158,7 @@ const LINKED_LIBRARY_RESOURCES: LinkedLibraryResource[] = [
   },
 ];
 
-const LESSONS = [1, 2, 3, 4] as const;
+const BASE_LESSON_COUNT = 4;
 const DEFAULT_PRESENTATION_COVER_URL = "/covers/default-presentation-cover.png";
 const CATEGORY_ORDER: Record<PresentationCategory, number> = {
   boardgame: 0,
@@ -213,6 +213,18 @@ function buildNamedCardAddHref(card: PresentationNamedCard, lessonNumber?: numbe
   return `/teacher/presentations/new?${params.toString()}`;
 }
 
+function getLessonNumbers(values: Iterable<number>) {
+  const lessonNumbers = new Set(
+    Array.from({ length: BASE_LESSON_COUNT }, (_, index) => index + 1)
+  );
+
+  for (const value of values) {
+    if (Number.isInteger(value) && value > 0) lessonNumbers.add(value);
+  }
+
+  return [...lessonNumbers].sort((a, b) => a - b);
+}
+
 function isWonjongHelloMapleCard(card: PresentationNamedCard) {
   const compactName = normalizeCardKey(card.displayName).replace(/\s*\/\s*/gu, "/");
   return card.category === "coding" && compactName === "원종초/헬로메이플";
@@ -249,7 +261,7 @@ function groupPresentations(items: PresentationListItem[]) {
       extras: [],
     };
 
-    if (item.lessonNumber && LESSONS.includes(item.lessonNumber as (typeof LESSONS)[number])) {
+    if (item.lessonNumber && item.lessonNumber > 0) {
       const lessonResources = group.lessons.get(item.lessonNumber) ?? [];
       lessonResources.push(item);
       group.lessons.set(item.lessonNumber, lessonResources);
@@ -370,6 +382,15 @@ export default function TeacherPresentationsPage() {
   const linkedLibraryResources = activeLibrary
     ? LINKED_LIBRARY_RESOURCES.filter((resource) => resource.category === activeLibrary)
     : [];
+  const worldLessonOptions = useMemo(
+    () =>
+      getLessonNumbers(
+        presentations
+          .filter((item) => item.category === "world")
+          .flatMap((item) => (item.lessonNumber ? [item.lessonNumber] : []))
+      ),
+    [presentations]
+  );
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -599,7 +620,7 @@ export default function TeacherPresentationsPage() {
                   className="rounded-xl border border-violet-100 bg-white px-3 py-2.5 text-sm font-black text-slate-700"
                 >
                   <option value="all">전체 차시</option>
-                  {LESSONS.map((lesson) => (
+                  {worldLessonOptions.map((lesson) => (
                     <option key={lesson} value={lesson}>{lesson}차시</option>
                   ))}
                 </select>
@@ -675,10 +696,7 @@ function NamedResourceCard({ card }: { card: PresentationNamedCard }) {
 
   if (isLessonCard) {
     for (const resource of card.resources) {
-      if (
-        resource.lessonNumber &&
-        LESSONS.includes(resource.lessonNumber as (typeof LESSONS)[number])
-      ) {
+      if (resource.lessonNumber && resource.lessonNumber > 0) {
         const resources = lessonResources.get(resource.lessonNumber) ?? [];
         resources.push(resource);
         lessonResources.set(resource.lessonNumber, resources);
@@ -687,6 +705,8 @@ function NamedResourceCard({ card }: { card: PresentationNamedCard }) {
       }
     }
   }
+  const lessonNumbers = getLessonNumbers(lessonResources.keys());
+  const nextLessonNumber = lessonNumbers[lessonNumbers.length - 1] + 1;
 
   return (
     <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
@@ -714,7 +734,7 @@ function NamedResourceCard({ card }: { card: PresentationNamedCard }) {
 
       {isLessonCard ? (
         <div className="mt-4 grid gap-2">
-          {LESSONS.map((lesson) => {
+          {lessonNumbers.map((lesson) => {
             const resources = lessonResources.get(lesson) ?? [];
             const isExpanded = expandedLesson === lesson;
 
@@ -777,6 +797,13 @@ function NamedResourceCard({ card }: { card: PresentationNamedCard }) {
               ))}
             </div>
           ) : null}
+
+          <Link
+            href={buildNamedCardAddHref(card, nextLessonNumber)}
+            className="inline-flex items-center justify-center rounded-xl border-2 border-dashed border-emerald-200 bg-emerald-50/60 px-3 py-3 text-xs font-black text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-50"
+          >
+            + {nextLessonNumber}차시 추가
+          </Link>
         </div>
       ) : (
         <div className="mt-4 grid gap-2">
@@ -875,7 +902,9 @@ function CompactBookCard({ book }: { book: PresentationBook }) {
       : "bg-blue-50";
 
   const useDefaultCover = !coverUrl || coverFailed;
-  const registeredLessons = LESSONS.filter((lesson) => (book.lessons.get(lesson)?.length ?? 0) > 0).length;
+  const lessonNumbers = getLessonNumbers(book.lessons.keys());
+  const nextLessonNumber = lessonNumbers[lessonNumbers.length - 1] + 1;
+  const registeredLessons = [...book.lessons.values()].filter((resources) => resources.length > 0).length;
   const totalResources =
     [...book.lessons.values()].reduce((sum, resources) => sum + resources.length, 0) +
     book.extras.length;
@@ -929,13 +958,13 @@ function CompactBookCard({ book }: { book: PresentationBook }) {
             </Link>
           </div>
           <p className="mt-2 text-xs font-bold text-slate-400">
-            등록 {registeredLessons}/4차시 · 자료 {totalResources}개
+            등록 {registeredLessons}/{lessonNumbers.length}차시 · 자료 {totalResources}개
           </p>
         </div>
       </div>
 
       <div className="mt-3 grid gap-2">
-        {LESSONS.map((lesson) => {
+        {lessonNumbers.map((lesson) => {
           const resources = book.lessons.get(lesson) ?? [];
           const firstResource = resources[0];
           const lessonTitle = isWorld
@@ -1015,6 +1044,13 @@ function CompactBookCard({ book }: { book: PresentationBook }) {
             </div>
           );
         })}
+
+        <Link
+          href={buildBookAddHref(book, nextLessonNumber)}
+          className="inline-flex items-center justify-center rounded-xl border-2 border-dashed border-yellow-200 bg-yellow-50/70 px-3 py-3 text-xs font-black text-yellow-700 transition hover:border-yellow-300 hover:bg-yellow-50"
+        >
+          + {nextLessonNumber}차시 추가
+        </Link>
       </div>
 
       {book.extras.length > 0 ? (

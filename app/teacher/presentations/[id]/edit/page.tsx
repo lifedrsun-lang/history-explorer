@@ -98,7 +98,7 @@ export default function EditTeacherPresentationPage() {
         (draft.category === "world"
           ? Boolean(draft.worldSeries) && /^[1-3]$/.test(draft.bookNumber)
           : draft.bookNumber.trim().length > 0) &&
-        /^[1-4]$/.test(draft.lessonNumber)
+        /^[1-9]\d*$/.test(draft.lessonNumber)
       );
     },
     [draft]
@@ -139,7 +139,7 @@ export default function EditTeacherPresentationPage() {
               ? String(getNumber(data?.bookNumber) === Number.MAX_SAFE_INTEGER ? 1 : getNumber(data?.bookNumber))
               : String(data?.bookNumber || ""),
           lessonNumber:
-            String(data?.lessonNumber || data?.title || "").match(/([1-4])\s*차시/)?.[1] || "1",
+            String(data?.lessonNumber || data?.title || "").match(/([1-9]\d*)\s*차시/)?.[1] || "1",
           cardName: normalizeCardDisplayName(data?.cardName),
           resourceTitle: String(data?.resourceTitle || data?.title || "").trim(),
           pptUrl: String(data?.pptUrl || ""),
@@ -320,9 +320,7 @@ export default function EditTeacherPresentationPage() {
             {!isNamedCardCategory(draft.category) ? (
               <label className="text-sm font-black text-slate-700">
                 차시
-                <select value={draft.lessonNumber} onChange={(event) => updateDraft("lessonNumber", event.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100">
-                  {[1, 2, 3, 4].map((lesson) => <option key={lesson} value={lesson}>{lesson}차시</option>)}
-                </select>
+                <input type="number" min={1} step={1} value={draft.lessonNumber} onChange={(event) => updateDraft("lessonNumber", event.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100" />
               </label>
             ) : null}
 
