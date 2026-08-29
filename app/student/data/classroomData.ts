@@ -15,7 +15,7 @@ export type ClassroomLesson = {
 export type ClassroomMonster = {
   id: string;
   name: string;
-  symbol: string;
+  imageSrc: string;
   className: string;
 };
 
@@ -34,40 +34,40 @@ export const GAEBONG_SCHOOL_CODE = "GB";
 
 export const CLASSROOM_MONSTERS: ClassroomMonster[] = [
   {
-    id: "rock-spirit",
-    name: "돌의 정령",
-    symbol: "🪨🌱",
-    className: "from-stone-100 to-emerald-50 border-stone-200",
+    id: "slime",
+    name: "슬라임",
+    imageSrc: "/images/classroom/gaebong/slime.jpg",
+    className: "from-lime-100 to-emerald-50 border-lime-200",
   },
   {
     id: "orange-mushroom",
     name: "주황버섯",
-    symbol: "🍄",
+    imageSrc: "/images/classroom/gaebong/orange-mushroom.jpg",
     className: "from-orange-100 to-amber-50 border-orange-200",
   },
   {
-    id: "yeti",
-    name: "예티",
-    symbol: "🐻‍❄️",
-    className: "from-sky-100 to-slate-50 border-sky-200",
+    id: "choco-mushroom",
+    name: "초코버섯",
+    imageSrc: "/images/classroom/gaebong/choco-mushroom.jpg",
+    className: "from-amber-100 to-orange-50 border-amber-200",
   },
   {
-    id: "slime",
-    name: "슬라임",
-    symbol: "🟢",
-    className: "from-lime-100 to-emerald-50 border-lime-200",
+    id: "zombie-mushroom",
+    name: "좀비버섯",
+    imageSrc: "/images/classroom/gaebong/zombie-mushroom.jpg",
+    className: "from-stone-100 to-slate-50 border-stone-200",
   },
   {
-    id: "bloctopus",
-    name: "블록퍼스",
-    symbol: "🧱🐙",
-    className: "from-violet-100 to-fuchsia-50 border-violet-200",
+    id: "blue-mushroom",
+    name: "파란버섯",
+    imageSrc: "/images/classroom/gaebong/blue-mushroom.jpg",
+    className: "from-sky-100 to-blue-50 border-sky-200",
   },
   {
-    id: "ducky-family",
-    name: "더키 패밀리",
-    symbol: "🦆",
-    className: "from-yellow-100 to-orange-50 border-yellow-200",
+    id: "forest-mushroom",
+    name: "초록숲버섯",
+    imageSrc: "/images/classroom/gaebong/forest-mushroom.jpg",
+    className: "from-emerald-100 to-lime-50 border-emerald-200",
   },
 ];
 
@@ -92,7 +92,7 @@ export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
     grade: 6,
     classNumber: 1,
     label: "6학년 1반",
-    monsterId: "rock-spirit",
+    monsterId: "slime",
     directToken: "gb6c1-g7ac4o9a1n",
     lessons: makeLessons(),
   },
@@ -100,7 +100,7 @@ export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
     grade: 6,
     classNumber: 2,
     label: "6학년 2반",
-    monsterId: "orange-mushroom",
+    monsterId: "zombie-mushroom",
     directToken: "gb6c2-je8xtrigeu",
     lessons: makeLessons(),
   },
@@ -108,7 +108,7 @@ export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
     grade: 6,
     classNumber: 3,
     label: "6학년 3반",
-    monsterId: "yeti",
+    monsterId: "forest-mushroom",
     directToken: "gb6c3-kilcoepxmg",
     lessons: makeLessons(),
   },
@@ -116,7 +116,7 @@ export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
     grade: 6,
     classNumber: 4,
     label: "6학년 4반",
-    monsterId: "slime",
+    monsterId: "orange-mushroom",
     directToken: "gb6c4-xtjzvvpgjs",
     lessons: makeLessons(),
   },
@@ -124,7 +124,7 @@ export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
     grade: 6,
     classNumber: 5,
     label: "6학년 5반",
-    monsterId: "bloctopus",
+    monsterId: "blue-mushroom",
     directToken: "gb6c5-emg1vzxnsw",
     lessons: makeLessons(),
   },
@@ -132,7 +132,7 @@ export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
     grade: 6,
     classNumber: 6,
     label: "6학년 6반",
-    monsterId: "ducky-family",
+    monsterId: "choco-mushroom",
     directToken: "gb6c6-ms9vlecq99",
     lessons: makeLessons(),
   },
