@@ -125,3 +125,8 @@ p.mt-3.rounded-xl.bg-white.px-3.py-2.text-xs.font-bold.leading-5.text-slate-500 
 #review-workspace-tabs[data-mode="results"] + main #review-results-panel > section {
   margin-top: 0;
 }
+
+/* 별꼼역사는 1~4주 고정 운영이므로 카드 하단의 '+ n차시 추가' 버튼을 표시하지 않는다. */
+a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-dashed"] {
+  display: none !important;
+}
