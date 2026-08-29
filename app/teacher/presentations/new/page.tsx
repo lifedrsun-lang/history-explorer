@@ -19,6 +19,8 @@ import {
   type WorldCultureSeries,
 } from "@/lib/presentations/catalog";
 
+type PersonalStudyResourceKind = "document" | "video" | "image" | "ppt" | "link";
+
 type PresentationDraft = {
   category: PresentationCategory;
   worldSeries: WorldCultureSeries | "";
@@ -26,6 +28,7 @@ type PresentationDraft = {
   lessonNumber: string;
   cardName: string;
   resourceTitle: string;
+  resourceKind: PersonalStudyResourceKind;
   pptUrl: string;
 };
 
@@ -36,6 +39,7 @@ const EMPTY_DRAFT: PresentationDraft = {
   lessonNumber: "1",
   cardName: "",
   resourceTitle: "",
+  resourceKind: "link",
   pptUrl: "",
 };
 
@@ -44,7 +48,7 @@ const CATEGORY_LABELS: Record<PresentationCategory, string> = {
   world: "세계문화",
   coding: "코딩",
   boardgame: "보드게임",
-  personal_study: "자료실",
+  personal_study: "내 공부자료",
 };
 
 const CATEGORIES: Array<{
@@ -56,7 +60,19 @@ const CATEGORIES: Array<{
   { value: "world", label: "세계문화", description: "모나르떼 세계문화 PPT" },
   { value: "coding", label: "코딩", description: "코딩 수업 PPT" },
   { value: "boardgame", label: "보드게임", description: "게임별 수업·활동 자료" },
-  { value: "personal_study", label: "자료실", description: "개인 학습 자료 아카이브" },
+  { value: "personal_study", label: "내 공부자료", description: "개인 학습 자료 아카이브" },
+];
+
+const PERSONAL_STUDY_RESOURCE_KINDS: Array<{
+  value: PersonalStudyResourceKind;
+  label: string;
+  icon: string;
+}> = [
+  { value: "document", label: "문서", icon: "📄" },
+  { value: "video", label: "동영상", icon: "🎬" },
+  { value: "image", label: "사진", icon: "🖼️" },
+  { value: "ppt", label: "PPT", icon: "📊" },
+  { value: "link", label: "링크", icon: "🔗" },
 ];
 
 function isValidHttpUrl(value: string) {
@@ -207,6 +223,7 @@ export default function NewTeacherPresentationPage() {
         cardName,
         cardKey: cardName ? normalizeCardKey(cardName) : "",
         resourceTitle: draft.resourceTitle.trim(),
+        resourceKind: draft.category === "personal_study" ? draft.resourceKind : "",
         worldSeries: draft.category === "world" ? draft.worldSeries : "",
         bookNumber:
           isNamedCategory
@@ -338,7 +355,7 @@ export default function NewTeacherPresentationPage() {
                     draft.category === "boardgame"
                       ? "예: 카탄"
                       : draft.category === "personal_study"
-                        ? "예: 한국사 지도사 공부"
+                        ? "예: 임상심리학"
                         : "비워두면 기존 호수별 카드에 표시"
                   }
                   onChange={(event) => updateDraft("cardName", event.target.value)}
@@ -356,14 +373,42 @@ export default function NewTeacherPresentationPage() {
                 type="text"
                 value={draft.resourceTitle}
                 maxLength={120}
-                placeholder="예: 수업 PPT, 지도안, 워크북"
+                placeholder={draft.category === "personal_study" ? "예: 01주 2강 임상심리학의 기초 Ⅱ" : "예: 수업 PPT, 지도안, 워크북"}
                 onChange={(event) => updateDraft("resourceTitle", event.target.value)}
                 className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
               />
               <span className="mt-2 block text-xs font-bold leading-5 text-slate-400">
-                비워두면 차시 안에서 자료 1, 자료 2처럼 자동 표시됩니다.
+                {draft.category === "personal_study"
+                  ? "주차·강의명까지 적으면 같은 강의의 자료가 한 묶음으로 정리됩니다."
+                  : "비워두면 차시 안에서 자료 1, 자료 2처럼 자동 표시됩니다."}
               </span>
             </label>
+
+            {draft.category === "personal_study" ? (
+              <div>
+                <div className="text-sm font-black text-slate-700">자료 종류</div>
+                <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                  {PERSONAL_STUDY_RESOURCE_KINDS.map((kind) => (
+                    <button
+                      key={kind.value}
+                      type="button"
+                      onClick={() => updateDraft("resourceKind", kind.value)}
+                      className={`rounded-2xl border px-2 py-3 text-center transition ${
+                        draft.resourceKind === kind.value
+                          ? "border-rose-300 bg-rose-50 text-rose-700 ring-2 ring-rose-100"
+                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="text-lg">{kind.icon}</div>
+                      <div className="mt-1 text-xs font-black">{kind.label}</div>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs font-bold leading-5 text-slate-400">
+                  PDF·한글·워드는 문서, 강의영상은 동영상, 이미지 파일은 사진으로 선택하면 됩니다.
+                </p>
+              </div>
+            ) : null}
 
             {!isNamedCardCategory(draft.category) && !isBookContext && draft.category === "world" ? (
               <>
