@@ -52,10 +52,10 @@ export const CLASSROOM_MONSTERS: ClassroomMonster[] = [
     className: "from-amber-100 to-orange-50 border-amber-200",
   },
   {
-    id: "zombie-mushroom",
-    name: "좀비버섯",
-    imageSrc: "/images/classroom/gaebong/zombie-mushroom.jpg",
-    className: "from-stone-100 to-slate-50 border-stone-200",
+    id: "guardian-angel-slime",
+    name: "가디언 엔젤 슬라임",
+    imageSrc: "/images/classroom/gaebong/guardian-angel-slime.png",
+    className: "from-lime-100 to-yellow-50 border-lime-200",
   },
   {
     id: "blue-mushroom",
@@ -100,7 +100,7 @@ export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
     grade: 6,
     classNumber: 2,
     label: "6학년 2반",
-    monsterId: "zombie-mushroom",
+    monsterId: "guardian-angel-slime",
     directToken: "gb6c2-je8xtrigeu",
     lessons: makeLessons(),
   },
