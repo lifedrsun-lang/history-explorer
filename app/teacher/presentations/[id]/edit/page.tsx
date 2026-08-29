@@ -20,6 +20,8 @@ import {
   type WorldCultureSeries,
 } from "@/lib/presentations/catalog";
 
+type PersonalStudyResourceKind = "document" | "video" | "image" | "ppt" | "link";
+
 type PresentationDraft = {
   category: PresentationCategory;
   worldSeries: WorldCultureSeries | "";
@@ -27,6 +29,7 @@ type PresentationDraft = {
   lessonNumber: string;
   cardName: string;
   resourceTitle: string;
+  resourceKind: PersonalStudyResourceKind;
   pptUrl: string;
 };
 
@@ -37,6 +40,7 @@ const EMPTY_DRAFT: PresentationDraft = {
   lessonNumber: "1",
   cardName: "",
   resourceTitle: "",
+  resourceKind: "link",
   pptUrl: "",
 };
 
@@ -49,8 +53,47 @@ const CATEGORIES: Array<{
   { value: "world", label: "세계문화", description: "모나르떼 세계문화 PPT" },
   { value: "coding", label: "코딩", description: "코딩 수업 PPT" },
   { value: "boardgame", label: "보드게임", description: "게임별 수업·활동 자료" },
-  { value: "personal_study", label: "자료실", description: "개인 학습 자료 아카이브" },
+  { value: "personal_study", label: "내 공부자료", description: "개인 학습 자료 아카이브" },
 ];
+
+const PERSONAL_STUDY_RESOURCE_KINDS: Array<{
+  value: PersonalStudyResourceKind;
+  label: string;
+  icon: string;
+}> = [
+  { value: "document", label: "문서", icon: "📄" },
+  { value: "video", label: "동영상", icon: "🎬" },
+  { value: "image", label: "사진", icon: "🖼️" },
+  { value: "ppt", label: "PPT", icon: "📊" },
+  { value: "link", label: "링크", icon: "🔗" },
+];
+
+function isPersonalStudyResourceKind(value: unknown): value is PersonalStudyResourceKind {
+  return (
+    value === "document" ||
+    value === "video" ||
+    value === "image" ||
+    value === "ppt" ||
+    value === "link"
+  );
+}
+
+function inferPersonalStudyResourceKind(
+  resourceTitle: string,
+  resourceUrl: string
+): PersonalStudyResourceKind {
+  const hint = `${resourceTitle} ${resourceUrl}`.toLowerCase();
+
+  if (/youtube|youtu\.be|vimeo|영상|동영상|\bvideo\b|\.(?:mp4|mov|webm)(?:$|[?#])/u.test(hint)) {
+    return "video";
+  }
+  if (/\.(?:jpe?g|png|webp|gif)(?:$|[?#])|사진|이미지/u.test(hint)) return "image";
+  if (/powerpoint|pptx?|슬라이드|프레젠테이션/u.test(hint)) return "ppt";
+  if (/\bpdf\b|\.pdf(?:$|[?#])|\.(?:hwp|hwpx|docx?|xlsx?|txt)(?:$|[?#])|문서/u.test(hint)) {
+    return "document";
+  }
+  return "link";
+}
 
 function isValidHttpUrl(value: string) {
   try {
@@ -126,6 +169,13 @@ export default function EditTeacherPresentationPage() {
         const data = snapshot.data();
         const category = normalizePresentationCategory(data?.category);
         const storedWorldSeries = data?.worldSeries ?? data?.series;
+        const resourceTitle = String(data?.resourceTitle || data?.title || "").trim();
+        const pptUrl = String(data?.pptUrl || "");
+        const resourceKind =
+          category === "personal_study" && isPersonalStudyResourceKind(data?.resourceKind)
+            ? data.resourceKind
+            : inferPersonalStudyResourceKind(resourceTitle, pptUrl);
+
         setDraft({
           category,
           worldSeries:
@@ -141,8 +191,9 @@ export default function EditTeacherPresentationPage() {
           lessonNumber:
             String(data?.lessonNumber || data?.title || "").match(/([1-9]\d*)\s*차시/)?.[1] || "1",
           cardName: normalizeCardDisplayName(data?.cardName),
-          resourceTitle: String(data?.resourceTitle || data?.title || "").trim(),
-          pptUrl: String(data?.pptUrl || ""),
+          resourceTitle,
+          resourceKind,
+          pptUrl,
         });
       } catch (error) {
         console.error("Presentation load failed:", error);
@@ -155,10 +206,7 @@ export default function EditTeacherPresentationPage() {
     return unsubscribe;
   }, [presentationId, router]);
 
-  const updateDraft = (
-    field: keyof PresentationDraft,
-    value: string
-  ) => {
+  const updateDraft = (field: keyof PresentationDraft, value: string) => {
     setDraft((current) => ({ ...current, [field]: value }));
     setErrorMessage("");
   };
@@ -168,7 +216,12 @@ export default function EditTeacherPresentationPage() {
       ...current,
       category,
       worldSeries: category === "world" ? current.worldSeries || "culture_art" : "",
-      bookNumber: category === "world" ? (/^[1-3]$/.test(current.bookNumber) ? current.bookNumber : "1") : current.bookNumber,
+      bookNumber:
+        category === "world"
+          ? /^[1-3]$/.test(current.bookNumber)
+            ? current.bookNumber
+            : "1"
+          : current.bookNumber,
     }));
     setErrorMessage("");
   };
@@ -188,6 +241,7 @@ export default function EditTeacherPresentationPage() {
         cardName,
         cardKey: cardName ? normalizeCardKey(cardName) : "",
         resourceTitle: draft.resourceTitle.trim(),
+        resourceKind: draft.category === "personal_study" ? draft.resourceKind : "",
         worldSeries: draft.category === "world" ? draft.worldSeries : "",
         bookNumber:
           isNamedCategory
@@ -212,7 +266,13 @@ export default function EditTeacherPresentationPage() {
   };
 
   const handleDelete = async () => {
-    if (isDeleting || isSaving || !window.confirm("이 자료를 삭제할까요? 삭제한 자료는 복구할 수 없습니다.")) return;
+    if (
+      isDeleting ||
+      isSaving ||
+      !window.confirm("이 자료를 삭제할까요? 삭제한 자료는 복구할 수 없습니다.")
+    ) {
+      return;
+    }
     setIsDeleting(true);
     setErrorMessage("");
     try {
@@ -241,19 +301,37 @@ export default function EditTeacherPresentationPage() {
     <main className="min-h-[100dvh] bg-[#f5f7fb] p-3 text-slate-800">
       <div className="mx-auto max-w-2xl">
         <div className="rounded-3xl bg-white p-5 shadow-md">
-          <Link href={`/teacher/presentations?category=${draft.category}`} className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-100">← 자료 목록</Link>
+          <Link
+            href={`/teacher/presentations?category=${draft.category}`}
+            className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-100"
+          >
+            ← 자료 목록
+          </Link>
 
           <h1 className="mt-5 text-2xl font-black md:text-3xl">자료 수정</h1>
-          <p className="mt-2 text-sm font-bold text-slate-500">자료 유형과 카드이름을 바꾸거나 새 링크로 교체해 저장합니다.</p>
+          <p className="mt-2 text-sm font-bold text-slate-500">
+            자료 유형과 카드이름을 바꾸거나 새 링크로 교체해 저장합니다.
+          </p>
 
           <div className="mt-6 grid gap-4">
             <div>
               <div className="text-sm font-black text-slate-700">자료 유형</div>
               <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {CATEGORIES.map((category) => (
-                  <button key={category.value} type="button" onClick={() => selectCategory(category.value)} className={`rounded-2xl border px-3 py-3 text-left transition ${draft.category === category.value ? "border-blue-300 bg-blue-50 text-blue-700 ring-2 ring-blue-100" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}>
+                  <button
+                    key={category.value}
+                    type="button"
+                    onClick={() => selectCategory(category.value)}
+                    className={`rounded-2xl border px-3 py-3 text-left transition ${
+                      draft.category === category.value
+                        ? "border-blue-300 bg-blue-50 text-blue-700 ring-2 ring-blue-100"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
                     <div className="text-sm font-black">{category.label}</div>
-                    <div className="mt-1 text-[11px] font-bold opacity-70">{category.description}</div>
+                    <div className="mt-1 text-[11px] font-bold opacity-70">
+                      {category.description}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -284,11 +362,41 @@ export default function EditTeacherPresentationPage() {
                 type="text"
                 value={draft.resourceTitle}
                 maxLength={120}
-                placeholder="예: 수업 PPT, 지도안, 워크북"
+                placeholder={
+                  draft.category === "personal_study"
+                    ? "예: 01주 2강 임상심리학의 기초 Ⅱ"
+                    : "예: 수업 PPT, 지도안, 워크북"
+                }
                 onChange={(event) => updateDraft("resourceTitle", event.target.value)}
                 className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
               />
             </label>
+
+            {draft.category === "personal_study" ? (
+              <div>
+                <div className="text-sm font-black text-slate-700">자료 종류</div>
+                <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                  {PERSONAL_STUDY_RESOURCE_KINDS.map((kind) => (
+                    <button
+                      key={kind.value}
+                      type="button"
+                      onClick={() => updateDraft("resourceKind", kind.value)}
+                      className={`rounded-2xl border px-2 py-3 text-center transition ${
+                        draft.resourceKind === kind.value
+                          ? "border-rose-300 bg-rose-50 text-rose-700 ring-2 ring-rose-100"
+                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="text-lg">{kind.icon}</div>
+                      <div className="mt-1 text-xs font-black">{kind.label}</div>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs font-bold leading-5 text-slate-400">
+                  기존 자료도 여기서 문서·동영상·사진·PPT·링크로 다시 지정할 수 있습니다.
+                </p>
+              </div>
+            ) : null}
 
             {!isNamedCardCategory(draft.category) && draft.category === "world" ? (
               <>
@@ -296,7 +404,16 @@ export default function EditTeacherPresentationPage() {
                   <div className="text-sm font-black text-slate-700">세계문화 시리즈</div>
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     {WORLD_CULTURE_SERIES.map((series) => (
-                      <button key={series.value} type="button" onClick={() => updateDraft("worldSeries", series.value)} className={`rounded-2xl border px-4 py-3 text-sm font-black transition ${draft.worldSeries === series.value ? "border-violet-300 bg-violet-50 text-violet-700 ring-2 ring-violet-100" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}>
+                      <button
+                        key={series.value}
+                        type="button"
+                        onClick={() => updateDraft("worldSeries", series.value)}
+                        className={`rounded-2xl border px-4 py-3 text-sm font-black transition ${
+                          draft.worldSeries === series.value
+                            ? "border-violet-300 bg-violet-50 text-violet-700 ring-2 ring-violet-100"
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
                         {series.label}
                       </button>
                     ))}
@@ -305,42 +422,85 @@ export default function EditTeacherPresentationPage() {
 
                 <label className="text-sm font-black text-slate-700">
                   몇 호
-                  <select value={draft.bookNumber} onChange={(event) => updateDraft("bookNumber", event.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100">
-                    {[1, 2, 3].map((book) => <option key={book} value={book}>{book}호</option>)}
+                  <select
+                    value={draft.bookNumber}
+                    onChange={(event) => updateDraft("bookNumber", event.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
+                  >
+                    {[1, 2, 3].map((book) => (
+                      <option key={book} value={book}>{book}호</option>
+                    ))}
                   </select>
                 </label>
               </>
             ) : !isNamedCardCategory(draft.category) ? (
               <label className="text-sm font-black text-slate-700">
                 몇 호
-                <input type="text" value={draft.bookNumber} onChange={(event) => updateDraft("bookNumber", event.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100" />
+                <input
+                  type="text"
+                  value={draft.bookNumber}
+                  onChange={(event) => updateDraft("bookNumber", event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
+                />
               </label>
             ) : null}
 
             {!isNamedCardCategory(draft.category) ? (
               <label className="text-sm font-black text-slate-700">
                 차시
-                <input type="number" min={1} step={1} value={draft.lessonNumber} onChange={(event) => updateDraft("lessonNumber", event.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100" />
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={draft.lessonNumber}
+                  onChange={(event) => updateDraft("lessonNumber", event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
+                />
               </label>
             ) : null}
 
             {draft.category === "world" && (
               <div className="rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3">
                 <div className="text-xs font-black text-violet-600">자동 차시 제목</div>
-                <div className="mt-1 text-sm font-black leading-6 text-slate-800">{autoLessonTitle || "시리즈·호수·차시에 맞는 주제가 자동 표시됩니다."}</div>
+                <div className="mt-1 text-sm font-black leading-6 text-slate-800">
+                  {autoLessonTitle || "시리즈·호수·차시에 맞는 주제가 자동 표시됩니다."}
+                </div>
               </div>
             )}
 
             <label className="text-sm font-black text-slate-700">
               PPT·자료 링크
-              <input type="url" value={draft.pptUrl} onChange={(event) => updateDraft("pptUrl", event.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100" />
+              <input
+                type="url"
+                value={draft.pptUrl}
+                onChange={(event) => updateDraft("pptUrl", event.target.value)}
+                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
+              />
             </label>
           </div>
 
-          {errorMessage && <div className="mt-5 rounded-3xl border border-red-100 bg-red-50 p-4 text-sm font-black text-red-600">{errorMessage}</div>}
+          {errorMessage && (
+            <div className="mt-5 rounded-3xl border border-red-100 bg-red-50 p-4 text-sm font-black text-red-600">
+              {errorMessage}
+            </div>
+          )}
 
-          <button type="button" disabled={!isValid || isSaving || isDeleting} onClick={handleSubmit} className="mt-6 w-full rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-white transition enabled:hover:bg-yellow-500 disabled:opacity-50">{isSaving ? "저장 중..." : "수정 저장"}</button>
-          <button type="button" disabled={isSaving || isDeleting} onClick={handleDelete} className="mt-3 w-full rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm font-black text-red-600 transition enabled:hover:bg-red-50 disabled:opacity-50">{isDeleting ? "삭제 중..." : "자료 삭제"}</button>
+          <button
+            type="button"
+            disabled={!isValid || isSaving || isDeleting}
+            onClick={handleSubmit}
+            className="mt-6 w-full rounded-2xl bg-yellow-400 px-4 py-3 text-sm font-black text-white transition enabled:hover:bg-yellow-500 disabled:opacity-50"
+          >
+            {isSaving ? "저장 중..." : "수정 저장"}
+          </button>
+          <button
+            type="button"
+            disabled={isSaving || isDeleting}
+            onClick={handleDelete}
+            className="mt-3 w-full rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm font-black text-red-600 transition enabled:hover:bg-red-50 disabled:opacity-50"
+          >
+            {isDeleting ? "삭제 중..." : "자료 삭제"}
+          </button>
         </div>
       </div>
     </main>
