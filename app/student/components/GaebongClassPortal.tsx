@@ -72,12 +72,12 @@ export default function GaebongClassPortal({ onChangeSchool }: Props) {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 px-3 py-4 text-slate-800">
+    <div className="min-h-[100dvh] bg-gradient-to-b from-amber-100 via-yellow-50 to-emerald-50 px-3 py-4 text-slate-800">
       <div className="mx-auto max-w-2xl space-y-4">
-        <header className="rounded-[28px] border border-white/80 bg-white/95 p-5 shadow-sm">
+        <header className="rounded-[30px] border border-amber-100 bg-white/95 p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-xs font-black text-sky-600">🏫 서울 개봉초</div>
+              <div className="text-xs font-black text-emerald-600">🏫 서울 개봉초</div>
               <h1 className="mt-1 text-2xl font-black text-slate-800">
                 6학년 반 수업방
               </h1>
@@ -88,7 +88,7 @@ export default function GaebongClassPortal({ onChangeSchool }: Props) {
             <button
               type="button"
               onClick={onChangeSchool}
-              className="shrink-0 rounded-2xl border border-sky-100 bg-sky-50 px-3 py-2 text-xs font-black text-sky-700"
+              className="shrink-0 rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-black text-amber-700"
             >
               학교 변경
             </button>
@@ -96,11 +96,11 @@ export default function GaebongClassPortal({ onChangeSchool }: Props) {
         </header>
 
         {!selectedClassroom ? (
-          <section className="rounded-[28px] border border-white/80 bg-white/90 p-4 shadow-sm">
+          <section className="rounded-[30px] border border-white/80 bg-white/95 p-4 shadow-sm">
             <div className="mb-3">
               <h2 className="text-xl font-black text-slate-800">👋 우리 반 선택</h2>
               <p className="mt-1 text-xs font-bold text-slate-500">
-                반코드는 따로 입력하지 않아요.
+                반을 누른 뒤 우리 반 비밀번호 몬스터를 골라요.
               </p>
             </div>
 
@@ -110,9 +110,9 @@ export default function GaebongClassPortal({ onChangeSchool }: Props) {
                   key={classroom.classNumber}
                   type="button"
                   onClick={() => selectClassroom(classroom)}
-                  className="rounded-[22px] border border-sky-100 bg-sky-50 px-3 py-5 text-center transition hover:border-sky-300 hover:bg-sky-100 active:scale-[0.99]"
+                  className="rounded-[22px] border border-emerald-100 bg-gradient-to-br from-white to-emerald-50 px-3 py-5 text-center shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100 active:scale-[0.99]"
                 >
-                  <div className="text-sm font-black text-sky-500">6학년</div>
+                  <div className="text-sm font-black text-emerald-500">6학년</div>
                   <div className="mt-1 text-2xl font-black text-slate-800">
                     {classroom.classNumber}반
                   </div>
@@ -121,50 +121,44 @@ export default function GaebongClassPortal({ onChangeSchool }: Props) {
             </div>
           </section>
         ) : (
-          <section className="rounded-[28px] border border-white/80 bg-white/95 p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-black text-sky-700">
-                  {selectedClassroom.label}
-                </span>
-                <h2 className="mt-3 text-xl font-black text-slate-800">
-                  🎮 우리 반 비밀번호 몬스터는?
-                </h2>
-                <p className="mt-1 text-xs font-bold leading-5 text-slate-500">
-                  선생님이 알려준 몬스터 그림을 골라 주세요. 그림 아래 이름도 함께 볼 수 있어요.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={resetClassroom}
-                className="shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-500"
-              >
-                반 다시 선택
-              </button>
+          <section className="rounded-[30px] border border-amber-100 bg-white/95 p-4 shadow-sm">
+            <div className="rounded-[26px] border border-dashed border-amber-200 bg-gradient-to-br from-amber-50 via-white to-yellow-50 px-4 py-5 text-center">
+              <h2 className="text-2xl font-black text-slate-800">
+                개봉초 <span className="text-emerald-600">6학년</span>{" "}
+                <span className="text-orange-500">{selectedClassroom.classNumber}반</span>
+              </h2>
+              <p className="mt-3 text-base font-black text-slate-700">
+                우리 반 <span className="text-violet-600">비밀번호 몬스터</span>를 찾아 눌러 보세요
+              </p>
+              <p className="mt-1 text-xs font-bold text-slate-500">
+                그림 아래 이름을 보고 선택해도 돼요.
+              </p>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {monsterOptions.map((monster) => (
                 <button
                   key={monster.id}
                   type="button"
                   onClick={() => chooseMonster(monster)}
-                  className={`rounded-[22px] border bg-gradient-to-br p-3 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 ${monster.className}`}
+                  className={`overflow-hidden rounded-[24px] border bg-gradient-to-br p-2 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 ${monster.className}`}
                 >
-                  <div
-                    className="flex h-20 items-center justify-center rounded-2xl bg-white/80 text-4xl sm:h-24 sm:text-5xl"
-                    aria-hidden="true"
-                  >
-                    {monster.symbol}
+                  <div className="flex h-28 items-center justify-center overflow-hidden rounded-[18px] bg-white sm:h-32">
+                    <img
+                      src={monster.imageSrc}
+                      alt=""
+                      aria-hidden="true"
+                      className="h-full w-full object-contain"
+                    />
                   </div>
-                  <div className="mt-2 text-sm font-black text-slate-800">
+                  <div className="px-1 pb-1 pt-2 text-sm font-black text-slate-800 sm:text-base">
                     {monster.name}
                   </div>
                 </button>
               ))}
             </div>
 
-            <div className="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-center text-[11px] font-bold text-slate-400">
+            <div className="mt-3 rounded-2xl bg-violet-50 px-3 py-2 text-center text-[11px] font-bold text-violet-500">
               몬스터 위치는 들어올 때마다 섞여요.
             </div>
 
@@ -173,6 +167,14 @@ export default function GaebongClassPortal({ onChangeSchool }: Props) {
                 {errorMessage}
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={resetClassroom}
+              className="mt-3 w-full rounded-2xl bg-violet-500 py-3 text-sm font-black text-white shadow-sm transition hover:bg-violet-600"
+            >
+              반 다시 선택
+            </button>
           </section>
         )}
       </div>
