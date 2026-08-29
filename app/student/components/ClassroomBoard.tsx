@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 
+import TeacherClassAccountFinder from "./TeacherClassAccountFinder";
 import type { GaebongClassroom } from "../data/classroomData";
 
 const formatLessonDate = (date?: string) => {
@@ -85,6 +86,8 @@ export default function ClassroomBoard({
             </button>
           )}
         </header>
+
+        <TeacherClassAccountFinder classroom={classroom} />
 
         <section className="rounded-[28px] border border-white/80 bg-white/90 p-4 shadow-sm">
           <div className="mb-3">
