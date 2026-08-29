@@ -1,0 +1,312 @@
+"use client";
+
+import { onAuthStateChanged, type User } from "firebase/auth";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { auth } from "@/lib/firebase";
+import type { GaebongClassroom } from "../data/classroomData";
+
+type ClassroomAccount = {
+  classNumber: number;
+  nickname: string;
+  accountId: string;
+  temporaryPassword: string;
+};
+
+type Props = {
+  classroom: GaebongClassroom;
+};
+
+const HIGHLIGHT_MS = 4500;
+
+export default function TeacherClassAccountFinder({ classroom }: Props) {
+  const [user, setUser] = useState<User | null>(null);
+  const [accounts, setAccounts] = useState<ClassroomAccount[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [searchNumber, setSearchNumber] = useState("");
+  const [highlightedNumber, setHighlightedNumber] = useState<number | null>(null);
+  const [visiblePasswords, setVisiblePasswords] = useState<Set<number>>(new Set());
+  const [copiedMessage, setCopiedMessage] = useState("");
+  const rowRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isSupportedClass = classroom.grade === 6 && classroom.classNumber === 2;
+
+  useEffect(() => {
+    if (!isSupportedClass) {
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+
+    return unsubscribe;
+  }, [isSupportedClass]);
+
+  const loadAccounts = useCallback(async (currentUser: User) => {
+    setIsLoading(true);
+    setErrorMessage("");
+
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await fetch(
+        `/api/teacher/classroom-accounts?grade=${classroom.grade}&classroom=${classroom.classNumber}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        }
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || "학생 계정 정보를 불러오지 못했습니다.");
+      }
+
+      setAccounts(Array.isArray(data?.accounts) ? data.accounts : []);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "학생 계정 정보를 불러오지 못했습니다."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [classroom.classNumber, classroom.grade]);
+
+  useEffect(() => {
+    if (!user || !isSupportedClass) {
+      setAccounts([]);
+      return;
+    }
+
+    loadAccounts(user);
+  }, [isSupportedClass, loadAccounts, user]);
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+    };
+  }, []);
+
+  const accountNumbers = useMemo(
+    () => new Set(accounts.map((account) => account.classNumber)),
+    [accounts]
+  );
+
+  const findAccount = () => {
+    const classNumber = Number(searchNumber.trim());
+
+    if (!Number.isInteger(classNumber) || !accountNumbers.has(classNumber)) {
+      setErrorMessage("1~25 사이의 학급 번호를 입력해 주세요.");
+      return;
+    }
+
+    setErrorMessage("");
+    setHighlightedNumber(classNumber);
+
+    requestAnimationFrame(() => {
+      rowRefs.current[classNumber]?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+
+    if (highlightTimerRef.current) {
+      clearTimeout(highlightTimerRef.current);
+    }
+
+    highlightTimerRef.current = setTimeout(() => {
+      setHighlightedNumber(null);
+      highlightTimerRef.current = null;
+    }, HIGHLIGHT_MS);
+  };
+
+  const togglePassword = (classNumber: number) => {
+    setVisiblePasswords((current) => {
+      const next = new Set(current);
+
+      if (next.has(classNumber)) {
+        next.delete(classNumber);
+      } else {
+        next.add(classNumber);
+      }
+
+      return next;
+    });
+  };
+
+  const copyText = async (label: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedMessage(`${label} 복사 완료`);
+      window.setTimeout(() => setCopiedMessage(""), 1400);
+    } catch {
+      setCopiedMessage("복사하지 못했습니다. 길게 눌러 복사해 주세요.");
+      window.setTimeout(() => setCopiedMessage(""), 1800);
+    }
+  };
+
+  if (!isSupportedClass || !user) {
+    return null;
+  }
+
+  return (
+    <section className="rounded-[28px] border-2 border-rose-100 bg-white/95 p-4 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <div className="text-xs font-black text-rose-500">🔐 교사 전용</div>
+          <h2 className="mt-1 text-xl font-black text-slate-800">학생 계정 찾기</h2>
+          <p className="mt-1 text-xs font-bold leading-5 text-slate-500">
+            아이가 학급 번호를 말하면 번호만 입력해 바로 찾아주세요.
+          </p>
+        </div>
+        <span className="rounded-full bg-rose-50 px-3 py-1.5 text-[11px] font-black text-rose-600">
+          6-2 · 25명
+        </span>
+      </div>
+
+      <div className="mt-4 flex gap-2 rounded-[22px] bg-rose-50 p-2">
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={searchNumber}
+          onChange={(event) => {
+            setSearchNumber(event.target.value.replace(/\D/g, "").slice(0, 2));
+            setErrorMessage("");
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              findAccount();
+            }
+          }}
+          placeholder="학급 번호 (1~25)"
+          className="min-w-0 flex-1 rounded-2xl border border-rose-100 bg-white px-4 py-3 text-center text-lg font-black text-slate-800 outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+          aria-label="학급 번호 검색"
+        />
+        <button
+          type="button"
+          onClick={findAccount}
+          disabled={isLoading || accounts.length === 0}
+          className="shrink-0 rounded-2xl bg-rose-500 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          찾기
+        </button>
+      </div>
+
+      {isLoading && (
+        <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-center text-sm font-bold text-slate-500">
+          학생 계정 명단을 불러오는 중이에요.
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="mt-3 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-center text-sm font-black text-rose-600">
+          {errorMessage}
+        </div>
+      )}
+
+      {copiedMessage && (
+        <div className="mt-3 rounded-2xl bg-emerald-50 px-4 py-2 text-center text-xs font-black text-emerald-700">
+          {copiedMessage}
+        </div>
+      )}
+
+      {accounts.length > 0 && (
+        <div className="mt-4 space-y-2">
+          {accounts.map((account) => {
+            const isHighlighted = highlightedNumber === account.classNumber;
+            const isPasswordVisible = visiblePasswords.has(account.classNumber);
+
+            return (
+              <div
+                key={account.classNumber}
+                ref={(element) => {
+                  rowRefs.current[account.classNumber] = element;
+                }}
+                className={`rounded-[22px] border p-3 transition-all duration-300 ${
+                  isHighlighted
+                    ? "border-red-500 bg-red-50 shadow-[0_0_0_4px_rgba(239,68,68,0.16)]"
+                    : "border-slate-100 bg-slate-50/80"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-lg font-black ${
+                        isHighlighted
+                          ? "bg-red-500 text-white"
+                          : "bg-white text-slate-700"
+                      }`}
+                    >
+                      {account.classNumber}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-black text-slate-400">닉네임</div>
+                      <div className="truncate font-mono text-sm font-black text-slate-800">
+                        {account.nickname}
+                      </div>
+                    </div>
+                  </div>
+                  {isHighlighted && (
+                    <span className="shrink-0 rounded-full bg-red-500 px-2.5 py-1 text-[10px] font-black text-white">
+                      찾았어요!
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-3 grid gap-2">
+                  <div className="rounded-2xl bg-white px-3 py-2.5">
+                    <div className="text-[10px] font-black text-slate-400">학급 아이디</div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <code className="min-w-0 flex-1 break-all text-xs font-black text-slate-700">
+                        {account.accountId}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => copyText("아이디", account.accountId)}
+                        className="shrink-0 rounded-xl bg-sky-50 px-2.5 py-1.5 text-[10px] font-black text-sky-700"
+                      >
+                        복사
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl bg-white px-3 py-2.5">
+                    <div className="text-[10px] font-black text-slate-400">임시 비밀번호</div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <code className="min-w-0 flex-1 text-sm font-black tracking-[0.18em] text-slate-700">
+                        {isPasswordVisible ? account.temporaryPassword : "••••••"}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => togglePassword(account.classNumber)}
+                        className="shrink-0 rounded-xl bg-amber-50 px-2.5 py-1.5 text-[10px] font-black text-amber-700"
+                      >
+                        {isPasswordVisible ? "가리기" : "보기"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => copyText("비밀번호", account.temporaryPassword)}
+                        className="shrink-0 rounded-xl bg-sky-50 px-2.5 py-1.5 text-[10px] font-black text-sky-700"
+                      >
+                        복사
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
