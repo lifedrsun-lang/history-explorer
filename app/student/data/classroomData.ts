@@ -77,6 +77,10 @@ export const CLASSROOM_MONSTERS: ClassroomMonster[] = [
 ];
 
 const HELLO_MAPLE_URL = "https://www.hellomaple.org/ko";
+const BUG_BUSTERS_URL =
+  "https://www.hellomaple.org/ko/play/477e50c9650f4ee8aa7d8b9b8a4f8814";
+const MAPLE_SPORTS_DAY_URL =
+  "https://www.hellomaple.org/ko/play/771be352167b4ffeb0b37eebd3ff64b1";
 const TYPING_HERO_URL =
   "https://www.hellomaple.org/ko/play/74fe74f966d441e7bbaa073e5cb893f9";
 
@@ -107,6 +111,20 @@ const makeLessons = (padletUrl: string): ClassroomLesson[] => [
         id: "avatar-share",
         label: "🖼️ 우리 반 아바타 공유하기",
         href: padletUrl,
+        kind: "activity",
+        defaultUnlocked: false,
+      },
+      {
+        id: "bug-busters",
+        label: "버그버스터즈: 킹버그의 습격",
+        href: BUG_BUSTERS_URL,
+        kind: "activity",
+        defaultUnlocked: false,
+      },
+      {
+        id: "maple-sports-day",
+        label: "OX 메이플운동회",
+        href: MAPLE_SPORTS_DAY_URL,
         kind: "activity",
         defaultUnlocked: false,
       },
