@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 
+import ClassroomActivityLinks from "./ClassroomActivityLinks";
 import TeacherClassAccountFinder from "./TeacherClassAccountFinder";
 import type { GaebongClassroom } from "../data/classroomData";
 
@@ -161,23 +162,10 @@ export default function ClassroomBoard({
                       </p>
 
                       {lesson.links.length > 0 && (
-                        <div className="mt-4 grid gap-2">
-                          {lesson.links.map((link) => (
-                            <a
-                              key={`${lesson.lesson}-${link.href}`}
-                              href={link.href}
-                              target="_blank"
-                              rel="noreferrer"
-                              className={`rounded-2xl px-4 py-3 text-center text-sm font-black text-white shadow-sm transition active:scale-[0.99] ${
-                                link.kind === "review"
-                                  ? "bg-emerald-500 hover:bg-emerald-600"
-                                  : "bg-sky-500 hover:bg-sky-600"
-                              }`}
-                            >
-                              {link.kind === "review" ? "🏠" : "🚀"} {link.label}
-                            </a>
-                          ))}
-                        </div>
+                        <ClassroomActivityLinks
+                          classroom={classroom}
+                          lesson={lesson}
+                        />
                       )}
                     </div>
                   )}
