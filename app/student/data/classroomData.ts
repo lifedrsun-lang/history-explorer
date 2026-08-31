@@ -75,6 +75,8 @@ export const CLASSROOM_MONSTERS: ClassroomMonster[] = [
 ];
 
 const HELLO_MAPLE_URL = "https://www.hellomaple.org/ko";
+const TYPING_HERO_URL =
+  "https://www.hellomaple.org/ko/play/74fe74f966d441e7bbaa073e5cb893f9";
 
 const GAEBONG_PADLET_LINKS: Record<number, string> = {
   1: "https://padlet.com/lifedrsun/6-1-9hp3499dhfo532jh",
@@ -100,6 +102,11 @@ const makeLessons = (padletUrl: string): ClassroomLesson[] => [
       {
         label: "🖼️ 우리 반 아바타 공유하기",
         href: padletUrl,
+        kind: "activity",
+      },
+      {
+        label: "도전! 타자히어로",
+        href: TYPING_HERO_URL,
         kind: "activity",
       },
     ],
