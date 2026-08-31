@@ -4,7 +4,11 @@ import { onAuthStateChanged, type User } from "firebase/auth";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { auth } from "@/lib/firebase";
-import { GAEBONG_SCHOOL_NAME, type GaebongClassroom } from "../data/classroomData";
+import {
+  GAEBONG_SCHOOL_NAME,
+  isGaebongGrade6Class,
+} from "@/lib/gaebongClassroom";
+import type { GaebongClassroom } from "../data/classroomData";
 
 type ClassroomAccount = {
   classNumber: number;
@@ -52,11 +56,13 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const isSupportedClass = classroom.grade === 6 && classroom.classNumber === 2;
+  const isSupportedClass = isGaebongGrade6Class(
+    classroom.grade,
+    classroom.classNumber
+  );
 
   useEffect(() => {
     if (!isSupportedClass) {
-      setAccessState("hidden");
       return;
     }
 
@@ -260,7 +266,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
           </p>
         </div>
         <span className="rounded-full bg-rose-50 px-3 py-1.5 text-[11px] font-black text-rose-600">
-          개봉초 6-2
+          개봉초 {classroom.grade}-{classroom.classNumber}
         </span>
       </div>
 
@@ -276,7 +282,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
         <div className="mt-4 rounded-[22px] border border-dashed border-rose-200 bg-rose-50/70 p-4 text-center">
           <div className="text-3xl">📋</div>
           <div className="mt-2 text-sm font-black text-slate-700">
-            저장된 6-2 계정표가 없습니다
+            저장된 {classroom.grade}-{classroom.classNumber} 계정표가 없습니다
           </div>
           <p className="mt-1 text-[11px] font-bold leading-5 text-slate-500">
             최초 한 번 등록하면 다음 교사 로그인부터 자동으로 불러와요.

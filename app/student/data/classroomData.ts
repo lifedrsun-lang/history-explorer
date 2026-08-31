@@ -1,3 +1,7 @@
+import { GAEBONG_SCHOOL_NAME } from "@/lib/gaebongClassroom";
+
+export { GAEBONG_SCHOOL_NAME };
+
 export type ClassroomLink = {
   label: string;
   href: string;
@@ -28,7 +32,6 @@ export type GaebongClassroom = {
   lessons: ClassroomLesson[];
 };
 
-export const GAEBONG_SCHOOL_NAME = "서울 개봉초등학교";
 export const GAEBONG_SCHOOL_DISPLAY_NAME = "서울 개봉초";
 export const GAEBONG_SCHOOL_CODE = "GB";
 

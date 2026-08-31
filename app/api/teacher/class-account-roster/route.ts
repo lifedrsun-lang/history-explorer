@@ -8,15 +8,14 @@ import {
   handleRouteError,
   verifyTeacherRequest,
 } from "@/lib/assignmentServer";
+import {
+  GAEBONG_SCHOOL_NAME,
+  isSupportedGaebongClassroom,
+} from "@/lib/gaebongClassroom";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SUPPORTED_CLASSROOM: ClassroomAccountRosterKey = {
-  school: "서울개봉초등학교",
-  grade: 6,
-  classNumber: 2,
-};
 const MAX_CSV_BYTES = 256 * 1024;
 
 const jsonPrivate = (body: object, init?: ResponseInit) => {
@@ -66,12 +65,15 @@ const mapRouteError = (error: unknown) => {
   return response;
 };
 
-const isSupportedClassroom = (key: ClassroomAccountRosterKey) => {
-  return (
-    key.school === SUPPORTED_CLASSROOM.school &&
-    key.grade === SUPPORTED_CLASSROOM.grade &&
-    key.classNumber === SUPPORTED_CLASSROOM.classNumber
-  );
+const getSupportedClassroomKey = (key: ClassroomAccountRosterKey) => {
+  if (!isSupportedGaebongClassroom(key)) {
+    return null;
+  }
+
+  return {
+    ...key,
+    school: GAEBONG_SCHOOL_NAME,
+  } satisfies ClassroomAccountRosterKey;
 };
 
 const readClassroomKeyFromUrl = (request: Request): ClassroomAccountRosterKey => {
@@ -95,9 +97,9 @@ const readClassroomKeyFromForm = (formData: FormData): ClassroomAccountRosterKey
 export async function GET(request: Request) {
   try {
     await verifyTeacherRequest(request);
-    const key = readClassroomKeyFromUrl(request);
+    const key = getSupportedClassroomKey(readClassroomKeyFromUrl(request));
 
-    if (!isSupportedClassroom(key)) {
+    if (!key) {
       return jsonPrivate(
         { error: "지원하지 않는 학급입니다.", code: "unsupported_classroom" },
         { status: 404 }
@@ -115,9 +117,9 @@ export async function POST(request: Request) {
   try {
     const teacher = await verifyTeacherRequest(request);
     const formData = await request.formData();
-    const key = readClassroomKeyFromForm(formData);
+    const key = getSupportedClassroomKey(readClassroomKeyFromForm(formData));
 
-    if (!isSupportedClassroom(key)) {
+    if (!key) {
       return jsonPrivate(
         { error: "지원하지 않는 학급입니다.", code: "unsupported_classroom" },
         { status: 404 }
