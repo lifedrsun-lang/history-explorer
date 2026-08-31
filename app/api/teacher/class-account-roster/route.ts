@@ -1,9 +1,9 @@
 import {
   getClassroomAccountRoster,
-  parseClassroomAccountCsv,
   replaceClassroomAccountRoster,
   type ClassroomAccountRosterKey,
 } from "@/lib/classroomAccountRosterServer";
+import { parseClassroomAccountCsv } from "@/lib/classroomAccountRoster";
 import {
   handleRouteError,
   verifyTeacherRequest,

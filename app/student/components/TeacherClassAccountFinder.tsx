@@ -5,17 +5,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { auth } from "@/lib/firebase";
 import {
+  parseClassroomAccountCsv,
+  type ClassroomAccount,
+} from "@/lib/classroomAccountRoster";
+import {
   GAEBONG_SCHOOL_NAME,
   isGaebongGrade6Class,
 } from "@/lib/gaebongClassroom";
 import type { GaebongClassroom } from "../data/classroomData";
-
-type ClassroomAccount = {
-  classNumber: number;
-  nickname: string;
-  accountId: string;
-  temporaryPassword: string;
-};
 
 type Props = {
   classroom: GaebongClassroom;
@@ -51,6 +48,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
   const [visiblePasswords, setVisiblePasswords] = useState<Set<number>>(new Set());
   const [notice, setNotice] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [isTemporaryRoster, setIsTemporaryRoster] = useState(false);
   const [uploading, setUploading] = useState(false);
   const rowRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -72,6 +70,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
       activeRequest?.abort();
       setUser(currentUser);
       setAccounts([]);
+      setIsTemporaryRoster(false);
       setVisiblePasswords(new Set());
       setNotice("");
       setErrorMessage("");
@@ -88,6 +87,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
       void (async () => {
         try {
           const token = await currentUser.getIdToken();
+          setAccessState("authorized");
           const response = await fetch(getRosterUrl(classroom), {
             headers: { Authorization: `Bearer ${token}` },
             cache: "no-store",
@@ -99,7 +99,6 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
             return;
           }
 
-          setAccessState("authorized");
           const body = await readResponseBody(response);
 
           if (!response.ok) {
@@ -108,6 +107,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
 
           const loadedAccounts = Array.isArray(body.accounts) ? body.accounts : [];
           setAccounts(loadedAccounts);
+          setIsTemporaryRoster(false);
 
           if (loadedAccounts.length > 0) {
             setNotice(`${loadedAccounts.length}명 계정표를 자동으로 불러왔어요.`);
@@ -155,6 +155,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
     setNotice("");
 
     try {
+      parseClassroomAccountCsv(await file.text());
       const token = await user.getIdToken();
       const formData = new FormData();
       formData.set("school", GAEBONG_SCHOOL_NAME);
@@ -182,14 +183,29 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
 
       const savedAccounts = Array.isArray(body.accounts) ? body.accounts : [];
       setAccounts(savedAccounts);
+      setIsTemporaryRoster(false);
       setSearchNumber("");
       setHighlightedNumber(null);
       setVisiblePasswords(new Set());
       setNotice(`${savedAccounts.length}명 계정표로 교체했어요.`);
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "계정표를 저장하지 못했습니다."
-      );
+      try {
+        const localAccounts = parseClassroomAccountCsv(await file.text());
+        setAccounts(localAccounts);
+        setIsTemporaryRoster(true);
+        setSearchNumber("");
+        setHighlightedNumber(null);
+        setVisiblePasswords(new Set());
+        setErrorMessage("서버 저장은 실패했지만 이 화면에서는 바로 사용할 수 있어요.");
+        setNotice(`${localAccounts.length}명 계정표를 임시로 불러왔어요.`);
+      } catch {
+        const message = error instanceof Error ? error.message : "";
+        setErrorMessage(
+          message === "invalid_account_csv_headers"
+            ? "CSV 열 이름을 확인해 주세요. 학급 번호·닉네임·학급 아이디·임시 비밀번호가 필요합니다."
+            : "CSV 학생 계정 정보를 확인해 주세요."
+        );
+      }
     } finally {
       setUploading(false);
 
@@ -351,6 +367,12 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
       {notice && (
         <div className="mt-3 rounded-2xl bg-emerald-50 px-4 py-2.5 text-center text-xs font-black text-emerald-700">
           {notice}
+        </div>
+      )}
+
+      {isTemporaryRoster && (
+        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-xs font-black leading-5 text-amber-800">
+          긴급 임시 모드: 현재 화면에서 검색·복사는 가능하지만 새로고침하면 다시 CSV를 등록해야 해요.
         </div>
       )}
 
