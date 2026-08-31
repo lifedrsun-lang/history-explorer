@@ -165,7 +165,7 @@ export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
     classNumber: 5,
     label: "6학년 5반",
     monsterId: "blue-mushroom",
-    directToken: "gb6c5-y3vgaanlq2wa0ayv" as never,
+    directToken: "gb6c5-emg1vzxnsw",
     lessons: makeLessons(GAEBONG_PADLET_LINKS[5]),
   },
   {
