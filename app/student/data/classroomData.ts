@@ -74,13 +74,35 @@ export const CLASSROOM_MONSTERS: ClassroomMonster[] = [
   },
 ];
 
-const makeLessons = (): ClassroomLesson[] => [
+const HELLO_MAPLE_URL = "https://www.hellomaple.org/ko";
+
+const GAEBONG_PADLET_LINKS: Record<number, string> = {
+  1: "https://padlet.com/lifedrsun/6-1-9hp3499dhfo532jh",
+  2: "https://padlet.com/lifedrsun/6-2-st1hnz3nkw2ivn3p",
+  3: "https://padlet.com/lifedrsun/6-3-5b85a63p18423xdz",
+  4: "https://padlet.com/lifedrsun/6-4-71tuuqumq609dasm",
+  5: "https://padlet.com/lifedrsun/6-5-y3vgaanlq2wa0ayv",
+  6: "https://padlet.com/lifedrsun/6-6-296jds17pi7t9x4i",
+};
+
+const makeLessons = (padletUrl: string): ClassroomLesson[] => [
   {
     lesson: 1,
     date: "2026-09-01",
     title: "1차시 수업 안내",
     message: "첫 수업 안내와 활동 링크가 이곳에 올라옵니다.",
-    links: [],
+    links: [
+      {
+        label: "🍁 헬로메이플 시작하기",
+        href: HELLO_MAPLE_URL,
+        kind: "activity",
+      },
+      {
+        label: "🖼️ 우리 반 아바타 공유하기",
+        href: padletUrl,
+        kind: "activity",
+      },
+    ],
   },
   {
     lesson: 2,
@@ -97,7 +119,7 @@ export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
     label: "6학년 1반",
     monsterId: "slime",
     directToken: "gb6c1-g7ac4o9a1n",
-    lessons: makeLessons(),
+    lessons: makeLessons(GAEBONG_PADLET_LINKS[1]),
   },
   {
     grade: 6,
@@ -105,7 +127,7 @@ export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
     label: "6학년 2반",
     monsterId: "guardian-angel-slime",
     directToken: "gb6c2-je8xtrigeu",
-    lessons: makeLessons(),
+    lessons: makeLessons(GAEBONG_PADLET_LINKS[2]),
   },
   {
     grade: 6,
@@ -113,7 +135,7 @@ export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
     label: "6학년 3반",
     monsterId: "forest-mushroom",
     directToken: "gb6c3-kilcoepxmg",
-    lessons: makeLessons(),
+    lessons: makeLessons(GAEBONG_PADLET_LINKS[3]),
   },
   {
     grade: 6,
@@ -121,7 +143,7 @@ export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
     label: "6학년 4반",
     monsterId: "orange-mushroom",
     directToken: "gb6c4-xtjzvvpgjs",
-    lessons: makeLessons(),
+    lessons: makeLessons(GAEBONG_PADLET_LINKS[4]),
   },
   {
     grade: 6,
@@ -129,7 +151,7 @@ export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
     label: "6학년 5반",
     monsterId: "blue-mushroom",
     directToken: "gb6c5-emg1vzxnsw",
-    lessons: makeLessons(),
+    lessons: makeLessons(GAEBONG_PADLET_LINKS[5]),
   },
   {
     grade: 6,
@@ -137,7 +159,7 @@ export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
     label: "6학년 6반",
     monsterId: "choco-mushroom",
     directToken: "gb6c6-ms9vlecq99",
-    lessons: makeLessons(),
+    lessons: makeLessons(GAEBONG_PADLET_LINKS[6]),
   },
 ];
 
