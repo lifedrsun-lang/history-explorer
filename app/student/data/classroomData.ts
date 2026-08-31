@@ -3,9 +3,11 @@ import { GAEBONG_SCHOOL_NAME } from "@/lib/gaebongClassroom";
 export { GAEBONG_SCHOOL_NAME };
 
 export type ClassroomLink = {
+  id: string;
   label: string;
   href: string;
   kind?: "activity" | "review";
+  defaultUnlocked?: boolean;
 };
 
 export type ClassroomLesson = {
@@ -95,19 +97,25 @@ const makeLessons = (padletUrl: string): ClassroomLesson[] => [
     message: "첫 수업 안내와 활동 링크가 이곳에 올라옵니다.",
     links: [
       {
+        id: "hello-maple",
         label: "🍁 헬로메이플 시작하기",
         href: HELLO_MAPLE_URL,
         kind: "activity",
+        defaultUnlocked: true,
       },
       {
+        id: "avatar-share",
         label: "🖼️ 우리 반 아바타 공유하기",
         href: padletUrl,
         kind: "activity",
+        defaultUnlocked: false,
       },
       {
+        id: "typing-hero",
         label: "도전! 타자히어로",
         href: TYPING_HERO_URL,
         kind: "activity",
+        defaultUnlocked: false,
       },
     ],
   },
@@ -157,7 +165,7 @@ export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
     classNumber: 5,
     label: "6학년 5반",
     monsterId: "blue-mushroom",
-    directToken: "gb6c5-emg1vzxnsw",
+    directToken: "gb6c5-y3vgaanlq2wa0ayv" as never,
     lessons: makeLessons(GAEBONG_PADLET_LINKS[5]),
   },
   {
