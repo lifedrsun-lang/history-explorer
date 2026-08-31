@@ -20,8 +20,7 @@ type Props = {
 
 type AccessState = "checking" | "authorized" | "hidden";
 
-const HIGHLIGHT_MS = 4500;
-const COLLAPSED_ACCOUNT_COUNT = 5;
+const COLLAPSED_ACCOUNT_COUNT = 3;
 
 const getRosterUrl = (classroom: GaebongClassroom) => {
   const params = new URLSearchParams({
@@ -53,7 +52,6 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
   const [isRosterExpanded, setIsRosterExpanded] = useState(false);
   const [uploading, setUploading] = useState(false);
   const rowRefs = useRef<Record<number, HTMLDivElement | null>>({});
-  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const isSupportedClass = isGaebongGrade6Class(
@@ -72,6 +70,8 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
       activeRequest?.abort();
       setUser(currentUser);
       setAccounts([]);
+      setSearchNumber("");
+      setHighlightedNumber(null);
       setIsTemporaryRoster(false);
       setIsRosterExpanded(false);
       setVisiblePasswords(new Set());
@@ -135,14 +135,6 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
       unsubscribe();
     };
   }, [classroom, isSupportedClass]);
-
-  useEffect(() => {
-    return () => {
-      if (highlightTimerRef.current) {
-        clearTimeout(highlightTimerRef.current);
-      }
-    };
-  }, []);
 
   const accountNumbers = useMemo(
     () => new Set(accounts.map((account) => account.classNumber)),
@@ -269,15 +261,6 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
         });
       });
     });
-
-    if (highlightTimerRef.current) {
-      clearTimeout(highlightTimerRef.current);
-    }
-
-    highlightTimerRef.current = setTimeout(() => {
-      setHighlightedNumber(null);
-      highlightTimerRef.current = null;
-    }, HIGHLIGHT_MS);
   };
 
   const togglePassword = (classNumber: number) => {
@@ -497,10 +480,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
           {accounts.length > COLLAPSED_ACCOUNT_COUNT && (
             <button
               type="button"
-              onClick={() => {
-                setIsRosterExpanded((current) => !current);
-                setHighlightedNumber(null);
-              }}
+              onClick={() => setIsRosterExpanded((current) => !current)}
               className="mt-3 w-full rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2.5 text-xs font-black text-rose-600 transition hover:bg-rose-100"
             >
               {isRosterExpanded
