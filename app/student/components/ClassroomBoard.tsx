@@ -55,6 +55,20 @@ export default function ClassroomBoard({
     );
   };
 
+  const goToLesson = (lessonNumber: number) => {
+    setOpenLessons((current) =>
+      current.includes(lessonNumber) ? current : [...current, lessonNumber]
+    );
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document
+          .getElementById(`classroom-lesson-${lessonNumber}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  };
+
   return (
     <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 px-3 py-4 text-slate-800">
       <div className="mx-auto max-w-2xl space-y-4">
@@ -76,15 +90,24 @@ export default function ClassroomBoard({
             )}
           </div>
 
-          {onBack && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-2 text-xs font-black text-sky-700"
+              >
+                ← 다른 반 선택
+              </button>
+            )}
             <button
               type="button"
-              onClick={onBack}
-              className="mt-4 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-2 text-xs font-black text-sky-700"
+              onClick={() => goToLesson(1)}
+              className="rounded-2xl bg-sky-500 px-4 py-2 text-xs font-black text-white shadow-sm transition hover:bg-sky-600"
             >
-              ← 다른 반 선택
+              📚 1차시 바로가기
             </button>
-          )}
+          </div>
         </header>
 
         <TeacherClassAccountFinder classroom={classroom} />
@@ -103,8 +126,9 @@ export default function ClassroomBoard({
 
               return (
                 <article
+                  id={`classroom-lesson-${lesson.lesson}`}
                   key={lesson.lesson}
-                  className="overflow-hidden rounded-[22px] border border-sky-100 bg-white"
+                  className="scroll-mt-4 overflow-hidden rounded-[22px] border border-sky-100 bg-white"
                 >
                   <button
                     type="button"
