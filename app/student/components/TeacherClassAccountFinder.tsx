@@ -21,6 +21,7 @@ type Props = {
 type AccessState = "checking" | "authorized" | "hidden";
 
 const HIGHLIGHT_MS = 4500;
+const COLLAPSED_ACCOUNT_COUNT = 5;
 
 const getRosterUrl = (classroom: GaebongClassroom) => {
   const params = new URLSearchParams({
@@ -49,6 +50,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
   const [notice, setNotice] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isTemporaryRoster, setIsTemporaryRoster] = useState(false);
+  const [isRosterExpanded, setIsRosterExpanded] = useState(false);
   const [uploading, setUploading] = useState(false);
   const rowRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -71,6 +73,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
       setUser(currentUser);
       setAccounts([]);
       setIsTemporaryRoster(false);
+      setIsRosterExpanded(false);
       setVisiblePasswords(new Set());
       setNotice("");
       setErrorMessage("");
@@ -108,6 +111,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
           const loadedAccounts = Array.isArray(body.accounts) ? body.accounts : [];
           setAccounts(loadedAccounts);
           setIsTemporaryRoster(false);
+          setIsRosterExpanded(false);
 
           if (loadedAccounts.length > 0) {
             setNotice(`${loadedAccounts.length}명 계정표를 자동으로 불러왔어요.`);
@@ -144,6 +148,34 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
     () => new Set(accounts.map((account) => account.classNumber)),
     [accounts]
   );
+
+  const displayedAccounts = useMemo(() => {
+    if (isRosterExpanded || accounts.length <= COLLAPSED_ACCOUNT_COUNT) {
+      return accounts;
+    }
+
+    const firstAccounts = accounts.slice(0, COLLAPSED_ACCOUNT_COUNT);
+
+    if (!highlightedNumber) {
+      return firstAccounts;
+    }
+
+    const highlightedAccount = accounts.find(
+      (account) => account.classNumber === highlightedNumber
+    );
+
+    if (
+      !highlightedAccount ||
+      firstAccounts.some((account) => account.classNumber === highlightedNumber)
+    ) {
+      return firstAccounts;
+    }
+
+    return [
+      ...firstAccounts.slice(0, COLLAPSED_ACCOUNT_COUNT - 1),
+      highlightedAccount,
+    ];
+  }, [accounts, highlightedNumber, isRosterExpanded]);
 
   const handleFile = async (file?: File) => {
     if (!file || !user) {
@@ -184,6 +216,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
       const savedAccounts = Array.isArray(body.accounts) ? body.accounts : [];
       setAccounts(savedAccounts);
       setIsTemporaryRoster(false);
+      setIsRosterExpanded(false);
       setSearchNumber("");
       setHighlightedNumber(null);
       setVisiblePasswords(new Set());
@@ -193,6 +226,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
         const localAccounts = parseClassroomAccountCsv(await file.text());
         setAccounts(localAccounts);
         setIsTemporaryRoster(true);
+        setIsRosterExpanded(false);
         setSearchNumber("");
         setHighlightedNumber(null);
         setVisiblePasswords(new Set());
@@ -228,9 +262,11 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
     setHighlightedNumber(classNumber);
 
     requestAnimationFrame(() => {
-      rowRefs.current[classNumber]?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
+      requestAnimationFrame(() => {
+        rowRefs.current[classNumber]?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
       });
     });
 
@@ -278,7 +314,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
           <div className="text-xs font-black text-rose-500">🔐 교사 전용</div>
           <h2 className="mt-1 text-xl font-black text-slate-800">학생 계정 찾기</h2>
           <p className="mt-1 text-xs font-bold leading-5 text-slate-500">
-            아이가 학급 번호를 말하면 번호만 입력해 바로 찾아주세요.
+            번호를 검색하면 전체 계정표에서 바로 찾아요.
           </p>
         </div>
         <span className="rounded-full bg-rose-50 px-3 py-1.5 text-[11px] font-black text-rose-600">
@@ -344,7 +380,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
 
           <div className="mt-2 flex items-center justify-between gap-2 px-1">
             <span className="text-[11px] font-black text-slate-400">
-              {accounts.length}명 자동 불러옴
+              {accounts.length}명 자동 불러옴 · 기본 {Math.min(COLLAPSED_ACCOUNT_COUNT, accounts.length)}명 표시
             </span>
             <button
               type="button"
@@ -377,84 +413,101 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
       )}
 
       {accounts.length > 0 && (
-        <div className="mt-4 space-y-2">
-          {accounts.map((account) => {
-            const isHighlighted = highlightedNumber === account.classNumber;
-            const isPasswordVisible = visiblePasswords.has(account.classNumber);
+        <div className="mt-4">
+          <div className="space-y-2">
+            {displayedAccounts.map((account) => {
+              const isHighlighted = highlightedNumber === account.classNumber;
+              const isPasswordVisible = visiblePasswords.has(account.classNumber);
 
-            return (
-              <div
-                key={account.classNumber}
-                ref={(element) => {
-                  rowRefs.current[account.classNumber] = element;
-                }}
-                className={`rounded-[20px] border p-3 transition-all duration-300 ${
-                  isHighlighted
-                    ? "border-red-500 bg-red-50 shadow-[0_0_0_4px_rgba(239,68,68,0.16)]"
-                    : "border-slate-100 bg-slate-50/80"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0 truncate text-sm font-black text-slate-800">
-                    <span className={isHighlighted ? "text-red-600" : "text-slate-700"}>
-                      {account.classNumber}번
-                    </span>
-                    <span className="mx-1.5 text-slate-300">·</span>
-                    <span className="font-mono">{account.nickname}</span>
+              return (
+                <div
+                  key={account.classNumber}
+                  ref={(element) => {
+                    rowRefs.current[account.classNumber] = element;
+                  }}
+                  className={`rounded-[20px] border p-3 transition-all duration-300 ${
+                    isHighlighted
+                      ? "border-red-500 bg-red-50 shadow-[0_0_0_4px_rgba(239,68,68,0.16)]"
+                      : "border-slate-100 bg-slate-50/80"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 truncate text-sm font-black text-slate-800">
+                      <span className={isHighlighted ? "text-red-600" : "text-slate-700"}>
+                        {account.classNumber}번
+                      </span>
+                      <span className="mx-1.5 text-slate-300">·</span>
+                      <span className="font-mono">{account.nickname}</span>
+                    </div>
+                    {isHighlighted && (
+                      <span className="shrink-0 rounded-full bg-red-500 px-2.5 py-1 text-[10px] font-black text-white">
+                        찾았어요!
+                      </span>
+                    )}
                   </div>
-                  {isHighlighted && (
-                    <span className="shrink-0 rounded-full bg-red-500 px-2.5 py-1 text-[10px] font-black text-white">
-                      찾았어요!
-                    </span>
-                  )}
-                </div>
 
-                <div className="mt-2 grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-1.5">
-                  <div className="min-w-0 rounded-2xl bg-white px-2.5 py-2">
-                    <div className="text-[9px] font-black text-slate-400">학급 아이디</div>
-                    <div className="mt-1 flex min-w-0 items-center gap-1">
-                      <code
-                        className="min-w-0 flex-1 truncate text-[10px] font-black text-slate-700 sm:text-xs"
-                        title={account.accountId}
-                      >
-                        {account.accountId}
-                      </code>
-                      <button
-                        type="button"
-                        onClick={() => copyText("아이디", account.accountId)}
-                        className="shrink-0 rounded-lg bg-sky-50 px-2 py-1 text-[9px] font-black text-sky-700"
-                      >
-                        복사
-                      </button>
+                  <div className="mt-2 grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-1.5">
+                    <div className="min-w-0 rounded-2xl bg-white px-2.5 py-2">
+                      <div className="text-[9px] font-black text-slate-400">학급 아이디</div>
+                      <div className="mt-1 flex min-w-0 items-center gap-1">
+                        <code
+                          className="min-w-0 flex-1 truncate text-[10px] font-black text-slate-700 sm:text-xs"
+                          title={account.accountId}
+                        >
+                          {account.accountId}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => copyText("아이디", account.accountId)}
+                          className="shrink-0 rounded-lg bg-sky-50 px-2 py-1 text-[9px] font-black text-sky-700"
+                        >
+                          복사
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="min-w-0 rounded-2xl bg-white px-2 py-2">
+                      <div className="text-[9px] font-black text-slate-400">임시 비밀번호</div>
+                      <div className="mt-1 flex min-w-0 items-center gap-0.5">
+                        <code className="min-w-0 flex-1 truncate text-[10px] font-black tracking-wide text-slate-700 sm:text-xs">
+                          {isPasswordVisible ? account.temporaryPassword : "••••••"}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => togglePassword(account.classNumber)}
+                          className="shrink-0 rounded-lg bg-amber-50 px-1.5 py-1 text-[9px] font-black text-amber-700"
+                        >
+                          {isPasswordVisible ? "가림" : "보기"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => copyText("비밀번호", account.temporaryPassword)}
+                          className="shrink-0 rounded-lg bg-sky-50 px-1.5 py-1 text-[9px] font-black text-sky-700"
+                        >
+                          복사
+                        </button>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="min-w-0 rounded-2xl bg-white px-2 py-2">
-                    <div className="text-[9px] font-black text-slate-400">임시 비밀번호</div>
-                    <div className="mt-1 flex min-w-0 items-center gap-0.5">
-                      <code className="min-w-0 flex-1 truncate text-[10px] font-black tracking-wide text-slate-700 sm:text-xs">
-                        {isPasswordVisible ? account.temporaryPassword : "••••••"}
-                      </code>
-                      <button
-                        type="button"
-                        onClick={() => togglePassword(account.classNumber)}
-                        className="shrink-0 rounded-lg bg-amber-50 px-1.5 py-1 text-[9px] font-black text-amber-700"
-                      >
-                        {isPasswordVisible ? "가림" : "보기"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => copyText("비밀번호", account.temporaryPassword)}
-                        className="shrink-0 rounded-lg bg-sky-50 px-1.5 py-1 text-[9px] font-black text-sky-700"
-                      >
-                        복사
-                      </button>
-                    </div>
-                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          {accounts.length > COLLAPSED_ACCOUNT_COUNT && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsRosterExpanded((current) => !current);
+                setHighlightedNumber(null);
+              }}
+              className="mt-3 w-full rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2.5 text-xs font-black text-rose-600 transition hover:bg-rose-100"
+            >
+              {isRosterExpanded
+                ? `▲ ${COLLAPSED_ACCOUNT_COUNT}명만 보기`
+                : `▼ 전체 ${accounts.length}명 보기`}
+            </button>
+          )}
         </div>
       )}
     </section>
