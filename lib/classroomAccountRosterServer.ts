@@ -42,6 +42,36 @@ export const getClassroomAccountRoster = async (
   }));
 };
 
+export const getClassroomAccount = async (
+  key: ClassroomAccountRosterKey,
+  studentNumber: number
+): Promise<ClassroomAccount | null> => {
+  const supabase = getSupabaseServer();
+  const { data, error } = await supabase
+    .from(TABLE_NAME)
+    .select("student_number,nickname,account_id,temp_password")
+    .eq("school", key.school)
+    .eq("grade", key.grade)
+    .eq("class_number", key.classNumber)
+    .eq("student_number", studentNumber)
+    .maybeSingle<ClassroomAccountRow>();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return {
+    classNumber: data.student_number,
+    nickname: data.nickname,
+    accountId: data.account_id,
+    temporaryPassword: data.temp_password,
+  };
+};
+
 export const replaceClassroomAccountRoster = async (
   key: ClassroomAccountRosterKey,
   accounts: ClassroomAccount[],

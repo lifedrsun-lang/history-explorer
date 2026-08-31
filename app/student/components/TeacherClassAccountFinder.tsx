@@ -13,6 +13,7 @@ import {
   isGaebongGrade6Class,
 } from "@/lib/gaebongClassroom";
 import type { GaebongClassroom } from "../data/classroomData";
+import StudentClassAccountFinder from "./StudentClassAccountFinder";
 
 type Props = {
   classroom: GaebongClassroom;
@@ -279,8 +280,12 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
     }
   };
 
-  if (!isSupportedClass || accessState !== "authorized") {
+  if (!isSupportedClass || accessState === "checking") {
     return null;
+  }
+
+  if (accessState === "hidden") {
+    return <StudentClassAccountFinder classroom={classroom} />;
   }
 
   return (
