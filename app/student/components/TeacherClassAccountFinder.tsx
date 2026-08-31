@@ -142,31 +142,17 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
   );
 
   const displayedAccounts = useMemo(() => {
+    if (highlightedNumber !== null) {
+      return accounts.filter(
+        (account) => account.classNumber === highlightedNumber
+      );
+    }
+
     if (isRosterExpanded || accounts.length <= COLLAPSED_ACCOUNT_COUNT) {
       return accounts;
     }
 
-    const firstAccounts = accounts.slice(0, COLLAPSED_ACCOUNT_COUNT);
-
-    if (!highlightedNumber) {
-      return firstAccounts;
-    }
-
-    const highlightedAccount = accounts.find(
-      (account) => account.classNumber === highlightedNumber
-    );
-
-    if (
-      !highlightedAccount ||
-      firstAccounts.some((account) => account.classNumber === highlightedNumber)
-    ) {
-      return firstAccounts;
-    }
-
-    return [
-      ...firstAccounts.slice(0, COLLAPSED_ACCOUNT_COUNT - 1),
-      highlightedAccount,
-    ];
+    return accounts.slice(0, COLLAPSED_ACCOUNT_COUNT);
   }, [accounts, highlightedNumber, isRosterExpanded]);
 
   const handleFile = async (file?: File) => {
@@ -263,6 +249,13 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
     });
   };
 
+  const clearSearch = () => {
+    setSearchNumber("");
+    setHighlightedNumber(null);
+    setNotice("");
+    setErrorMessage("");
+  };
+
   const togglePassword = (classNumber: number) => {
     setVisiblePasswords((current) => {
       const next = new Set(current);
@@ -297,7 +290,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
           <div className="text-xs font-black text-rose-500">🔐 교사 전용</div>
           <h2 className="mt-1 text-xl font-black text-slate-800">학생 계정 찾기</h2>
           <p className="mt-1 text-xs font-bold leading-5 text-slate-500">
-            번호를 검색하면 전체 계정표에서 바로 찾아요.
+            번호를 검색하면 해당 학생 한 명만 보여요.
           </p>
         </div>
         <span className="rounded-full bg-rose-50 px-3 py-1.5 text-[11px] font-black text-rose-600">
@@ -363,16 +356,29 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
 
           <div className="mt-2 flex items-center justify-between gap-2 px-1">
             <span className="text-[11px] font-black text-slate-400">
-              {accounts.length}명 자동 불러옴 · 기본 {Math.min(COLLAPSED_ACCOUNT_COUNT, accounts.length)}명 표시
+              {highlightedNumber !== null
+                ? `${highlightedNumber}번 검색 결과만 표시 중`
+                : `${accounts.length}명 자동 불러옴 · 기본 ${Math.min(COLLAPSED_ACCOUNT_COUNT, accounts.length)}명 표시`}
             </span>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="text-[11px] font-black text-sky-600 disabled:cursor-wait disabled:opacity-60"
-            >
-              {uploading ? "교체 중..." : "계정표 교체"}
-            </button>
+            <div className="flex items-center gap-3">
+              {highlightedNumber !== null && (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="text-[11px] font-black text-rose-600"
+                >
+                  검색 해제
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="text-[11px] font-black text-sky-600 disabled:cursor-wait disabled:opacity-60"
+              >
+                {uploading ? "교체 중..." : "계정표 교체"}
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -477,7 +483,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
             })}
           </div>
 
-          {accounts.length > COLLAPSED_ACCOUNT_COUNT && (
+          {highlightedNumber === null && accounts.length > COLLAPSED_ACCOUNT_COUNT && (
             <button
               type="button"
               onClick={() => setIsRosterExpanded((current) => !current)}
