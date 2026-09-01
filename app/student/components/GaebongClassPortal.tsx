@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import ClassroomBoard from "./ClassroomBoard";
 import {
@@ -9,6 +9,9 @@ import {
   type ClassroomMonster,
   type GaebongClassroom,
 } from "../data/classroomData";
+
+const MAX_FAILED_ATTEMPTS = 3;
+const LOCKOUT_MS = 10 * 60 * 1000;
 
 const shuffleMonsters = () => {
   const items = [...CLASSROOM_MONSTERS];
@@ -19,6 +22,40 @@ const shuffleMonsters = () => {
   }
 
   return items;
+};
+
+const getLockoutStorageKey = (classNumber: number) =>
+  `gaebong-classroom-monster-lockout:${classNumber}`;
+
+const readLockoutState = (classNumber: number) => {
+  try {
+    const raw = window.localStorage.getItem(getLockoutStorageKey(classNumber));
+
+    if (!raw) {
+      return { failedAttempts: 0, lockedUntil: null as number | null };
+    }
+
+    const parsed = JSON.parse(raw) as {
+      failedAttempts?: number;
+      lockedUntil?: number | null;
+    };
+    const lockedUntil =
+      typeof parsed.lockedUntil === "number" ? parsed.lockedUntil : null;
+
+    if (lockedUntil && lockedUntil <= Date.now()) {
+      window.localStorage.removeItem(getLockoutStorageKey(classNumber));
+      return { failedAttempts: 0, lockedUntil: null as number | null };
+    }
+
+    return {
+      failedAttempts:
+        typeof parsed.failedAttempts === "number" ? parsed.failedAttempts : 0,
+      lockedUntil,
+    };
+  } catch {
+    window.localStorage.removeItem(getLockoutStorageKey(classNumber));
+    return { failedAttempts: 0, lockedUntil: null as number | null };
+  }
 };
 
 type Props = {
@@ -32,11 +69,50 @@ export default function GaebongClassPortal({ onChangeSchool }: Props) {
     useState<ClassroomMonster[]>(() => shuffleMonsters());
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  const isLocked = Boolean(lockedUntil && lockedUntil > now);
+  const remainingSeconds = lockedUntil
+    ? Math.max(0, Math.ceil((lockedUntil - now) / 1000))
+    : 0;
+  const remainingMinutes = Math.floor(remainingSeconds / 60);
+  const remainingClockSeconds = remainingSeconds % 60;
+
+  useEffect(() => {
+    if (!lockedUntil) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      const nextNow = Date.now();
+      setNow(nextNow);
+
+      if (nextNow >= lockedUntil) {
+        if (selectedClassroom) {
+          window.localStorage.removeItem(
+            getLockoutStorageKey(selectedClassroom.classNumber)
+          );
+        }
+        setFailedAttempts(0);
+        setLockedUntil(null);
+        setErrorMessage("");
+      }
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [lockedUntil, selectedClassroom]);
 
   const selectClassroom = (classroom: GaebongClassroom) => {
+    const lockoutState = readLockoutState(classroom.classNumber);
+
     setSelectedClassroom(classroom);
     setMonsterOptions(shuffleMonsters());
     setIsUnlocked(false);
+    setFailedAttempts(lockoutState.failedAttempts);
+    setLockedUntil(lockoutState.lockedUntil);
+    setNow(Date.now());
     setErrorMessage("");
   };
 
@@ -45,6 +121,9 @@ export default function GaebongClassPortal({ onChangeSchool }: Props) {
     setMonsterOptions(shuffleMonsters());
     setIsUnlocked(false);
     setErrorMessage("");
+    setFailedAttempts(0);
+    setLockedUntil(null);
+    setNow(Date.now());
   };
 
   const chooseMonster = (monster: ClassroomMonster) => {
@@ -52,13 +131,56 @@ export default function GaebongClassPortal({ onChangeSchool }: Props) {
       return;
     }
 
+    const currentLockout = readLockoutState(selectedClassroom.classNumber);
+
+    if (currentLockout.lockedUntil) {
+      setFailedAttempts(currentLockout.failedAttempts);
+      setLockedUntil(currentLockout.lockedUntil);
+      setNow(Date.now());
+      return;
+    }
+
     if (monster.id === selectedClassroom.monsterId) {
+      window.localStorage.removeItem(
+        getLockoutStorageKey(selectedClassroom.classNumber)
+      );
+      setFailedAttempts(0);
+      setLockedUntil(null);
       setIsUnlocked(true);
       setErrorMessage("");
       return;
     }
 
-    setErrorMessage("앗! 우리 반 몬스터가 아니에요. 다시 골라볼까요?");
+    const nextFailedAttempts = failedAttempts + 1;
+
+    if (nextFailedAttempts >= MAX_FAILED_ATTEMPTS) {
+      const nextLockedUntil = Date.now() + LOCKOUT_MS;
+      window.localStorage.setItem(
+        getLockoutStorageKey(selectedClassroom.classNumber),
+        JSON.stringify({
+          failedAttempts: MAX_FAILED_ATTEMPTS,
+          lockedUntil: nextLockedUntil,
+        })
+      );
+      setFailedAttempts(MAX_FAILED_ATTEMPTS);
+      setLockedUntil(nextLockedUntil);
+      setNow(Date.now());
+      setErrorMessage("");
+      setMonsterOptions(shuffleMonsters());
+      return;
+    }
+
+    window.localStorage.setItem(
+      getLockoutStorageKey(selectedClassroom.classNumber),
+      JSON.stringify({
+        failedAttempts: nextFailedAttempts,
+        lockedUntil: null,
+      })
+    );
+    setFailedAttempts(nextFailedAttempts);
+    setErrorMessage(
+      `앗! 우리 반 몬스터가 아니에요. ${MAX_FAILED_ATTEMPTS - nextFailedAttempts}번 더 틀리면 10분 동안 잠겨요.`
+    );
     setMonsterOptions(shuffleMonsters());
   };
 
@@ -141,7 +263,12 @@ export default function GaebongClassPortal({ onChangeSchool }: Props) {
                   key={monster.id}
                   type="button"
                   onClick={() => chooseMonster(monster)}
-                  className={`overflow-hidden rounded-[24px] border bg-gradient-to-br p-2 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 ${monster.className}`}
+                  disabled={isLocked}
+                  className={`overflow-hidden rounded-[24px] border bg-gradient-to-br p-2 text-center shadow-sm transition ${
+                    isLocked
+                      ? "cursor-not-allowed opacity-50"
+                      : "hover:-translate-y-0.5 hover:shadow-md active:translate-y-0"
+                  } ${monster.className}`}
                 >
                   <div className="flex h-28 items-center justify-center overflow-hidden rounded-[18px] bg-white sm:h-32">
                     <img
@@ -162,7 +289,13 @@ export default function GaebongClassPortal({ onChangeSchool }: Props) {
               몬스터 위치는 들어올 때마다 섞여요.
             </div>
 
-            {errorMessage && (
+            {isLocked && (
+              <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-center text-sm font-black text-rose-700">
+                🔒 비밀번호를 3번 틀렸어요. {remainingMinutes}분 {String(remainingClockSeconds).padStart(2, "0")}초 후 다시 시도할 수 있어요.
+              </div>
+            )}
+
+            {!isLocked && errorMessage && (
               <div className="mt-3 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-center text-sm font-black text-rose-600">
                 {errorMessage}
               </div>
