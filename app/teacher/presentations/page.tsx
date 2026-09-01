@@ -22,7 +22,7 @@ import {
   normalizeCardDisplayName,
   normalizeCardKey,
   normalizeBookKey,
-  normalizePresentationCategory,
+  resolvePresentationCategory,
   type PresentationCategory,
   type WorldCultureSeries,
 } from "@/lib/presentations/catalog";
@@ -106,21 +106,13 @@ type DisplayLibraryCard =
 const CATEGORY_LABELS: Record<PresentationCategory, string> = {
   history: "별꼼역사",
   coding: "코딩",
+  hello_maple: "코딩(헬로메이플)",
   world: "세계문화",
   boardgame: "보드게임",
   personal_study: "내 공부자료",
 };
 
-const LIBRARIES: LibraryCard[] = [
-  {
-    value: "boardgame",
-    label: "보드게임",
-    icon: "🎲",
-    description: "보드게임 수업과 활동에 필요한 자료를 카드별로 모아 둡니다.",
-    accent: "text-orange-700",
-    soft: "bg-orange-50",
-    border: "border-orange-100 hover:border-orange-300",
-  },
+const TEACHING_LIBRARIES: LibraryCard[] = [
   {
     value: "history",
     label: "별꼼역사",
@@ -143,17 +135,49 @@ const LIBRARIES: LibraryCard[] = [
     value: "coding",
     label: "코딩",
     icon: "💻",
-    description: "코딩 수업 PPT를 관리합니다.",
+    description: "일반 코딩 수업 PPT와 링크를 관리합니다.",
     accent: "text-emerald-700",
     soft: "bg-emerald-50",
     border: "border-emerald-100 hover:border-emerald-300",
   },
+  {
+    value: "hello_maple",
+    label: "코딩(헬로메이플)",
+    icon: "🍁",
+    description: "헬로메이플 수업자료와 원본 콘텐츠를 별도로 관리합니다.",
+    accent: "text-lime-700",
+    soft: "bg-lime-50",
+    border: "border-lime-100 hover:border-lime-300",
+  },
 ];
+
+const ARCHIVE_LIBRARIES: LibraryCard[] = [
+  {
+    value: "personal_study",
+    label: "내 공부자료",
+    icon: "🌱",
+    description: "개인 학습자료를 과목과 강의별로 모아 둡니다.",
+    accent: "text-rose-700",
+    soft: "bg-rose-50",
+    border: "border-rose-100 hover:border-rose-300",
+  },
+  {
+    value: "boardgame",
+    label: "보드게임",
+    icon: "🎲",
+    description: "보드게임 수업과 활동에 필요한 자료를 카드별로 모아 둡니다.",
+    accent: "text-orange-700",
+    soft: "bg-orange-50",
+    border: "border-orange-100 hover:border-orange-300",
+  },
+];
+
+const ALL_LIBRARIES = [...TEACHING_LIBRARIES, ...ARCHIVE_LIBRARIES];
 
 const LINKED_LIBRARY_RESOURCES: LinkedLibraryResource[] = [
   {
     id: "hello-maple-source",
-    category: "coding",
+    category: "hello_maple",
     href: "/teacher/presentations/coding-source",
     secondaryHref: "/teacher/presentations/coding-source/2026",
     secondaryMeta: "2026 자료",
@@ -186,7 +210,8 @@ const CATEGORY_ORDER: Record<PresentationCategory, number> = {
   personal_study: 1,
   history: 2,
   coding: 3,
-  world: 4,
+  hello_maple: 4,
+  world: 5,
 };
 
 const DIRECT_WORLD_COVERS: Record<string, string> = {
@@ -248,19 +273,23 @@ function getLessonNumbers(values: Iterable<number>) {
 
 function isWonjongHelloMapleCard(card: PresentationNamedCard) {
   const compactName = normalizeCardKey(card.displayName).replace(/\s*\/\s*/gu, "/");
-  return card.category === "coding" && compactName === "원종초/헬로메이플";
+  return card.category === "hello_maple" && compactName === "원종초/헬로메이플";
 }
 
 function isLegacyHelloMapleBasicCard(card: PresentationNamedCard) {
   return (
-    card.category === "coding" &&
+    card.category === "hello_maple" &&
     normalizeCardKey(card.displayName) === normalizeCardKey("헬로메이플 기본")
   );
 }
 
 function isHideableCodingCard(item: DisplayLibraryCard) {
-  if (item.kind === "named") return item.card.category === "coding";
-  if (item.kind === "book") return item.book.category === "coding";
+  if (item.kind === "named") {
+    return item.card.category === "coding" || item.card.category === "hello_maple";
+  }
+  if (item.kind === "book") {
+    return item.book.category === "coding" || item.book.category === "hello_maple";
+  }
   return false;
 }
 
@@ -496,6 +525,11 @@ function TeacherPresentationsPageContent() {
   const searchParams = useSearchParams();
   const requestedCategory = searchParams.get("category");
   const activeLibrary = isPresentationCategory(requestedCategory) ? requestedCategory : null;
+  const isArchiveSection =
+    searchParams.get("section") === "archive" ||
+    activeLibrary === "personal_study" ||
+    activeLibrary === "boardgame";
+  const visibleLibraries = isArchiveSection ? ARCHIVE_LIBRARIES : TEACHING_LIBRARIES;
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const [presentations, setPresentations] = useState<PresentationListItem[]>([]);
@@ -514,6 +548,7 @@ function TeacherPresentationsPageContent() {
       history: 0,
       world: 0,
       coding: 0,
+      hello_maple: 0,
       boardgame: 0,
       personal_study: 0,
     };
@@ -628,7 +663,13 @@ function TeacherPresentationsPageContent() {
           snapshot.docs
             .map((docItem) => {
               const data = docItem.data();
-              const category = normalizePresentationCategory(data?.category);
+              const category = resolvePresentationCategory(
+                data?.category,
+                data?.cardName,
+                data?.resourceTitle,
+                data?.title,
+                data?.bookNumber
+              );
               const worldSeries =
                 category === "world" &&
                 isWorldCultureSeries(data?.worldSeries ?? data?.series)
@@ -687,14 +728,20 @@ function TeacherPresentationsPageContent() {
     setWorldSeriesFilter("all");
     setWorldBookFilter("all");
     setWorldLessonFilter("all");
-    router.push(`/teacher/presentations?category=${category}`, { scroll: false });
+    const section = category === "personal_study" || category === "boardgame"
+      ? "&section=archive"
+      : "";
+    router.push(`/teacher/presentations?category=${category}${section}`, { scroll: false });
   };
 
   const closeLibrary = () => {
     setWorldSeriesFilter("all");
     setWorldBookFilter("all");
     setWorldLessonFilter("all");
-    router.replace("/teacher/presentations", { scroll: false });
+    router.replace(
+      isArchiveSection ? "/teacher/presentations?section=archive" : "/teacher/presentations",
+      { scroll: false }
+    );
   };
 
   const toggleFavoriteCard = (favoriteKey: string) => {
@@ -763,18 +810,24 @@ function TeacherPresentationsPageContent() {
       <div className="mx-auto max-w-7xl">
         <header className="mb-4 flex flex-col gap-3 rounded-3xl bg-white p-5 shadow-md md:flex-row md:items-center md:justify-between">
           <div>
-            {activeLibrary === "personal_study" ? (
+            {isArchiveSection ? (
               <div className="text-xs font-black text-rose-600">
-                자료실 <span className="mx-1 text-slate-300">›</span> 내 공부자료
+                자료실
+                {activeLibrary ? (
+                  <>
+                    <span className="mx-1 text-slate-300">›</span>
+                    {CATEGORY_LABELS[activeLibrary]}
+                  </>
+                ) : null}
               </div>
             ) : null}
-            <h1 className={`${activeLibrary === "personal_study" ? "mt-2" : ""} text-2xl font-black md:text-3xl`}>
-              {activeLibrary === "personal_study" ? "🌱 내 공부자료" : "🗂️ 교사 자료관리"}
+            <h1 className={`${isArchiveSection ? "mt-2" : ""} text-2xl font-black md:text-3xl`}>
+              {isArchiveSection ? "📁 자료실" : "🗂️ 수업자료"}
             </h1>
             <p className="mt-2 text-sm font-bold text-slate-500">
-              {activeLibrary === "personal_study"
-                ? "과목을 누르면 강의 목록이, 강의를 누르면 실제 자료가 펼쳐집니다."
-                : "수업자료와 개인 학습자료를 자료실별로 나누어 관리합니다."}
+              {isArchiveSection
+                ? "내 공부자료와 보드게임 자료를 나누어 관리합니다."
+                : "수업자료를 과목과 코딩 제품별로 나누어 관리합니다."}
             </p>
           </div>
 
@@ -811,8 +864,12 @@ function TeacherPresentationsPageContent() {
             ) : null}
 
             {!isLoading && !loadError ? (
-              <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-                {LIBRARIES.map((library) => (
+              <div
+                className={`mt-5 grid gap-4 sm:grid-cols-2 ${
+                  isArchiveSection ? "xl:max-w-3xl" : "xl:grid-cols-4"
+                }`}
+              >
+                {visibleLibraries.map((library) => (
                   <button
                     key={library.value}
                     type="button"
@@ -842,7 +899,7 @@ function TeacherPresentationsPageContent() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h2 className="text-2xl font-black">
-                  {LIBRARIES.find((item) => item.value === activeLibrary)?.icon}{" "}
+                  {ALL_LIBRARIES.find((item) => item.value === activeLibrary)?.icon}{" "}
                   {CATEGORY_LABELS[activeLibrary]}
                 </h2>
                 <p className="mt-1 text-sm font-bold text-slate-500">
@@ -851,12 +908,14 @@ function TeacherPresentationsPageContent() {
                     : activeLibrary === "boardgame"
                       ? "같은 보드게임 이름의 자료는 한 카드 안에 함께 모입니다."
                       : activeLibrary === "coding"
-                        ? "코딩 수업별 자료와 원본 콘텐츠 자료실을 함께 관리합니다."
+                        ? "일반 코딩 수업자료를 헬로메이플과 분리해 관리합니다."
+                        : activeLibrary === "hello_maple"
+                          ? "헬로메이플 수업자료와 기존·2026 원본 콘텐츠를 함께 관리합니다."
                         : "한 차시에 여러 자료를 넣고 차시를 눌러 목록으로 확인할 수 있습니다."}
                 </p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
-                {activeLibrary === "coding" && hiddenCodingCardCount > 0 ? (
+                {(activeLibrary === "coding" || activeLibrary === "hello_maple") && hiddenCodingCardCount > 0 ? (
                   <button
                     type="button"
                     onClick={restoreHiddenCodingCards}
@@ -954,7 +1013,7 @@ function TeacherPresentationsPageContent() {
                         isFavorite={isFavorite}
                         onToggleFavorite={onToggleFavorite}
                         onHide={
-                          item.card.category === "coding"
+                          item.card.category === "coding" || item.card.category === "hello_maple"
                             ? () => hideCodingCard(item.favoriteKey, item.card.displayName)
                             : undefined
                         }
@@ -970,7 +1029,7 @@ function TeacherPresentationsPageContent() {
                         isFavorite={isFavorite}
                         onToggleFavorite={onToggleFavorite}
                         onHide={
-                          item.book.category === "coding"
+                          item.book.category === "coding" || item.book.category === "hello_maple"
                             ? () => hideCodingCard(item.favoriteKey, item.book.title)
                             : undefined
                         }
@@ -1212,14 +1271,14 @@ function NamedResourceCard({
   onHide?: () => void;
 }) {
   const [expandedLesson, setExpandedLesson] = useState<number | null>(null);
-  const isLessonCard = card.category === "coding";
+  const isLessonCard = card.category === "coding" || card.category === "hello_maple";
   const isWonjongHelloMaple = isWonjongHelloMapleCard(card);
   const icon =
     card.category === "boardgame"
       ? "🎲"
       : card.category === "personal_study"
         ? "🌱"
-        : card.category === "coding"
+        : card.category === "coding" || card.category === "hello_maple"
           ? "💻"
         : "📁";
   const accent =
@@ -1227,7 +1286,7 @@ function NamedResourceCard({
       ? "text-orange-700"
       : card.category === "personal_study"
         ? "text-rose-700"
-        : card.category === "coding"
+        : card.category === "coding" || card.category === "hello_maple"
           ? "text-emerald-700"
         : "text-blue-700";
   const soft =
@@ -1235,7 +1294,7 @@ function NamedResourceCard({
       ? "bg-orange-50"
       : card.category === "personal_study"
         ? "bg-rose-50"
-        : card.category === "coding"
+        : card.category === "coding" || card.category === "hello_maple"
           ? "bg-emerald-50"
         : "bg-blue-50";
   const lessonResources = new Map<number, PresentationListItem[]>();
@@ -1480,17 +1539,17 @@ function CompactBookCard({
   const [expandedLesson, setExpandedLesson] = useState<number | null>(null);
   const accentText = isWorld
     ? "text-violet-600"
-    : book.category === "coding"
+    : book.category === "coding" || book.category === "hello_maple"
       ? "text-emerald-600"
       : "text-blue-600";
   const accentBorder = isWorld
     ? "border-violet-200"
-    : book.category === "coding"
+    : book.category === "coding" || book.category === "hello_maple"
       ? "border-emerald-200"
       : "border-blue-200";
   const accentSoft = isWorld
     ? "bg-violet-50"
-    : book.category === "coding"
+    : book.category === "coding" || book.category === "hello_maple"
       ? "bg-emerald-50"
       : "bg-blue-50";
 

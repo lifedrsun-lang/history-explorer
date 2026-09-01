@@ -371,10 +371,10 @@ export default function CodingSourceCatalogPage() {
                 원본 시트 열기 ↗
               </a>
               <Link
-                href="/teacher/presentations?category=coding"
+                href="/teacher/presentations?category=hello_maple"
                 className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-100"
               >
-                ← 코딩 PPT로
+                ← 코딩(헬로메이플)로
               </Link>
             </div>
           </div>

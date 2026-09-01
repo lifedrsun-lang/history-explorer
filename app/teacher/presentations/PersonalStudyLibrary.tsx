@@ -318,7 +318,7 @@ export default function PersonalStudyLibrary() {
             </p>
           </div>
           <Link
-            href="/teacher/presentations"
+            href="/teacher/presentations?section=archive"
             className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-100"
           >
             ← 전체 자료실로 돌아가기

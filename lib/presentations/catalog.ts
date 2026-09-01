@@ -1,6 +1,7 @@
 export type PresentationCategory =
   | "history"
   | "coding"
+  | "hello_maple"
   | "world"
   | "boardgame"
   | "personal_study";
@@ -11,6 +12,7 @@ export function isPresentationCategory(
   return (
     value === "history" ||
     value === "coding" ||
+    value === "hello_maple" ||
     value === "world" ||
     value === "boardgame" ||
     value === "personal_study"
@@ -22,6 +24,24 @@ export function normalizePresentationCategory(
 ): PresentationCategory {
   if (value === "worldculture") return "world";
   return isPresentationCategory(value) ? value : "history";
+}
+
+export function resolvePresentationCategory(
+  value: unknown,
+  ...hints: unknown[]
+): PresentationCategory {
+  const category = normalizePresentationCategory(value);
+  if (category !== "coding") return category;
+
+  const searchableText = hints
+    .map((hint) => String(hint ?? ""))
+    .join(" ")
+    .replace(/\s+/gu, "")
+    .toLowerCase();
+
+  return searchableText.includes("헬로메이플") || searchableText.includes("hellomaple")
+    ? "hello_maple"
+    : category;
 }
 
 export function isNamedCardCategory(

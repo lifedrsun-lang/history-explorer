@@ -15,7 +15,7 @@ import {
   isWorldCultureSeries,
   normalizeCardDisplayName,
   normalizeCardKey,
-  normalizePresentationCategory,
+  resolvePresentationCategory,
   type PresentationCategory,
   type WorldCultureSeries,
 } from "@/lib/presentations/catalog";
@@ -52,6 +52,7 @@ const CATEGORIES: Array<{
   { value: "history", label: "별꼼역사", description: "한국사 수업 PPT" },
   { value: "world", label: "세계문화", description: "모나르떼 세계문화 PPT" },
   { value: "coding", label: "코딩", description: "코딩 수업 PPT" },
+  { value: "hello_maple", label: "코딩(헬로메이플)", description: "헬로메이플 전용 수업자료" },
   { value: "boardgame", label: "보드게임", description: "게임별 수업·활동 자료" },
   { value: "personal_study", label: "내 공부자료", description: "개인 학습 자료 아카이브" },
 ];
@@ -167,7 +168,13 @@ export default function EditTeacherPresentationPage() {
         }
 
         const data = snapshot.data();
-        const category = normalizePresentationCategory(data?.category);
+        const category = resolvePresentationCategory(
+          data?.category,
+          data?.cardName,
+          data?.resourceTitle,
+          data?.title,
+          data?.bookNumber
+        );
         const storedWorldSeries = data?.worldSeries ?? data?.series;
         const resourceTitle = String(data?.resourceTitle || data?.title || "").trim();
         const pptUrl = String(data?.pptUrl || "");
@@ -256,7 +263,10 @@ export default function EditTeacherPresentationPage() {
         updatedAt: serverTimestamp(),
       });
 
-      router.push(`/teacher/presentations?category=${draft.category}`);
+      const section = draft.category === "boardgame" || draft.category === "personal_study"
+        ? "&section=archive"
+        : "";
+      router.push(`/teacher/presentations?category=${draft.category}${section}`);
     } catch (error) {
       console.error("Presentation update failed:", error);
       setErrorMessage("자료 수정 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
@@ -277,7 +287,10 @@ export default function EditTeacherPresentationPage() {
     setErrorMessage("");
     try {
       await deleteDoc(doc(db, "presentations", presentationId));
-      router.push(`/teacher/presentations?category=${draft.category}`);
+      const section = draft.category === "boardgame" || draft.category === "personal_study"
+        ? "&section=archive"
+        : "";
+      router.push(`/teacher/presentations?category=${draft.category}${section}`);
     } catch (error) {
       console.error("Presentation delete failed:", error);
       setErrorMessage("자료 삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.");
@@ -302,7 +315,11 @@ export default function EditTeacherPresentationPage() {
       <div className="mx-auto max-w-2xl">
         <div className="rounded-3xl bg-white p-5 shadow-md">
           <Link
-            href={`/teacher/presentations?category=${draft.category}`}
+            href={`/teacher/presentations?category=${draft.category}${
+              draft.category === "boardgame" || draft.category === "personal_study"
+                ? "&section=archive"
+                : ""
+            }`}
             className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-100"
           >
             ← 자료 목록

@@ -47,6 +47,7 @@ const CATEGORY_LABELS: Record<PresentationCategory, string> = {
   history: "별꼼역사",
   world: "세계문화",
   coding: "코딩",
+  hello_maple: "코딩(헬로메이플)",
   boardgame: "보드게임",
   personal_study: "내 공부자료",
 };
@@ -59,6 +60,7 @@ const CATEGORIES: Array<{
   { value: "history", label: "별꼼역사", description: "한국사 수업 PPT" },
   { value: "world", label: "세계문화", description: "모나르떼 세계문화 PPT" },
   { value: "coding", label: "코딩", description: "코딩 수업 PPT" },
+  { value: "hello_maple", label: "코딩(헬로메이플)", description: "헬로메이플 전용 수업자료" },
   { value: "boardgame", label: "보드게임", description: "게임별 수업·활동 자료" },
   { value: "personal_study", label: "내 공부자료", description: "개인 학습 자료 아카이브" },
 ];
@@ -240,7 +242,10 @@ export default function NewTeacherPresentationPage() {
         updatedAt: serverTimestamp(),
       });
 
-      router.push(`/teacher/presentations?category=${draft.category}`);
+      const section = draft.category === "boardgame" || draft.category === "personal_study"
+        ? "&section=archive"
+        : "";
+      router.push(`/teacher/presentations?category=${draft.category}${section}`);
     } catch (error) {
       console.error("Presentation save failed:", error);
       setErrorMessage("자료 저장에 실패했습니다. 링크와 입력값을 확인해 주세요.");
@@ -262,7 +267,11 @@ export default function NewTeacherPresentationPage() {
   if (!authorized) return null;
 
   const backHref = lockedCategory
-    ? `/teacher/presentations?category=${lockedCategory}`
+    ? `/teacher/presentations?category=${lockedCategory}${
+        lockedCategory === "boardgame" || lockedCategory === "personal_study"
+          ? "&section=archive"
+          : ""
+      }`
     : "/teacher/presentations";
   const isBookContext = Boolean(lockedBookNumber) && !isNamedCardCategory(draft.category);
   const isLessonContext = Boolean(lockedLessonNumber) && isBookContext;

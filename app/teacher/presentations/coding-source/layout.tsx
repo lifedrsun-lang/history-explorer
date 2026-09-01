@@ -37,10 +37,10 @@ export default function CodingSourceLayout({ children }: { children: React.React
               2026 버전
             </Link>
             <Link
-              href="/teacher/presentations?category=coding"
+              href="/teacher/presentations?category=hello_maple"
               className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-center text-sm font-black text-slate-600 transition hover:bg-slate-50"
             >
-              ← 코딩 자료실
+              ← 코딩(헬로메이플)
             </Link>
           </nav>
         </div>

@@ -31,10 +31,10 @@ const menuItems = [
     className: "border-sky-200 bg-sky-50 text-sky-900",
   },
   {
-    href: "/teacher/presentations?category=personal_study",
+    href: "/teacher/presentations?section=archive",
     icon: "📁",
     title: "자료실",
-    description: "개인 학습 PPT와 참고자료를 카드별로 보관",
+    description: "내 공부자료와 보드게임 자료를 카드별로 보관",
     className: "border-rose-200 bg-rose-50 text-rose-900",
   },
   {
