@@ -14,17 +14,17 @@ export default function SchoolSelect({
   onSelect,
 }: Props) {
   return (
-    <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 text-slate-800 px-4 py-8">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 text-slate-800 px-3 py-6 sm:px-4 sm:py-8">
       <div className="max-w-xl mx-auto">
-        <div className="text-3xl font-bold mb-6 text-center text-slate-800">
+        <div className="text-2xl sm:text-3xl font-bold mb-5 sm:mb-6 text-center text-slate-800">
           🏫 학교/수업 장소 선택
         </div>
 
-        <div className="space-y-3 rounded-[32px] border border-white/80 bg-white/80 p-4 shadow-sm">
+        <div className="grid grid-cols-2 gap-3 rounded-[32px] border border-white/80 bg-white/80 p-3 sm:p-4 shadow-sm">
           {schools.map((school) => {
             const cardInfo = getSchoolLoginCard(school);
             const cardClassName =
-              "block w-full bg-white border border-sky-100 rounded-3xl p-5 text-left text-slate-700 shadow-sm transition hover:bg-sky-50";
+              "block h-full min-h-[112px] w-full bg-white border border-sky-100 rounded-3xl p-4 text-left text-slate-700 shadow-sm transition hover:bg-sky-50";
 
             if (isGaebongSchool(school)) {
               return (
@@ -33,16 +33,14 @@ export default function SchoolSelect({
                   href="/student/classroom"
                   className={cardClassName}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-xl font-black text-slate-800">
-                        {cardInfo.title}
-                      </div>
-                      <div className="mt-2 text-sm font-bold text-sky-700">
-                        📍 {cardInfo.location}
-                      </div>
+                  <div className="flex h-full flex-col">
+                    <div className="text-base sm:text-lg font-black leading-snug text-slate-800">
+                      {cardInfo.title}
                     </div>
-                    <span className="shrink-0 rounded-full bg-orange-100 px-2.5 py-1 text-[11px] font-black text-orange-700">
+                    <div className="mt-2 text-xs sm:text-sm font-bold text-sky-700">
+                      📍 {cardInfo.location}
+                    </div>
+                    <span className="mt-auto self-start rounded-full bg-orange-100 px-2 py-1 text-[10px] sm:text-[11px] font-black text-orange-700">
                       반 수업방
                     </span>
                   </div>
@@ -56,12 +54,14 @@ export default function SchoolSelect({
                 onClick={() => onSelect(school)}
                 className={cardClassName}
               >
-                <div className="text-xl font-black text-slate-800">
-                  {cardInfo.title}
-                </div>
+                <div className="flex h-full flex-col">
+                  <div className="text-base sm:text-lg font-black leading-snug text-slate-800">
+                    {cardInfo.title}
+                  </div>
 
-                <div className="mt-2 text-sm font-bold text-sky-700">
-                  📍 {cardInfo.location}
+                  <div className="mt-2 text-xs sm:text-sm font-bold text-sky-700">
+                    📍 {cardInfo.location}
+                  </div>
                 </div>
               </button>
             );
