@@ -119,6 +119,16 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     },
   },
   {
+    name: "서울 개봉초등학교",
+    displayName: "서울 개봉초",
+    aliases: ["서울 개봉초", "개봉초"],
+    password: "GB",
+    loginCard: {
+      title: "서울 개봉초",
+      location: "컴퓨터실",
+    },
+  },
+  {
     name: "부천 원종초등학교",
     displayName: "부천 원종초",
     aliases: ["부천 원종초"],
@@ -146,16 +156,6 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     loginCard: {
       title: "화성 월문초",
       location: "수업 장소",
-    },
-  },
-  {
-    name: "서울 개봉초등학교",
-    displayName: "서울 개봉초",
-    aliases: ["서울 개봉초", "개봉초"],
-    password: "GB",
-    loginCard: {
-      title: "서울 개봉초",
-      location: "컴퓨터실",
     },
   },
   {
