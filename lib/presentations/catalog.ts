@@ -4,6 +4,7 @@ export type PresentationCategory =
   | "hello_maple"
   | "world"
   | "boardgame"
+  | "facilitator"
   | "personal_study";
 
 export function isPresentationCategory(
@@ -15,6 +16,7 @@ export function isPresentationCategory(
     value === "hello_maple" ||
     value === "world" ||
     value === "boardgame" ||
+    value === "facilitator" ||
     value === "personal_study"
   );
 }
@@ -31,23 +33,47 @@ export function resolvePresentationCategory(
   ...hints: unknown[]
 ): PresentationCategory {
   const category = normalizePresentationCategory(value);
-  if (category !== "coding") return category;
-
   const searchableText = hints
     .map((hint) => String(hint ?? ""))
     .join(" ")
     .replace(/\s+/gu, "")
     .toLowerCase();
 
+  if (category === "personal_study" && searchableText.includes("퍼실리테이터")) {
+    return "facilitator";
+  }
+
+  if (category !== "coding") return category;
+
   return searchableText.includes("헬로메이플") || searchableText.includes("hellomaple")
     ? "hello_maple"
     : category;
 }
 
+export function resolveStoredPresentationCategory(
+  data: Record<string, unknown>
+): PresentationCategory {
+  if (data.libraryCategoryVersion === 1) {
+    return normalizePresentationCategory(data.category);
+  }
+
+  return resolvePresentationCategory(
+    data.category,
+    data.cardName,
+    data.resourceTitle,
+    data.title,
+    data.bookNumber
+  );
+}
+
 export function isNamedCardCategory(
   category: PresentationCategory
-): category is "boardgame" | "personal_study" {
-  return category === "boardgame" || category === "personal_study";
+): category is "boardgame" | "facilitator" | "personal_study" {
+  return (
+    category === "boardgame" ||
+    category === "facilitator" ||
+    category === "personal_study"
+  );
 }
 
 export function normalizeCardDisplayName(value: unknown) {

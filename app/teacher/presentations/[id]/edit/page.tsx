@@ -15,7 +15,7 @@ import {
   isWorldCultureSeries,
   normalizeCardDisplayName,
   normalizeCardKey,
-  resolvePresentationCategory,
+  resolveStoredPresentationCategory,
   type PresentationCategory,
   type WorldCultureSeries,
 } from "@/lib/presentations/catalog";
@@ -54,6 +54,7 @@ const CATEGORIES: Array<{
   { value: "coding", label: "코딩", description: "코딩 수업 PPT" },
   { value: "hello_maple", label: "코딩(헬로메이플)", description: "헬로메이플 전용 수업자료" },
   { value: "boardgame", label: "보드게임", description: "게임별 수업·활동 자료" },
+  { value: "facilitator", label: "퍼실리테이터", description: "퍼실리테이터 과정 자료" },
   { value: "personal_study", label: "내 공부자료", description: "개인 학습 자료 아카이브" },
 ];
 
@@ -168,13 +169,7 @@ export default function EditTeacherPresentationPage() {
         }
 
         const data = snapshot.data();
-        const category = resolvePresentationCategory(
-          data?.category,
-          data?.cardName,
-          data?.resourceTitle,
-          data?.title,
-          data?.bookNumber
-        );
+        const category = resolveStoredPresentationCategory(data);
         const storedWorldSeries = data?.worldSeries ?? data?.series;
         const resourceTitle = String(data?.resourceTitle || data?.title || "").trim();
         const pptUrl = String(data?.pptUrl || "");
@@ -244,6 +239,7 @@ export default function EditTeacherPresentationPage() {
       const isNamedCategory = isNamedCardCategory(draft.category);
       await updateDoc(doc(db, "presentations", presentationId), {
         schemaVersion: 6,
+        libraryCategoryVersion: 1,
         category: draft.category,
         cardName,
         cardKey: cardName ? normalizeCardKey(cardName) : "",
@@ -263,7 +259,7 @@ export default function EditTeacherPresentationPage() {
         updatedAt: serverTimestamp(),
       });
 
-      const section = draft.category === "boardgame" || draft.category === "personal_study"
+      const section = draft.category === "boardgame" || draft.category === "facilitator" || draft.category === "personal_study"
         ? "&section=archive"
         : "";
       router.push(`/teacher/presentations?category=${draft.category}${section}`);
@@ -287,7 +283,7 @@ export default function EditTeacherPresentationPage() {
     setErrorMessage("");
     try {
       await deleteDoc(doc(db, "presentations", presentationId));
-      const section = draft.category === "boardgame" || draft.category === "personal_study"
+      const section = draft.category === "boardgame" || draft.category === "facilitator" || draft.category === "personal_study"
         ? "&section=archive"
         : "";
       router.push(`/teacher/presentations?category=${draft.category}${section}`);
@@ -316,7 +312,7 @@ export default function EditTeacherPresentationPage() {
         <div className="rounded-3xl bg-white p-5 shadow-md">
           <Link
             href={`/teacher/presentations?category=${draft.category}${
-              draft.category === "boardgame" || draft.category === "personal_study"
+              draft.category === "boardgame" || draft.category === "facilitator" || draft.category === "personal_study"
                 ? "&section=archive"
                 : ""
             }`}

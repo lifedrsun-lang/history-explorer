@@ -4,7 +4,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, getDocs, orderBy, query, Timestamp } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDocs,
+  orderBy,
+  query,
+  serverTimestamp,
+  Timestamp,
+  writeBatch,
+} from "firebase/firestore";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { auth, db } from "@/lib/firebase";
@@ -22,7 +31,7 @@ import {
   normalizeCardDisplayName,
   normalizeCardKey,
   normalizeBookKey,
-  resolvePresentationCategory,
+  resolveStoredPresentationCategory,
   type PresentationCategory,
   type WorldCultureSeries,
 } from "@/lib/presentations/catalog";
@@ -109,6 +118,7 @@ const CATEGORY_LABELS: Record<PresentationCategory, string> = {
   hello_maple: "코딩(헬로메이플)",
   world: "세계문화",
   boardgame: "보드게임",
+  facilitator: "퍼실리테이터",
   personal_study: "내 공부자료",
 };
 
@@ -162,6 +172,15 @@ const ARCHIVE_LIBRARIES: LibraryCard[] = [
     border: "border-rose-100 hover:border-rose-300",
   },
   {
+    value: "facilitator",
+    label: "퍼실리테이터",
+    icon: "🧭",
+    description: "퍼실리테이터 과정 자료를 별도 카드로 관리합니다.",
+    accent: "text-teal-700",
+    soft: "bg-teal-50",
+    border: "border-teal-100 hover:border-teal-300",
+  },
+  {
     value: "boardgame",
     label: "보드게임",
     icon: "🎲",
@@ -173,6 +192,11 @@ const ARCHIVE_LIBRARIES: LibraryCard[] = [
 ];
 
 const ALL_LIBRARIES = [...TEACHING_LIBRARIES, ...ARCHIVE_LIBRARIES];
+const MOVABLE_ARCHIVE_CATEGORIES: PresentationCategory[] = [
+  "personal_study",
+  "facilitator",
+  "boardgame",
+];
 
 const LINKED_LIBRARY_RESOURCES: LinkedLibraryResource[] = [
   {
@@ -208,10 +232,11 @@ const PERSONAL_STUDY_RESOURCE_META: Record<
 const CATEGORY_ORDER: Record<PresentationCategory, number> = {
   boardgame: 0,
   personal_study: 1,
-  history: 2,
-  coding: 3,
-  hello_maple: 4,
-  world: 5,
+  facilitator: 2,
+  history: 3,
+  coding: 4,
+  hello_maple: 5,
+  world: 6,
 };
 
 const DIRECT_WORLD_COVERS: Record<string, string> = {
@@ -527,8 +552,7 @@ function TeacherPresentationsPageContent() {
   const activeLibrary = isPresentationCategory(requestedCategory) ? requestedCategory : null;
   const isArchiveSection =
     searchParams.get("section") === "archive" ||
-    activeLibrary === "personal_study" ||
-    activeLibrary === "boardgame";
+    (activeLibrary !== null && MOVABLE_ARCHIVE_CATEGORIES.includes(activeLibrary));
   const visibleLibraries = isArchiveSection ? ARCHIVE_LIBRARIES : TEACHING_LIBRARIES;
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
@@ -540,6 +564,7 @@ function TeacherPresentationsPageContent() {
   const [hiddenCodingCardKeys, setHiddenCodingCardKeys] = useState<Set<string>>(
     getStoredHiddenCodingCardKeys
   );
+  const [movingCardKey, setMovingCardKey] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
 
@@ -550,6 +575,7 @@ function TeacherPresentationsPageContent() {
       coding: 0,
       hello_maple: 0,
       boardgame: 0,
+      facilitator: 0,
       personal_study: 0,
     };
     presentations.forEach((item) => {
@@ -663,13 +689,7 @@ function TeacherPresentationsPageContent() {
           snapshot.docs
             .map((docItem) => {
               const data = docItem.data();
-              const category = resolvePresentationCategory(
-                data?.category,
-                data?.cardName,
-                data?.resourceTitle,
-                data?.title,
-                data?.bookNumber
-              );
+              const category = resolveStoredPresentationCategory(data);
               const worldSeries =
                 category === "world" &&
                 isWorldCultureSeries(data?.worldSeries ?? data?.series)
@@ -728,7 +748,7 @@ function TeacherPresentationsPageContent() {
     setWorldSeriesFilter("all");
     setWorldBookFilter("all");
     setWorldLessonFilter("all");
-    const section = category === "personal_study" || category === "boardgame"
+    const section = MOVABLE_ARCHIVE_CATEGORIES.includes(category)
       ? "&section=archive"
       : "";
     router.push(`/teacher/presentations?category=${category}${section}`, { scroll: false });
@@ -793,6 +813,43 @@ function TeacherPresentationsPageContent() {
     }
   };
 
+  const moveNamedCard = async (
+    card: PresentationNamedCard,
+    targetCategory: PresentationCategory
+  ) => {
+    if (card.category === targetCategory || movingCardKey) return;
+
+    const confirmed = window.confirm(
+      `${card.displayName} 카드를 ${CATEGORY_LABELS[targetCategory]}로 이동할까요?\n\n카드 안의 자료와 링크는 그대로 유지됩니다.`
+    );
+    if (!confirmed) return;
+
+    setMovingCardKey(card.key);
+    try {
+      const batch = writeBatch(db);
+      card.resources.forEach((resource) => {
+        batch.update(doc(db, "presentations", resource.id), {
+          category: targetCategory,
+          libraryCategoryVersion: 1,
+          updatedAt: serverTimestamp(),
+        });
+      });
+      await batch.commit();
+
+      const movedIds = new Set(card.resources.map((resource) => resource.id));
+      setPresentations((current) =>
+        current.map((resource) =>
+          movedIds.has(resource.id) ? { ...resource, category: targetCategory } : resource
+        )
+      );
+    } catch (error) {
+      console.error("Presentation card move failed:", error);
+      window.alert("카드를 이동하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setMovingCardKey("");
+    }
+  };
+
   if (authChecking) {
     return (
       <main className="flex min-h-[100dvh] items-center justify-center bg-[#f5f7fb] p-3">
@@ -826,7 +883,7 @@ function TeacherPresentationsPageContent() {
             </h1>
             <p className="mt-2 text-sm font-bold text-slate-500">
               {isArchiveSection
-                ? "내 공부자료와 보드게임 자료를 나누어 관리합니다."
+                ? "내 공부자료·퍼실리테이터·보드게임 자료를 나누어 관리합니다."
                 : "수업자료를 과목과 코딩 제품별로 나누어 관리합니다."}
             </p>
           </div>
@@ -866,7 +923,7 @@ function TeacherPresentationsPageContent() {
             {!isLoading && !loadError ? (
               <div
                 className={`mt-5 grid gap-4 sm:grid-cols-2 ${
-                  isArchiveSection ? "xl:max-w-3xl" : "xl:grid-cols-4"
+                  isArchiveSection ? "xl:max-w-5xl xl:grid-cols-3" : "xl:grid-cols-4"
                 }`}
               >
                 {visibleLibraries.map((library) => (
@@ -905,8 +962,10 @@ function TeacherPresentationsPageContent() {
                 <p className="mt-1 text-sm font-bold text-slate-500">
                   {activeLibrary === "personal_study"
                     ? "배우며 받은 PPT와 참고자료를 카드이름별로 차곡차곡 보관합니다."
-                    : activeLibrary === "boardgame"
-                      ? "같은 보드게임 이름의 자료는 한 카드 안에 함께 모입니다."
+                      : activeLibrary === "boardgame"
+                        ? "같은 보드게임 이름의 자료는 한 카드 안에 함께 모입니다."
+                      : activeLibrary === "facilitator"
+                        ? "퍼실리테이터 과정 자료를 다른 공부자료와 분리해 관리합니다."
                       : activeLibrary === "coding"
                         ? "일반 코딩 수업자료를 헬로메이플과 분리해 관리합니다."
                         : activeLibrary === "hello_maple"
@@ -1012,6 +1071,15 @@ function TeacherPresentationsPageContent() {
                         card={item.card}
                         isFavorite={isFavorite}
                         onToggleFavorite={onToggleFavorite}
+                        moveTargets={
+                          MOVABLE_ARCHIVE_CATEGORIES.includes(item.card.category)
+                            ? MOVABLE_ARCHIVE_CATEGORIES.filter(
+                                (category) => category !== item.card.category
+                              )
+                            : []
+                        }
+                        isMoving={movingCardKey === item.card.key}
+                        onMove={(targetCategory) => moveNamedCard(item.card, targetCategory)}
                         onHide={
                           item.card.category === "coding" || item.card.category === "hello_maple"
                             ? () => hideCodingCard(item.favoriteKey, item.card.displayName)
@@ -1263,11 +1331,17 @@ function NamedResourceCard({
   card,
   isFavorite,
   onToggleFavorite,
+  moveTargets,
+  isMoving,
+  onMove,
   onHide,
 }: {
   card: PresentationNamedCard;
   isFavorite: boolean;
   onToggleFavorite: () => void;
+  moveTargets: PresentationCategory[];
+  isMoving: boolean;
+  onMove: (targetCategory: PresentationCategory) => void;
   onHide?: () => void;
 }) {
   const [expandedLesson, setExpandedLesson] = useState<number | null>(null);
@@ -1278,6 +1352,8 @@ function NamedResourceCard({
       ? "🎲"
       : card.category === "personal_study"
         ? "🌱"
+        : card.category === "facilitator"
+          ? "🧭"
         : card.category === "coding" || card.category === "hello_maple"
           ? "💻"
         : "📁";
@@ -1286,6 +1362,8 @@ function NamedResourceCard({
       ? "text-orange-700"
       : card.category === "personal_study"
         ? "text-rose-700"
+        : card.category === "facilitator"
+          ? "text-teal-700"
         : card.category === "coding" || card.category === "hello_maple"
           ? "text-emerald-700"
         : "text-blue-700";
@@ -1294,6 +1372,8 @@ function NamedResourceCard({
       ? "bg-orange-50"
       : card.category === "personal_study"
         ? "bg-rose-50"
+        : card.category === "facilitator"
+          ? "bg-teal-50"
         : card.category === "coding" || card.category === "hello_maple"
           ? "bg-emerald-50"
         : "bg-blue-50";
@@ -1331,6 +1411,25 @@ function NamedResourceCard({
           <p className="mt-1 text-xs font-bold text-slate-400">자료 {card.resources.length}개</p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
+          {moveTargets.length > 0 ? (
+            <select
+              aria-label={`${card.displayName} 카드 이동`}
+              value=""
+              disabled={isMoving}
+              onChange={(event) => {
+                const targetCategory = event.target.value;
+                if (isPresentationCategory(targetCategory)) onMove(targetCategory);
+              }}
+              className="h-9 max-w-28 rounded-xl border border-slate-200 bg-white px-2 text-xs font-black text-slate-600 disabled:opacity-50"
+            >
+              <option value="">{isMoving ? "이동 중..." : "카드 이동"}</option>
+              {moveTargets.map((category) => (
+                <option key={category} value={category}>
+                  → {CATEGORY_LABELS[category]}
+                </option>
+              ))}
+            </select>
+          ) : null}
           <Link
             href={buildNamedCardAddHref(card)}
             className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-black text-slate-600 transition hover:bg-white hover:text-slate-900"

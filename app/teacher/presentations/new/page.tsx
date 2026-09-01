@@ -49,6 +49,7 @@ const CATEGORY_LABELS: Record<PresentationCategory, string> = {
   coding: "코딩",
   hello_maple: "코딩(헬로메이플)",
   boardgame: "보드게임",
+  facilitator: "퍼실리테이터",
   personal_study: "내 공부자료",
 };
 
@@ -62,6 +63,7 @@ const CATEGORIES: Array<{
   { value: "coding", label: "코딩", description: "코딩 수업 PPT" },
   { value: "hello_maple", label: "코딩(헬로메이플)", description: "헬로메이플 전용 수업자료" },
   { value: "boardgame", label: "보드게임", description: "게임별 수업·활동 자료" },
+  { value: "facilitator", label: "퍼실리테이터", description: "퍼실리테이터 과정 자료" },
   { value: "personal_study", label: "내 공부자료", description: "개인 학습 자료 아카이브" },
 ];
 
@@ -221,6 +223,7 @@ export default function NewTeacherPresentationPage() {
 
       await addDoc(collection(db, "presentations"), {
         schemaVersion: 6,
+        libraryCategoryVersion: 1,
         category: draft.category,
         cardName,
         cardKey: cardName ? normalizeCardKey(cardName) : "",
@@ -242,7 +245,7 @@ export default function NewTeacherPresentationPage() {
         updatedAt: serverTimestamp(),
       });
 
-      const section = draft.category === "boardgame" || draft.category === "personal_study"
+      const section = draft.category === "boardgame" || draft.category === "facilitator" || draft.category === "personal_study"
         ? "&section=archive"
         : "";
       router.push(`/teacher/presentations?category=${draft.category}${section}`);
@@ -268,7 +271,7 @@ export default function NewTeacherPresentationPage() {
 
   const backHref = lockedCategory
     ? `/teacher/presentations?category=${lockedCategory}${
-        lockedCategory === "boardgame" || lockedCategory === "personal_study"
+        lockedCategory === "boardgame" || lockedCategory === "facilitator" || lockedCategory === "personal_study"
           ? "&section=archive"
           : ""
       }`

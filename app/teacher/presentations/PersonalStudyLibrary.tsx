@@ -3,14 +3,24 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, getDocs, orderBy, query, Timestamp } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDocs,
+  orderBy,
+  query,
+  serverTimestamp,
+  Timestamp,
+  writeBatch,
+} from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 import { auth, db } from "@/lib/firebase";
 import {
   normalizeCardDisplayName,
   normalizeCardKey,
-  normalizePresentationCategory,
+  resolveStoredPresentationCategory,
+  type PresentationCategory,
 } from "@/lib/presentations/catalog";
 
 type PersonalStudyResourceKind = "document" | "video" | "image" | "ppt" | "link";
@@ -41,6 +51,11 @@ type PersonalStudySubject = {
 };
 
 const FAVORITE_CARDS_STORAGE_KEY = "sun-lab:presentation-card-favorites:v1";
+const MOVE_TARGETS: PresentationCategory[] = ["facilitator", "boardgame"];
+const CATEGORY_LABELS: Partial<Record<PresentationCategory, string>> = {
+  facilitator: "퍼실리테이터",
+  boardgame: "보드게임",
+};
 
 const RESOURCE_META: Record<
   PersonalStudyResourceKind,
@@ -211,6 +226,7 @@ export default function PersonalStudyLibrary() {
   const [loadError, setLoadError] = useState("");
   const [resources, setResources] = useState<PersonalStudyResource[]>([]);
   const [favoriteKeys, setFavoriteKeys] = useState<Set<string>>(getStoredFavorites);
+  const [movingSubjectKey, setMovingSubjectKey] = useState("");
 
   const subjects = useMemo(() => {
     const grouped = groupSubjects(resources);
@@ -241,7 +257,7 @@ export default function PersonalStudyLibrary() {
         setResources(
           snapshot.docs.flatMap((docItem) => {
             const data = docItem.data();
-            if (normalizePresentationCategory(data?.category) !== "personal_study") return [];
+            if (resolveStoredPresentationCategory(data) !== "personal_study") return [];
 
             const cardName =
               normalizeCardDisplayName(data?.cardName) ||
@@ -290,6 +306,39 @@ export default function PersonalStudyLibrary() {
       }
       return next;
     });
+  };
+
+  const moveSubject = async (
+    subject: PersonalStudySubject,
+    targetCategory: PresentationCategory
+  ) => {
+    if (movingSubjectKey) return;
+
+    const confirmed = window.confirm(
+      `${subject.displayName} 카드를 ${CATEGORY_LABELS[targetCategory]}로 이동할까요?\n\n카드 안의 자료와 링크는 그대로 유지됩니다.`
+    );
+    if (!confirmed) return;
+
+    setMovingSubjectKey(subject.key);
+    try {
+      const batch = writeBatch(db);
+      subject.resources.forEach((resource) => {
+        batch.update(doc(db, "presentations", resource.id), {
+          category: targetCategory,
+          libraryCategoryVersion: 1,
+          updatedAt: serverTimestamp(),
+        });
+      });
+      await batch.commit();
+
+      const movedIds = new Set(subject.resources.map((resource) => resource.id));
+      setResources((current) => current.filter((resource) => !movedIds.has(resource.id)));
+    } catch (error) {
+      console.error("Personal study card move failed:", error);
+      window.alert("카드를 이동하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setMovingSubjectKey("");
+    }
   };
 
   if (authChecking) {
@@ -359,6 +408,9 @@ export default function PersonalStudyLibrary() {
                   subject={subject}
                   isFavorite={favoriteKeys.has(`named:${subject.key}`)}
                   onToggleFavorite={() => toggleFavorite(subject)}
+                  moveTargets={MOVE_TARGETS}
+                  isMoving={movingSubjectKey === subject.key}
+                  onMove={(targetCategory) => moveSubject(subject, targetCategory)}
                 />
               ))}
             </div>
@@ -373,10 +425,16 @@ function SubjectCard({
   subject,
   isFavorite,
   onToggleFavorite,
+  moveTargets,
+  isMoving,
+  onMove,
 }: {
   subject: PersonalStudySubject;
   isFavorite: boolean;
   onToggleFavorite: () => void;
+  moveTargets: PresentationCategory[];
+  isMoving: boolean;
+  onMove: (targetCategory: PresentationCategory) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedLectureKey, setExpandedLectureKey] = useState<string | null>(null);
@@ -415,6 +473,25 @@ function SubjectCard({
         </button>
 
         <div className="flex shrink-0 items-center gap-1.5">
+          <select
+            aria-label={`${subject.displayName} 카드 이동`}
+            value=""
+            disabled={isMoving}
+            onChange={(event) => {
+              const targetCategory = event.target.value;
+              if (targetCategory === "facilitator" || targetCategory === "boardgame") {
+                onMove(targetCategory);
+              }
+            }}
+            className="h-9 max-w-28 rounded-xl border border-slate-200 bg-white px-2 text-xs font-black text-slate-600 disabled:opacity-50"
+          >
+            <option value="">{isMoving ? "이동 중..." : "카드 이동"}</option>
+            {moveTargets.map((category) => (
+              <option key={category} value={category}>
+                → {CATEGORY_LABELS[category]}
+              </option>
+            ))}
+          </select>
           <Link
             href={addHref}
             className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-black text-slate-600 transition hover:bg-white hover:text-slate-900"

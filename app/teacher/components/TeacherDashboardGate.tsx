@@ -34,7 +34,7 @@ const menuItems = [
     href: "/teacher/presentations?section=archive",
     icon: "📁",
     title: "자료실",
-    description: "내 공부자료와 보드게임 자료를 카드별로 보관",
+    description: "내 공부자료·퍼실리테이터·보드게임 자료를 카드별로 보관",
     className: "border-rose-200 bg-rose-50 text-rose-900",
   },
   {
