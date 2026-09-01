@@ -125,7 +125,7 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     password: "GB",
     loginCard: {
       title: "서울 개봉초",
-      location: "컴퓨터실",
+      location: "각학년교실",
     },
   },
   {
@@ -145,7 +145,7 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     password: "2792",
     loginCard: {
       title: "광명 광일초",
-      location: "수업 장소",
+      location: "컴퓨터실",
     },
   },
   {
@@ -155,7 +155,7 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     password: "2792",
     loginCard: {
       title: "화성 월문초",
-      location: "수업 장소",
+      location: "컴퓨터실",
     },
   },
   {
