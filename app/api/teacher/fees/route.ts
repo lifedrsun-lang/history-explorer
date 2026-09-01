@@ -22,6 +22,8 @@ const toNumber = (value: unknown) => {
   return Number.isFinite(number) && number >= 0 ? number : 0;
 };
 
+const DEFAULT_TERMS = ["1텀", "2텀", "3텀"];
+
 const DEFAULT_AFTER_SCHOOL_CONTRACTS = [
   {
     type: "afterschool",
@@ -29,9 +31,10 @@ const DEFAULT_AFTER_SCHOOL_CONTRACTS = [
     title: "역사탐험",
     rateA: 18000,
     rateB: 22411,
-    monthLabels: ["1차월", "2차월", "3차월"],
+    monthLabels: DEFAULT_TERMS,
     participation: {},
     quarterParticipation: {},
+    settlements: {},
   },
   {
     type: "afterschool",
@@ -39,9 +42,10 @@ const DEFAULT_AFTER_SCHOOL_CONTRACTS = [
     title: "역사탐구/역사논술",
     rateA: 21520,
     rateB: 21520,
-    monthLabels: ["1차월", "2차월", "3차월"],
+    monthLabels: DEFAULT_TERMS,
     participation: {},
     quarterParticipation: {},
+    settlements: {},
   },
   {
     type: "afterschool",
@@ -49,9 +53,10 @@ const DEFAULT_AFTER_SCHOOL_CONTRACTS = [
     title: "독서역사논술",
     rateA: 22000,
     rateB: 22000,
-    monthLabels: ["1차월", "2차월", "3차월"],
+    monthLabels: DEFAULT_TERMS,
     participation: {},
     quarterParticipation: {},
+    settlements: {},
   },
 ] as const;
 
@@ -159,6 +164,53 @@ const sanitizeWorkSessions = (value: unknown) => {
   return result;
 };
 
+const sanitizeSettlements = (value: unknown) => {
+  if (!value || typeof value !== "object") return {};
+
+  const result: Record<
+    string,
+    {
+      receivedAmount: number;
+      grossAmount: number;
+      insuranceFee: number;
+      taxAmount: number;
+      receivedDate: string;
+    }
+  > = {};
+
+  Object.entries(value as Record<string, unknown>).forEach(([key, entry]) => {
+    const validKey = /^Q[1-4]-T[1-3]$/.test(key) || /^\d{4}-\d{2}$/.test(key);
+    if (!validKey || !entry || typeof entry !== "object") return;
+
+    const data = entry as Record<string, unknown>;
+    const receivedAmount = toNumber(data.receivedAmount);
+    const grossAmount = toNumber(data.grossAmount);
+    const insuranceFee = toNumber(data.insuranceFee);
+    const taxAmount = toNumber(data.taxAmount);
+    const receivedDate = normalizeDate(data.receivedDate);
+
+    if (
+      receivedAmount === 0 &&
+      grossAmount === 0 &&
+      insuranceFee === 0 &&
+      taxAmount === 0 &&
+      !receivedDate
+    ) {
+      return;
+    }
+
+    result[key] = {
+      receivedAmount,
+      grossAmount,
+      insuranceFee,
+      taxAmount,
+      receivedDate,
+    };
+  });
+
+  return result;
+};
+
 export async function GET(request: Request) {
   try {
     await verifyTeacherRequest(request);
@@ -201,8 +253,6 @@ export async function GET(request: Request) {
         };
       })
       .filter((student) => student.name && student.school)
-      // 수강중/쉬는중 학생은 항상 방과후 계산 대상에 노출한다.
-      // 종료 학생은 과거 체크 이력이 있을 때만 과거 정산 보존용으로 남긴다.
       .filter(
         (student) =>
           student.enrollmentStatus !== "ended" ||
@@ -248,6 +298,7 @@ export async function POST(request: Request) {
       type,
       schoolName,
       title: normalize(body?.title),
+      settlements: {},
       insuranceFee: toNumber(body?.insuranceFee),
       taxAmount: toNumber(body?.taxAmount),
       allowanceAmount: toNumber(body?.allowanceAmount),
@@ -261,7 +312,7 @@ export async function POST(request: Request) {
       payload.rateB = toNumber(body?.rateB);
       payload.monthLabels = Array.isArray(body?.monthLabels)
         ? body.monthLabels.slice(0, 3).map(normalize)
-        : ["1차월", "2차월", "3차월"];
+        : DEFAULT_TERMS;
       payload.participation = {};
       payload.quarterParticipation = {};
     } else {
@@ -349,6 +400,9 @@ export async function PATCH(request: Request) {
     if (body?.workSessions && typeof body.workSessions === "object") {
       updates.workSessions = sanitizeWorkSessions(body.workSessions);
     }
+    if (body?.settlements && typeof body.settlements === "object") {
+      updates.settlements = sanitizeSettlements(body.settlements);
+    }
     if (body?.rateA !== undefined) updates.rateA = toNumber(body.rateA);
     if (body?.rateB !== undefined) updates.rateB = toNumber(body.rateB);
     if (body?.ratePerSession !== undefined) {
@@ -363,6 +417,8 @@ export async function PATCH(request: Request) {
     if (Array.isArray(body?.monthLabels)) {
       updates.monthLabels = body.monthLabels.slice(0, 3).map(normalize);
     }
+
+    // 기존 단일 수금 필드는 과거 데이터 호환을 위해 유지한다.
     if (body?.insuranceFee !== undefined) {
       updates.insuranceFee = toNumber(body.insuranceFee);
     }
