@@ -24,7 +24,7 @@ export default function SchoolSelect({
           {schools.map((school) => {
             const cardInfo = getSchoolLoginCard(school);
             const cardClassName =
-              "block h-full min-h-[112px] w-full bg-white border border-sky-100 rounded-3xl p-4 text-left text-slate-700 shadow-sm transition hover:bg-sky-50";
+              "block h-full min-h-[112px] w-full bg-white border border-sky-100 rounded-3xl p-4 text-center text-slate-700 shadow-sm transition hover:bg-sky-50";
 
             if (isGaebongSchool(school)) {
               return (
@@ -33,7 +33,7 @@ export default function SchoolSelect({
                   href="/student/classroom"
                   className={cardClassName}
                 >
-                  <div className="flex h-full flex-col">
+                  <div className="flex h-full flex-col items-center justify-center">
                     <div className="text-base sm:text-lg font-black leading-snug text-slate-800">
                       {cardInfo.title}
                     </div>
@@ -51,7 +51,7 @@ export default function SchoolSelect({
                 onClick={() => onSelect(school)}
                 className={cardClassName}
               >
-                <div className="flex h-full flex-col">
+                <div className="flex h-full flex-col items-center justify-center">
                   <div className="text-base sm:text-lg font-black leading-snug text-slate-800">
                     {cardInfo.title}
                   </div>
