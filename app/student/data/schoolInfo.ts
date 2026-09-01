@@ -122,10 +122,30 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     name: "부천 원종초등학교",
     displayName: "부천 원종초",
     aliases: ["부천 원종초"],
-    password: "0905",
+    password: "2792",
     loginCard: {
       title: "부천 원종초",
       location: "컴퓨터실",
+    },
+  },
+  {
+    name: "광명 광일초등학교",
+    displayName: "광명 광일초",
+    aliases: ["광명 광일초", "광일초"],
+    password: "2792",
+    loginCard: {
+      title: "광명 광일초",
+      location: "수업 장소",
+    },
+  },
+  {
+    name: "화성 월문초등학교",
+    displayName: "화성 월문초",
+    aliases: ["화성 월문초", "월문초"],
+    password: "2792",
+    loginCard: {
+      title: "화성 월문초",
+      location: "수업 장소",
     },
   },
   {
