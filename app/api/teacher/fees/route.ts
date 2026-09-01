@@ -27,6 +27,7 @@ const DEFAULT_AFTER_SCHOOL_CONTRACTS = [
     rateB: 22411,
     monthLabels: ["1차월", "2차월", "3차월"],
     participation: {},
+    quarterParticipation: {},
   },
   {
     type: "afterschool",
@@ -36,6 +37,7 @@ const DEFAULT_AFTER_SCHOOL_CONTRACTS = [
     rateB: 21520,
     monthLabels: ["1차월", "2차월", "3차월"],
     participation: {},
+    quarterParticipation: {},
   },
   {
     type: "afterschool",
@@ -45,6 +47,7 @@ const DEFAULT_AFTER_SCHOOL_CONTRACTS = [
     rateB: 22000,
     monthLabels: ["1차월", "2차월", "3차월"],
     participation: {},
+    quarterParticipation: {},
   },
 ] as const;
 
@@ -69,12 +72,68 @@ const serializeContract = (
 
 const hasCheckedParticipation = (contracts: any[], studentId: string) =>
   contracts.some((contract) => {
-    const checks = contract?.participation?.[studentId];
-    return (
-      Array.isArray(checks) &&
-      checks.slice(0, 3).some((value: unknown) => Boolean(value))
-    );
+    const legacyChecks = contract?.participation?.[studentId];
+    if (
+      Array.isArray(legacyChecks) &&
+      legacyChecks.slice(0, 3).some((value: unknown) => Boolean(value))
+    ) {
+      return true;
+    }
+
+    const quarterParticipation = contract?.quarterParticipation;
+    if (!quarterParticipation || typeof quarterParticipation !== "object") {
+      return false;
+    }
+
+    return Object.values(quarterParticipation).some((quarterValue: any) => {
+      const checks = quarterValue?.[studentId];
+      return (
+        Array.isArray(checks) &&
+        checks.slice(0, 3).some((value: unknown) => Boolean(value))
+      );
+    });
   });
+
+const sanitizeQuarterParticipation = (value: unknown) => {
+  if (!value || typeof value !== "object") return {};
+  const result: Record<string, Record<string, boolean[]>> = {};
+
+  Object.entries(value as Record<string, unknown>).forEach(([quarterKey, quarterValue]) => {
+    if (!/^Q[1-4]$/.test(quarterKey) || !quarterValue || typeof quarterValue !== "object") {
+      return;
+    }
+
+    const studentMap: Record<string, boolean[]> = {};
+    Object.entries(quarterValue as Record<string, unknown>).forEach(([studentId, checks]) => {
+      if (!Array.isArray(checks)) return;
+      studentMap[studentId] = [Boolean(checks[0]), Boolean(checks[1]), Boolean(checks[2])];
+    });
+    result[quarterKey] = studentMap;
+  });
+
+  return result;
+};
+
+const sanitizeWorkSessions = (value: unknown) => {
+  if (!value || typeof value !== "object") return {};
+  const result: Record<string, Record<string, number>> = {};
+
+  Object.entries(value as Record<string, unknown>).forEach(([monthKey, monthValue]) => {
+    if (!/^\d{4}-\d{2}$/.test(monthKey) || !monthValue || typeof monthValue !== "object") {
+      return;
+    }
+
+    const dayMap: Record<string, number> = {};
+    Object.entries(monthValue as Record<string, unknown>).forEach(([dateKey, sessions]) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return;
+      const count = Math.max(0, Math.floor(toNumber(sessions)));
+      if (count > 0) dayMap[dateKey] = count;
+    });
+    result[monthKey] = dayMap;
+  });
+
+  return result;
+};
 
 export async function GET(request: Request) {
   try {
@@ -83,9 +142,6 @@ export async function GET(request: Request) {
 
     let contractSnapshot = await db.collection(COLLECTION).get();
 
-    // 기존 강사료 모듈에서 이미 운영하던 방과후 3개 학교를
-    // 새 수강료 모듈의 최초 데이터로 한 번만 옮긴다.
-    // 개봉초/원종초는 기존 방과후 단가 대상이 아니므로 자동 등록하지 않는다.
     if (contractSnapshot.empty) {
       await Promise.all(
         DEFAULT_AFTER_SCHOOL_CONTRACTS.map((contract) =>
@@ -160,6 +216,10 @@ export async function POST(request: Request) {
       type,
       schoolName,
       title: normalize(body?.title),
+      insuranceFee: toNumber(body?.insuranceFee),
+      taxAmount: toNumber(body?.taxAmount),
+      allowanceAmount: toNumber(body?.allowanceAmount),
+      receivedDate: normalize(body?.receivedDate),
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };
@@ -171,9 +231,11 @@ export async function POST(request: Request) {
         ? body.monthLabels.slice(0, 3).map(normalize)
         : ["1차월", "2차월", "3차월"];
       payload.participation = {};
+      payload.quarterParticipation = {};
     } else {
       payload.ratePerSession = toNumber(body?.ratePerSession);
       payload.sessionCount = Math.max(0, Math.floor(toNumber(body?.sessionCount)));
+      payload.workSessions = {};
     }
 
     const docRef = await db.collection(COLLECTION).add(payload);
@@ -206,6 +268,12 @@ export async function PATCH(request: Request) {
     if (body?.participation && typeof body.participation === "object") {
       updates.participation = body.participation;
     }
+    if (body?.quarterParticipation && typeof body.quarterParticipation === "object") {
+      updates.quarterParticipation = sanitizeQuarterParticipation(body.quarterParticipation);
+    }
+    if (body?.workSessions && typeof body.workSessions === "object") {
+      updates.workSessions = sanitizeWorkSessions(body.workSessions);
+    }
     if (body?.rateA !== undefined) updates.rateA = toNumber(body.rateA);
     if (body?.rateB !== undefined) updates.rateB = toNumber(body.rateB);
     if (body?.ratePerSession !== undefined) {
@@ -217,6 +285,10 @@ export async function PATCH(request: Request) {
     if (Array.isArray(body?.monthLabels)) {
       updates.monthLabels = body.monthLabels.slice(0, 3).map(normalize);
     }
+    if (body?.insuranceFee !== undefined) updates.insuranceFee = toNumber(body.insuranceFee);
+    if (body?.taxAmount !== undefined) updates.taxAmount = toNumber(body.taxAmount);
+    if (body?.allowanceAmount !== undefined) updates.allowanceAmount = toNumber(body.allowanceAmount);
+    if (body?.receivedDate !== undefined) updates.receivedDate = normalize(body.receivedDate);
 
     const docRef = db.collection(COLLECTION).doc(id);
     await docRef.update(updates);
