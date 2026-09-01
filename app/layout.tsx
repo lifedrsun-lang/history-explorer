@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "SUN LAB",
-  description: "역사논술탐험 학습 플랫폼",
+  description: "아이들의 생각이 자라는 창의 학습공간",
   icons: {
     icon: "/icon.svg",
     shortcut: "/favicon.ico",
