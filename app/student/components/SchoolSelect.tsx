@@ -34,15 +34,17 @@ export default function SchoolSelect({
                   className={cardClassName}
                 >
                   <div className="flex h-full flex-col">
-                    <div className="text-base sm:text-lg font-black leading-snug text-slate-800">
-                      {cardInfo.title}
+                    <div className="flex items-center gap-1.5">
+                      <div className="text-base sm:text-lg font-black leading-snug text-slate-800">
+                        {cardInfo.title}
+                      </div>
+                      <span className="shrink-0 rounded-full bg-orange-100 px-2 py-1 text-[9px] sm:text-[10px] font-black leading-none text-orange-700">
+                        반 수업방
+                      </span>
                     </div>
                     <div className="mt-2 text-xs sm:text-sm font-bold text-sky-700">
                       📍 {cardInfo.location}
                     </div>
-                    <span className="mt-auto self-start rounded-full bg-orange-100 px-2 py-1 text-[10px] sm:text-[11px] font-black text-orange-700">
-                      반 수업방
-                    </span>
                   </div>
                 </Link>
               );
