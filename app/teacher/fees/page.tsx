@@ -1226,7 +1226,14 @@ export default function TeacherFeesPage() {
       </section>
 
       <section className="mt-3 space-y-3">
-        {contractLectures.map((contract) => {
+        {contractLectures
+          .filter((contract) => {
+            if (!contract.contractStartDate || !contract.contractEndDate) return true;
+            const startMonth = contract.contractStartDate.slice(0, 7);
+            const endMonth = contract.contractEndDate.slice(0, 7);
+            return contractMonth >= startMonth && contractMonth <= endMonth;
+          })
+          .map((contract) => {
           const monthMap = getContractMonthMap(contract, contractMonth);
           const monthDays = Object.keys(monthMap).length;
           const monthSessions = getContractMonthSessions(contract, contractMonth);
