@@ -201,7 +201,7 @@ const MOVABLE_ARCHIVE_CATEGORIES: PresentationCategory[] = [
 const LINKED_LIBRARY_RESOURCES: LinkedLibraryResource[] = [
   {
     id: "hello-maple-source",
-    category: "hello_maple",
+    category: "coding",
     href: "/teacher/presentations/coding-source",
     secondaryHref: "/teacher/presentations/coding-source/2026",
     secondaryMeta: "2026 자료",
@@ -967,9 +967,9 @@ function TeacherPresentationsPageContent() {
                       : activeLibrary === "facilitator"
                         ? "퍼실리테이터 과정 자료를 다른 공부자료와 분리해 관리합니다."
                       : activeLibrary === "coding"
-                        ? "일반 코딩 수업자료를 헬로메이플과 분리해 관리합니다."
+                        ? "일반 코딩 수업자료와 헬로메이플 원본 콘텐츠 자료실을 함께 관리합니다."
                         : activeLibrary === "hello_maple"
-                          ? "헬로메이플 수업자료와 기존·2026 원본 콘텐츠를 함께 관리합니다."
+                          ? "헬로메이플 전용 수업자료를 일반 코딩 자료와 분리해 관리합니다."
                         : "한 차시에 여러 자료를 넣고 차시를 눌러 목록으로 확인할 수 있습니다."}
                 </p>
               </div>
