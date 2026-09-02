@@ -51,10 +51,11 @@ type PersonalStudySubject = {
 };
 
 const FAVORITE_CARDS_STORAGE_KEY = "sun-lab:presentation-card-favorites:v1";
-const MOVE_TARGETS: PresentationCategory[] = ["facilitator", "boardgame"];
+const MOVE_TARGETS: PresentationCategory[] = ["facilitator", "boardgame", "archive_coding"];
 const CATEGORY_LABELS: Partial<Record<PresentationCategory, string>> = {
   facilitator: "퍼실리테이터",
   boardgame: "보드게임",
+  archive_coding: "코딩",
 };
 
 const RESOURCE_META: Record<
@@ -479,7 +480,11 @@ function SubjectCard({
             disabled={isMoving}
             onChange={(event) => {
               const targetCategory = event.target.value;
-              if (targetCategory === "facilitator" || targetCategory === "boardgame") {
+              if (
+                targetCategory === "facilitator" ||
+                targetCategory === "boardgame" ||
+                targetCategory === "archive_coding"
+              ) {
                 onMove(targetCategory);
               }
             }}
