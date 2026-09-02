@@ -7,7 +7,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { auth } from "@/lib/firebase";
 
 type FeeType = "afterschool" | "contract";
-type FeeTab = "summary" | "afterschool" | "contract";
+type FeeTab = "summary" | "afterschool" | "contract" | "payments";
 type QuarterKey = "Q1" | "Q2" | "Q3" | "Q4";
 
 type FeeSettlement = {
@@ -70,6 +70,12 @@ const quarters: { key: QuarterKey; label: string }[] = [
   { key: "Q3", label: "3분기" },
   { key: "Q4", label: "4분기" },
 ];
+const afterschoolTermMonths: Record<QuarterKey, number[]> = {
+  Q1: [3, 4, 5],
+  Q2: [6, 7, 8],
+  Q3: [9, 10, 11],
+  Q4: [12, 1, 2],
+};
 const weekdayLabels = ["일", "월", "화", "수", "목", "금", "토"];
 
 const normalizeSchoolName = (value: unknown) =>
@@ -151,6 +157,7 @@ export default function TeacherFeesPage() {
   const [quarter, setQuarter] = useState<QuarterKey>("Q3");
   const [expandedContractId, setExpandedContractId] = useState("");
   const [contractMonth, setContractMonth] = useState(currentMonthKey());
+  const [summaryDetailsOpen, setSummaryDetailsOpen] = useState(false);
 
   const [type, setType] = useState<FeeType>("afterschool");
   const [schoolName, setSchoolName] = useState("");
@@ -476,6 +483,28 @@ export default function TeacherFeesPage() {
   const afterschoolContracts = contracts.filter((contract) => contract.type === "afterschool");
   const contractLectures = contracts.filter((contract) => contract.type === "contract");
   const totalGross = contracts.reduce((sum, contract) => sum + getGross(contract), 0);
+  const summaryYear = new Date().getFullYear();
+
+  const monthlyTotals = Array.from({ length: 12 }, () => 0);
+  afterschoolContracts.forEach((contract) => {
+    quarters.forEach((quarterItem) => {
+      [0, 1, 2].forEach((termIndex) => {
+        const month = afterschoolTermMonths[quarterItem.key][termIndex];
+        monthlyTotals[month - 1] += getTermTotal(contract, quarterItem.key, termIndex);
+      });
+    });
+  });
+  contractLectures.forEach((contract) => {
+    getContractMonthKeys(contract).forEach((monthKey) => {
+      if (!monthKey.startsWith(`${summaryYear}-`)) return;
+      const month = Number(monthKey.slice(5, 7));
+      if (month >= 1 && month <= 12) {
+        monthlyTotals[month - 1] += getContractMonthGross(contract, monthKey);
+      }
+    });
+  });
+  const annualGross = monthlyTotals.reduce((sum, value) => sum + value, 0);
+  const unassignedGross = Math.max(0, totalGross - annualGross);
 
   const getContractSettlementTotals = (contract: FeeContract) => {
     const units = getSettlementUnits(contract);
@@ -790,6 +819,165 @@ export default function TeacherFeesPage() {
 
   const renderSummary = () => (
     <>
+      <section className="mt-3 rounded-[28px] bg-white p-5 shadow-sm">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <div className="text-xs font-black text-slate-500">{summaryYear}년 월별 발생액</div>
+            <div className="mt-1 text-sm font-bold text-slate-400">방과후 + 건별계약</div>
+          </div>
+          <div className="text-right">
+            <div className="text-[11px] font-black text-slate-400">연간 누계</div>
+            <div className="text-2xl font-black text-slate-900">{formatWon(annualGross)}</div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
+          {monthlyTotals.map((amount, index) => (
+            <div key={index} className="rounded-2xl bg-slate-50 px-3 py-3">
+              <div className="text-[11px] font-black text-slate-500">{index + 1}월</div>
+              <div className="mt-1 text-sm font-black text-slate-900">{formatWon(amount)}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 border-t border-slate-100 pt-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-black text-slate-600">연간누계 합계</span>
+            <span className="text-2xl font-black text-emerald-700">{formatWon(annualGross)}</span>
+          </div>
+          {unassignedGross > 0 && (
+            <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">
+              월별 근무기록으로 아직 배치되지 않은 기존 건별계약 금액 {formatWon(unassignedGross)}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="mt-3 rounded-[28px] bg-white p-4 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setSummaryDetailsOpen((value) => !value)}
+          className="flex w-full items-center justify-between rounded-2xl px-1 py-1 text-left"
+        >
+          <span className="text-sm font-black text-slate-800">상세내역</span>
+          <span className="text-xs font-black text-slate-500">
+            {summaryDetailsOpen ? "접기 ↑" : "보기 ↓"}
+          </span>
+        </button>
+
+        {summaryDetailsOpen && (
+          <div className="mt-4 space-y-6">
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <span className="rounded-lg bg-emerald-100 px-2 py-1 text-xs font-black text-emerald-700">방과후</span>
+                <span className="text-xs font-bold text-slate-400">학교별 분기·텀 누적</span>
+              </div>
+              <div className="space-y-3">
+                {afterschoolContracts.map((contract) => (
+                  <div key={contract.id} className="rounded-2xl border border-emerald-100 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-black text-slate-900">{contract.schoolName}</div>
+                        {contract.title && (
+                          <div className="text-[11px] font-bold text-slate-400">{contract.title}</div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] font-bold text-slate-400">누적합계</div>
+                        <div className="font-black text-emerald-700">{formatWon(getGross(contract))}</div>
+                      </div>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {quarters.map((quarterItem) => {
+                        const termAmounts = [0, 1, 2].map((termIndex) =>
+                          getTermTotal(contract, quarterItem.key, termIndex)
+                        );
+                        const quarterAmount = termAmounts.reduce((sum, amount) => sum + amount, 0);
+                        return (
+                          <div key={quarterItem.key} className="rounded-xl bg-slate-50 px-3 py-2.5">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="text-xs font-black text-slate-700">{quarterItem.label}</div>
+                              <div className="text-xs font-black text-slate-900">= {formatWon(quarterAmount)}</div>
+                            </div>
+                            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-bold text-slate-500">
+                              {termAmounts.map((amount, termIndex) => (
+                                <span key={termIndex}>{defaultTerms[termIndex]} {formatWon(amount)}</span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-3 border-t border-slate-100 pt-3 text-right text-sm font-black text-slate-900">
+                      누적합계 {formatWon(getGross(contract))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <span className="rounded-lg bg-blue-100 px-2 py-1 text-xs font-black text-blue-700">건별계약</span>
+                <span className="text-xs font-bold text-slate-400">학교·계약별 월 누적</span>
+              </div>
+              <div className="space-y-3">
+                {contractLectures.map((contract) => {
+                  const monthKeys = getContractMonthKeys(contract).filter((monthKey) =>
+                    monthKey.startsWith(`${summaryYear}-`)
+                  );
+                  return (
+                    <div key={contract.id} className="rounded-2xl border border-blue-100 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="font-black text-slate-900">{contract.schoolName}</div>
+                          {contract.title && (
+                            <div className="text-[11px] font-bold text-slate-400">{contract.title}</div>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[10px] font-bold text-slate-400">최종합계</div>
+                          <div className="font-black text-blue-700">{formatWon(getContractGross(contract))}</div>
+                        </div>
+                      </div>
+                      <div className="mt-3 space-y-2">
+                        {monthKeys.length === 0 ? (
+                          <div className="rounded-xl bg-slate-50 px-3 py-3 text-xs font-bold text-slate-400">
+                            {summaryYear}년 월별 근무 입력이 없습니다.
+                          </div>
+                        ) : (
+                          monthKeys.map((monthKey) => {
+                            const monthMap = getContractMonthMap(contract, monthKey);
+                            const days = Object.keys(monthMap).length;
+                            const sessions = getContractMonthSessions(contract, monthKey);
+                            const amount = getContractMonthGross(contract, monthKey);
+                            return (
+                              <div key={monthKey} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5">
+                                <div className="text-xs font-black text-slate-700">
+                                  {Number(monthKey.slice(5, 7))}월 · {days}일 · {sessions}차시
+                                </div>
+                                <div className="text-xs font-black text-slate-900">= {formatWon(amount)}</div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                      <div className="mt-3 border-t border-slate-100 pt-3 text-right text-sm font-black text-slate-900">
+                        최종합계 {formatWon(getContractGross(contract))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+    </>
+  );
+
+  const renderPayments = () => (
+    <>
       <section className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div className="rounded-3xl bg-white p-4 shadow-sm">
           <div className="text-xs font-black text-slate-500">총 발생 수강료</div>
@@ -834,9 +1022,7 @@ export default function TeacherFeesPage() {
                 >
                   {contract.type === "afterschool" ? "방과후" : "건별계약"}
                 </div>
-                <div className="mt-1 text-lg font-black text-slate-900">
-                  {contract.schoolName}
-                </div>
+                <div className="mt-1 text-lg font-black text-slate-900">{contract.schoolName}</div>
                 <div className="text-xs font-bold text-slate-500">{contract.title || "-"}</div>
                 {contract.type === "contract" && contract.contractStartDate && contract.contractEndDate && (
                   <div className="mt-1 text-[10px] font-bold text-slate-400">
@@ -846,9 +1032,7 @@ export default function TeacherFeesPage() {
               </div>
               <div className="text-right">
                 <div className="text-[10px] font-bold text-slate-400">합계 발생액</div>
-                <div className="text-xl font-black text-slate-900">
-                  {formatWon(getGross(contract))}
-                </div>
+                <div className="text-xl font-black text-slate-900">{formatWon(getGross(contract))}</div>
               </div>
             </div>
             {renderSettlementRows(contract)}
@@ -902,9 +1086,7 @@ export default function TeacherFeesPage() {
                   <div className="text-xs font-black text-emerald-600">
                     방과후 · {quarters.find((item) => item.key === quarter)?.label}
                   </div>
-                  <div className="mt-1 text-xl font-black text-slate-900">
-                    {contract.schoolName}
-                  </div>
+                  <div className="mt-1 text-xl font-black text-slate-900">{contract.schoolName}</div>
                   <div className="text-sm font-bold text-slate-500">{contract.title || ""}</div>
                   <div className="mt-1 text-[11px] font-bold text-slate-400">
                     수강중+쉬는중 {currentStudents.length}명
@@ -922,9 +1104,7 @@ export default function TeacherFeesPage() {
 
               <div className="mt-4 rounded-3xl bg-emerald-50 p-4">
                 <div className="text-xs font-black text-emerald-700">분기 수강료</div>
-                <div className="mt-1 text-3xl font-black text-emerald-900">
-                  {formatWon(quarterTotal)}
-                </div>
+                <div className="mt-1 text-3xl font-black text-emerald-900">{formatWon(quarterTotal)}</div>
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   {defaultTerms.map((label, index) => (
                     <div key={label} className="rounded-2xl bg-white px-2 py-3 text-center">
@@ -941,15 +1121,13 @@ export default function TeacherFeesPage() {
                 {quarters.map((item) => (
                   <div key={item.key} className="rounded-xl bg-slate-50 px-1 py-2">
                     <div>{item.label}</div>
-                    <div className="mt-1 text-slate-800">
-                      {formatWon(getQuarterTotal(contract, item.key))}
-                    </div>
+                    <div className="mt-1 text-slate-800">{formatWon(getQuarterTotal(contract, item.key))}</div>
                   </div>
                 ))}
               </div>
 
               <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500">
-                수금 입력은 누적 탭에서 분기별 1텀·2텀·3텀 단위로 관리합니다.
+                입금·급여명세서 입력은 입금관리 탭에서 1텀·2텀·3텀 단위로 관리합니다.
               </div>
 
               <button
@@ -977,11 +1155,7 @@ export default function TeacherFeesPage() {
                             type="checkbox"
                             checked={allChecked}
                             onChange={(event) =>
-                              void setAllParticipation(
-                                contract,
-                                termIndex,
-                                event.target.checked
-                              )
+                              void setAllParticipation(contract, termIndex, event.target.checked)
                             }
                             className="h-4 w-4 accent-emerald-600"
                           />
@@ -1003,9 +1177,7 @@ export default function TeacherFeesPage() {
                           <div className="text-[11px] font-bold text-slate-400">
                             {student.teachingClass}
                             {student.enrollmentStatus !== "active"
-                              ? ` · ${
-                                  student.enrollmentStatus === "paused" ? "쉬는중" : "종료"
-                                }`
+                              ? ` · ${student.enrollmentStatus === "paused" ? "쉬는중" : "종료"}`
                               : ""}
                           </div>
                         </div>
@@ -1014,9 +1186,7 @@ export default function TeacherFeesPage() {
                             <input
                               type="checkbox"
                               checked={checks[termIndex]}
-                              onChange={() =>
-                                void toggleParticipation(contract, student, termIndex)
-                              }
+                              onChange={() => void toggleParticipation(contract, student, termIndex)}
                               className="h-5 w-5 accent-emerald-600"
                             />
                           </label>
@@ -1044,9 +1214,7 @@ export default function TeacherFeesPage() {
           >
             ‹
           </button>
-          <div className="text-lg font-black text-slate-900">
-            {formatMonthLabel(contractMonth)}
-          </div>
+          <div className="text-lg font-black text-slate-900">{formatMonthLabel(contractMonth)}</div>
           <button
             type="button"
             onClick={() => setContractMonth((value) => shiftMonth(value, 1))}
@@ -1076,9 +1244,7 @@ export default function TeacherFeesPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-xs font-black text-blue-600">건별계약</div>
-                  <div className="mt-1 text-xl font-black text-slate-900">
-                    {contract.schoolName}
-                  </div>
+                  <div className="mt-1 text-xl font-black text-slate-900">{contract.schoolName}</div>
                   <div className="text-sm font-bold text-slate-500">{contract.title || ""}</div>
                 </div>
                 <button
@@ -1136,9 +1302,7 @@ export default function TeacherFeesPage() {
                 </div>
                 <div className="rounded-2xl bg-blue-50 p-3 text-center">
                   <div className="text-[11px] font-black text-blue-600">이번 달</div>
-                  <div className="mt-1 text-sm font-black text-blue-900">
-                    {formatWon(monthAmount)}
-                  </div>
+                  <div className="mt-1 text-sm font-black text-blue-900">{formatWon(monthAmount)}</div>
                 </div>
               </div>
 
@@ -1150,9 +1314,7 @@ export default function TeacherFeesPage() {
                 <div className="mt-4 space-y-3">
                   {contractWeeks.map((week, weekIndex) => (
                     <div key={weekIndex} className="rounded-2xl border border-slate-200 p-3">
-                      <div className="mb-2 text-xs font-black text-slate-500">
-                        {weekIndex + 1}주
-                      </div>
+                      <div className="mb-2 text-xs font-black text-slate-500">{weekIndex + 1}주</div>
                       <div className="grid grid-cols-5 gap-2">
                         {[1, 2, 3, 4, 5].map((weekday) => {
                           const day = week.find((item) => item.weekday === weekday);
@@ -1172,11 +1334,7 @@ export default function TeacherFeesPage() {
                               role="button"
                               tabIndex={0}
                               onClick={() =>
-                                void updateWorkSession(
-                                  contract,
-                                  day.dateKey,
-                                  sessions > 0 ? 0 : 1
-                                )
+                                void updateWorkSession(contract, day.dateKey, sessions > 0 ? 0 : 1)
                               }
                               className={`min-h-[74px] rounded-xl border p-2 text-center ${
                                 sessions > 0
@@ -1216,12 +1374,10 @@ export default function TeacherFeesPage() {
               )}
 
               <div className="mt-4 rounded-2xl bg-slate-50 p-3 text-xs font-bold text-slate-500">
-                차시당 {formatWon(Number(contract.ratePerSession || 0))} · 전체 입력 누적{" "}
-                {getContractWorkedSessions(contract)}차시 · 누적 발생{" "}
-                {formatWon(getContractGross(contract))}
+                차시당 {formatWon(Number(contract.ratePerSession || 0))} · 전체 입력 누적 {getContractWorkedSessions(contract)}차시 · 누적 발생 {formatWon(getContractGross(contract))}
               </div>
               <div className="mt-2 rounded-xl bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500">
-                수금 입력은 누적 탭에서 계약기간의 월별 줄로 관리합니다.
+                입금·급여명세서 입력은 입금관리 탭에서 계약월별로 관리합니다.
               </div>
             </div>
           );
@@ -1238,7 +1394,7 @@ export default function TeacherFeesPage() {
             <div>
               <div className="text-2xl font-black text-slate-900">💰 수강료</div>
               <div className="mt-1 text-sm font-bold text-slate-500">
-                방과후 · 건별계약 · 수금/세금 자료를 한곳에서 관리합니다.
+                방과후 · 건별계약 · 누적 · 입금관리를 한곳에서 관리합니다.
               </div>
             </div>
             <Link
@@ -1250,19 +1406,20 @@ export default function TeacherFeesPage() {
           </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-3 gap-2 rounded-[28px] bg-white p-2 shadow-sm">
+        <div className="mt-3 grid grid-cols-4 gap-2 rounded-[28px] bg-white p-2 shadow-sm">
           {(
             [
               { key: "summary", label: "누적" },
               { key: "afterschool", label: "방과후" },
               { key: "contract", label: "건별계약" },
+              { key: "payments", label: "입금관리" },
             ] as { key: FeeTab; label: string }[]
           ).map((item) => (
             <button
               key={item.key}
               type="button"
               onClick={() => setTab(item.key)}
-              className={`rounded-2xl px-3 py-3 text-sm font-black ${
+              className={`rounded-2xl px-2 py-3 text-xs font-black sm:px-3 sm:text-sm ${
                 tab === item.key ? "bg-slate-900 text-white" : "text-slate-500"
               }`}
             >
@@ -1275,9 +1432,7 @@ export default function TeacherFeesPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-xs font-black text-emerald-700">전체 누적 발생액</div>
-              <div className="mt-1 text-3xl font-black text-slate-900">
-                {formatWon(totalGross)}
-              </div>
+              <div className="mt-1 text-3xl font-black text-slate-900">{formatWon(totalGross)}</div>
             </div>
             <button
               type="button"
@@ -1305,8 +1460,10 @@ export default function TeacherFeesPage() {
           renderSummary()
         ) : tab === "afterschool" ? (
           renderAfterschool()
-        ) : (
+        ) : tab === "contract" ? (
           renderContracts()
+        ) : (
+          renderPayments()
         )}
       </div>
 
@@ -1385,9 +1542,7 @@ export default function TeacherFeesPage() {
                   <input
                     inputMode="numeric"
                     value={rateA}
-                    onChange={(event) =>
-                      setRateA(event.target.value.replace(/[^0-9]/g, ""))
-                    }
+                    onChange={(event) => setRateA(event.target.value.replace(/[^0-9]/g, ""))}
                     className="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-3 text-sm font-bold"
                   />
                 </label>
@@ -1396,9 +1551,7 @@ export default function TeacherFeesPage() {
                   <input
                     inputMode="numeric"
                     value={rateB}
-                    onChange={(event) =>
-                      setRateB(event.target.value.replace(/[^0-9]/g, ""))
-                    }
+                    onChange={(event) => setRateB(event.target.value.replace(/[^0-9]/g, ""))}
                     className="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-3 text-sm font-bold"
                   />
                 </label>
@@ -1432,9 +1585,7 @@ export default function TeacherFeesPage() {
                     <input
                       inputMode="numeric"
                       value={ratePerSession}
-                      onChange={(event) =>
-                        setRatePerSession(event.target.value.replace(/[^0-9]/g, ""))
-                      }
+                      onChange={(event) => setRatePerSession(event.target.value.replace(/[^0-9]/g, ""))}
                       className="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-3 text-sm font-bold"
                     />
                   </label>
@@ -1443,9 +1594,7 @@ export default function TeacherFeesPage() {
                     <input
                       inputMode="numeric"
                       value={sessionCount}
-                      onChange={(event) =>
-                        setSessionCount(event.target.value.replace(/[^0-9]/g, ""))
-                      }
+                      onChange={(event) => setSessionCount(event.target.value.replace(/[^0-9]/g, ""))}
                       className="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-3 text-sm font-bold"
                     />
                   </label>
