@@ -5,7 +5,7 @@ import {
 } from "@/lib/assignmentServer";
 import {
   getGoogleCalendarConnectionStatus,
-  getGoogleCalendarTargetName,
+  getGoogleCalendarTargetNames,
 } from "@/lib/googleCalendarServer";
 
 export const runtime = "nodejs";
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   try {
     const teacher = await verifyTeacherRequest(request);
     const status = await getGoogleCalendarConnectionStatus(teacher.uid);
-    return Response.json({ ...status, targetCalendarName: getGoogleCalendarTargetName() });
+    return Response.json({ ...status, targetCalendarNames: getGoogleCalendarTargetNames() });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "teacher_auth_required") {
