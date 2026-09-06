@@ -3,10 +3,10 @@
 import { useState } from "react";
 
 import type { ClassroomAccount } from "@/lib/classroomAccountRoster";
-import type { GaebongClassroom } from "../data/classroomData";
+import type { SchoolClassroom } from "../data/classroomData";
 
 type Props = {
-  classroom: GaebongClassroom;
+  classroom: SchoolClassroom;
 };
 
 type AccountResponse = {
@@ -20,16 +20,18 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
   const [errorMessage, setErrorMessage] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
+  const schoolLabel = classroom.schoolDisplayName || "서울 개봉초";
+
   const findAccount = async () => {
     const studentNumber = Number(searchNumber.trim());
 
     if (
       !Number.isInteger(studentNumber) ||
       studentNumber < 1 ||
-      studentNumber > 99
+      studentNumber > 25
     ) {
       setAccount(null);
-      setErrorMessage("학급 번호를 정확히 입력해 주세요.");
+      setErrorMessage("학급 번호는 1번부터 25번까지 입력해 주세요.");
       return;
     }
 
@@ -50,9 +52,7 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
 
       if (!response.ok || !body.account) {
         setAccount(null);
-        setErrorMessage(
-          body.error || "해당 번호의 계정을 찾을 수 없어요."
-        );
+        setErrorMessage(body.error || "해당 번호의 계정을 찾을 수 없어요.");
         return;
       }
 
@@ -82,7 +82,7 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
           </p>
         </div>
         <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-black text-emerald-700">
-          개봉초 {classroom.grade}-{classroom.classNumber}
+          {schoolLabel} {classroom.grade}-{classroom.classNumber}
         </span>
       </div>
 
@@ -97,9 +97,7 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
             setErrorMessage("");
           }}
           onKeyDown={(event) => {
-            if (event.key === "Enter" && !isSearching) {
-              void findAccount();
-            }
+            if (event.key === "Enter" && !isSearching) void findAccount();
           }}
           placeholder="예: 17"
           aria-label="학급 번호"
@@ -124,37 +122,13 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
       {account && (
         <div className="mt-4 rounded-[22px] border-2 border-emerald-200 bg-emerald-50/70 p-4 shadow-sm">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-lg font-black text-emerald-700">
-              {account.classNumber}번 친구
-            </h3>
-            <button
-              type="button"
-              onClick={clearSearch}
-              className="rounded-xl bg-white px-3 py-1.5 text-[11px] font-black text-emerald-700 shadow-sm"
-            >
-              검색 해제
-            </button>
+            <h3 className="text-lg font-black text-emerald-700">{account.classNumber}번 친구</h3>
+            <button type="button" onClick={clearSearch} className="rounded-xl bg-white px-3 py-1.5 text-[11px] font-black text-emerald-700 shadow-sm">검색 해제</button>
           </div>
-
           <dl className="mt-3 space-y-2">
-            <div className="rounded-2xl bg-white px-4 py-3">
-              <dt className="text-[10px] font-black text-slate-400">닉네임</dt>
-              <dd className="mt-1 break-all font-mono text-sm font-black text-slate-800">
-                {account.nickname}
-              </dd>
-            </div>
-            <div className="rounded-2xl bg-white px-4 py-3">
-              <dt className="text-[10px] font-black text-slate-400">학급 아이디</dt>
-              <dd className="mt-1 break-all font-mono text-sm font-black text-slate-800">
-                {account.accountId}
-              </dd>
-            </div>
-            <div className="rounded-2xl bg-white px-4 py-3">
-              <dt className="text-[10px] font-black text-slate-400">임시 비밀번호</dt>
-              <dd className="mt-1 break-all font-mono text-sm font-black tracking-wide text-slate-800">
-                {account.temporaryPassword}
-              </dd>
-            </div>
+            <div className="rounded-2xl bg-white px-4 py-3"><dt className="text-[10px] font-black text-slate-400">닉네임</dt><dd className="mt-1 break-all font-mono text-sm font-black text-slate-800">{account.nickname}</dd></div>
+            <div className="rounded-2xl bg-white px-4 py-3"><dt className="text-[10px] font-black text-slate-400">학급 아이디</dt><dd className="mt-1 break-all font-mono text-sm font-black text-slate-800">{account.accountId}</dd></div>
+            <div className="rounded-2xl bg-white px-4 py-3"><dt className="text-[10px] font-black text-slate-400">임시 비밀번호</dt><dd className="mt-1 break-all font-mono text-sm font-black tracking-wide text-slate-800">{account.temporaryPassword}</dd></div>
           </dl>
         </div>
       )}
