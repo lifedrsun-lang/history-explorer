@@ -26,6 +26,7 @@ export type ClassroomMonster = {
 };
 
 export type SchoolClassroom = {
+  schoolName: string;
   schoolDisplayName?: string;
   grade: number;
   classNumber: number;
@@ -40,7 +41,12 @@ export type WonjongClassroom = SchoolClassroom;
 
 export const GAEBONG_SCHOOL_DISPLAY_NAME = "서울 개봉초";
 export const GAEBONG_SCHOOL_CODE = "GB";
+export const WONJONG_SCHOOL_NAME = "부천 원종초등학교";
 export const WONJONG_SCHOOL_DISPLAY_NAME = "부천 원종초";
+export const GWANGIL_SCHOOL_NAME = "광명 광일초등학교";
+export const GWANGIL_SCHOOL_DISPLAY_NAME = "광명 광일초";
+export const WOLMUN_SCHOOL_NAME = "화성 월문초등학교";
+export const WOLMUN_SCHOOL_DISPLAY_NAME = "화성 월문초";
 
 export const CLASSROOM_MONSTERS: ClassroomMonster[] = [
   {
@@ -150,162 +156,74 @@ const makeLessons = (padletUrl: string): ClassroomLesson[] => [
   },
 ];
 
-const makeWonjongLessons = (): ClassroomLesson[] => [1, 2, 3, 4].map((lesson) => ({
-  lesson,
-  title: `${lesson}차시 수업 안내`,
-  message:
-    lesson === 1
-      ? "헬로메이플 수업 활동을 시작해요. 추가 안내는 수업 전에 업데이트됩니다."
-      : "수업 안내는 수업 전에 업데이트됩니다.",
-  links:
-    lesson === 1
-      ? [
-          {
-            id: "hello-maple",
-            label: "🍁 헬로메이플 시작하기",
-            href: HELLO_MAPLE_URL,
-            kind: "activity" as const,
-            defaultUnlocked: true,
-          },
-        ]
-      : [],
-}));
+const makeSchoolLessons = (count: number): ClassroomLesson[] =>
+  Array.from({ length: count }, (_, index) => index + 1).map((lesson) => ({
+    lesson,
+    title: `${lesson}차시 수업 안내`,
+    message:
+      lesson === 1
+        ? "헬로메이플 수업 활동을 시작해요. 추가 안내는 수업 전에 업데이트됩니다."
+        : "수업 안내는 수업 전에 업데이트됩니다.",
+    links:
+      lesson === 1
+        ? [
+            {
+              id: "hello-maple",
+              label: "🍁 헬로메이플 시작하기",
+              href: HELLO_MAPLE_URL,
+              kind: "activity" as const,
+              defaultUnlocked: true,
+            },
+          ]
+        : [],
+  }));
 
 export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
-  {
-    schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME,
-    grade: 6,
-    classNumber: 1,
-    label: "6학년 1반",
-    monsterId: "slime",
-    directToken: "gb6c1-g7ac4o9a1n",
-    lessons: makeLessons(GAEBONG_PADLET_LINKS[1]),
-  },
-  {
-    schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME,
-    grade: 6,
-    classNumber: 2,
-    label: "6학년 2반",
-    monsterId: "guardian-angel-slime",
-    directToken: "gb6c2-je8xtrigeu",
-    lessons: makeLessons(GAEBONG_PADLET_LINKS[2]),
-  },
-  {
-    schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME,
-    grade: 6,
-    classNumber: 3,
-    label: "6학년 3반",
-    monsterId: "forest-mushroom",
-    directToken: "gb6c3-kilcoepxmg",
-    lessons: makeLessons(GAEBONG_PADLET_LINKS[3]),
-  },
-  {
-    schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME,
-    grade: 6,
-    classNumber: 4,
-    label: "6학년 4반",
-    monsterId: "orange-mushroom",
-    directToken: "gb6c4-xtjzvvpgjs",
-    lessons: makeLessons(GAEBONG_PADLET_LINKS[4]),
-  },
-  {
-    schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME,
-    grade: 6,
-    classNumber: 5,
-    label: "6학년 5반",
-    monsterId: "blue-mushroom",
-    directToken: "gb6c5-emg1vzxnsw",
-    lessons: makeLessons(GAEBONG_PADLET_LINKS[5]),
-  },
-  {
-    schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME,
-    grade: 6,
-    classNumber: 6,
-    label: "6학년 6반",
-    monsterId: "choco-mushroom",
-    directToken: "gb6c6-ms9vlecq99",
-    lessons: makeLessons(GAEBONG_PADLET_LINKS[6]),
-  },
+  { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 1, label: "6학년 1반", monsterId: "slime", directToken: "gb6c1-g7ac4o9a1n", lessons: makeLessons(GAEBONG_PADLET_LINKS[1]) },
+  { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 2, label: "6학년 2반", monsterId: "guardian-angel-slime", directToken: "gb6c2-je8xtrigeu", lessons: makeLessons(GAEBONG_PADLET_LINKS[2]) },
+  { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 3, label: "6학년 3반", monsterId: "forest-mushroom", directToken: "gb6c3-kilcoepxmg", lessons: makeLessons(GAEBONG_PADLET_LINKS[3]) },
+  { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 4, label: "6학년 4반", monsterId: "orange-mushroom", directToken: "gb6c4-xtjzvvpgjs", lessons: makeLessons(GAEBONG_PADLET_LINKS[4]) },
+  { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 5, label: "6학년 5반", monsterId: "blue-mushroom", directToken: "gb6c5-emg1vzxnsw", lessons: makeLessons(GAEBONG_PADLET_LINKS[5]) },
+  { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 6, label: "6학년 6반", monsterId: "choco-mushroom", directToken: "gb6c6-ms9vlecq99", lessons: makeLessons(GAEBONG_PADLET_LINKS[6]) },
 ];
 
 export const WONJONG_CLASSROOMS: WonjongClassroom[] = [
-  {
-    schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME,
-    grade: 1,
-    classNumber: 1,
-    label: "1학년 1반",
-    monsterId: "slime",
-    directToken: "wj1c1-v9m2k4q7rx",
-    lessons: makeWonjongLessons(),
-  },
-  {
-    schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME,
-    grade: 1,
-    classNumber: 2,
-    label: "1학년 2반",
-    monsterId: "guardian-angel-slime",
-    directToken: "wj1c2-t6p8n3z5ha",
-    lessons: makeWonjongLessons(),
-  },
-  {
-    schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME,
-    grade: 1,
-    classNumber: 3,
-    label: "1학년 3반",
-    monsterId: "forest-mushroom",
-    directToken: "wj1c3-b4y7d2s9ke",
-    lessons: makeWonjongLessons(),
-  },
-  {
-    schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME,
-    grade: 2,
-    classNumber: 1,
-    label: "2학년 1반",
-    monsterId: "orange-mushroom",
-    directToken: "wj2c1-r5x8j3m6vu",
-    lessons: makeWonjongLessons(),
-  },
-  {
-    schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME,
-    grade: 2,
-    classNumber: 2,
-    label: "2학년 2반",
-    monsterId: "blue-mushroom",
-    directToken: "wj2c2-c7h4w9p2ns",
-    lessons: makeWonjongLessons(),
-  },
-  {
-    schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME,
-    grade: 2,
-    classNumber: 3,
-    label: "2학년 3반",
-    monsterId: "choco-mushroom",
-    directToken: "wj2c3-k2f6a8q4zt",
-    lessons: makeWonjongLessons(),
-  },
+  { schoolName: WONJONG_SCHOOL_NAME, schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME, grade: 1, classNumber: 1, label: "1학년 1반", monsterId: "slime", directToken: "wj1c1-v9m2k4q7rx", lessons: makeSchoolLessons(4) },
+  { schoolName: WONJONG_SCHOOL_NAME, schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME, grade: 1, classNumber: 2, label: "1학년 2반", monsterId: "guardian-angel-slime", directToken: "wj1c2-t6p8n3z5ha", lessons: makeSchoolLessons(4) },
+  { schoolName: WONJONG_SCHOOL_NAME, schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME, grade: 1, classNumber: 3, label: "1학년 3반", monsterId: "forest-mushroom", directToken: "wj1c3-b4y7d2s9ke", lessons: makeSchoolLessons(4) },
+  { schoolName: WONJONG_SCHOOL_NAME, schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME, grade: 2, classNumber: 1, label: "2학년 1반", monsterId: "orange-mushroom", directToken: "wj2c1-r5x8j3m6vu", lessons: makeSchoolLessons(4) },
+  { schoolName: WONJONG_SCHOOL_NAME, schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME, grade: 2, classNumber: 2, label: "2학년 2반", monsterId: "blue-mushroom", directToken: "wj2c2-c7h4w9p2ns", lessons: makeSchoolLessons(4) },
+  { schoolName: WONJONG_SCHOOL_NAME, schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME, grade: 2, classNumber: 3, label: "2학년 3반", monsterId: "choco-mushroom", directToken: "wj2c3-k2f6a8q4zt", lessons: makeSchoolLessons(4) },
+];
+
+export const GWANGIL_CLASSROOMS: SchoolClassroom[] = [
+  { schoolName: GWANGIL_SCHOOL_NAME, schoolDisplayName: GWANGIL_SCHOOL_DISPLAY_NAME, grade: 5, classNumber: 1, label: "5학년 1반", monsterId: "slime", directToken: "gi5c1-m7q2v9ka4x", lessons: makeSchoolLessons(7) },
+  { schoolName: GWANGIL_SCHOOL_NAME, schoolDisplayName: GWANGIL_SCHOOL_DISPLAY_NAME, grade: 5, classNumber: 2, label: "5학년 2반", monsterId: "guardian-angel-slime", directToken: "gi5c2-r4n8p2yd6w", lessons: makeSchoolLessons(7) },
+  { schoolName: GWANGIL_SCHOOL_NAME, schoolDisplayName: GWANGIL_SCHOOL_DISPLAY_NAME, grade: 5, classNumber: 3, label: "5학년 3반", monsterId: "forest-mushroom", directToken: "gi5c3-b6t3h9qs2e", lessons: makeSchoolLessons(7) },
+  { schoolName: GWANGIL_SCHOOL_NAME, schoolDisplayName: GWANGIL_SCHOOL_DISPLAY_NAME, grade: 5, classNumber: 4, label: "5학년 4반", monsterId: "orange-mushroom", directToken: "gi5c4-j8w5f2mk7c", lessons: makeSchoolLessons(7) },
+  { schoolName: GWANGIL_SCHOOL_NAME, schoolDisplayName: GWANGIL_SCHOOL_DISPLAY_NAME, grade: 5, classNumber: 5, label: "5학년 5반", monsterId: "blue-mushroom", directToken: "gi5c5-z3p7n4rv8a", lessons: makeSchoolLessons(7) },
+];
+
+export const WOLMUN_CLASSROOMS: SchoolClassroom[] = [
+  { schoolName: WOLMUN_SCHOOL_NAME, schoolDisplayName: WOLMUN_SCHOOL_DISPLAY_NAME, grade: 5, classNumber: 1, label: "5학년 1반", monsterId: "slime", directToken: "wm5c1-p4k8v2ns7q", lessons: makeSchoolLessons(4) },
+  { schoolName: WOLMUN_SCHOOL_NAME, schoolDisplayName: WOLMUN_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 1, label: "6학년 1반", monsterId: "guardian-angel-slime", directToken: "wm6c1-y7m3q9tb5r", lessons: makeSchoolLessons(4) },
 ];
 
 export const ALL_CLASSROOMS: SchoolClassroom[] = [
   ...GAEBONG_CLASSROOMS,
   ...WONJONG_CLASSROOMS,
+  ...GWANGIL_CLASSROOMS,
+  ...WOLMUN_CLASSROOMS,
 ];
 
-export const getGaebongClassroom = (classNumber: number) => {
-  return GAEBONG_CLASSROOMS.find(
-    (classroom) => classroom.classNumber === classNumber
-  );
-};
+export const getGaebongClassroom = (classNumber: number) =>
+  GAEBONG_CLASSROOMS.find((classroom) => classroom.classNumber === classNumber);
 
-export const getGaebongClassroomByToken = (token: string) => {
-  return GAEBONG_CLASSROOMS.find(
-    (classroom) => classroom.directToken === token
-  );
-};
+export const getGaebongClassroomByToken = (token: string) =>
+  GAEBONG_CLASSROOMS.find((classroom) => classroom.directToken === token);
 
-export const getClassroomByToken = (token: string) => {
-  return ALL_CLASSROOMS.find((classroom) => classroom.directToken === token);
-};
+export const getClassroomByToken = (token: string) =>
+  ALL_CLASSROOMS.find((classroom) => classroom.directToken === token);
 
-export const getMonsterById = (monsterId: string) => {
-  return CLASSROOM_MONSTERS.find((monster) => monster.id === monsterId);
-};
+export const getMonsterById = (monsterId: string) =>
+  CLASSROOM_MONSTERS.find((monster) => monster.id === monsterId);
