@@ -2,14 +2,14 @@ import { notFound } from "next/navigation";
 
 import ClassroomBoard from "../../components/ClassroomBoard";
 import {
-  GAEBONG_CLASSROOMS,
-  getGaebongClassroomByToken,
+  ALL_CLASSROOMS,
+  getClassroomByToken,
 } from "../../data/classroomData";
 
 export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return GAEBONG_CLASSROOMS.map((classroom) => ({
+  return ALL_CLASSROOMS.map((classroom) => ({
     token: classroom.directToken,
   }));
 }
@@ -22,7 +22,7 @@ type Props = {
 
 export default async function ClassroomDirectPage({ params }: Props) {
   const { token } = await params;
-  const classroom = getGaebongClassroomByToken(token);
+  const classroom = getClassroomByToken(token);
 
   if (!classroom) {
     notFound();
