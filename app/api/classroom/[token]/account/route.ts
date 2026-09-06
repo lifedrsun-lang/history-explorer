@@ -1,6 +1,6 @@
 import { getClassroomAccount } from "@/lib/classroomAccountRosterServer";
-import { GAEBONG_SCHOOL_NAME } from "@/lib/gaebongClassroom";
-import { getGaebongClassroomByToken } from "@/app/student/data/classroomData";
+import { getSupportedClassroomSchoolName } from "@/lib/gaebongClassroom";
+import { getClassroomByToken } from "@/app/student/data/classroomData";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,11 +19,20 @@ export async function POST(
 ) {
   try {
     const { token } = await params;
-    const classroom = getGaebongClassroomByToken(token);
+    const classroom = getClassroomByToken(token);
 
     if (!classroom) {
       return jsonPrivate(
         { error: "수업방을 찾을 수 없어요." },
+        { status: 404 }
+      );
+    }
+
+    const school = getSupportedClassroomSchoolName(classroom);
+
+    if (!school) {
+      return jsonPrivate(
+        { error: "계정 찾기를 지원하지 않는 수업방이에요." },
         { status: 404 }
       );
     }
@@ -36,17 +45,17 @@ export async function POST(
     if (
       !Number.isInteger(studentNumber) ||
       studentNumber < 1 ||
-      studentNumber > 99
+      studentNumber > 25
     ) {
       return jsonPrivate(
-        { error: "학급 번호를 정확히 입력해 주세요." },
+        { error: "학급 번호는 1번부터 25번까지 입력해 주세요." },
         { status: 400 }
       );
     }
 
     const account = await getClassroomAccount(
       {
-        school: GAEBONG_SCHOOL_NAME,
+        school,
         grade: classroom.grade,
         classNumber: classroom.classNumber,
       },
