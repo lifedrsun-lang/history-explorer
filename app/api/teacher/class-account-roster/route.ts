@@ -8,10 +8,7 @@ import {
   handleRouteError,
   verifyTeacherRequest,
 } from "@/lib/assignmentServer";
-import {
-  GAEBONG_SCHOOL_NAME,
-  isSupportedGaebongClassroom,
-} from "@/lib/gaebongClassroom";
+import { getSupportedClassroomSchoolName } from "@/lib/gaebongClassroom";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -66,13 +63,15 @@ const mapRouteError = (error: unknown) => {
 };
 
 const getSupportedClassroomKey = (key: ClassroomAccountRosterKey) => {
-  if (!isSupportedGaebongClassroom(key)) {
+  const school = getSupportedClassroomSchoolName(key);
+
+  if (!school) {
     return null;
   }
 
   return {
     ...key,
-    school: GAEBONG_SCHOOL_NAME,
+    school,
   } satisfies ClassroomAccountRosterKey;
 };
 
