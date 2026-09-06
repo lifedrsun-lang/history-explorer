@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 import ClassroomActivityLinks from "./ClassroomActivityLinks";
 import TeacherClassAccountFinder from "./TeacherClassAccountFinder";
-import type { GaebongClassroom } from "../data/classroomData";
+import type { SchoolClassroom } from "../data/classroomData";
 
 const formatLessonDate = (date?: string) => {
   if (!date) {
@@ -15,7 +15,7 @@ const formatLessonDate = (date?: string) => {
   return `${Number(month)}/${Number(day)}`;
 };
 
-const getInitialLesson = (classroom: GaebongClassroom) => {
+const getInitialLesson = (classroom: SchoolClassroom) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -32,7 +32,7 @@ const getInitialLesson = (classroom: GaebongClassroom) => {
 };
 
 type Props = {
-  classroom: GaebongClassroom;
+  classroom: SchoolClassroom;
   directAccess?: boolean;
   onBack?: () => void;
 };
@@ -76,7 +76,9 @@ export default function ClassroomBoard({
         <header className="rounded-[28px] border border-white/80 bg-white/95 p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-xs font-black text-sky-600">🏫 서울 개봉초</div>
+              <div className="text-xs font-black text-sky-600">
+                🏫 {classroom.schoolDisplayName || "서울 개봉초"}
+              </div>
               <h1 className="mt-1 text-2xl font-black text-slate-800">
                 {classroom.label} 수업방
               </h1>
