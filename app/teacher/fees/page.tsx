@@ -919,55 +919,125 @@ export default function TeacherFeesPage() {
             <div>
               <div className="mb-3 flex items-center gap-2">
                 <span className="rounded-lg bg-blue-100 px-2 py-1 text-xs font-black text-blue-700">건별계약</span>
-                <span className="text-xs font-bold text-slate-400">학교·계약별 월 누적</span>
+                <span className="text-xs font-bold text-slate-400">학교별 월 누적</span>
               </div>
               <div className="space-y-3">
-                {contractLectures.map((contract) => {
-                  const monthKeys = getContractMonthKeys(contract).filter((monthKey) =>
-                    monthKey.startsWith(`${summaryYear}-`)
-                  );
-                  return (
-                    <div key={contract.id} className="rounded-2xl border border-blue-100 p-4">
+                {(() => {
+                  type SummaryMonth = {
+                    dates: Set<string>;
+                    sessions: number;
+                    amount: number;
+                  };
+                  type SummarySchool = {
+                    schoolName: string;
+                    titles: Set<string>;
+                    months: Map<string, SummaryMonth>;
+                  };
+
+                  const grouped = new Map<string, SummarySchool>();
+
+                  contractLectures.forEach((contract) => {
+                    const schoolKey = normalizeSchoolName(contract.schoolName) || contract.schoolName;
+                    const group = grouped.get(schoolKey) || {
+                      schoolName: contract.schoolName,
+                      titles: new Set<string>(),
+                      months: new Map<string, SummaryMonth>(),
+                    };
+
+                    if (contract.title?.trim()) group.titles.add(contract.title.trim());
+
+                    getContractMonthKeys(contract)
+                      .filter((monthKey) => monthKey.startsWith(`${summaryYear}-`))
+                      .forEach((monthKey) => {
+                        const monthMap = getContractMonthMap(contract, monthKey);
+                        const dates = Object.keys(monthMap);
+                        const sessions = getContractMonthSessions(contract, monthKey);
+                        const amount = getContractMonthGross(contract, monthKey);
+                        if (dates.length === 0 && sessions === 0 && amount === 0) return;
+
+                        const month = group.months.get(monthKey) || {
+                          dates: new Set<string>(),
+                          sessions: 0,
+                          amount: 0,
+                        };
+                        dates.forEach((dateKey) => month.dates.add(dateKey));
+                        month.sessions += sessions;
+                        month.amount += amount;
+                        group.months.set(monthKey, month);
+                      });
+
+                    grouped.set(schoolKey, group);
+                  });
+
+                  const schools = Array.from(grouped.entries())
+                    .map(([key, group]) => {
+                      const months = Array.from(group.months.entries())
+                        .sort(([left], [right]) => left.localeCompare(right))
+                        .map(([monthKey, month]) => ({
+                          monthKey,
+                          days: month.dates.size,
+                          sessions: month.sessions,
+                          amount: month.amount,
+                        }))
+                        .filter(
+                          (month) => month.days > 0 || month.sessions > 0 || month.amount > 0
+                        );
+                      return {
+                        key,
+                        schoolName: group.schoolName,
+                        titles: Array.from(group.titles),
+                        months,
+                        total: months.reduce((sum, month) => sum + month.amount, 0),
+                      };
+                    })
+                    .filter((school) => school.months.length > 0)
+                    .sort((left, right) => left.schoolName.localeCompare(right.schoolName, "ko-KR"));
+
+                  if (schools.length === 0) {
+                    return (
+                      <div className="rounded-2xl bg-slate-50 px-3 py-4 text-center text-xs font-bold text-slate-400">
+                        {summaryYear}년 입력된 건별계약 근무내역이 없습니다.
+                      </div>
+                    );
+                  }
+
+                  return schools.map((school) => (
+                    <div key={school.key} className="rounded-2xl border border-blue-100 p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="font-black text-slate-900">{contract.schoolName}</div>
-                          {contract.title && (
-                            <div className="text-[11px] font-bold text-slate-400">{contract.title}</div>
+                          <div className="font-black text-slate-900">{school.schoolName}</div>
+                          {school.titles.length > 0 && (
+                            <div className="text-[11px] font-bold text-slate-400">
+                              {school.titles.join(" · ")}
+                            </div>
                           )}
                         </div>
                         <div className="text-right">
                           <div className="text-[10px] font-bold text-slate-400">최종합계</div>
-                          <div className="font-black text-blue-700">{formatWon(getContractGross(contract))}</div>
+                          <div className="font-black text-blue-700">{formatWon(school.total)}</div>
                         </div>
                       </div>
                       <div className="mt-3 space-y-2">
-                        {monthKeys.length === 0 ? (
-                          <div className="rounded-xl bg-slate-50 px-3 py-3 text-xs font-bold text-slate-400">
-                            {summaryYear}년 월별 근무 입력이 없습니다.
+                        {school.months.map((month) => (
+                          <div
+                            key={month.monthKey}
+                            className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5"
+                          >
+                            <div className="text-xs font-black text-slate-700">
+                              {Number(month.monthKey.slice(5, 7))}월 · {month.days}일 · {month.sessions}차시
+                            </div>
+                            <div className="text-xs font-black text-slate-900">
+                              = {formatWon(month.amount)}
+                            </div>
                           </div>
-                        ) : (
-                          monthKeys.map((monthKey) => {
-                            const monthMap = getContractMonthMap(contract, monthKey);
-                            const days = Object.keys(monthMap).length;
-                            const sessions = getContractMonthSessions(contract, monthKey);
-                            const amount = getContractMonthGross(contract, monthKey);
-                            return (
-                              <div key={monthKey} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5">
-                                <div className="text-xs font-black text-slate-700">
-                                  {Number(monthKey.slice(5, 7))}월 · {days}일 · {sessions}차시
-                                </div>
-                                <div className="text-xs font-black text-slate-900">= {formatWon(amount)}</div>
-                              </div>
-                            );
-                          })
-                        )}
+                        ))}
                       </div>
                       <div className="mt-3 border-t border-slate-100 pt-3 text-right text-sm font-black text-slate-900">
-                        최종합계 {formatWon(getContractGross(contract))}
+                        최종합계 {formatWon(school.total)}
                       </div>
                     </div>
-                  );
-                })}
+                  ));
+                })()}
               </div>
             </div>
           </div>
