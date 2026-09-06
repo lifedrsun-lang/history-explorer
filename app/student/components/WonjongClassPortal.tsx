@@ -1,0 +1,312 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+import ClassroomBoard from "./ClassroomBoard";
+import {
+  CLASSROOM_MONSTERS,
+  WONJONG_CLASSROOMS,
+  type ClassroomMonster,
+  type WonjongClassroom,
+} from "../data/classroomData";
+
+const MAX_FAILED_ATTEMPTS = 3;
+const LOCKOUT_MS = 10 * 60 * 1000;
+
+const shuffleMonsters = () => {
+  const items = [...CLASSROOM_MONSTERS];
+
+  for (let index = items.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [items[index], items[swapIndex]] = [items[swapIndex], items[index]];
+  }
+
+  return items;
+};
+
+const getClassKey = (classroom: WonjongClassroom) =>
+  `${classroom.grade}-${classroom.classNumber}`;
+
+const getLockoutStorageKey = (classroom: WonjongClassroom) =>
+  `wonjong-classroom-monster-lockout:${getClassKey(classroom)}`;
+
+const readLockoutState = (classroom: WonjongClassroom) => {
+  try {
+    const raw = window.localStorage.getItem(getLockoutStorageKey(classroom));
+
+    if (!raw) {
+      return { failedAttempts: 0, lockedUntil: null as number | null };
+    }
+
+    const parsed = JSON.parse(raw) as {
+      failedAttempts?: number;
+      lockedUntil?: number | null;
+    };
+    const lockedUntil =
+      typeof parsed.lockedUntil === "number" ? parsed.lockedUntil : null;
+
+    if (lockedUntil && lockedUntil <= Date.now()) {
+      window.localStorage.removeItem(getLockoutStorageKey(classroom));
+      return { failedAttempts: 0, lockedUntil: null as number | null };
+    }
+
+    return {
+      failedAttempts:
+        typeof parsed.failedAttempts === "number" ? parsed.failedAttempts : 0,
+      lockedUntil,
+    };
+  } catch {
+    window.localStorage.removeItem(getLockoutStorageKey(classroom));
+    return { failedAttempts: 0, lockedUntil: null as number | null };
+  }
+};
+
+type Props = {
+  onChangeSchool: () => void;
+};
+
+export default function WonjongClassPortal({ onChangeSchool }: Props) {
+  const [selectedClassroom, setSelectedClassroom] =
+    useState<WonjongClassroom | null>(null);
+  const [monsterOptions, setMonsterOptions] =
+    useState<ClassroomMonster[]>(() => shuffleMonsters());
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  const isLocked = Boolean(lockedUntil && lockedUntil > now);
+  const remainingSeconds = lockedUntil
+    ? Math.max(0, Math.ceil((lockedUntil - now) / 1000))
+    : 0;
+  const remainingMinutes = Math.floor(remainingSeconds / 60);
+  const remainingClockSeconds = remainingSeconds % 60;
+
+  useEffect(() => {
+    if (!lockedUntil) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      const nextNow = Date.now();
+      setNow(nextNow);
+
+      if (nextNow >= lockedUntil) {
+        if (selectedClassroom) {
+          window.localStorage.removeItem(getLockoutStorageKey(selectedClassroom));
+        }
+        setFailedAttempts(0);
+        setLockedUntil(null);
+        setErrorMessage("");
+      }
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [lockedUntil, selectedClassroom]);
+
+  const selectClassroom = (classroom: WonjongClassroom) => {
+    const lockoutState = readLockoutState(classroom);
+
+    setSelectedClassroom(classroom);
+    setMonsterOptions(shuffleMonsters());
+    setIsUnlocked(false);
+    setFailedAttempts(lockoutState.failedAttempts);
+    setLockedUntil(lockoutState.lockedUntil);
+    setNow(Date.now());
+    setErrorMessage("");
+  };
+
+  const resetClassroom = () => {
+    setSelectedClassroom(null);
+    setMonsterOptions(shuffleMonsters());
+    setIsUnlocked(false);
+    setErrorMessage("");
+    setFailedAttempts(0);
+    setLockedUntil(null);
+    setNow(Date.now());
+  };
+
+  const chooseMonster = (monster: ClassroomMonster) => {
+    if (!selectedClassroom) {
+      return;
+    }
+
+    const currentLockout = readLockoutState(selectedClassroom);
+
+    if (currentLockout.lockedUntil) {
+      setFailedAttempts(currentLockout.failedAttempts);
+      setLockedUntil(currentLockout.lockedUntil);
+      setNow(Date.now());
+      return;
+    }
+
+    if (monster.id === selectedClassroom.monsterId) {
+      window.localStorage.removeItem(getLockoutStorageKey(selectedClassroom));
+      setFailedAttempts(0);
+      setLockedUntil(null);
+      setIsUnlocked(true);
+      setErrorMessage("");
+      return;
+    }
+
+    const nextFailedAttempts = failedAttempts + 1;
+
+    if (nextFailedAttempts >= MAX_FAILED_ATTEMPTS) {
+      const nextLockedUntil = Date.now() + LOCKOUT_MS;
+      window.localStorage.setItem(
+        getLockoutStorageKey(selectedClassroom),
+        JSON.stringify({
+          failedAttempts: MAX_FAILED_ATTEMPTS,
+          lockedUntil: nextLockedUntil,
+        })
+      );
+      setFailedAttempts(MAX_FAILED_ATTEMPTS);
+      setLockedUntil(nextLockedUntil);
+      setNow(Date.now());
+      setErrorMessage("");
+      setMonsterOptions(shuffleMonsters());
+      return;
+    }
+
+    window.localStorage.setItem(
+      getLockoutStorageKey(selectedClassroom),
+      JSON.stringify({
+        failedAttempts: nextFailedAttempts,
+        lockedUntil: null,
+      })
+    );
+    setFailedAttempts(nextFailedAttempts);
+    setErrorMessage(
+      `앗! 우리 반 몬스터가 아니에요. ${MAX_FAILED_ATTEMPTS - nextFailedAttempts}번 더 틀리면 10분 동안 잠겨요.`
+    );
+    setMonsterOptions(shuffleMonsters());
+  };
+
+  if (selectedClassroom && isUnlocked) {
+    return <ClassroomBoard classroom={selectedClassroom} onBack={resetClassroom} />;
+  }
+
+  const gradeOne = WONJONG_CLASSROOMS.filter((classroom) => classroom.grade === 1);
+  const gradeTwo = WONJONG_CLASSROOMS.filter((classroom) => classroom.grade === 2);
+
+  return (
+    <div className="min-h-[100dvh] bg-gradient-to-b from-amber-100 via-yellow-50 to-emerald-50 px-3 py-4 text-slate-800">
+      <div className="mx-auto max-w-2xl space-y-4">
+        <header className="rounded-[30px] border border-amber-100 bg-white/95 p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-xs font-black text-emerald-600">🏫 부천 원종초</div>
+              <h1 className="mt-1 text-2xl font-black text-slate-800">1·2학년 반 수업방</h1>
+              <p className="mt-1 text-sm font-bold text-slate-500">
+                우리 반을 선택하고 수업 공지를 확인하세요.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onChangeSchool}
+              className="shrink-0 rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-black text-amber-700"
+            >
+              학교 변경
+            </button>
+          </div>
+        </header>
+
+        {!selectedClassroom ? (
+          <section className="rounded-[30px] border border-white/80 bg-white/95 p-4 shadow-sm">
+            {[{ grade: 1, rooms: gradeOne }, { grade: 2, rooms: gradeTwo }].map(({ grade, rooms }) => (
+              <div key={grade} className="mb-5 last:mb-0">
+                <div className="mb-3">
+                  <h2 className="text-xl font-black text-slate-800">{grade}학년</h2>
+                  <p className="mt-1 text-xs font-bold text-slate-500">
+                    반을 누른 뒤 우리 반 비밀번호 몬스터를 골라요.
+                  </p>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {rooms.map((classroom) => (
+                    <button
+                      key={getClassKey(classroom)}
+                      type="button"
+                      onClick={() => selectClassroom(classroom)}
+                      className="rounded-[22px] border border-emerald-100 bg-gradient-to-br from-white to-emerald-50 px-3 py-5 text-center shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100 active:scale-[0.99]"
+                    >
+                      <div className="text-sm font-black text-emerald-500">{grade}학년</div>
+                      <div className="mt-1 text-2xl font-black text-slate-800">
+                        {classroom.classNumber}반
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </section>
+        ) : (
+          <section className="rounded-[30px] border border-amber-100 bg-white/95 p-4 shadow-sm">
+            <div className="rounded-[26px] border border-dashed border-amber-200 bg-gradient-to-br from-amber-50 via-white to-yellow-50 px-4 py-5 text-center">
+              <h2 className="text-2xl font-black text-slate-800">
+                원종초 <span className="text-emerald-600">{selectedClassroom.grade}학년</span>{" "}
+                <span className="text-orange-500">{selectedClassroom.classNumber}반</span>
+              </h2>
+              <p className="mt-3 text-base font-black text-slate-700">
+                우리 반 <span className="text-violet-600">비밀번호 몬스터</span>를 찾아 눌러 보세요
+              </p>
+              <p className="mt-1 text-xs font-bold text-slate-500">그림 아래 이름을 보고 선택해도 돼요.</p>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {monsterOptions.map((monster) => (
+                <button
+                  key={monster.id}
+                  type="button"
+                  onClick={() => chooseMonster(monster)}
+                  disabled={isLocked}
+                  className={`overflow-hidden rounded-[24px] border bg-gradient-to-br p-2 text-center shadow-sm transition ${
+                    isLocked
+                      ? "cursor-not-allowed opacity-50"
+                      : "hover:-translate-y-0.5 hover:shadow-md active:translate-y-0"
+                  } ${monster.className}`}
+                >
+                  <div className="flex h-28 items-center justify-center overflow-hidden rounded-[18px] bg-white sm:h-32">
+                    <img
+                      src={monster.imageSrc}
+                      alt=""
+                      aria-hidden="true"
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                  <div className="px-1 pb-1 pt-2 text-sm font-black text-slate-800 sm:text-base">
+                    {monster.name}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-3 rounded-2xl bg-violet-50 px-3 py-2 text-center text-[11px] font-bold text-violet-500">
+              몬스터 위치는 들어올 때마다 섞여요.
+            </div>
+
+            {isLocked && (
+              <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-center text-sm font-black text-rose-700">
+                🔒 비밀번호를 3번 틀렸어요. {remainingMinutes}분 {String(remainingClockSeconds).padStart(2, "0")}초 후 다시 시도할 수 있어요.
+              </div>
+            )}
+
+            {!isLocked && errorMessage && (
+              <div className="mt-3 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-center text-sm font-black text-rose-600">
+                {errorMessage}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={resetClassroom}
+              className="mt-3 w-full rounded-2xl bg-violet-500 py-3 text-sm font-black text-white shadow-sm transition hover:bg-violet-600"
+            >
+              반 다시 선택
+            </button>
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
