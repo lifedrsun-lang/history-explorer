@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  getSchoolInfo,
   getSchoolLoginCard,
   isGaebongSchool,
 } from "../data/schoolInfo";
@@ -23,14 +24,21 @@ export default function SchoolSelect({
         <div className="grid grid-cols-2 gap-3 rounded-[32px] border border-white/80 bg-white/80 p-3 sm:p-4 shadow-sm">
           {schools.map((school) => {
             const cardInfo = getSchoolLoginCard(school);
+            const schoolInfo = getSchoolInfo(school);
+            const isWonjongSchool =
+              schoolInfo?.name === "부천 원종초등학교";
             const cardClassName =
               "block h-full min-h-[112px] w-full bg-white border border-sky-100 rounded-3xl p-4 text-center text-slate-700 shadow-sm transition hover:bg-sky-50";
 
-            if (isGaebongSchool(school)) {
+            if (isGaebongSchool(school) || isWonjongSchool) {
               return (
                 <Link
                   key={school}
-                  href="/student/classroom"
+                  href={
+                    isWonjongSchool
+                      ? "/student/classroom/wonjong"
+                      : "/student/classroom"
+                  }
                   className={cardClassName}
                 >
                   <div className="flex h-full flex-col items-center justify-center">
