@@ -2,26 +2,37 @@
 
 import { useState } from "react";
 
-import type { ClassroomAccount } from "@/lib/classroomAccountRoster";
-import type { SchoolClassroom } from "../data/classroomData";
+import {
+  WONJONG_SCHOOL_NAME,
+  type SchoolClassroom,
+} from "../data/classroomData";
 
 type Props = {
   classroom: SchoolClassroom;
 };
 
+type StudentAccount = {
+  classNumber: number;
+  accountId: string;
+  nickname?: string;
+  temporaryPassword?: string;
+};
+
 type AccountResponse = {
-  account?: ClassroomAccount;
+  account?: StudentAccount;
   error?: string;
 };
 
 export default function StudentClassAccountFinder({ classroom }: Props) {
   const [searchNumber, setSearchNumber] = useState("");
-  const [account, setAccount] = useState<ClassroomAccount | null>(null);
+  const [account, setAccount] = useState<StudentAccount | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [accountIdCopied, setAccountIdCopied] = useState(false);
 
   const schoolLabel = classroom.schoolDisplayName || "서울 개봉초";
+  const isWonjongGrade2 =
+    classroom.schoolName === WONJONG_SCHOOL_NAME && classroom.grade === 2;
 
   const findAccount = async () => {
     const studentNumber = Number(searchNumber.trim());
@@ -156,12 +167,14 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
             </button>
           </div>
           <dl className="mt-3 space-y-2">
-            <div className="rounded-2xl bg-white px-4 py-3">
-              <dt className="text-[10px] font-black text-slate-400">닉네임</dt>
-              <dd className="mt-1 break-all font-mono text-sm font-black text-slate-800">
-                {account.nickname}
-              </dd>
-            </div>
+            {!isWonjongGrade2 && account.nickname && (
+              <div className="rounded-2xl bg-white px-4 py-3">
+                <dt className="text-[10px] font-black text-slate-400">닉네임</dt>
+                <dd className="mt-1 break-all font-mono text-sm font-black text-slate-800">
+                  {account.nickname}
+                </dd>
+              </div>
+            )}
             <div className="rounded-2xl bg-white px-4 py-3">
               <dt className="text-[10px] font-black text-slate-400">학급 아이디</dt>
               <dd className="mt-1 flex items-center gap-2">
@@ -178,12 +191,20 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
                 </button>
               </dd>
             </div>
-            <div className="rounded-2xl bg-white px-4 py-3">
-              <dt className="text-[10px] font-black text-slate-400">비밀번호</dt>
-              <dd className="mt-1 break-all font-mono text-sm font-black tracking-wide text-slate-800">
-                {account.temporaryPassword}
-              </dd>
-            </div>
+            {isWonjongGrade2 ? (
+              <div className="rounded-2xl bg-amber-50 px-4 py-3 text-xs font-black leading-5 text-amber-800">
+                비밀번호는 선생님이 안내한 반 공통 비밀번호를 입력해 주세요.
+              </div>
+            ) : (
+              account.temporaryPassword && (
+                <div className="rounded-2xl bg-white px-4 py-3">
+                  <dt className="text-[10px] font-black text-slate-400">비밀번호</dt>
+                  <dd className="mt-1 break-all font-mono text-sm font-black tracking-wide text-slate-800">
+                    {account.temporaryPassword}
+                  </dd>
+                </div>
+              )
+            )}
           </dl>
         </div>
       )}
