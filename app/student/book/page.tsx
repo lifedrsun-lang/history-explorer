@@ -86,12 +86,15 @@ export default function SunLabBookPage() {
             </div>
           </a>
 
-          <div className="flex min-h-[150px] items-center justify-center rounded-3xl border border-sky-100 bg-white p-4 text-center shadow-sm">
+          <Link
+            href="/student/book/hello-maple"
+            className="flex min-h-[150px] items-center justify-center rounded-3xl border border-sky-100 bg-white p-4 text-center shadow-sm transition hover:bg-sky-50"
+          >
             <div>
               <div className="text-4xl">🍁</div>
               <div className="mt-3 text-xl font-black text-slate-800">헬로메이플</div>
             </div>
-          </div>
+          </Link>
         </div>
 
         <div className="mt-6 flex justify-center">
