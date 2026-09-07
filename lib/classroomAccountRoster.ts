@@ -75,7 +75,9 @@ export const parseClassroomAccountCsv = (text: string): ClassroomAccount[] => {
   const numberIndex = headers.indexOf("학급 번호");
   const nicknameIndex = headers.indexOf("닉네임");
   const accountIdIndex = headers.indexOf("학급 아이디");
-  const passwordIndex = headers.indexOf("임시 비밀번호");
+  const passwordIndex = headers.includes("비밀번호")
+    ? headers.indexOf("비밀번호")
+    : headers.indexOf("임시 비밀번호");
 
   if (
     [numberIndex, nicknameIndex, accountIdIndex, passwordIndex].some(
