@@ -48,7 +48,7 @@ const mapRouteError = (error: unknown) => {
       {
         error:
           message === "invalid_account_csv_headers"
-            ? "CSV 열 이름을 확인해 주세요. 학급 번호·닉네임·학급 아이디·임시 비밀번호가 필요합니다."
+            ? "CSV 열 이름을 확인해 주세요. 학급 번호·닉네임·학급 아이디·비밀번호가 필요합니다."
             : "CSV 학생 계정 정보를 확인해 주세요.",
         code: message,
       },
