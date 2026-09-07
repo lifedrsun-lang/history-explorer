@@ -13,7 +13,7 @@ export default function SchoolSelect({ schools, onSelect }: Props) {
             href="/student/book"
             className="flex h-full min-h-[112px] w-full items-center justify-center rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-100 via-white to-slate-200 p-4 text-center text-slate-700 shadow-sm transition hover:from-slate-50 hover:via-white hover:to-sky-50"
           >
-            <div className="text-base sm:text-lg font-black leading-snug text-slate-800">📚 SUN LAB Book</div>
+            <div className="text-base sm:text-lg font-black leading-snug text-slate-800">SUN LAB</div>
           </Link>
 
           {schools.map((school) => {
