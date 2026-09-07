@@ -191,19 +191,13 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
                 </button>
               </dd>
             </div>
-            {isWonjongGrade2 ? (
-              <div className="rounded-2xl bg-amber-50 px-4 py-3 text-xs font-black leading-5 text-amber-800">
-                비밀번호는 선생님이 안내한 반 공통 비밀번호를 입력해 주세요.
+            {account.temporaryPassword && (
+              <div className="rounded-2xl bg-white px-4 py-3">
+                <dt className="text-[10px] font-black text-slate-400">비밀번호</dt>
+                <dd className="mt-1 break-all font-mono text-sm font-black tracking-wide text-slate-800">
+                  {account.temporaryPassword}
+                </dd>
               </div>
-            ) : (
-              account.temporaryPassword && (
-                <div className="rounded-2xl bg-white px-4 py-3">
-                  <dt className="text-[10px] font-black text-slate-400">비밀번호</dt>
-                  <dd className="mt-1 break-all font-mono text-sm font-black tracking-wide text-slate-800">
-                    {account.temporaryPassword}
-                  </dd>
-                </div>
-              )
             )}
           </dl>
         </div>
