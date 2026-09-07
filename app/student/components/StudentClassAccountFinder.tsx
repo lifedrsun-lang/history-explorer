@@ -14,11 +14,14 @@ type AccountResponse = {
   error?: string;
 };
 
+type CopiedField = "accountId" | "password" | null;
+
 export default function StudentClassAccountFinder({ classroom }: Props) {
   const [searchNumber, setSearchNumber] = useState("");
   const [account, setAccount] = useState<ClassroomAccount | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [copiedField, setCopiedField] = useState<CopiedField>(null);
 
   const schoolLabel = classroom.schoolDisplayName || "서울 개봉초";
 
@@ -31,12 +34,14 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
       studentNumber > 25
     ) {
       setAccount(null);
+      setCopiedField(null);
       setErrorMessage("학급 번호는 1번부터 25번까지 입력해 주세요.");
       return;
     }
 
     setIsSearching(true);
     setErrorMessage("");
+    setCopiedField(null);
 
     try {
       const response = await fetch(
@@ -68,7 +73,29 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
   const clearSearch = () => {
     setSearchNumber("");
     setAccount(null);
+    setCopiedField(null);
     setErrorMessage("");
+  };
+
+  const copyText = async (
+    field: Exclude<CopiedField, null>,
+    label: string,
+    value: string
+  ) => {
+    try {
+      if (!navigator.clipboard) {
+        throw new Error("clipboard_unavailable");
+      }
+
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      setErrorMessage("");
+      window.setTimeout(() => {
+        setCopiedField((current) => (current === field ? null : current));
+      }, 1500);
+    } catch {
+      setErrorMessage(`${label}를 복사하지 못했어요. 값을 길게 눌러 복사해 주세요.`);
+    }
   };
 
   return (
@@ -94,6 +121,7 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
           value={searchNumber}
           onChange={(event) => {
             setSearchNumber(event.target.value.replace(/\D/g, "").slice(0, 2));
+            setCopiedField(null);
             setErrorMessage("");
           }}
           onKeyDown={(event) => {
@@ -122,13 +150,60 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
       {account && (
         <div className="mt-4 rounded-[22px] border-2 border-emerald-200 bg-emerald-50/70 p-4 shadow-sm">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-lg font-black text-emerald-700">{account.classNumber}번 친구</h3>
-            <button type="button" onClick={clearSearch} className="rounded-xl bg-white px-3 py-1.5 text-[11px] font-black text-emerald-700 shadow-sm">검색 해제</button>
+            <h3 className="text-lg font-black text-emerald-700">
+              {account.classNumber}번 친구
+            </h3>
+            <button
+              type="button"
+              onClick={clearSearch}
+              className="rounded-xl bg-white px-3 py-1.5 text-[11px] font-black text-emerald-700 shadow-sm"
+            >
+              검색 해제
+            </button>
           </div>
           <dl className="mt-3 space-y-2">
-            <div className="rounded-2xl bg-white px-4 py-3"><dt className="text-[10px] font-black text-slate-400">닉네임</dt><dd className="mt-1 break-all font-mono text-sm font-black text-slate-800">{account.nickname}</dd></div>
-            <div className="rounded-2xl bg-white px-4 py-3"><dt className="text-[10px] font-black text-slate-400">학급 아이디</dt><dd className="mt-1 break-all font-mono text-sm font-black text-slate-800">{account.accountId}</dd></div>
-            <div className="rounded-2xl bg-white px-4 py-3"><dt className="text-[10px] font-black text-slate-400">임시 비밀번호</dt><dd className="mt-1 break-all font-mono text-sm font-black tracking-wide text-slate-800">{account.temporaryPassword}</dd></div>
+            <div className="rounded-2xl bg-white px-4 py-3">
+              <dt className="text-[10px] font-black text-slate-400">닉네임</dt>
+              <dd className="mt-1 break-all font-mono text-sm font-black text-slate-800">
+                {account.nickname}
+              </dd>
+            </div>
+            <div className="rounded-2xl bg-white px-4 py-3">
+              <dt className="text-[10px] font-black text-slate-400">학급 아이디</dt>
+              <dd className="mt-1 flex items-center gap-2">
+                <code className="min-w-0 flex-1 break-all font-mono text-sm font-black text-slate-800">
+                  {account.accountId}
+                </code>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void copyText("accountId", "아이디", account.accountId)
+                  }
+                  aria-label="학급 아이디 복사"
+                  className="shrink-0 rounded-xl bg-sky-50 px-3 py-2 text-xs font-black text-sky-700 transition active:scale-95"
+                >
+                  {copiedField === "accountId" ? "복사됨 ✓" : "📋 복사"}
+                </button>
+              </dd>
+            </div>
+            <div className="rounded-2xl bg-white px-4 py-3">
+              <dt className="text-[10px] font-black text-slate-400">비밀번호</dt>
+              <dd className="mt-1 flex items-center gap-2">
+                <code className="min-w-0 flex-1 break-all font-mono text-sm font-black tracking-wide text-slate-800">
+                  {account.temporaryPassword}
+                </code>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void copyText("password", "비밀번호", account.temporaryPassword)
+                  }
+                  aria-label="비밀번호 복사"
+                  className="shrink-0 rounded-xl bg-sky-50 px-3 py-2 text-xs font-black text-sky-700 transition active:scale-95"
+                >
+                  {copiedField === "password" ? "복사됨 ✓" : "📋 복사"}
+                </button>
+              </dd>
+            </div>
           </dl>
         </div>
       )}
