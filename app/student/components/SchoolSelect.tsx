@@ -11,12 +11,9 @@ export default function SchoolSelect({ schools, onSelect }: Props) {
         <div className="grid grid-cols-2 gap-3 rounded-[32px] border border-white/80 bg-white/80 p-3 sm:p-4 shadow-sm">
           <Link
             href="/student/book"
-            className="col-span-2 flex min-h-[112px] w-full items-center justify-center rounded-3xl border border-amber-200 bg-gradient-to-r from-amber-50 via-white to-sky-50 p-4 text-center text-slate-700 shadow-sm transition hover:bg-sky-50"
+            className="flex h-full min-h-[112px] w-full items-center justify-center rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-100 via-white to-slate-200 p-4 text-center text-slate-700 shadow-sm transition hover:from-slate-50 hover:via-white hover:to-sky-50"
           >
-            <div>
-              <div className="text-2xl font-black text-slate-800">📚 SUN LAB Book</div>
-              <div className="mt-2 text-sm font-bold text-sky-700">도서관 · 헬로메이플</div>
-            </div>
+            <div className="text-base sm:text-lg font-black leading-snug text-slate-800">📚 SUN LAB Book</div>
           </Link>
 
           {schools.map((school) => {
