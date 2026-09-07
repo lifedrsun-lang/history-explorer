@@ -6,6 +6,8 @@ import ClassroomActivityLinks from "./ClassroomActivityLinks";
 import TeacherClassAccountFinder from "./TeacherClassAccountFinder";
 import type { SchoolClassroom } from "../data/classroomData";
 
+const HELLO_MAPLE_URL = "https://www.hellomaple.org/ko";
+
 const formatLessonDate = (date?: string) => {
   if (!date) {
     return "일정 추후 안내";
@@ -56,20 +58,6 @@ export default function ClassroomBoard({
     );
   };
 
-  const goToLesson = (lessonNumber: number) => {
-    setOpenLessons((current) =>
-      current.includes(lessonNumber) ? current : [...current, lessonNumber]
-    );
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        document
-          .getElementById(`classroom-lesson-${lessonNumber}`)
-          ?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    });
-  };
-
   return (
     <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 px-3 py-4 text-slate-800">
       <div className="mx-auto max-w-2xl space-y-4">
@@ -103,13 +91,14 @@ export default function ClassroomBoard({
                 ← 다른 반 선택
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => goToLesson(1)}
+            <a
+              href={HELLO_MAPLE_URL}
+              target="_blank"
+              rel="noreferrer"
               className="rounded-2xl bg-sky-500 px-4 py-2 text-xs font-black text-white shadow-sm transition hover:bg-sky-600"
             >
-              📚 1차시 바로가기
-            </button>
+              🍁 헬로메이플 바로가기
+            </a>
           </div>
         </header>
 
