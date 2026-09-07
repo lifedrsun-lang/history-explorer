@@ -4,6 +4,8 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 
 const SUNLAB_BOOK_PASSWORD = "1136";
+const SUNLAB_LIBRARY_URL =
+  "https://1drv.ms/f/c/bcc43c5a7c759aaf/IgAqOOYtf9FDTKzZWES6KhFXAXBN4VW2XS3zMBFSC1xxwQs?e=YWZS1o";
 
 export default function SunLabBookPage() {
   const [password, setPassword] = useState("");
@@ -74,12 +76,15 @@ export default function SunLabBookPage() {
         </div>
 
         <div className="mt-7 grid grid-cols-2 gap-3 rounded-[32px] border border-white/80 bg-white/80 p-3 shadow-sm sm:p-4">
-          <div className="flex min-h-[150px] items-center justify-center rounded-3xl border border-sky-100 bg-white p-4 text-center shadow-sm">
+          <a
+            href={SUNLAB_LIBRARY_URL}
+            className="flex min-h-[150px] items-center justify-center rounded-3xl border border-sky-100 bg-white p-4 text-center shadow-sm transition hover:bg-sky-50"
+          >
             <div>
               <div className="text-4xl">📖</div>
               <div className="mt-3 text-xl font-black text-slate-800">도서관</div>
             </div>
-          </div>
+          </a>
 
           <div className="flex min-h-[150px] items-center justify-center rounded-3xl border border-sky-100 bg-white p-4 text-center shadow-sm">
             <div>
