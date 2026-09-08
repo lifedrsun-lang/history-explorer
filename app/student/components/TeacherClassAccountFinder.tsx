@@ -5,12 +5,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { auth } from "@/lib/firebase";
 import { parseClassroomAccountCsv, type ClassroomAccount } from "@/lib/classroomAccountRoster";
-import { getSupportedClassroomSchoolName } from "@/lib/gaebongClassroom";
+import {
+  getSupportedClassroomSchoolName,
+  WONJONG_SCHOOL_NAME,
+} from "@/lib/gaebongClassroom";
 import type { SchoolClassroom } from "../data/classroomData";
 import StudentClassAccountFinder from "./StudentClassAccountFinder";
 
 type Props = { classroom: SchoolClassroom };
 type AccessState = "checking" | "authorized" | "hidden";
+type ApiResponse = {
+  accounts?: ClassroomAccount[];
+  account?: ClassroomAccount;
+  error?: string;
+};
+
 const COLLAPSED_ACCOUNT_COUNT = 3;
 
 const getRosterUrl = (classroom: SchoolClassroom, school: string) => {
@@ -23,7 +32,20 @@ const getRosterUrl = (classroom: SchoolClassroom, school: string) => {
 };
 
 const readResponseBody = async (response: Response) =>
-  (await response.json().catch(() => ({}))) as { accounts?: ClassroomAccount[]; error?: string };
+  (await response.json().catch(() => ({}))) as ApiResponse;
+
+const formatChangedAt = (value?: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
 
 export default function TeacherClassAccountFinder({ classroom }: Props) {
   const [user, setUser] = useState<User | null>(null);
@@ -37,10 +59,14 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
   const [isTemporaryRoster, setIsTemporaryRoster] = useState(false);
   const [isRosterExpanded, setIsRosterExpanded] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [editingPasswordNumber, setEditingPasswordNumber] = useState<number | null>(null);
+  const [changedPasswordInput, setChangedPasswordInput] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const school = getSupportedClassroomSchoolName(classroom);
   const schoolLabel = classroom.schoolDisplayName || "서울 개봉초";
+  const passwordChangeEnabled = Boolean(school && school !== WONJONG_SCHOOL_NAME);
 
   useEffect(() => {
     if (!school) return;
@@ -55,6 +81,8 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
       setIsTemporaryRoster(false);
       setIsRosterExpanded(false);
       setVisiblePasswords(new Set());
+      setEditingPasswordNumber(null);
+      setChangedPasswordInput("");
       setNotice("");
       setErrorMessage("");
 
@@ -138,6 +166,8 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
       setSearchNumber("");
       setHighlightedNumber(null);
       setVisiblePasswords(new Set());
+      setEditingPasswordNumber(null);
+      setChangedPasswordInput("");
       setNotice(`${savedAccounts.length}명 계정표로 교체했어요.`);
     } catch (error) {
       if (error instanceof Error && error.message === "student_number_out_of_range") {
@@ -172,6 +202,8 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
     setErrorMessage("");
     setNotice(`${number}번 학생을 찾았어요.`);
     setHighlightedNumber(number);
+    setEditingPasswordNumber(null);
+    setChangedPasswordInput("");
   };
 
   const copyText = async (label: string, value: string) => {
@@ -180,6 +212,68 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
       setNotice(`${label} 복사 완료`);
     } catch {
       setNotice("복사하지 못했습니다. 값을 길게 눌러 복사해 주세요.");
+    }
+  };
+
+  const startPasswordEdit = (account: ClassroomAccount) => {
+    setEditingPasswordNumber(account.classNumber);
+    setChangedPasswordInput(account.changedPassword || "");
+    setErrorMessage("");
+    setNotice("");
+  };
+
+  const saveChangedPassword = async (account: ClassroomAccount) => {
+    if (!user || !school || !passwordChangeEnabled || isTemporaryRoster) return;
+
+    const changedPassword = changedPasswordInput.trim();
+    if (!changedPassword) {
+      setErrorMessage("변경 후 비밀번호를 입력해 주세요.");
+      return;
+    }
+
+    setSavingPassword(true);
+    setErrorMessage("");
+    setNotice("");
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/teacher/class-account-password", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          school,
+          grade: classroom.grade,
+          classNumber: classroom.classNumber,
+          studentNumber: account.classNumber,
+          changedPassword,
+        }),
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        setAccessState("hidden");
+        return;
+      }
+
+      const body = await readResponseBody(response);
+      if (!response.ok || !body.account) {
+        throw new Error(body.error || "변경 후 비밀번호를 저장하지 못했습니다.");
+      }
+
+      setAccounts((current) =>
+        current.map((item) =>
+          item.classNumber === body.account?.classNumber ? body.account : item
+        )
+      );
+      setEditingPasswordNumber(null);
+      setChangedPasswordInput("");
+      setNotice(`${account.classNumber}번 변경 후 비밀번호를 저장했어요.`);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "변경 후 비밀번호를 저장하지 못했습니다.");
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -215,7 +309,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
           <div className="mt-2 flex items-center justify-between gap-2 px-1">
             <span className="text-[11px] font-black text-slate-400">{highlightedNumber !== null ? `${highlightedNumber}번 검색 결과만 표시 중` : `${accounts.length}명 자동 불러옴`}</span>
             <div className="flex gap-3">
-              {highlightedNumber !== null && <button type="button" onClick={() => { setSearchNumber(""); setHighlightedNumber(null); setNotice(""); }} className="text-[11px] font-black text-rose-600">검색 해제</button>}
+              {highlightedNumber !== null && <button type="button" onClick={() => { setSearchNumber(""); setHighlightedNumber(null); setEditingPasswordNumber(null); setChangedPasswordInput(""); setNotice(""); }} className="text-[11px] font-black text-rose-600">검색 해제</button>}
               <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="text-[11px] font-black text-sky-600">계정표 교체</button>
             </div>
           </div>
@@ -230,13 +324,53 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
         <div className="mt-4 space-y-2">
           {displayedAccounts.map((account) => {
             const passwordVisible = visiblePasswords.has(account.classNumber);
+            const isEditingPassword = editingPasswordNumber === account.classNumber;
             return (
               <div key={account.classNumber} className={`rounded-[20px] border p-3 ${highlightedNumber === account.classNumber ? "border-red-500 bg-red-50" : "border-slate-100 bg-slate-50/80"}`}>
                 <div className="text-sm font-black text-slate-800">{account.classNumber}번 · <span className="font-mono">{account.nickname}</span></div>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <div className="rounded-2xl bg-white p-2"><div className="text-[9px] font-black text-slate-400">학급 아이디</div><div className="mt-1 flex gap-1"><code className="min-w-0 flex-1 truncate text-[10px] font-black">{account.accountId}</code><button type="button" onClick={() => void copyText("아이디", account.accountId)} className="text-[9px] font-black text-sky-700">복사</button></div></div>
-                  <div className="rounded-2xl bg-white p-2"><div className="text-[9px] font-black text-slate-400">비밀번호</div><div className="mt-1 flex gap-1"><code className="min-w-0 flex-1 truncate text-[10px] font-black">{passwordVisible ? account.temporaryPassword : "••••••"}</code><button type="button" onClick={() => setVisiblePasswords((current) => { const next = new Set(current); next.has(account.classNumber) ? next.delete(account.classNumber) : next.add(account.classNumber); return next; })} className="text-[9px] font-black text-amber-700">{passwordVisible ? "가림" : "보기"}</button><button type="button" onClick={() => void copyText("비밀번호", account.temporaryPassword)} className="text-[9px] font-black text-sky-700">복사</button></div></div>
+                  {passwordChangeEnabled ? (
+                    <div className="rounded-2xl bg-white p-2">
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="text-[9px] font-black text-slate-400">비밀번호</div>
+                        <button type="button" onClick={() => setVisiblePasswords((current) => { const next = new Set(current); next.has(account.classNumber) ? next.delete(account.classNumber) : next.add(account.classNumber); return next; })} className="text-[9px] font-black text-amber-700">{passwordVisible ? "가림" : "보기"}</button>
+                      </div>
+                      <div className="mt-1 space-y-1.5">
+                        <div className="flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1.5">
+                          <span className="shrink-0 text-[8px] font-black text-slate-400">변경 전</span>
+                          <code className="min-w-0 flex-1 truncate text-[10px] font-black">{passwordVisible ? account.temporaryPassword : "••••••"}</code>
+                          <button type="button" onClick={() => void copyText("변경 전 비밀번호", account.temporaryPassword)} className="text-[8px] font-black text-sky-700">복사</button>
+                        </div>
+                        <div className={`flex items-center gap-1 rounded-lg px-2 py-1.5 ${account.changedPassword ? "bg-emerald-50" : "bg-slate-50"}`}>
+                          <span className={`shrink-0 text-[8px] font-black ${account.changedPassword ? "text-emerald-600" : "text-slate-400"}`}>변경 후{account.changedPassword ? " · 현재" : ""}</span>
+                          <code className={`min-w-0 flex-1 truncate text-[10px] font-black ${account.changedPassword ? "text-emerald-800" : "text-slate-400"}`}>{account.changedPassword ? (passwordVisible ? account.changedPassword : "••••••") : "미등록"}</code>
+                          {account.changedPassword && <button type="button" onClick={() => void copyText("변경 후 비밀번호", account.changedPassword || "")} className="text-[8px] font-black text-sky-700">복사</button>}
+                        </div>
+                      </div>
+                      {account.passwordChangedAt && <div className="mt-1 text-[8px] font-bold text-slate-400">저장 {formatChangedAt(account.passwordChangedAt)}</div>}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl bg-white p-2"><div className="text-[9px] font-black text-slate-400">비밀번호</div><div className="mt-1 flex gap-1"><code className="min-w-0 flex-1 truncate text-[10px] font-black">{passwordVisible ? account.temporaryPassword : "••••••"}</code><button type="button" onClick={() => setVisiblePasswords((current) => { const next = new Set(current); next.has(account.classNumber) ? next.delete(account.classNumber) : next.add(account.classNumber); return next; })} className="text-[9px] font-black text-amber-700">{passwordVisible ? "가림" : "보기"}</button><button type="button" onClick={() => void copyText("비밀번호", account.temporaryPassword)} className="text-[9px] font-black text-sky-700">복사</button></div></div>
+                  )}
                 </div>
+
+                {passwordChangeEnabled && !isTemporaryRoster && (
+                  <div className="mt-2">
+                    {isEditingPassword ? (
+                      <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-2">
+                        <div className="text-[9px] font-black text-emerald-700">변경 후 비밀번호 입력</div>
+                        <div className="mt-1.5 flex gap-1.5">
+                          <input type="text" autoComplete="off" maxLength={256} value={changedPasswordInput} onChange={(event) => { setChangedPasswordInput(event.target.value); setErrorMessage(""); }} onKeyDown={(event) => { if (event.key === "Enter" && !savingPassword) void saveChangedPassword(account); }} placeholder="헬로메이플에서 바꾼 비밀번호" className="min-w-0 flex-1 rounded-xl border border-emerald-100 bg-white px-3 py-2 text-xs font-black text-slate-800 outline-none" />
+                          <button type="button" onClick={() => void saveChangedPassword(account)} disabled={savingPassword} className="shrink-0 rounded-xl bg-emerald-500 px-3 py-2 text-[10px] font-black text-white disabled:opacity-60">{savingPassword ? "저장 중" : "저장"}</button>
+                          <button type="button" onClick={() => { setEditingPasswordNumber(null); setChangedPasswordInput(""); setErrorMessage(""); }} disabled={savingPassword} className="shrink-0 rounded-xl bg-white px-2.5 py-2 text-[10px] font-black text-slate-500">취소</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => startPasswordEdit(account)} className="w-full rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[10px] font-black text-emerald-700">{account.changedPassword ? "변경 후 비밀번호 수정" : "변경 후 비밀번호 저장"}</button>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
