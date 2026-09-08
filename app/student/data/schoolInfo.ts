@@ -49,7 +49,7 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     name: "화성 새솔초등학교",
     displayName: "화성 새솔초",
     aliases: ["화성 새솔초"],
-    password: "0602",
+    password: "2612",
     loginCard: { title: "화성 새솔초", location: "5F 음악실" },
     notice: {
       title: "2분기 수업 안내",
