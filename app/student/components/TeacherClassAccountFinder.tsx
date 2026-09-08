@@ -66,6 +66,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
 
   const school = getSupportedClassroomSchoolName(classroom);
   const schoolLabel = classroom.schoolDisplayName || "서울 개봉초";
+  const isWonjongGrade2 = school === WONJONG_SCHOOL_NAME && classroom.grade === 2;
   const passwordChangeEnabled = Boolean(school && school !== WONJONG_SCHOOL_NAME);
 
   useEffect(() => {
@@ -331,7 +332,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
                 <div className="text-sm font-black text-slate-800">{account.classNumber}번 · <span className="font-mono">{account.nickname}</span></div>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <div className="rounded-2xl bg-white p-2"><div className="text-[9px] font-black text-slate-400">학급 아이디</div><div className="mt-1 flex gap-1"><code className="min-w-0 flex-1 truncate text-[10px] font-black">{account.accountId}</code><button type="button" onClick={() => void copyText("아이디", account.accountId)} className="text-[9px] font-black text-sky-700">복사</button></div></div>
-                  {passwordChangeEnabled ? (
+                  {(passwordChangeEnabled || isWonjongGrade2) ? (
                     <div className="rounded-2xl bg-white p-2">
                       <div className="flex items-center justify-between gap-1">
                         <div className="text-[9px] font-black text-slate-400">비밀번호</div>
@@ -340,8 +341,8 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
                       <div className="mt-1 space-y-1.5">
                         <div className="flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1.5">
                           <span className="shrink-0 text-[8px] font-black text-slate-400">변경 전</span>
-                          <code className="min-w-0 flex-1 truncate text-[10px] font-black">{passwordVisible ? account.temporaryPassword : "••••••"}</code>
-                          <button type="button" onClick={() => void copyText("변경 전 비밀번호", account.temporaryPassword)} className="text-[8px] font-black text-sky-700">복사</button>
+                          <code className="min-w-0 flex-1 truncate text-[10px] font-black">{account.temporaryPassword ? (passwordVisible ? account.temporaryPassword : "••••••") : "원본 미등록"}</code>
+                          {account.temporaryPassword && <button type="button" onClick={() => void copyText("변경 전 비밀번호", account.temporaryPassword)} className="text-[8px] font-black text-sky-700">복사</button>}
                         </div>
                         <div className={`flex items-center gap-1 rounded-lg px-2 py-1.5 ${account.changedPassword ? "bg-emerald-50" : "bg-slate-50"}`}>
                           <span className={`shrink-0 text-[8px] font-black ${account.changedPassword ? "text-emerald-600" : "text-slate-400"}`}>변경 후{account.changedPassword ? " · 현재" : ""}</span>
