@@ -159,7 +159,7 @@ export default function SunLabBookPage() {
               <div className="text-5xl">🌞</div>
               <h1 className="mt-3 text-3xl font-black text-slate-800">SUN LAB</h1>
               <p className="mt-2 text-sm font-bold leading-6 text-slate-500">
-                공부방 회원만 입장할 수 있어요.<br />
+                SUN LAB 회원만 입장할 수 있어요.<br />
                 이름과 생년월일을 입력해 주세요.
               </p>
             </div>
