@@ -1,5 +1,8 @@
 import { getClassroomAccount } from "@/lib/classroomAccountRosterServer";
-import { getSupportedClassroomSchoolName } from "@/lib/gaebongClassroom";
+import {
+  getSupportedClassroomSchoolName,
+  WONJONG_SCHOOL_NAME,
+} from "@/lib/gaebongClassroom";
 import { getClassroomByToken } from "@/app/student/data/classroomData";
 
 export const runtime = "nodejs";
@@ -67,6 +70,17 @@ export async function POST(
         { error: "해당 번호의 계정을 찾을 수 없어요." },
         { status: 404 }
       );
+    }
+
+    if (school === WONJONG_SCHOOL_NAME && classroom.grade === 2) {
+      return jsonPrivate({
+        account: {
+          classNumber: account.classNumber,
+          nickname: account.nickname,
+          accountId: account.accountId,
+          temporaryPassword: account.changedPassword || account.temporaryPassword,
+        },
+      });
     }
 
     return jsonPrivate({ account });
