@@ -1,6 +1,7 @@
 import "server-only";
 
 import { type ClassroomAccount } from "@/lib/classroomAccountRoster";
+import { WONJONG_SCHOOL_NAME } from "@/lib/gaebongClassroom";
 import { getSupabaseServer } from "@/lib/supabaseServer";
 
 export type ClassroomAccountRosterKey = {
@@ -16,7 +17,31 @@ type ClassroomAccountRow = {
   temp_password: string;
 };
 
+type ClassroomPasswordChangeRow = {
+  student_number: number;
+  account_id: string;
+  changed_password: string;
+  changed_at: string;
+};
+
 const TABLE_NAME = "classroom_account_rosters";
+const PASSWORD_CHANGE_TABLE_NAME = "classroom_account_password_changes";
+
+const toClassroomAccount = (
+  row: ClassroomAccountRow,
+  passwordChange?: ClassroomPasswordChangeRow
+): ClassroomAccount => ({
+  classNumber: row.student_number,
+  nickname: row.nickname,
+  accountId: row.account_id,
+  temporaryPassword: row.temp_password,
+  ...(passwordChange && passwordChange.account_id === row.account_id
+    ? {
+        changedPassword: passwordChange.changed_password,
+        passwordChangedAt: passwordChange.changed_at,
+      }
+    : {}),
+});
 
 export const getClassroomAccountRoster = async (
   key: ClassroomAccountRosterKey
@@ -34,12 +59,33 @@ export const getClassroomAccountRoster = async (
     throw error;
   }
 
-  return ((data || []) as ClassroomAccountRow[]).map((row) => ({
-    classNumber: row.student_number,
-    nickname: row.nickname,
-    accountId: row.account_id,
-    temporaryPassword: row.temp_password,
-  }));
+  const rows = (data || []) as ClassroomAccountRow[];
+
+  if (key.school === WONJONG_SCHOOL_NAME || rows.length === 0) {
+    return rows.map((row) => toClassroomAccount(row));
+  }
+
+  const { data: changedRows, error: changedError } = await supabase
+    .from(PASSWORD_CHANGE_TABLE_NAME)
+    .select("student_number,account_id,changed_password,changed_at")
+    .eq("school", key.school)
+    .eq("grade", key.grade)
+    .eq("class_number", key.classNumber);
+
+  if (changedError) {
+    throw changedError;
+  }
+
+  const passwordChanges = new Map(
+    ((changedRows || []) as ClassroomPasswordChangeRow[]).map((row) => [
+      row.student_number,
+      row,
+    ])
+  );
+
+  return rows.map((row) =>
+    toClassroomAccount(row, passwordChanges.get(row.student_number))
+  );
 };
 
 export const getClassroomAccount = async (
@@ -64,11 +110,73 @@ export const getClassroomAccount = async (
     return null;
   }
 
+  if (key.school === WONJONG_SCHOOL_NAME) {
+    return toClassroomAccount(data);
+  }
+
+  const { data: changedPassword, error: changedError } = await supabase
+    .from(PASSWORD_CHANGE_TABLE_NAME)
+    .select("student_number,account_id,changed_password,changed_at")
+    .eq("school", key.school)
+    .eq("grade", key.grade)
+    .eq("class_number", key.classNumber)
+    .eq("student_number", studentNumber)
+    .eq("account_id", data.account_id)
+    .maybeSingle<ClassroomPasswordChangeRow>();
+
+  if (changedError) {
+    throw changedError;
+  }
+
+  return toClassroomAccount(data, changedPassword || undefined);
+};
+
+export const setClassroomAccountChangedPassword = async (
+  key: ClassroomAccountRosterKey,
+  studentNumber: number,
+  changedPassword: string,
+  updatedBy: string
+): Promise<ClassroomAccount> => {
+  if (key.school === WONJONG_SCHOOL_NAME) {
+    throw new Error("password_change_not_supported");
+  }
+
+  const normalizedPassword = changedPassword.trim();
+
+  if (!normalizedPassword || normalizedPassword.length > 256) {
+    throw new Error("invalid_changed_password");
+  }
+
+  const currentAccount = await getClassroomAccount(key, studentNumber);
+
+  if (!currentAccount) {
+    throw new Error("classroom_account_not_found");
+  }
+
+  const supabase = getSupabaseServer();
+  const changedAt = new Date().toISOString();
+  const { error } = await supabase.from(PASSWORD_CHANGE_TABLE_NAME).upsert(
+    {
+      school: key.school,
+      grade: key.grade,
+      class_number: key.classNumber,
+      student_number: studentNumber,
+      account_id: currentAccount.accountId,
+      changed_password: normalizedPassword,
+      changed_by: updatedBy,
+      changed_at: changedAt,
+    },
+    { onConflict: "school,grade,class_number,student_number" }
+  );
+
+  if (error) {
+    throw error;
+  }
+
   return {
-    classNumber: data.student_number,
-    nickname: data.nickname,
-    accountId: data.account_id,
-    temporaryPassword: data.temp_password,
+    ...currentAccount,
+    changedPassword: normalizedPassword,
+    passwordChangedAt: changedAt,
   };
 };
 
