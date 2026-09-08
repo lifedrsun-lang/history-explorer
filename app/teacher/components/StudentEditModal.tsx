@@ -179,10 +179,10 @@ export default function StudentEditModal({
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="font-black text-sky-800">
-                  🌞 SUN LAB 공부방 회원
+                  🌞 SUN LAB 회원
                 </div>
                 <div className="mt-1 text-xs font-bold leading-5 text-slate-500">
-                  SUN LAB 카드에서 로그인할 공부방 회원만 체크합니다.
+                  SUN LAB 카드에서 로그인할 회원만 체크합니다.
                 </div>
               </div>
               <label className="flex shrink-0 items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-black text-sky-700 shadow-sm">
@@ -210,7 +210,7 @@ export default function StudentEditModal({
                 className="w-full rounded-xl border border-sky-100 bg-white px-4 py-3"
               />
               <div className="mt-1 text-[11px] font-bold leading-5 text-slate-400">
-                회원 로그인 확인용입니다. 공부방 회원이 아니면 비워둘 수 있어요.
+                회원 로그인 확인용입니다. SUN LAB 회원이 아니면 비워둘 수 있어요.
               </div>
             </div>
 
