@@ -62,6 +62,7 @@ export async function POST(request: Request) {
         })
       )
       .filter((student) => isActiveStudent(student))
+      .filter((student) => student.sunLabMember === true)
       .filter(
         (student) => normalizeBirthDate(student.birthDate) === birthDate
       );
