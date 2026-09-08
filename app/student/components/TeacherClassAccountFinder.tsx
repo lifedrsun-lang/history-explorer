@@ -262,9 +262,10 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
         throw new Error(body.error || "변경 후 비밀번호를 저장하지 못했습니다.");
       }
 
+      const savedAccount = body.account;
       setAccounts((current) =>
         current.map((item) =>
-          item.classNumber === body.account?.classNumber ? body.account : item
+          item.classNumber === savedAccount.classNumber ? savedAccount : item
         )
       );
       setEditingPasswordNumber(null);
