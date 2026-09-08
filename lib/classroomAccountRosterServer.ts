@@ -15,6 +15,7 @@ type ClassroomAccountRow = {
   nickname: string;
   account_id: string;
   temp_password: string;
+  original_password: string | null;
 };
 
 type ClassroomPasswordChangeRow = {
@@ -29,19 +30,32 @@ const PASSWORD_CHANGE_TABLE_NAME = "classroom_account_password_changes";
 
 const toClassroomAccount = (
   row: ClassroomAccountRow,
-  passwordChange?: ClassroomPasswordChangeRow
-): ClassroomAccount => ({
-  classNumber: row.student_number,
-  nickname: row.nickname,
-  accountId: row.account_id,
-  temporaryPassword: row.temp_password,
-  ...(passwordChange && passwordChange.account_id === row.account_id
-    ? {
-        changedPassword: passwordChange.changed_password,
-        passwordChangedAt: passwordChange.changed_at,
-      }
-    : {}),
-});
+  passwordChange?: ClassroomPasswordChangeRow,
+  wonjongGrade2 = false
+): ClassroomAccount => {
+  if (wonjongGrade2) {
+    return {
+      classNumber: row.student_number,
+      nickname: row.nickname,
+      accountId: row.account_id,
+      temporaryPassword: row.original_password || "",
+      changedPassword: row.temp_password,
+    };
+  }
+
+  return {
+    classNumber: row.student_number,
+    nickname: row.nickname,
+    accountId: row.account_id,
+    temporaryPassword: row.temp_password,
+    ...(passwordChange && passwordChange.account_id === row.account_id
+      ? {
+          changedPassword: passwordChange.changed_password,
+          passwordChangedAt: passwordChange.changed_at,
+        }
+      : {}),
+  };
+};
 
 export const getClassroomAccountRoster = async (
   key: ClassroomAccountRosterKey
@@ -49,7 +63,7 @@ export const getClassroomAccountRoster = async (
   const supabase = getSupabaseServer();
   const { data, error } = await supabase
     .from(TABLE_NAME)
-    .select("student_number,nickname,account_id,temp_password")
+    .select("student_number,nickname,account_id,temp_password,original_password")
     .eq("school", key.school)
     .eq("grade", key.grade)
     .eq("class_number", key.classNumber)
@@ -60,9 +74,10 @@ export const getClassroomAccountRoster = async (
   }
 
   const rows = (data || []) as ClassroomAccountRow[];
+  const wonjongGrade2 = key.school === WONJONG_SCHOOL_NAME && key.grade === 2;
 
   if (key.school === WONJONG_SCHOOL_NAME || rows.length === 0) {
-    return rows.map((row) => toClassroomAccount(row));
+    return rows.map((row) => toClassroomAccount(row, undefined, wonjongGrade2));
   }
 
   const { data: changedRows, error: changedError } = await supabase
@@ -95,7 +110,7 @@ export const getClassroomAccount = async (
   const supabase = getSupabaseServer();
   const { data, error } = await supabase
     .from(TABLE_NAME)
-    .select("student_number,nickname,account_id,temp_password")
+    .select("student_number,nickname,account_id,temp_password,original_password")
     .eq("school", key.school)
     .eq("grade", key.grade)
     .eq("class_number", key.classNumber)
@@ -111,7 +126,7 @@ export const getClassroomAccount = async (
   }
 
   if (key.school === WONJONG_SCHOOL_NAME) {
-    return toClassroomAccount(data);
+    return toClassroomAccount(data, undefined, key.grade === 2);
   }
 
   const { data: changedPassword, error: changedError } = await supabase
