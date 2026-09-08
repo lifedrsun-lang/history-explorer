@@ -1,4 +1,5 @@
 export type StudentProgram =
+  | "sun_lab"
   | "byeolkkum_history"
   | "history_explorer"
   | "boardgame";
@@ -14,6 +15,10 @@ export const STUDENT_PROGRAM_OPTIONS: Array<{
   value: StudentProgram;
   label: string;
 }> = [
+  {
+    value: "sun_lab",
+    label: "SUN LAB 회원",
+  },
   {
     value: "byeolkkum_history",
     label: "별꼼역사",
