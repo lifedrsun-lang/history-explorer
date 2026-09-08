@@ -3,6 +3,10 @@ import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type StudentRecord = Record<string, unknown> & {
+  id: string;
+};
+
 const jsonPrivate = (body: object, init?: ResponseInit) => {
   const headers = new Headers(init?.headers);
   headers.set("Cache-Control", "private, no-store, max-age=0");
@@ -11,7 +15,7 @@ const jsonPrivate = (body: object, init?: ResponseInit) => {
   return Response.json(body, { ...init, headers });
 };
 
-const isActiveStudent = (student: Record<string, unknown>) => {
+const isActiveStudent = (student: StudentRecord) => {
   const status = String(student.enrollmentStatus || "").trim();
 
   if (status) {
@@ -64,7 +68,12 @@ export async function POST(request: Request) {
       .get();
 
     const matches = snapshot.docs
-      .map((item) => ({ id: item.id, ...item.data() }))
+      .map(
+        (item): StudentRecord => ({
+          id: item.id,
+          ...(item.data() as Record<string, unknown>),
+        })
+      )
       .filter((student) => isActiveStudent(student))
       .filter(
         (student) =>
