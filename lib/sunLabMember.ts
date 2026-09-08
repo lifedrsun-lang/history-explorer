@@ -65,6 +65,10 @@ export const getExplicitSunLabPermissions = (
 export const resolveSunLabPermissions = (
   student: Record<string, unknown>
 ): SunLabPermission[] => {
+  if (student.sunLabMember !== true) {
+    return [];
+  }
+
   if (student.sunLabAllAccess === true) {
     return [...ALL_PERMISSION_VALUES];
   }
