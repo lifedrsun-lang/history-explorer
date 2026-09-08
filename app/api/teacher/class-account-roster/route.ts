@@ -143,8 +143,9 @@ export async function POST(request: Request) {
 
     const accounts = parseClassroomAccountCsv(await file.text());
     await replaceClassroomAccountRoster(key, accounts, teacher.uid);
+    const savedAccounts = await getClassroomAccountRoster(key);
 
-    return jsonPrivate({ accounts, count: accounts.length });
+    return jsonPrivate({ accounts: savedAccounts, count: savedAccounts.length });
   } catch (error) {
     return mapRouteError(error);
   }
