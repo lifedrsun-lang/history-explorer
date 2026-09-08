@@ -131,6 +131,68 @@ export const getClassroomAccount = async (
   return toClassroomAccount(data, changedPassword || undefined);
 };
 
+export const setClassroomAccountChangedPasswordOnce = async (
+  key: ClassroomAccountRosterKey,
+  studentNumber: number,
+  accountId: string,
+  changedPassword: string
+): Promise<ClassroomAccount> => {
+  if (key.school === WONJONG_SCHOOL_NAME) {
+    throw new Error("password_change_not_supported");
+  }
+
+  const normalizedAccountId = accountId.trim();
+  const normalizedPassword = changedPassword.trim();
+
+  if (!normalizedAccountId || normalizedAccountId.length > 256) {
+    throw new Error("account_identity_mismatch");
+  }
+
+  if (!normalizedPassword || normalizedPassword.length > 256) {
+    throw new Error("invalid_changed_password");
+  }
+
+  const currentAccount = await getClassroomAccount(key, studentNumber);
+
+  if (!currentAccount) {
+    throw new Error("classroom_account_not_found");
+  }
+
+  if (currentAccount.accountId !== normalizedAccountId) {
+    throw new Error("account_identity_mismatch");
+  }
+
+  if (currentAccount.changedPassword) {
+    throw new Error("password_already_saved");
+  }
+
+  const supabase = getSupabaseServer();
+  const changedAt = new Date().toISOString();
+  const { error } = await supabase.from(PASSWORD_CHANGE_TABLE_NAME).insert({
+    school: key.school,
+    grade: key.grade,
+    class_number: key.classNumber,
+    student_number: studentNumber,
+    account_id: currentAccount.accountId,
+    changed_password: normalizedPassword,
+    changed_by: "student:self",
+    changed_at: changedAt,
+  });
+
+  if (error) {
+    if ((error as { code?: string }).code === "23505") {
+      throw new Error("password_already_saved");
+    }
+    throw error;
+  }
+
+  return {
+    ...currentAccount,
+    changedPassword: normalizedPassword,
+    passwordChangedAt: changedAt,
+  };
+};
+
 export const setClassroomAccountChangedPassword = async (
   key: ClassroomAccountRosterKey,
   studentNumber: number,
