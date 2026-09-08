@@ -30,6 +30,12 @@ import {
   getStudentProgramValue,
 } from "@/lib/programs";
 import {
+  SUN_LAB_PERMISSION_OPTIONS,
+  isValidBirthDate,
+  normalizeBirthDate,
+  type SunLabPermission,
+} from "@/lib/sunLabMember";
+import {
   formatEnrollmentTerm,
   getEnrollmentStatus,
   getEnrollmentTerms,
@@ -93,6 +99,11 @@ export default function TeacherStudentsPage() {
   const [newName, setNewName] = useState("");
   const [newProgram, setNewProgram] = useState<StudentProgram>(DEFAULT_STUDENT_PROGRAM);
   const [newStage, setNewStage] = useState(DEFAULT_STAGE_ID);
+  const [newBirthDate, setNewBirthDate] = useState("");
+  const [newSunLabAllAccess, setNewSunLabAllAccess] = useState(false);
+  const [newSunLabPermissions, setNewSunLabPermissions] = useState<SunLabPermission[]>([]);
+  const [newHelloMapleId, setNewHelloMapleId] = useState("");
+  const [newHelloMaplePassword, setNewHelloMaplePassword] = useState("");
 
   const loadStudents = async () => {
     setLoading(true);
@@ -353,25 +364,69 @@ export default function TeacherStudentsPage() {
     }
   };
 
+  const toggleNewSunLabPermission = (permission: SunLabPermission) => {
+    setNewSunLabPermissions((current) =>
+      current.includes(permission)
+        ? current.filter((item) => item !== permission)
+        : [...current, permission]
+    );
+  };
+
+  const resetNewStudentForm = () => {
+    setNewSchool("");
+    setNewGrade("");
+    setNewClass("");
+    setNewNumber("");
+    setNewName("");
+    setNewProgram(DEFAULT_STUDENT_PROGRAM);
+    setNewStage(DEFAULT_STAGE_ID);
+    setNewBirthDate("");
+    setNewSunLabAllAccess(false);
+    setNewSunLabPermissions([]);
+    setNewHelloMapleId("");
+    setNewHelloMaplePassword("");
+  };
+
   const saveStudent = async () => {
-    if (!newName || !newGrade || !newClass || !newNumber) {
+    const isSunLabMember = newProgram === "sun_lab";
+    const birthDate = normalizeBirthDate(newBirthDate);
+    const helloMapleId = newHelloMapleId.trim();
+    const helloMaplePassword = newHelloMaplePassword.trim();
+
+    if (isSunLabMember) {
+      if (!newName.trim()) {
+        alert("이름을 입력해주세요.");
+        return;
+      }
+
+      if (!isValidBirthDate(birthDate)) {
+        alert("생년월일 8자리를 입력해주세요. 예: 20180713");
+        return;
+      }
+
+      if ((helloMapleId && !helloMaplePassword) || (!helloMapleId && helloMaplePassword)) {
+        alert("헬로메이플 아이디와 비밀번호를 모두 입력해주세요.");
+        return;
+      }
+    } else if (!newName || !newGrade || !newClass || !newNumber) {
       alert("이름 / 학년 / 실제 학교 반 / 번호를 입력해주세요.");
       return;
     }
 
-    const password = String(newNumber).padStart(2, "0");
+    const password = newNumber ? String(newNumber).padStart(2, "0") : "";
+
     await addDoc(collection(db, "students"), {
-      school: newSchool || "미지정",
+      school: newSchool || (isSunLabMember ? "SUN LAB" : "미지정"),
       grade: newGrade,
       class: newClass,
       studentNumber: newNumber,
       password,
-      name: newName,
+      name: newName.trim(),
       bronze: 0,
       silver: 0,
       totalBronze: 0,
       totalSilver: 0,
-      stage: newStage,
+      stage: isSunLabMember ? DEFAULT_STAGE_ID : newStage,
       program: newProgram,
       isActive: true,
       enrollmentStatus: "active",
@@ -379,12 +434,22 @@ export default function TeacherStudentsPage() {
       coinHistory: [],
       attendanceHistory: [],
       materialHistory: [],
+      sunLabMember: isSunLabMember,
+      sunLabAllAccess: isSunLabMember && newSunLabAllAccess,
+      sunLabPermissions: isSunLabMember ? newSunLabPermissions : [],
+      birthDate: isSunLabMember ? birthDate : "",
+      helloMapleBirthMd: isSunLabMember && birthDate ? birthDate.slice(4) : "",
+      helloMapleId: isSunLabMember ? helloMapleId : "",
+      helloMaplePassword: isSunLabMember ? helloMaplePassword : "",
     });
 
-    setNewName("");
-    setNewNumber("");
+    resetNewStudentForm();
     setIsStudentModalOpen(false);
-    showToast(`학생 등록 완료 · 비밀번호 ${password}`);
+    showToast(
+      isSunLabMember
+        ? "SUN LAB 회원 등록 완료"
+        : `학생 등록 완료 · 비밀번호 ${password}`
+    );
     await loadStudents();
   };
 
@@ -428,7 +493,7 @@ export default function TeacherStudentsPage() {
 
   const openBulkStageModal = () => {
     const nextProgram =
-      selectedProgram !== "all"
+      selectedProgram !== "all" && selectedProgram !== "sun_lab"
         ? (selectedProgram as StudentProgram)
         : DEFAULT_STUDENT_PROGRAM;
     const nextSchools = Array.from(
@@ -535,6 +600,8 @@ export default function TeacherStudentsPage() {
       </div>
     );
   }
+
+  const isNewSunLabMember = newProgram === "sun_lab";
 
   return (
     <div className="min-h-[100dvh] bg-[#f5f7fb] p-3 sm:p-5">
@@ -737,7 +804,7 @@ export default function TeacherStudentsPage() {
                     }}
                     className="rounded-xl border px-3 py-2 font-bold"
                   >
-                    {STUDENT_PROGRAM_OPTIONS.map((option) => (
+                    {STUDENT_PROGRAM_OPTIONS.filter((option) => option.value !== "sun_lab").map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
@@ -777,25 +844,132 @@ export default function TeacherStudentsPage() {
 
         {isStudentModalOpen && (
           <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/45 p-3">
-            <div className="w-full max-w-2xl rounded-3xl bg-white p-5 shadow-2xl">
+            <div className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl">
               <div className="flex items-center justify-between">
                 <div className="text-2xl font-black">➕ 신규 학생 등록</div>
-                <button onClick={() => setIsStudentModalOpen(false)} className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold">닫기</button>
+                <button
+                  onClick={() => {
+                    setIsStudentModalOpen(false);
+                    resetNewStudentForm();
+                  }}
+                  className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold"
+                >
+                  닫기
+                </button>
               </div>
+
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                <select value={newProgram} onChange={(e) => setNewProgram(e.target.value as StudentProgram)} className="rounded-xl border px-3 py-2">
-                  {STUDENT_PROGRAM_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                </select>
-                <input value={newSchool} onChange={(e) => setNewSchool(e.target.value)} placeholder="학교" className="rounded-xl border px-3 py-2" />
+                <label className="grid gap-1.5 text-sm font-black text-slate-600 md:col-span-2">
+                  등록 구분
+                  <select
+                    value={newProgram}
+                    onChange={(e) => {
+                      const nextProgram = e.target.value as StudentProgram;
+                      setNewProgram(nextProgram);
+                      if (nextProgram !== "sun_lab") {
+                        setNewBirthDate("");
+                        setNewSunLabAllAccess(false);
+                        setNewSunLabPermissions([]);
+                        setNewHelloMapleId("");
+                        setNewHelloMaplePassword("");
+                      }
+                    }}
+                    className="rounded-xl border px-3 py-2"
+                  >
+                    {STUDENT_PROGRAM_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <input value={newSchool} onChange={(e) => setNewSchool(e.target.value)} placeholder={isNewSunLabMember ? "학교 (선택)" : "학교"} className="rounded-xl border px-3 py-2" />
                 <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="이름" className="rounded-xl border px-3 py-2" />
-                <input value={newGrade} onChange={(e) => setNewGrade(e.target.value)} placeholder="학년" className="rounded-xl border px-3 py-2" />
-                <input value={newClass} onChange={(e) => setNewClass(e.target.value)} placeholder="실제 학교 반" className="rounded-xl border px-3 py-2" />
-                <input value={newNumber} onChange={(e) => setNewNumber(e.target.value)} placeholder="번호" className="rounded-xl border px-3 py-2" />
-                <select value={newStage} onChange={(e) => setNewStage(e.target.value)} className="rounded-xl border px-3 py-2 md:col-span-2">
-                  {STAGE_DATA.map((stage) => <option key={stage.id} value={stage.id}>{stage.label} {stage.title}</option>)}
-                </select>
+                <input value={newGrade} onChange={(e) => setNewGrade(e.target.value)} placeholder={isNewSunLabMember ? "학년 (선택)" : "학년"} className="rounded-xl border px-3 py-2" />
+                <input value={newClass} onChange={(e) => setNewClass(e.target.value)} placeholder={isNewSunLabMember ? "실제 학교 반 (선택)" : "실제 학교 반"} className="rounded-xl border px-3 py-2" />
+                <input value={newNumber} onChange={(e) => setNewNumber(e.target.value)} placeholder={isNewSunLabMember ? "번호 (선택)" : "번호"} className="rounded-xl border px-3 py-2" />
+
+                {!isNewSunLabMember && (
+                  <select value={newStage} onChange={(e) => setNewStage(e.target.value)} className="rounded-xl border px-3 py-2 md:col-span-2">
+                    {STAGE_DATA.map((stage) => <option key={stage.id} value={stage.id}>{stage.label} {stage.title}</option>)}
+                  </select>
+                )}
               </div>
-              <button onClick={saveStudent} className="mt-4 w-full rounded-xl bg-yellow-500 px-4 py-3 font-black text-white">등록</button>
+
+              {isNewSunLabMember && (
+                <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50/70 p-4">
+                  <div className="font-black text-sky-800">🌞 SUN LAB 회원 정보</div>
+                  <div className="mt-1 text-xs font-bold text-slate-500">
+                    이름과 생년월일로 SUN LAB에 입장하며, 허용된 메뉴만 표시됩니다.
+                  </div>
+
+                  <label className="mt-3 grid gap-1.5 text-sm font-black text-slate-600">
+                    생년월일 8자리
+                    <input
+                      value={newBirthDate}
+                      onChange={(e) => setNewBirthDate(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                      inputMode="numeric"
+                      maxLength={8}
+                      autoComplete="off"
+                      placeholder="예: 20180713"
+                      className="rounded-xl border border-sky-100 bg-white px-3 py-2"
+                    />
+                  </label>
+
+                  <label className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-black text-amber-800">
+                    <input
+                      type="checkbox"
+                      checked={newSunLabAllAccess}
+                      onChange={(e) => setNewSunLabAllAccess(e.target.checked)}
+                      className="mt-0.5 h-4 w-4"
+                    />
+                    <span>
+                      전체권한
+                      <span className="mt-0.5 block text-[11px] font-bold text-amber-600">모든 SUN LAB 메뉴를 표시합니다.</span>
+                    </span>
+                  </label>
+
+                  <div className="mt-3">
+                    <div className="text-xs font-black text-slate-600">개별 이용권한</div>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {SUN_LAB_PERMISSION_OPTIONS.map((option) => (
+                        <label key={option.value} className="flex items-center gap-2 rounded-xl border border-sky-100 bg-white px-3 py-2 text-xs font-black text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={newSunLabPermissions.includes(option.value)}
+                            onChange={() => toggleNewSunLabPermission(option.value)}
+                            className="h-4 w-4"
+                          />
+                          <span>{option.emoji} {option.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3">
+                    <div className="text-sm font-black text-emerald-700">🍁 헬로메이플 계정 · 선택</div>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <input
+                        value={newHelloMapleId}
+                        onChange={(e) => setNewHelloMapleId(e.target.value)}
+                        autoComplete="off"
+                        placeholder="헬로메이플 아이디"
+                        className="rounded-xl border border-emerald-100 bg-white px-3 py-2"
+                      />
+                      <input
+                        value={newHelloMaplePassword}
+                        onChange={(e) => setNewHelloMaplePassword(e.target.value)}
+                        autoComplete="off"
+                        placeholder="헬로메이플 비밀번호"
+                        className="rounded-xl border border-emerald-100 bg-white px-3 py-2"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <button onClick={saveStudent} className="mt-4 w-full rounded-xl bg-yellow-500 px-4 py-3 font-black text-white">
+                {isNewSunLabMember ? "SUN LAB 회원 등록" : "등록"}
+              </button>
             </div>
           </div>
         )}
