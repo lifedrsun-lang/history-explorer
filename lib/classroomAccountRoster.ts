@@ -3,6 +3,8 @@ export type ClassroomAccount = {
   nickname: string;
   accountId: string;
   temporaryPassword: string;
+  changedPassword?: string;
+  passwordChangedAt?: string;
 };
 
 const MAX_ACCOUNT_COUNT = 60;
