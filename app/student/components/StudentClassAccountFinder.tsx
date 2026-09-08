@@ -16,11 +16,26 @@ type StudentAccount = {
   accountId: string;
   nickname?: string;
   temporaryPassword?: string;
+  changedPassword?: string;
+  passwordChangedAt?: string;
 };
 
 type AccountResponse = {
   account?: StudentAccount;
   error?: string;
+};
+
+const formatChangedAt = (value?: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 };
 
 export default function StudentClassAccountFinder({ classroom }: Props) {
@@ -31,8 +46,9 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
   const [accountIdCopied, setAccountIdCopied] = useState(false);
 
   const schoolLabel = classroom.schoolDisplayName || "서울 개봉초";
-  const isWonjongGrade2 =
-    classroom.schoolName === WONJONG_SCHOOL_NAME && classroom.grade === 2;
+  const isWonjongSchool = classroom.schoolName === WONJONG_SCHOOL_NAME;
+  const isWonjongGrade2 = isWonjongSchool && classroom.grade === 2;
+  const passwordChangeEnabled = !isWonjongSchool;
 
   const findAccount = async () => {
     const studentNumber = Number(searchNumber.trim());
@@ -192,12 +208,45 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
               </dd>
             </div>
             {account.temporaryPassword && (
-              <div className="rounded-2xl bg-white px-4 py-3">
-                <dt className="text-[10px] font-black text-slate-400">비밀번호</dt>
-                <dd className="mt-1 break-all font-mono text-sm font-black tracking-wide text-slate-800">
-                  {account.temporaryPassword}
-                </dd>
-              </div>
+              passwordChangeEnabled ? (
+                <div className="rounded-2xl bg-white px-4 py-3">
+                  <dt className="text-[10px] font-black text-slate-400">비밀번호</dt>
+                  <dd className="mt-2 space-y-2">
+                    <div className="rounded-xl bg-slate-50 px-3 py-2.5">
+                      <div className="text-[9px] font-black text-slate-400">변경 전</div>
+                      <code className="mt-1 block break-all font-mono text-sm font-black tracking-wide text-slate-700">
+                        {account.temporaryPassword}
+                      </code>
+                    </div>
+                    <div className={`rounded-xl px-3 py-2.5 ${account.changedPassword ? "bg-emerald-50" : "bg-amber-50"}`}>
+                      <div className={`text-[9px] font-black ${account.changedPassword ? "text-emerald-600" : "text-amber-600"}`}>
+                        변경 후{account.changedPassword ? " · 현재 사용" : ""}
+                      </div>
+                      {account.changedPassword ? (
+                        <code className="mt-1 block break-all font-mono text-base font-black tracking-wide text-emerald-800">
+                          {account.changedPassword}
+                        </code>
+                      ) : (
+                        <div className="mt-1 text-xs font-black text-amber-700">
+                          아직 변경된 비밀번호가 없어요. 변경 전 비밀번호를 사용해 주세요.
+                        </div>
+                      )}
+                      {account.passwordChangedAt && (
+                        <div className="mt-1 text-[9px] font-bold text-emerald-600/70">
+                          저장 {formatChangedAt(account.passwordChangedAt)}
+                        </div>
+                      )}
+                    </div>
+                  </dd>
+                </div>
+              ) : (
+                <div className="rounded-2xl bg-white px-4 py-3">
+                  <dt className="text-[10px] font-black text-slate-400">비밀번호</dt>
+                  <dd className="mt-1 break-all font-mono text-sm font-black tracking-wide text-slate-800">
+                    {account.temporaryPassword}
+                  </dd>
+                </div>
+              )
             )}
           </dl>
         </div>
