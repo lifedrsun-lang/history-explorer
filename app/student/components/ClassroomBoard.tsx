@@ -114,7 +114,8 @@ export default function ClassroomBoard({
 
           <div className="space-y-2">
             {classroom.lessons.map((lesson) => {
-              const isOpen = openLessons.includes(lesson.lesson);
+              const isOpen =
+                !lesson.expandLocked && openLessons.includes(lesson.lesson);
 
               return (
                 <article
@@ -126,7 +127,12 @@ export default function ClassroomBoard({
                     type="button"
                     onClick={() => toggleLesson(lesson.lesson)}
                     aria-expanded={isOpen}
-                    className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left"
+                    disabled={lesson.expandLocked}
+                    className={`flex w-full items-center justify-between gap-3 px-4 py-4 text-left ${
+                      lesson.expandLocked
+                        ? "cursor-not-allowed bg-slate-50/80"
+                        : ""
+                    }`}
                   >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -136,13 +142,24 @@ export default function ClassroomBoard({
                         <span className="text-xs font-black text-slate-400">
                           {formatLessonDate(lesson.date)}
                         </span>
+                        {lesson.expandLocked && (
+                          <span className="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-black text-slate-600">
+                            🔒 잠시 잠금
+                          </span>
+                        )}
                       </div>
-                      <div className="mt-2 truncate text-base font-black text-slate-800">
+                      <div
+                        className={`mt-2 truncate text-base font-black ${
+                          lesson.expandLocked
+                            ? "text-slate-500"
+                            : "text-slate-800"
+                        }`}
+                      >
                         {lesson.title}
                       </div>
                     </div>
                     <span className="shrink-0 text-xl text-sky-500" aria-hidden="true">
-                      {isOpen ? "⌃" : "⌄"}
+                      {lesson.expandLocked ? "🔒" : isOpen ? "⌃" : "⌄"}
                     </span>
                   </button>
 
