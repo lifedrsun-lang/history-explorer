@@ -66,7 +66,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
 
   const school = getSupportedClassroomSchoolName(classroom);
   const schoolLabel = classroom.schoolDisplayName || "서울 개봉초";
-  const isWonjongGrade2 = school === WONJONG_SCHOOL_NAME && classroom.grade === 2;
+  const isWonjongGrade2 = school === WONJONG_SCHOOL_NAME && (classroom.grade === 1 || classroom.grade === 2);
   const passwordChangeEnabled = Boolean(school && school !== WONJONG_SCHOOL_NAME);
 
   useEffect(() => {
