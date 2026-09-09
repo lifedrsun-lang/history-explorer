@@ -2,7 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { verifyTeacherRequest } from "@/lib/assignmentServer";
-import { getGaebongClassroomByToken } from "@/app/student/data/classroomData";
+import { getClassroomByToken } from "@/app/student/data/classroomData";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ type RouteContext = {
 type ActivityMap = Record<string, boolean>;
 
 const getAllowedActivityIds = (token: string) => {
-  const classroom = getGaebongClassroomByToken(token);
+  const classroom = getClassroomByToken(token);
 
   if (!classroom) {
     return null;
@@ -114,7 +114,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     await ref.set(
       {
-        school: "서울개봉초등학교",
+        school: allowed.classroom.schoolName,
         grade: allowed.classroom.grade,
         classNumber: allowed.classroom.classNumber,
         activities,
