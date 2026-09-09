@@ -27,13 +27,24 @@ type ClassroomPasswordChangeRow = {
 
 const TABLE_NAME = "classroom_account_rosters";
 const PASSWORD_CHANGE_TABLE_NAME = "classroom_account_password_changes";
+const WONJONG_GRADE1_CURRENT_PASSWORD = "12345";
 
 const toClassroomAccount = (
   row: ClassroomAccountRow,
   passwordChange?: ClassroomPasswordChangeRow,
-  wonjongGrade2 = false
+  wonjongGrade?: number
 ): ClassroomAccount => {
-  if (wonjongGrade2) {
+  if (wonjongGrade === 1) {
+    return {
+      classNumber: row.student_number,
+      nickname: row.nickname,
+      accountId: row.account_id,
+      temporaryPassword: row.temp_password,
+      changedPassword: WONJONG_GRADE1_CURRENT_PASSWORD,
+    };
+  }
+
+  if (wonjongGrade === 2) {
     return {
       classNumber: row.student_number,
       nickname: row.nickname,
@@ -74,10 +85,13 @@ export const getClassroomAccountRoster = async (
   }
 
   const rows = (data || []) as ClassroomAccountRow[];
-  const wonjongGrade2 = key.school === WONJONG_SCHOOL_NAME && key.grade === 2;
+  const wonjongGrade =
+    key.school === WONJONG_SCHOOL_NAME && (key.grade === 1 || key.grade === 2)
+      ? key.grade
+      : undefined;
 
   if (key.school === WONJONG_SCHOOL_NAME || rows.length === 0) {
-    return rows.map((row) => toClassroomAccount(row, undefined, wonjongGrade2));
+    return rows.map((row) => toClassroomAccount(row, undefined, wonjongGrade));
   }
 
   const { data: changedRows, error: changedError } = await supabase
@@ -126,7 +140,8 @@ export const getClassroomAccount = async (
   }
 
   if (key.school === WONJONG_SCHOOL_NAME) {
-    return toClassroomAccount(data, undefined, key.grade === 2);
+    const wonjongGrade = key.grade === 1 || key.grade === 2 ? key.grade : undefined;
+    return toClassroomAccount(data, undefined, wonjongGrade);
   }
 
   const { data: changedPassword, error: changedError } = await supabase
