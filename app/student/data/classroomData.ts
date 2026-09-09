@@ -178,6 +178,61 @@ const makeSchoolLessons = (count: number): ClassroomLesson[] =>
         : [],
   }));
 
+const makeWonjongLessons = (): ClassroomLesson[] =>
+  makeSchoolLessons(4).map((lesson) => ({
+    ...lesson,
+    links:
+      lesson.lesson === 2
+        ? [
+            {
+              id: "stacking-block-chef",
+              label: "차곡차곡 블록 요리사",
+              href: "https://www.hellomaple.org/ko/web-play?play=153a1fd2e11848c888a0738d0897bcb9",
+              kind: "activity" as const,
+              defaultUnlocked: false,
+            },
+          ]
+        : lesson.lesson === 3
+          ? [
+              {
+                id: "shuriken-dodge",
+                label: "표창 피하기",
+                href: "https://www.hellomaple.org/ko/web-play?play=e6f6dfc0433b470e9136ba4e351bd910",
+                kind: "activity" as const,
+                defaultUnlocked: false,
+              },
+              {
+                id: "snail-hell",
+                label: "달팽이 지옥",
+                href: "https://www.hellomaple.org/ko/web-play?play=53c968ec07724c0190bc36428bbdedf3",
+                kind: "activity" as const,
+                defaultUnlocked: false,
+              },
+              {
+                id: "falling-food-collector",
+                label: "하늘에서 떨어지는 음식 모으기",
+                href: "https://www.hellomaple.org/ko/web-play?play=b2d314a58c4b4d748389676b4d146ef2",
+                kind: "activity" as const,
+                defaultUnlocked: false,
+              },
+              {
+                id: "mbti-quiz",
+                label: "MBTI 알아보기",
+                href: "https://www.hellomaple.org/ko/web-play?play=e0d41d23bd134a77850a91e76bc236d5",
+                kind: "activity" as const,
+                defaultUnlocked: false,
+              },
+              {
+                id: "hello-maple-post-office",
+                label: "헬로메이플 우체국",
+                href: "https://www.hellomaple.org/ko/web-play?play=8306608fc2294874b5a3b7e2cc137c94",
+                kind: "activity" as const,
+                defaultUnlocked: false,
+              },
+            ]
+          : lesson.links,
+  }));
+
 export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
   { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 1, label: "6학년 1반", monsterId: "slime", directToken: "gb6c1-g7ac4o9a1n", lessons: makeLessons(GAEBONG_PADLET_LINKS[1]) },
   { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 2, label: "6학년 2반", monsterId: "guardian-angel-slime", directToken: "gb6c2-je8xtrigeu", lessons: makeLessons(GAEBONG_PADLET_LINKS[2]) },
@@ -188,12 +243,12 @@ export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
 ];
 
 export const WONJONG_CLASSROOMS: WonjongClassroom[] = [
-  { schoolName: WONJONG_SCHOOL_NAME, schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME, grade: 1, classNumber: 1, label: "1학년 1반", monsterId: "slime", directToken: "wj1c1-v9m2k4q7rx", lessons: makeSchoolLessons(4) },
-  { schoolName: WONJONG_SCHOOL_NAME, schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME, grade: 1, classNumber: 2, label: "1학년 2반", monsterId: "guardian-angel-slime", directToken: "wj1c2-t6p8n3z5ha", lessons: makeSchoolLessons(4) },
-  { schoolName: WONJONG_SCHOOL_NAME, schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME, grade: 1, classNumber: 3, label: "1학년 3반", monsterId: "forest-mushroom", directToken: "wj1c3-b4y7d2s9ke", lessons: makeSchoolLessons(4) },
-  { schoolName: WONJONG_SCHOOL_NAME, schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME, grade: 2, classNumber: 1, label: "2학년 1반", monsterId: "orange-mushroom", directToken: "wj2c1-r5x8j3m6vu", lessons: makeSchoolLessons(4) },
-  { schoolName: WONJONG_SCHOOL_NAME, schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME, grade: 2, classNumber: 2, label: "2학년 2반", monsterId: "blue-mushroom", directToken: "wj2c2-c7h4w9p2ns", lessons: makeSchoolLessons(4) },
-  { schoolName: WONJONG_SCHOOL_NAME, schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME, grade: 2, classNumber: 3, label: "2학년 3반", monsterId: "choco-mushroom", directToken: "wj2c3-k2f6a8q4zt", lessons: makeSchoolLessons(4) },
+  { schoolName: WONJONG_SCHOOL_NAME, schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME, grade: 1, classNumber: 1, label: "1학년 1반", monsterId: "slime", directToken: "wj1c1-v9m2k4q7rx", lessons: makeWonjongLessons() },
+  { schoolName: WONJONG_SCHOOL_NAME, schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME, grade: 1, classNumber: 2, label: "1학년 2반", monsterId: "guardian-angel-slime", directToken: "wj1c2-t6p8n3z5ha", lessons: makeWonjongLessons() },
+  { schoolName: WONJONG_SCHOOL_NAME, schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME, grade: 1, classNumber: 3, label: "1학년 3반", monsterId: "forest-mushroom", directToken: "wj1c3-b4y7d2s9ke", lessons: makeWonjongLessons() },
+  { schoolName: WONJONG_SCHOOL_NAME, schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME, grade: 2, classNumber: 1, label: "2학년 1반", monsterId: "orange-mushroom", directToken: "wj2c1-r5x8j3m6vu", lessons: makeWonjongLessons() },
+  { schoolName: WONJONG_SCHOOL_NAME, schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME, grade: 2, classNumber: 2, label: "2학년 2반", monsterId: "blue-mushroom", directToken: "wj2c2-c7h4w9p2ns", lessons: makeWonjongLessons() },
+  { schoolName: WONJONG_SCHOOL_NAME, schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME, grade: 2, classNumber: 3, label: "2학년 3반", monsterId: "choco-mushroom", directToken: "wj2c3-k2f6a8q4zt", lessons: makeWonjongLessons() },
 ];
 
 export const GWANGIL_CLASSROOMS: SchoolClassroom[] = [
