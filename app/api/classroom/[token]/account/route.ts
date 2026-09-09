@@ -72,7 +72,10 @@ export async function POST(
       );
     }
 
-    if (school === WONJONG_SCHOOL_NAME && classroom.grade === 2) {
+    if (
+      school === WONJONG_SCHOOL_NAME &&
+      (classroom.grade === 1 || classroom.grade === 2)
+    ) {
       return jsonPrivate({
         account: {
           classNumber: account.classNumber,
