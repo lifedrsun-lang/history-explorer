@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import { onAuthStateChanged } from "firebase/auth";
+import { FormEvent, useEffect, useState } from "react";
 
+import { auth } from "@/lib/firebase";
 import type { SunLabPermission } from "@/lib/sunLabMember";
 
 const SUNLAB_LIBRARY_URL =
@@ -74,6 +77,34 @@ const RESOURCE_CARDS: ResourceCard[] = [
 ];
 
 export default function SunLabBookPage() {
+  const router = useRouter();
+  const [authChecking, setAuthChecking] = useState(true);
+  const [isTeacher, setIsTeacher] = useState(false);
+
+  useEffect(() => {
+    return onAuthStateChanged(auth, (user) => {
+      setIsTeacher(Boolean(user));
+      setAuthChecking(false);
+
+      if (user) {
+        // Reuse the teacher dashboard and its existing session-expiry boundary.
+        router.replace("/teacher");
+      }
+    });
+  }, [router]);
+
+  if (authChecking || isTeacher) {
+    return (
+      <div role="status" className="flex min-h-[100dvh] items-center justify-center bg-sky-50 px-6 text-center text-sm font-bold text-slate-500">
+        {isTeacher ? "SUN LAB 교사모드로 이동하고 있어요." : "로그인 상태를 확인하고 있어요."}
+      </div>
+    );
+  }
+
+  return <SunLabStudentPage />;
+}
+
+function SunLabStudentPage() {
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [member, setMember] = useState<Member | null>(null);
@@ -217,6 +248,12 @@ export default function SunLabBookPage() {
             )}
 
             <div className="mt-5 text-center">
+              <Link
+                href="/teacher"
+                className="mb-3 flex w-full items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-black text-sky-700 transition hover:bg-sky-100"
+              >
+                교사모드
+              </Link>
               <Link
                 href="/student/history"
                 className="inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-500 transition hover:bg-slate-50"
