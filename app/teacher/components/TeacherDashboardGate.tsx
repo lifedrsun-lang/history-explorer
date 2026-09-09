@@ -31,6 +31,13 @@ const menuItems = [
     className: "border-sky-200 bg-sky-50 text-sky-900",
   },
   {
+    href: "/teacher/library",
+    icon: "📚",
+    title: "선랩 도서관",
+    description: "Google Drive의 PDF를 선택해 선랩 디지털 책장에 등록",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+  },
+  {
     href: "/teacher/presentations?section=archive",
     icon: "📁",
     title: "자료실",
