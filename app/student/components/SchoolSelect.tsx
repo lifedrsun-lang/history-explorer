@@ -34,7 +34,7 @@ export default function SchoolSelect({ schools, onSelect }: Props) {
             );
 
             if (isGaebongSchool(school) || classroomRoute) {
-              return <Link key={school} href={isGaebongSchool(school) ? "/student/classroom" : classroomRoute!} className={cardClassName}>{cardBody}</Link>;
+              return <Link key={school} href={isGaebongSchool(school) ? "/student/classroom/gaebong" : classroomRoute!} className={cardClassName}>{cardBody}</Link>;
             }
 
             return <button key={school} onClick={() => onSelect(school)} className={cardClassName}>{cardBody}</button>;
