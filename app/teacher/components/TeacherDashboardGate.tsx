@@ -8,85 +8,40 @@ import { useCallback, useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
 import { TEACHER_DASHBOARD_SUMMARY_REFRESH_EVENT } from "@/lib/teacherDashboard";
 
-const menuItems = [
+const managementSections = [
   {
-    href: "/teacher/schedule",
-    icon: "📅",
-    title: "교사일정",
-    description: "학교별 안내·제출·행정 일정을 타임라인으로 관리",
-    className: "border-rose-200 bg-rose-50 text-rose-900",
-  },
-  {
-    href: "/teacher/students?status=active",
-    icon: "🟢",
-    title: "수강생",
-    description: "전체·A반·B반 조회, 출석·진도·코인·교재·학생수정",
-    className: "border-emerald-200 bg-emerald-50 text-emerald-900",
-  },
-  {
-    href: "/teacher/presentations",
-    icon: "📽️",
-    title: "수업자료",
-    description: "PPT·수업자료 링크를 등록하고 수업용 자료를 관리",
-    className: "border-sky-200 bg-sky-50 text-sky-900",
-  },
-  {
-    href: "/teacher/library",
-    icon: "📚",
-    title: "선랩 도서관",
-    description: "Google Drive의 PDF를 선택해 선랩 디지털 책장에 등록",
-    className: "border-emerald-200 bg-emerald-50 text-emerald-900",
-  },
-  {
-    href: "/teacher/hello-maple-missions",
-    icon: "🍁",
-    title: "헬로메이플 미션",
-    description: "학생별 미션 링크를 등록하고 공개·숨김·대상을 관리",
-    className: "border-orange-200 bg-orange-50 text-orange-900",
-  },
-  {
-    href: "/teacher/presentations?section=archive",
-    icon: "📁",
-    title: "자료실",
-    description: "내 공부자료·퍼실리테이터·보드게임·코딩 자료를 카드별로 보관",
-    className: "border-rose-200 bg-rose-50 text-rose-900",
-  },
-  {
-    href: "/teacher/presentations/review",
-    icon: "📝",
-    title: "복습문제",
-    description: "문제 만들기·배포·결과를 나누어 관리",
+    key: "after-school",
+    href: "/teacher/manage/after-school",
+    icon: "🌙",
+    title: "방과후 관리",
+    description: "수강생·출석·진도·과제·복습·수강료 관리",
     className: "border-blue-200 bg-blue-50 text-blue-900",
   },
   {
-    href: "/teacher/assignments",
-    icon: "📸",
-    title: "과제관리",
-    description: "과제 등록, 제출 확인, 승인·다시 해오기 관리",
+    key: "sun-lab",
+    href: "/teacher/manage/sun-lab",
+    icon: "☀️",
+    title: "SUN LAB 관리",
+    description: "선랩 수강생·헬로메이플 미션·도서관 관리",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+  },
+  {
+    key: "materials",
+    href: "/teacher/manage/materials",
+    icon: "📂",
+    title: "자료 관리",
+    description: "수업자료·자료실·복습문제 콘텐츠 관리",
     className: "border-violet-200 bg-violet-50 text-violet-900",
   },
   {
-    href: "/teacher/coin-exchanges",
-    icon: "🎁",
-    title: "은엽전 교환",
-    description: "학생의 상품권 교환 신청을 확인하고 완료·취소 처리",
-    className: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-900",
+    key: "operations",
+    href: "/teacher/manage/operations",
+    icon: "⚙️",
+    title: "일정 · 운영",
+    description: "교사일정·수입·정산·공통 운영 관리",
+    className: "border-rose-200 bg-rose-50 text-rose-900",
   },
-  {
-    href: "/teacher/fees",
-    icon: "💰",
-    title: "수강료",
-    description: "방과후 학생별 참여월과 계약강의 차시별 강사료 계산",
-    className: "border-teal-200 bg-teal-50 text-teal-900",
-  },
-  {
-    href: "/teacher/students?status=paused",
-    icon: "🟡",
-    title: "수강생(쉬는중)",
-    description: "쉬는 학생과 기존 숨김 학생 검색, 수강이력·재수강 관리",
-    className: "border-amber-200 bg-amber-50 text-amber-900",
-  },
-];
+] as const;
 
 type DashboardSummary = {
   pendingCoinExchangeCount: number;
@@ -123,7 +78,6 @@ export default function TeacherDashboardGate() {
       }
 
       const data = await response.json();
-
       setSummary({
         pendingCoinExchangeCount: Math.max(
           0,
@@ -147,25 +101,18 @@ export default function TeacherDashboardGate() {
     return onAuthStateChanged(auth, (currentUser) => {
       setAuthorized(Boolean(currentUser));
       setUser(currentUser);
-
-      if (!currentUser) {
-        setSummary(EMPTY_SUMMARY);
-      }
+      if (!currentUser) setSummary(EMPTY_SUMMARY);
     });
   }, []);
 
   useEffect(() => {
-    if (!user) {
-      return;
-    }
+    if (!user) return;
 
     const refreshSummary = () => {
       void loadSummary(user);
     };
 
-    if (pathname === "/teacher") {
-      refreshSummary();
-    }
+    if (pathname === "/teacher") refreshSummary();
 
     window.addEventListener(
       TEACHER_DASHBOARD_SUMMARY_REFRESH_EVENT,
@@ -180,25 +127,23 @@ export default function TeacherDashboardGate() {
     };
   }, [loadSummary, pathname, user]);
 
-  const getAlertCount = (href: string) => {
-    if (href === "/teacher/assignments") {
-      return summary.pendingAssignmentCount;
+  const getAlertCount = (key: (typeof managementSections)[number]["key"]) => {
+    if (key === "after-school") {
+      return (
+        summary.pendingAssignmentCount +
+        summary.pendingCoinExchangeCount +
+        summary.recentReviewCompletionCount
+      );
     }
 
-    if (href === "/teacher/presentations/review") {
+    if (key === "materials") {
       return summary.recentReviewCompletionCount;
-    }
-
-    if (href === "/teacher/coin-exchanges") {
-      return summary.pendingCoinExchangeCount;
     }
 
     return 0;
   };
 
-  if (pathname !== "/teacher" || !authorized) {
-    return null;
-  }
+  if (pathname !== "/teacher" || !authorized) return null;
 
   if (searchParams.get("manage") === "1") {
     return (
@@ -221,10 +166,10 @@ export default function TeacherDashboardGate() {
                 SUN LAB TEACHER
               </div>
               <h1 className="mt-1 text-2xl font-black text-slate-900 sm:text-4xl">
-                🏫 SUN LAB 교사 관리실
+                🏫 교사 관리실
               </h1>
               <p className="mt-1 text-xs font-bold leading-relaxed text-slate-500 sm:mt-2 sm:text-sm">
-                수강생과 수업 운영을 한곳에서 관리해요.
+                운영 종류를 먼저 선택한 뒤 필요한 관리 기능으로 들어갑니다.
               </p>
             </div>
 
@@ -258,38 +203,38 @@ export default function TeacherDashboardGate() {
           )}
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:mt-4 sm:gap-4 md:grid-cols-2">
-          {menuItems.map((item) => {
-            const alertCount = getAlertCount(item.href);
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:mt-4 sm:gap-4">
+          {managementSections.map((section) => {
+            const alertCount = getAlertCount(section.key);
 
             return (
               <Link
-                key={item.href}
-                href={item.href}
-                className={`group relative rounded-[24px] border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:rounded-[30px] sm:p-6 ${item.className}`}
+                key={section.key}
+                href={section.href}
+                className={`group relative rounded-[24px] border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:rounded-[30px] sm:p-6 ${section.className}`}
               >
                 {alertCount > 0 && (
                   <div className="absolute right-3 top-3 flex min-h-7 min-w-7 items-center justify-center rounded-full bg-red-500 px-2 text-xs font-black text-white shadow-sm">
                     {alertCount}
                   </div>
                 )}
-                <div className="text-3xl sm:text-4xl">{item.icon}</div>
+                <div className="text-3xl sm:text-4xl">{section.icon}</div>
                 <div className="mt-2 text-base font-black leading-tight sm:mt-4 sm:text-2xl">
-                  {item.title}
+                  {section.title}
                 </div>
                 <div className="mt-2 hidden text-sm font-bold leading-relaxed opacity-70 sm:block">
-                  {item.description}
+                  {section.description}
                 </div>
                 <div className="mt-3 text-xs font-black opacity-80 sm:mt-5 sm:text-sm">
-                  들어가기 →
+                  관리하기 →
                 </div>
               </Link>
             );
           })}
         </div>
 
-        <div className="mt-4 hidden rounded-3xl border border-slate-200 bg-white px-5 py-4 text-sm font-bold leading-relaxed text-slate-500 shadow-sm sm:block">
-          수강중 학생의 출석·진도·코인·교재·학생 수정은 수강생 화면에서 바로 처리할 수 있습니다.
+        <div className="mt-4 rounded-3xl border border-slate-200 bg-white px-5 py-4 text-xs font-bold leading-relaxed text-slate-500 shadow-sm sm:text-sm">
+          계약학교 관리는 이번 개편에서 제외하고 기존 기능을 그대로 유지했습니다. 별도 관리 영역은 다음 단계에서 추가할 수 있습니다.
         </div>
       </div>
     </div>
