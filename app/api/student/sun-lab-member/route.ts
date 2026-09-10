@@ -9,6 +9,10 @@ import {
   isValidBirthDate,
   resolveSunLabPermissions,
 } from "@/lib/sunLabMember";
+import {
+  buildSunLabStudentSessionCookie,
+  createSunLabStudentSession,
+} from "@/lib/sunLabStudentSession";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -133,9 +137,16 @@ export async function POST(request: Request) {
         }));
     }
 
-    return jsonPrivate({
+    const memberName = String(student.name || name);
+    const session = await createSunLabStudentSession(
+      student.id,
+      memberName,
+      permissions
+    );
+
+    const response = jsonPrivate({
       member: {
-        name: String(student.name || name),
+        name: memberName,
         permissions,
         helloMaple:
           hasHelloMaple && helloMapleId && helloMaplePassword
@@ -147,6 +158,13 @@ export async function POST(request: Request) {
         helloMapleMissions,
       },
     });
+
+    response.headers.append(
+      "Set-Cookie",
+      buildSunLabStudentSessionCookie(session.id, session.expiresAt)
+    );
+
+    return response;
   } catch (error) {
     console.error("Failed to log in Sun Lab member:", error);
     return jsonPrivate(

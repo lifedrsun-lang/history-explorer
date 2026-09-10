@@ -1,12 +1,20 @@
+import { randomBytes } from "crypto";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
+import {
+  getSunLabStudentSession,
+  SUNLAB_STUDENT_SESSION_COOKIE,
+} from "@/lib/sunLabStudentSession";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 type StudentLibraryBook = {
+  readerId: string;
   title: string;
   originalName: string;
   size: number;
@@ -57,15 +65,28 @@ const loadBooks = async (): Promise<StudentLibraryBook[] | null> => {
       .limit(300)
       .get();
 
-    return snapshot.docs
-      .map((doc) => doc.data())
-      .filter((data) => data?.isActive !== false)
-      .map((data) => ({
+    const books: StudentLibraryBook[] = [];
+
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      if (data?.isActive === false) continue;
+
+      let readerId = normalize(data?.readerId);
+      if (!readerId) {
+        readerId = randomBytes(18).toString("hex");
+        await doc.ref.set({ readerId }, { merge: true });
+      }
+
+      books.push({
+        readerId,
         title: normalize(data?.title) || "제목 없는 책",
         originalName: normalize(data?.originalName),
         size: Number(data?.size || 0),
         createdAt: serializeDate(data?.createdAt),
-      }));
+      });
+    }
+
+    return books;
   } catch (error) {
     console.error("Failed to load Sun Lab student library", error);
     return null;
@@ -73,6 +94,14 @@ const loadBooks = async (): Promise<StudentLibraryBook[] | null> => {
 };
 
 export default async function StudentLibraryPage() {
+  const cookieStore = await cookies();
+  const sessionId = cookieStore.get(SUNLAB_STUDENT_SESSION_COOKIE)?.value || "";
+  const session = await getSunLabStudentSession(sessionId);
+
+  if (!session || !session.permissions.includes("library")) {
+    redirect("/student/book");
+  }
+
   const books = await loadBooks();
 
   return (
@@ -84,7 +113,7 @@ export default async function StudentLibraryPage() {
               <div className="text-sm font-black text-emerald-600">📚 SUN LAB LIBRARY</div>
               <h1 className="mt-1 text-2xl font-black text-slate-800 sm:text-3xl">선랩 도서관</h1>
               <p className="mt-2 text-sm font-bold leading-6 text-slate-500">
-                선생님이 등록한 SUN LAB 책을 확인할 수 있어요.
+                {session.name}님이 읽을 수 있는 SUN LAB 책이에요.
               </p>
             </div>
             <Link
@@ -118,10 +147,10 @@ export default async function StudentLibraryPage() {
           </section>
         ) : (
           <section className="mt-4 grid grid-cols-2 gap-3 rounded-[32px] border border-white/80 bg-white/75 p-3 shadow-sm sm:grid-cols-3 sm:p-4 lg:grid-cols-4">
-            {books.map((book, index) => (
+            {books.map((book) => (
               <article
-                key={`${book.title}-${index}`}
-                className="flex min-h-[190px] flex-col rounded-3xl border border-emerald-100 bg-white p-4 shadow-sm"
+                key={book.readerId}
+                className="flex min-h-[210px] flex-col rounded-3xl border border-emerald-100 bg-white p-4 shadow-sm"
               >
                 <div className="flex h-20 items-center justify-center rounded-2xl bg-emerald-50 text-5xl">
                   📕
@@ -140,9 +169,12 @@ export default async function StudentLibraryPage() {
                       {formatBytes(book.size)}
                     </div>
                   )}
-                  <div className="rounded-xl bg-slate-100 px-3 py-2 text-center text-xs font-black text-slate-500">
-                    읽기 기능 준비 중
-                  </div>
+                  <Link
+                    href={`/student/library/read/${book.readerId}`}
+                    className="block rounded-xl bg-emerald-500 px-3 py-2.5 text-center text-xs font-black text-white shadow-sm transition hover:bg-emerald-600"
+                  >
+                    📖 읽기
+                  </Link>
                 </div>
               </article>
             ))}
@@ -150,7 +182,7 @@ export default async function StudentLibraryPage() {
         )}
 
         <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50/80 px-4 py-3 text-center text-xs font-bold leading-5 text-emerald-700">
-          원본 Google Drive 링크와 파일 정보는 학생 화면에 표시하지 않습니다.
+          책은 선랩 안에서 열리고 Google Drive 원본 링크는 표시하지 않습니다.
         </div>
       </div>
     </main>
