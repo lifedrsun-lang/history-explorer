@@ -8,8 +8,6 @@ import { FormEvent, useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
 import type { SunLabPermission } from "@/lib/sunLabMember";
 
-const SUNLAB_LIBRARY_URL =
-  "https://1drv.ms/f/c/bcc43c5a7c759aaf/IgAqOOYtf9FDTKzZWES6KhFXAXBN4VW2XS3zMBFSC1xxwQs?e=YWZS1o";
 const HELLO_MAPLE_URL = "https://www.hellomaple.org/ko";
 
 type HelloMapleMission = {
@@ -44,9 +42,8 @@ const RESOURCE_CARDS: ResourceCard[] = [
     permission: "library",
     emoji: "📖",
     title: "도서관",
-    description: "SUN LAB 자료와 책을 열람해요.",
-    href: SUNLAB_LIBRARY_URL,
-    external: true,
+    description: "선생님이 등록한 SUN LAB 책을 확인해요.",
+    href: "/student/library",
   },
   {
     permission: "hello_maple",
