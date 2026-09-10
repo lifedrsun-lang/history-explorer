@@ -68,6 +68,7 @@ export async function GET(
 
     const driveFileId = normalize(book?.driveFileId);
     const teacherUid = normalize(book?.createdBy);
+    const storedSize = Number(book?.size || 0);
 
     if (!driveFileId || !teacherUid) {
       return Response.json(
@@ -102,11 +103,18 @@ export async function GET(
     const headers = new Headers(privateHeaders());
     headers.set("Content-Type", "application/pdf");
     headers.set("Content-Disposition", 'inline; filename="sunlab-book.pdf"');
+    headers.set("Accept-Ranges", "bytes");
 
-    for (const headerName of ["content-length", "content-range", "accept-ranges"]) {
-      const value = driveResponse.headers.get(headerName);
-      if (value) headers.set(headerName, value);
+    const upstreamLength = driveResponse.headers.get("content-length");
+    const upstreamRange = driveResponse.headers.get("content-range");
+
+    if (upstreamLength) {
+      headers.set("Content-Length", upstreamLength);
+    } else if (!range && Number.isFinite(storedSize) && storedSize > 0) {
+      headers.set("Content-Length", String(storedSize));
     }
+
+    if (upstreamRange) headers.set("Content-Range", upstreamRange);
 
     return new Response(driveResponse.body, {
       status: driveResponse.status,
