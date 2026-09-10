@@ -84,6 +84,8 @@ export default function PdfBookReaderMobile({ readerId, title, studentName }: Pr
   const [loadingStage, setLoadingStage] = useState("뷰어를 준비하고 있어요...");
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState("");
+  const [viewerWidth, setViewerWidth] = useState(0);
+  const viewerRef = useRef<HTMLDivElement | null>(null);
   const firstCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const secondCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const renderSequence = useRef(0);
@@ -159,6 +161,30 @@ export default function PdfBookReaderMobile({ readerId, title, studentName }: Pr
   }, [contentUrl, storageKey]);
 
   useEffect(() => {
+    if (!pdf) return;
+    const element = viewerRef.current;
+    if (!element) return;
+
+    const updateWidth = () => {
+      const style = window.getComputedStyle(element);
+      const horizontalPadding =
+        Number.parseFloat(style.paddingLeft || "0") +
+        Number.parseFloat(style.paddingRight || "0");
+      setViewerWidth(Math.max(0, element.clientWidth - horizontalPadding));
+    };
+
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(element);
+    window.addEventListener("orientationchange", updateWidth);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("orientationchange", updateWidth);
+    };
+  }, [pdf]);
+
+  useEffect(() => {
     if (pdf) localStorage.setItem(storageKey, String(page));
   }, [page, pdf, storageKey]);
 
@@ -168,9 +194,14 @@ export default function PdfBookReaderMobile({ readerId, title, studentName }: Pr
 
   const renderPage = useCallback(
     async (pageNumber: number, canvas: HTMLCanvasElement | null) => {
-      if (!pdf || !canvas) return;
+      if (!pdf || !canvas || viewerWidth <= 0) return;
       const currentPage = await pdf.getPage(pageNumber);
-      const viewport = currentPage.getViewport({ scale });
+      const baseViewport = currentPage.getViewport({ scale: 1 });
+      const availableWidth = spread
+        ? Math.max(220, (viewerWidth - 12) / 2)
+        : Math.max(220, viewerWidth);
+      const fitScale = Math.min(1, availableWidth / baseViewport.width);
+      const viewport = currentPage.getViewport({ scale: fitScale * scale });
       const outputScale = Math.min(window.devicePixelRatio || 1, 2);
       const context = canvas.getContext("2d", { alpha: false });
       if (!context) throw new Error("canvas_context_missing");
@@ -189,11 +220,11 @@ export default function PdfBookReaderMobile({ readerId, title, studentName }: Pr
             : [outputScale, 0, 0, outputScale, 0, 0],
       }).promise;
     },
-    [pdf, scale]
+    [pdf, scale, spread, viewerWidth]
   );
 
   useEffect(() => {
-    if (!pdf) return;
+    if (!pdf || viewerWidth <= 0) return;
     const sequence = ++renderSequence.current;
     setRendering(true);
     setError("");
@@ -213,7 +244,7 @@ export default function PdfBookReaderMobile({ readerId, title, studentName }: Pr
     };
 
     void render();
-  }, [page, pdf, renderPage, spread]);
+  }, [page, pdf, renderPage, spread, viewerWidth]);
 
   const step = spread ? 2 : 1;
   const maxStartPage = pdf
@@ -259,7 +290,7 @@ export default function PdfBookReaderMobile({ readerId, title, studentName }: Pr
           </div>
         ) : pdf ? (
           <>
-            <div className="relative overflow-auto rounded-2xl bg-slate-800/70 p-2 shadow-2xl sm:p-4">
+            <div ref={viewerRef} className="relative overflow-auto rounded-2xl bg-slate-800/70 p-2 shadow-2xl sm:p-4">
               {rendering && <div className="absolute right-4 top-4 z-20 rounded-full bg-slate-950/80 px-3 py-1 text-[10px] font-black text-slate-300">페이지 표시 중...</div>}
               <div className="relative mx-auto flex min-w-max items-start justify-center gap-3">
                 <div className="relative overflow-hidden rounded-lg bg-white shadow-2xl">
