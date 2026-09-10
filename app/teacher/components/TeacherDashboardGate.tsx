@@ -38,6 +38,13 @@ const menuItems = [
     className: "border-emerald-200 bg-emerald-50 text-emerald-900",
   },
   {
+    href: "/teacher/hello-maple-missions",
+    icon: "🍁",
+    title: "헬로메이플 미션",
+    description: "학생별 미션 링크를 등록하고 공개·숨김·대상을 관리",
+    className: "border-orange-200 bg-orange-50 text-orange-900",
+  },
+  {
     href: "/teacher/presentations?section=archive",
     icon: "📁",
     title: "자료실",
