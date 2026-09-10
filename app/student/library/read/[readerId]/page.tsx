@@ -6,7 +6,7 @@ import {
   getSunLabStudentSession,
   SUNLAB_STUDENT_SESSION_COOKIE,
 } from "@/lib/sunLabStudentSession";
-import PdfBookReader from "../../PdfBookReader";
+import PdfBookReaderV2 from "../../PdfBookReaderV2";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,7 +47,7 @@ export default async function StudentLibraryReaderPage({
   const title = normalize(book?.title) || "제목 없는 책";
 
   return (
-    <PdfBookReader
+    <PdfBookReaderV2
       readerId={normalizedReaderId}
       title={title}
       studentName={session.name}
