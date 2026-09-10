@@ -1,5 +1,10 @@
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import {
+  HELLO_MAPLE_MISSIONS_COLLECTION,
+  isAllowedHelloMapleUrl,
+  serializeHelloMapleMission,
+} from "@/lib/helloMapleMissions";
+import {
   normalizeBirthDate,
   isValidBirthDate,
   resolveSunLabPermissions,
@@ -87,6 +92,47 @@ export async function POST(request: Request) {
     const helloMapleId = String(student.helloMapleId || "").trim();
     const helloMaplePassword = String(student.helloMaplePassword || "").trim();
 
+    let helloMapleMissions: Array<{
+      id: string;
+      title: string;
+      url: string;
+      sortOrder: number;
+    }> = [];
+
+    if (hasHelloMaple) {
+      const missionSnapshot = await db
+        .collection(HELLO_MAPLE_MISSIONS_COLLECTION)
+        .get();
+
+      helloMapleMissions = missionSnapshot.docs
+        .map((docItem) =>
+          serializeHelloMapleMission(
+            docItem.id,
+            docItem.data() as Record<string, unknown>
+          )
+        )
+        .filter((mission) => mission.isPublished)
+        .filter((mission) => isAllowedHelloMapleUrl(mission.url))
+        .filter(
+          (mission) =>
+            mission.targetType === "all" ||
+            mission.targetStudentIds.includes(student.id)
+        )
+        .sort((a, b) => {
+          if (a.sortOrder !== b.sortOrder) {
+            return a.sortOrder - b.sortOrder;
+          }
+
+          return a.title.localeCompare(b.title, "ko");
+        })
+        .map((mission) => ({
+          id: mission.id,
+          title: mission.title,
+          url: mission.url,
+          sortOrder: mission.sortOrder,
+        }));
+    }
+
     return jsonPrivate({
       member: {
         name: String(student.name || name),
@@ -98,6 +144,7 @@ export async function POST(request: Request) {
                 password: helloMaplePassword,
               }
             : null,
+        helloMapleMissions,
       },
     });
   } catch (error) {

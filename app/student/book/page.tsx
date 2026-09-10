@@ -1,13 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import { onAuthStateChanged } from "firebase/auth";
+import { FormEvent, useEffect, useState } from "react";
 
+import { auth } from "@/lib/firebase";
 import type { SunLabPermission } from "@/lib/sunLabMember";
 
 const SUNLAB_LIBRARY_URL =
   "https://1drv.ms/f/c/bcc43c5a7c759aaf/IgAqOOYtf9FDTKzZWES6KhFXAXBN4VW2XS3zMBFSC1xxwQs?e=YWZS1o";
 const HELLO_MAPLE_URL = "https://www.hellomaple.org/ko";
+
+type HelloMapleMission = {
+  id: string;
+  title: string;
+  url: string;
+  sortOrder: number;
+};
 
 type Member = {
   name: string;
@@ -16,6 +26,7 @@ type Member = {
     id: string;
     password: string;
   } | null;
+  helloMapleMissions?: HelloMapleMission[];
 };
 
 type ResourceCard = {
@@ -74,6 +85,34 @@ const RESOURCE_CARDS: ResourceCard[] = [
 ];
 
 export default function SunLabBookPage() {
+  const router = useRouter();
+  const [authChecking, setAuthChecking] = useState(true);
+  const [isTeacher, setIsTeacher] = useState(false);
+
+  useEffect(() => {
+    return onAuthStateChanged(auth, (user) => {
+      setIsTeacher(Boolean(user));
+      setAuthChecking(false);
+
+      if (user) {
+        // Reuse the teacher dashboard and its existing session-expiry boundary.
+        router.replace("/teacher");
+      }
+    });
+  }, [router]);
+
+  if (authChecking || isTeacher) {
+    return (
+      <div role="status" className="flex min-h-[100dvh] items-center justify-center bg-sky-50 px-6 text-center text-sm font-bold text-slate-500">
+        {isTeacher ? "SUN LAB 교사모드로 이동하고 있어요." : "로그인 상태를 확인하고 있어요."}
+      </div>
+    );
+  }
+
+  return <SunLabStudentPage />;
+}
+
+function SunLabStudentPage() {
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [member, setMember] = useState<Member | null>(null);
@@ -218,6 +257,12 @@ export default function SunLabBookPage() {
 
             <div className="mt-5 text-center">
               <Link
+                href="/teacher"
+                className="mb-3 flex w-full items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-black text-sky-700 transition hover:bg-sky-100"
+              >
+                교사모드
+              </Link>
+              <Link
                 href="/student/history"
                 className="inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-500 transition hover:bg-slate-50"
               >
@@ -233,6 +278,7 @@ export default function SunLabBookPage() {
   const visibleCards = RESOURCE_CARDS.filter((card) =>
     member.permissions.includes(card.permission)
   );
+  const helloMapleMissions = member.helloMapleMissions || [];
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 px-4 py-8 text-slate-800">
@@ -412,6 +458,54 @@ export default function SunLabBookPage() {
                 헬로메이플 계정이 아직 등록되지 않았어요. 선생님께 문의해 주세요.
               </div>
             )}
+
+            <div className="mt-5 border-t border-emerald-100 pt-5">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <div className="text-sm font-black text-orange-600">
+                    🎯 오늘의 헬로메이플 미션
+                  </div>
+                  <div className="mt-1 text-xs font-bold text-slate-400">
+                    선생님이 배정한 미션만 보여요.
+                  </div>
+                </div>
+                {helloMapleMissions.length > 0 && (
+                  <div className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black text-orange-600">
+                    {helloMapleMissions.length}개
+                  </div>
+                )}
+              </div>
+
+              {helloMapleMissions.length > 0 ? (
+                <div className="mt-3 space-y-2.5">
+                  {helloMapleMissions.map((mission, index) => (
+                    <div
+                      key={mission.id}
+                      className="flex items-center gap-3 rounded-2xl border border-orange-100 bg-orange-50/60 p-3"
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-sm font-black text-orange-600 shadow-sm">
+                        {index + 1}
+                      </div>
+                      <div className="min-w-0 flex-1 font-black text-slate-800">
+                        {mission.title}
+                      </div>
+                      <a
+                        href={mission.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="shrink-0 rounded-xl bg-orange-500 px-3 py-2 text-xs font-black text-white shadow-sm transition hover:bg-orange-600"
+                      >
+                        미션 시작 ↗
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-4 text-center text-sm font-bold text-slate-400">
+                  오늘 배정된 미션이 없어요.
+                </div>
+              )}
+            </div>
           </section>
         )}
 
