@@ -12,6 +12,13 @@ const SUNLAB_LIBRARY_URL =
   "https://1drv.ms/f/c/bcc43c5a7c759aaf/IgAqOOYtf9FDTKzZWES6KhFXAXBN4VW2XS3zMBFSC1xxwQs?e=YWZS1o";
 const HELLO_MAPLE_URL = "https://www.hellomaple.org/ko";
 
+type HelloMapleMission = {
+  id: string;
+  title: string;
+  url: string;
+  sortOrder: number;
+};
+
 type Member = {
   name: string;
   permissions: SunLabPermission[];
@@ -19,6 +26,7 @@ type Member = {
     id: string;
     password: string;
   } | null;
+  helloMapleMissions?: HelloMapleMission[];
 };
 
 type ResourceCard = {
@@ -270,6 +278,7 @@ function SunLabStudentPage() {
   const visibleCards = RESOURCE_CARDS.filter((card) =>
     member.permissions.includes(card.permission)
   );
+  const helloMapleMissions = member.helloMapleMissions || [];
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 px-4 py-8 text-slate-800">
@@ -449,6 +458,54 @@ function SunLabStudentPage() {
                 헬로메이플 계정이 아직 등록되지 않았어요. 선생님께 문의해 주세요.
               </div>
             )}
+
+            <div className="mt-5 border-t border-emerald-100 pt-5">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <div className="text-sm font-black text-orange-600">
+                    🎯 오늘의 헬로메이플 미션
+                  </div>
+                  <div className="mt-1 text-xs font-bold text-slate-400">
+                    선생님이 배정한 미션만 보여요.
+                  </div>
+                </div>
+                {helloMapleMissions.length > 0 && (
+                  <div className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black text-orange-600">
+                    {helloMapleMissions.length}개
+                  </div>
+                )}
+              </div>
+
+              {helloMapleMissions.length > 0 ? (
+                <div className="mt-3 space-y-2.5">
+                  {helloMapleMissions.map((mission, index) => (
+                    <div
+                      key={mission.id}
+                      className="flex items-center gap-3 rounded-2xl border border-orange-100 bg-orange-50/60 p-3"
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-sm font-black text-orange-600 shadow-sm">
+                        {index + 1}
+                      </div>
+                      <div className="min-w-0 flex-1 font-black text-slate-800">
+                        {mission.title}
+                      </div>
+                      <a
+                        href={mission.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="shrink-0 rounded-xl bg-orange-500 px-3 py-2 text-xs font-black text-white shadow-sm transition hover:bg-orange-600"
+                      >
+                        미션 시작 ↗
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-4 text-center text-sm font-bold text-slate-400">
+                  오늘 배정된 미션이 없어요.
+                </div>
+              )}
+            </div>
           </section>
         )}
 
