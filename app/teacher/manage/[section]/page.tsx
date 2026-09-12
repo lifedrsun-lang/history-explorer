@@ -153,6 +153,13 @@ const sections: Record<string, ManagementSection> = {
         className: "border-indigo-200 bg-indigo-50 text-indigo-900",
       },
       {
+        href: "/teacher/resume-master",
+        icon: "🗂️",
+        title: "마스터 이력",
+        description: "학력·경력·연수·자격을 한 번 저장하고 지원서마다 필요한 항목만 체크해서 사용",
+        className: "border-violet-200 bg-violet-50 text-violet-900",
+      },
+      {
         href: "/teacher/fees",
         icon: "💰",
         title: "수입 · 정산",
