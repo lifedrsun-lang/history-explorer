@@ -203,7 +203,10 @@ export default function TeacherResumeMasterPage() {
   }, [getToken]);
 
   const loadResume = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setErrorMessage("");
     try {
@@ -320,12 +323,16 @@ export default function TeacherResumeMasterPage() {
     [selectedCounts]
   );
 
-  if (authChecking || loading) {
-    return <main className="min-h-[100dvh] bg-[#f5f7fb] p-5"><div className="mx-auto max-w-xl rounded-3xl bg-white p-8 text-center font-bold text-slate-500 shadow-lg">마스터 이력을 불러오는 중입니다.</div></main>;
+  if (authChecking) {
+    return <main className="min-h-[100dvh] bg-[#f5f7fb] p-5"><div className="mx-auto max-w-xl rounded-3xl bg-white p-8 text-center font-bold text-slate-500 shadow-lg">로그인 상태를 확인하고 있습니다.</div></main>;
   }
 
   if (!user) {
-    return <main className="min-h-[100dvh] bg-[#f5f7fb] p-5"><div className="mx-auto max-w-xl rounded-3xl bg-white p-8 text-center shadow-lg"><h1 className="text-2xl font-black text-slate-900">교사 로그인이 필요합니다.</h1><Link href="/teacher" className="mt-5 inline-block rounded-2xl bg-slate-900 px-5 py-3 text-sm font-black text-white">← 교사용 홈</Link></div></main>;
+    return <main className="min-h-[100dvh] bg-[#f5f7fb] p-5"><div className="mx-auto max-w-xl rounded-3xl bg-white p-8 text-center shadow-lg"><h1 className="text-2xl font-black text-slate-900">교사 로그인이 필요합니다.</h1><p className="mt-2 text-sm font-bold text-slate-500">Preview 주소는 운영 사이트와 로그인 정보가 공유되지 않을 수 있습니다.</p><Link href="/teacher" className="mt-5 inline-block rounded-2xl bg-slate-900 px-5 py-3 text-sm font-black text-white">교사용 로그인으로 이동</Link></div></main>;
+  }
+
+  if (loading) {
+    return <main className="min-h-[100dvh] bg-[#f5f7fb] p-5"><div className="mx-auto max-w-xl rounded-3xl bg-white p-8 text-center font-bold text-slate-500 shadow-lg">마스터 이력을 불러오는 중입니다.</div></main>;
   }
 
   return (
