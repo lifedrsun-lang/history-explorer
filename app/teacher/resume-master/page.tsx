@@ -158,6 +158,17 @@ const sanitizeImportedResume = (value: unknown): ResumeData => {
   return next;
 };
 
+const readJsonFileText = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") resolve(reader.result);
+      else reject(new Error("파일 내용을 읽을 수 없습니다."));
+    };
+    reader.onerror = () => reject(reader.error || new Error("파일 읽기에 실패했습니다."));
+    reader.readAsText(file, "utf-8");
+  });
+
 export default function TeacherResumeMasterPage() {
   const [authChecking, setAuthChecking] = useState(true);
   const [user, setUser] = useState<User | null>(null);
@@ -300,17 +311,42 @@ export default function TeacherResumeMasterPage() {
   };
 
   const importJson = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
+    const input = event.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
+
     setErrorMessage("");
-    setNotice("");
+    setNotice(`‘${file.name}’ 파일을 읽는 중입니다...`);
+
     try {
-      const parsed = JSON.parse(await file.text());
-      setResume(sanitizeImportedResume(parsed));
-      setNotice("이력 파일을 불러왔습니다. 확인 후 ‘마스터 이력 저장’을 눌러 주세요.");
-    } catch {
-      setErrorMessage("올바른 Sun Lab 마스터 이력 JSON 파일이 아닙니다.");
+      const text = await readJsonFileText(file);
+      const parsed = JSON.parse(text.replace(/^\uFEFF/, ""));
+      const imported = sanitizeImportedResume(parsed);
+      const importedCount = SECTION_SPECS.reduce(
+        (sum, spec) => sum + imported.sections[spec.key].length,
+        0
+      );
+      const hasProfile = Object.values(imported.profile).some((value) => value.trim().length > 0);
+
+      if (!hasProfile && importedCount === 0) {
+        throw new Error("불러올 이력 데이터가 없습니다.");
+      }
+
+      setResume(imported);
+      setOpenSections({
+        education: true,
+        programExperience: true,
+        otherExperience: true,
+        training: true,
+        certification: true,
+      });
+      setNotice(`‘${file.name}’ 반영 완료 · 이력 ${importedCount}개를 불러왔습니다. 아래 내용을 확인한 뒤 ‘마스터 이력 저장’을 눌러 주세요.`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "올바른 Sun Lab 마스터 이력 JSON 파일이 아닙니다.");
+      setNotice("");
+    } finally {
+      input.value = "";
     }
   };
 
@@ -362,7 +398,7 @@ export default function TeacherResumeMasterPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div><h2 className="text-xl font-black text-slate-900">기본정보</h2><p className="mt-1 text-xs font-bold text-slate-500">기존 제출서류에 저장한 이름·전화번호·생년월일은 자동으로 불러옵니다.</p></div>
             <div className="flex flex-wrap gap-2">
-              <input ref={fileInputRef} type="file" accept="application/json,.json" onChange={importJson} className="hidden" />
+              <input ref={fileInputRef} type="file" accept="application/json,text/json,.json" onChange={importJson} className="hidden" />
               <button type="button" onClick={() => fileInputRef.current?.click()} className="rounded-xl bg-slate-100 px-4 py-2 text-xs font-black text-slate-700">JSON 가져오기</button>
               <button type="button" onClick={exportJson} className="rounded-xl bg-slate-100 px-4 py-2 text-xs font-black text-slate-700">JSON 백업</button>
             </div>
