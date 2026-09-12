@@ -146,6 +146,13 @@ const sections: Record<string, ManagementSection> = {
         className: "border-rose-200 bg-rose-50 text-rose-900",
       },
       {
+        href: "/teacher/application-documents",
+        icon: "📄",
+        title: "지원 · 제출서류",
+        description: "학교명·기본정보·등록 서명을 반영해 필수 동의서를 작성하고 PDF로 저장",
+        className: "border-indigo-200 bg-indigo-50 text-indigo-900",
+      },
+      {
         href: "/teacher/fees",
         icon: "💰",
         title: "수입 · 정산",
