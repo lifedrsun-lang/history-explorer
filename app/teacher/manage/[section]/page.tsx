@@ -160,6 +160,13 @@ const sections: Record<string, ManagementSection> = {
         className: "border-violet-200 bg-violet-50 text-violet-900",
       },
       {
+        href: "/teacher/resume-builder",
+        icon: "🧾",
+        title: "이력서 만들기",
+        description: "한국사·보드게임·코딩 프리셋으로 필요한 이력을 골라 A4 PDF 이력서를 생성",
+        className: "border-blue-200 bg-blue-50 text-blue-900",
+      },
+      {
         href: "/teacher/fees",
         icon: "💰",
         title: "수입 · 정산",
