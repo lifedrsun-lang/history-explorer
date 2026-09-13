@@ -182,7 +182,7 @@ const makeSchoolLessons = (count: number): ClassroomLesson[] =>
 const makeWonjongLessons = (): ClassroomLesson[] =>
   makeSchoolLessons(4).map((lesson) => ({
     ...lesson,
-    expandLocked: lesson.lesson === 3 || lesson.lesson === 4,
+    expandLocked: lesson.lesson === 4,
     links:
       lesson.lesson === 2
         ? [
