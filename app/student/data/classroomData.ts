@@ -99,7 +99,7 @@ const WOORI_AI_AGENT_URL = "https://wooriai.use.go.kr/start/agent";
 const CONVENIENT_AI_WORLDCUP_URL =
   "https://practice0623.my.canva.site/hellomaple-ai";
 const HELLO_MAPLE_HELPFUL_AI_URL =
-  "https://www.hellomaple.org/ko/play/8777f7169ed34870a7e1e7138a5fef4d";
+  "https://www.hellomaple.org/ko/web-play?play=8777f7169ed34870a7e1e7138a5fef4d";
 
 const GAEBONG_PADLET_LINKS: Record<number, string> = {
   1: "https://padlet.com/lifedrsun/6-1-9hp3499dhfo532jh",
