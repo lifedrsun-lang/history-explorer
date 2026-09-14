@@ -95,6 +95,9 @@ const MAPLE_SPORTS_DAY_URL =
   "https://www.hellomaple.org/ko/play/771be352167b4ffeb0b37eebd3ff64b1";
 const TYPING_HERO_URL =
   "https://www.hellomaple.org/ko/play/74fe74f966d441e7bbaa073e5cb893f9";
+const WOORI_AI_AGENT_URL = "https://wooriai.use.go.kr/start/agent";
+const CONVENIENT_AI_WORLDCUP_URL =
+  "https://practice0623.my.canva.site/hellomaple-ai";
 
 const GAEBONG_PADLET_LINKS: Record<number, string> = {
   1: "https://padlet.com/lifedrsun/6-1-9hp3499dhfo532jh",
@@ -154,6 +157,27 @@ const makeLessons = (padletUrl: string): ClassroomLesson[] => [
     title: "2차시 수업 안내",
     message: "다음 수업 안내는 수업 전에 업데이트됩니다.",
     links: [],
+  },
+  {
+    lesson: 3,
+    title: "3차시 안내 · 심화 : 인공지능윤리탐험대",
+    message: "3차시부터 심화과정을 시작해요. 인공지능 윤리를 탐험하고 편리한 AI 활용을 함께 살펴봅니다.",
+    links: [
+      {
+        id: "woori-ai-agent",
+        label: "우리아이AI",
+        href: WOORI_AI_AGENT_URL,
+        kind: "activity",
+        defaultUnlocked: true,
+      },
+      {
+        id: "convenient-ai-worldcup",
+        label: "편리한 AI 월드컵",
+        href: CONVENIENT_AI_WORLDCUP_URL,
+        kind: "activity",
+        defaultUnlocked: true,
+      },
+    ],
   },
 ];
 
