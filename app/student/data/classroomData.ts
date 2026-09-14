@@ -184,13 +184,6 @@ const makeLessons = (
         kind: "activity",
         defaultUnlocked: true,
       },
-      {
-        id: "convenient-ai-worldcup",
-        label: "편리한 AI 월드컵",
-        href: CONVENIENT_AI_WORLDCUP_URL,
-        kind: "activity",
-        defaultUnlocked: true,
-      },
       ...(aiMindmapUrl
         ? [
             {
@@ -202,6 +195,13 @@ const makeLessons = (
             },
           ]
         : []),
+      {
+        id: "convenient-ai-worldcup",
+        label: "편리한 AI 월드컵",
+        href: CONVENIENT_AI_WORLDCUP_URL,
+        kind: "activity",
+        defaultUnlocked: true,
+      },
       {
         id: "hello-maple-helpful-ai",
         label: "헬로메이플 사람을 돕는 인공지능",
