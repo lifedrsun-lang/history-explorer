@@ -108,7 +108,16 @@ const GAEBONG_PADLET_LINKS: Record<number, string> = {
   6: "https://padlet.com/lifedrsun/6-6-296jds17pi7t9x4i",
 };
 
-const makeLessons = (padletUrl: string): ClassroomLesson[] => [
+const GAEBONG_AI_MINDMAP_LINKS: Partial<Record<number, string>> = {
+  1: "https://padlet.com/lifedrsun/6-1-s023kmrklby37s3i079p",
+  4: "https://padlet.com/lifedrsun/6-4-s023kmri19bveobmp3ys",
+  5: "https://padlet.com/lifedrsun/6-5-s023kmcdpdxgjoeikach",
+};
+
+const makeLessons = (
+  padletUrl: string,
+  aiMindmapUrl?: string
+): ClassroomLesson[] => [
   {
     lesson: 1,
     date: "2026-09-01",
@@ -177,6 +186,17 @@ const makeLessons = (padletUrl: string): ClassroomLesson[] => [
         kind: "activity",
         defaultUnlocked: true,
       },
+      ...(aiMindmapUrl
+        ? [
+            {
+              id: "helpful-ai-mindmap",
+              label: "사람을 돕는 인공지능 마인드맵",
+              href: aiMindmapUrl,
+              kind: "activity" as const,
+              defaultUnlocked: true,
+            },
+          ]
+        : []),
     ],
   },
 ];
@@ -260,12 +280,12 @@ const makeWonjongLessons = (): ClassroomLesson[] =>
   }));
 
 export const GAEBONG_CLASSROOMS: GaebongClassroom[] = [
-  { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 1, label: "6학년 1반", monsterId: "slime", directToken: "gb6c1-g7ac4o9a1n", lessons: makeLessons(GAEBONG_PADLET_LINKS[1]) },
-  { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 2, label: "6학년 2반", monsterId: "guardian-angel-slime", directToken: "gb6c2-je8xtrigeu", lessons: makeLessons(GAEBONG_PADLET_LINKS[2]) },
-  { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 3, label: "6학년 3반", monsterId: "forest-mushroom", directToken: "gb6c3-kilcoepxmg", lessons: makeLessons(GAEBONG_PADLET_LINKS[3]) },
-  { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 4, label: "6학년 4반", monsterId: "orange-mushroom", directToken: "gb6c4-xtjzvvpgjs", lessons: makeLessons(GAEBONG_PADLET_LINKS[4]) },
-  { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 5, label: "6학년 5반", monsterId: "blue-mushroom", directToken: "gb6c5-emg1vzxnsw", lessons: makeLessons(GAEBONG_PADLET_LINKS[5]) },
-  { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 6, label: "6학년 6반", monsterId: "choco-mushroom", directToken: "gb6c6-ms9vlecq99", lessons: makeLessons(GAEBONG_PADLET_LINKS[6]) },
+  { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 1, label: "6학년 1반", monsterId: "slime", directToken: "gb6c1-g7ac4o9a1n", lessons: makeLessons(GAEBONG_PADLET_LINKS[1], GAEBONG_AI_MINDMAP_LINKS[1]) },
+  { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 2, label: "6학년 2반", monsterId: "guardian-angel-slime", directToken: "gb6c2-je8xtrigeu", lessons: makeLessons(GAEBONG_PADLET_LINKS[2], GAEBONG_AI_MINDMAP_LINKS[2]) },
+  { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 3, label: "6학년 3반", monsterId: "forest-mushroom", directToken: "gb6c3-kilcoepxmg", lessons: makeLessons(GAEBONG_PADLET_LINKS[3], GAEBONG_AI_MINDMAP_LINKS[3]) },
+  { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 4, label: "6학년 4반", monsterId: "orange-mushroom", directToken: "gb6c4-xtjzvvpgjs", lessons: makeLessons(GAEBONG_PADLET_LINKS[4], GAEBONG_AI_MINDMAP_LINKS[4]) },
+  { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 5, label: "6학년 5반", monsterId: "blue-mushroom", directToken: "gb6c5-emg1vzxnsw", lessons: makeLessons(GAEBONG_PADLET_LINKS[5], GAEBONG_AI_MINDMAP_LINKS[5]) },
+  { schoolName: GAEBONG_SCHOOL_NAME, schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME, grade: 6, classNumber: 6, label: "6학년 6반", monsterId: "choco-mushroom", directToken: "gb6c6-ms9vlecq99", lessons: makeLessons(GAEBONG_PADLET_LINKS[6], GAEBONG_AI_MINDMAP_LINKS[6]) },
 ];
 
 export const WONJONG_CLASSROOMS: WonjongClassroom[] = [
