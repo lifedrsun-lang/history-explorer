@@ -112,8 +112,11 @@ const GAEBONG_PADLET_LINKS: Record<number, string> = {
 
 const GAEBONG_AI_MINDMAP_LINKS: Partial<Record<number, string>> = {
   1: "https://padlet.com/lifedrsun/6-1-s023kmrklby37s3i079p",
+  2: "https://padlet.com/lifedrsun/6-2-s023kmxctmitxeqxflab",
+  3: "https://padlet.com/lifedrsun/6-3-s023kmz9vjt6emd15ebo",
   4: "https://padlet.com/lifedrsun/6-4-s023kmri19bveobmp3ys",
   5: "https://padlet.com/lifedrsun/6-5-s023kmcdpdxgjoeikach",
+  6: "https://padlet.com/lifedrsun/6-6-s023kmyzadn40vt59nsq",
 };
 
 const makeLessons = (
