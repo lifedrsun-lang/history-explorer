@@ -11,10 +11,16 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const PRODUCTION_GOOGLE_CALENDAR_REDIRECT_URI =
+  "https://sunlab.me.kr/api/teacher/google-calendar/callback";
+
 export async function POST(request: Request) {
   try {
     const teacher = await verifyTeacherRequest(request);
-    const redirectUri = makeGoogleCalendarRedirectUri(request.url);
+    const redirectUri =
+      process.env.VERCEL_ENV === "production"
+        ? PRODUCTION_GOOGLE_CALENDAR_REDIRECT_URI
+        : makeGoogleCalendarRedirectUri(request.url);
     const authorizationUrl = await createGoogleCalendarAuthorizationUrl(
       teacher.uid,
       redirectUri
