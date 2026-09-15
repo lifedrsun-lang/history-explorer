@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { onAuthStateChanged, User } from "firebase/auth";
 import {
   PointerEvent as ReactPointerEvent,
@@ -73,6 +74,9 @@ type DailyRow = {
 };
 
 const pad2 = (value: number) => String(value).padStart(2, "0");
+
+const A4_PREVIEW_WIDTH_PX = (210 / 25.4) * 96;
+const A4_PREVIEW_HEIGHT_PX = (297 / 25.4) * 96;
 
 const getCurrentYearMonth = () => {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -268,6 +272,15 @@ export default function AtcConfirmationsPage() {
   const [noticeMessage, setNoticeMessage] = useState("");
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
+  const printPreviewHostRef = useRef<HTMLDivElement | null>(null);
+  const [printPreviewScale, setPrintPreviewScale] = useState(1);
+  const setPrintPreviewHost = useCallback((host: HTMLDivElement | null) => {
+    printPreviewHostRef.current = host;
+    if (!host) return;
+    requestAnimationFrame(() => {
+      setPrintPreviewScale(Math.min(1, host.clientWidth / A4_PREVIEW_WIDTH_PX));
+    });
+  }, []);
 
   useEffect(() =>
     onAuthStateChanged(auth, (currentUser) => {
@@ -347,6 +360,27 @@ export default function AtcConfirmationsPage() {
     if (!user) return;
     void loadMonth();
   }, [loadMonth, user]);
+
+  useEffect(() => {
+    if (!selectedSchool) return;
+    const host = printPreviewHostRef.current;
+    if (!host) return;
+
+    const updateScale = () => {
+      const nextScale = Math.min(1, host.clientWidth / A4_PREVIEW_WIDTH_PX);
+      setPrintPreviewScale(nextScale);
+    };
+    updateScale();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateScale);
+      return () => window.removeEventListener("resize", updateScale);
+    }
+
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, [selectedSchool]);
 
   const schoolNames = useMemo(
     () =>
@@ -591,18 +625,249 @@ export default function AtcConfirmationsPage() {
   return (
     <main className="min-h-screen bg-[#f5f7fb] px-3 py-5 text-slate-800">
       <style>{`
-        .atc-print-sheet { font-family: Arial, "Noto Sans KR", sans-serif; }
-        .atc-form-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .atc-form-table th, .atc-form-table td { border: 1px solid #111827; padding: 5px 6px; vertical-align: middle; }
-        .atc-signature-img { object-fit: contain; mix-blend-mode: multiply; }
+        .atc-sheet-preview-host {
+          display: flex;
+          width: 100%;
+          justify-content: center;
+          overflow: hidden;
+        }
+        .atc-sheet-preview-stage { position: relative; flex: none; }
+        .atc-print-sheet {
+          position: absolute;
+          left: 0;
+          top: 0;
+          box-sizing: border-box;
+          width: 210mm;
+          height: 297mm;
+          overflow: hidden;
+          transform-origin: left top;
+          background: #fff;
+          color: #000;
+          font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif;
+          box-shadow: 0 16px 42px rgba(15, 23, 42, 0.16);
+        }
+        .atc-source-logo {
+          position: absolute;
+          top: 13.35mm;
+          right: 20mm;
+          width: 51.87mm;
+          height: 13.29mm;
+          object-fit: contain;
+        }
+        .atc-title-table,
+        .atc-meta-table,
+        .atc-lesson-table {
+          position: absolute;
+          border-collapse: collapse;
+          table-layout: fixed;
+        }
+        .atc-title-table {
+          top: 26.4mm;
+          left: 20mm;
+          width: 168.35mm;
+          height: 9.35mm;
+        }
+        .atc-title-table td { box-sizing: border-box; height: 9.35mm; padding: 0; }
+        .atc-title-marker {
+          border: 0.12mm solid #17469e;
+          border-right-width: 0.5mm;
+          border-bottom-width: 0.5mm;
+          background: #ffef99;
+        }
+        .atc-title-gap { border-left: 0.5mm solid #17469e; }
+        .atc-title-text {
+          border-top: 0.12mm solid #17469e;
+          border-bottom: 0.5mm solid #17469e;
+          padding-left: 1.76mm !important;
+          font-family: "HY헤드라인M", "Malgun Gothic", "맑은 고딕", sans-serif;
+          font-size: 16pt;
+          font-weight: 700;
+          line-height: 1;
+          text-align: left;
+          white-space: nowrap;
+        }
+        .atc-meta-table {
+          top: 40.3mm;
+          left: 20.39mm;
+          width: 169mm;
+          height: 34.03mm;
+          font-size: 10pt;
+        }
+        .atc-meta-table tr { height: 8.51mm; }
+        .atc-meta-table th,
+        .atc-meta-table td {
+          box-sizing: border-box;
+          border: 0.12mm solid #000;
+          padding: 0 1.8mm;
+          vertical-align: middle;
+          line-height: 1.2;
+        }
+        .atc-meta-table th {
+          background: #c1d6ed;
+          font-weight: 700;
+        }
+        .atc-meta-label {
+          padding-right: 3mm !important;
+          padding-left: 3mm !important;
+          text-align: justify;
+          text-align-last: justify;
+          white-space: nowrap;
+        }
+        .atc-meta-value { text-align: center; }
+        .atc-period-value {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 3.5mm;
+          white-space: nowrap;
+        }
+        .atc-current-month { font-weight: 400; }
+        .atc-verifier-line {
+          position: relative;
+          display: grid;
+          grid-template-columns: auto 39mm auto 24mm auto 22mm;
+          align-items: center;
+          justify-content: center;
+          column-gap: 2mm;
+          width: 100%;
+          height: 8.2mm;
+          white-space: nowrap;
+        }
+        .atc-verifier-value {
+          min-width: 0;
+          overflow: hidden;
+          text-align: center;
+          text-overflow: ellipsis;
+        }
+        .atc-school-signature-slot,
+        .atc-educator-signature-slot { position: relative; }
+        .atc-school-signature {
+          position: absolute;
+          z-index: 1;
+          top: 50%;
+          left: 50%;
+          width: 23mm;
+          height: 10mm;
+          transform: translate(-50%, -50%);
+          object-fit: contain;
+          mix-blend-mode: multiply;
+        }
+        .atc-lesson-table {
+          top: 78.5mm;
+          left: 20.39mm;
+          width: 168.96mm;
+          height: 166.62mm;
+          font-size: 10pt;
+          text-align: center;
+        }
+        .atc-lesson-table th,
+        .atc-lesson-table td {
+          box-sizing: border-box;
+          border: 0.12mm solid #000;
+          padding: 0 1mm;
+          vertical-align: middle;
+          line-height: 1.05;
+        }
+        .atc-lesson-table thead tr { height: 8.05mm; }
+        .atc-lesson-table thead th {
+          background: #c1d6ed;
+          font-weight: 700;
+        }
+        .atc-example-row,
+        .atc-lesson-row { height: 6.52mm; }
+        .atc-example-row td { font-style: italic; }
+        .atc-lesson-row td { overflow: hidden; }
+        .atc-remarks-cell {
+          font-size: 8.5pt;
+          overflow-wrap: anywhere;
+          text-align: center;
+        }
+        .atc-total-row { height: 8.52mm; }
+        .atc-total-row td { background: #dfe6f7; }
+        .atc-total-value { color: #0000ff; }
+        .atc-footnote,
+        .atc-confirmation-statement,
+        .atc-document-date,
+        .atc-educator-line { position: absolute; margin: 0; }
+        .atc-footnote {
+          top: 247.1mm;
+          left: 20mm;
+          width: 169mm;
+          font-size: 10pt;
+          font-weight: 700;
+          line-height: 1.3;
+        }
+        .atc-confirmation-statement {
+          top: 255.6mm;
+          left: 20mm;
+          width: 169mm;
+          font-size: 13pt;
+          font-weight: 400;
+          line-height: 1.3;
+          text-align: center;
+        }
+        .atc-document-date {
+          top: 266.1mm;
+          right: 20mm;
+          width: 169mm;
+          font-size: 13pt;
+          font-weight: 400;
+          line-height: 1.3;
+          text-align: right;
+          word-spacing: 3.5mm;
+        }
+        .atc-educator-line {
+          top: 276.4mm;
+          right: 20mm;
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 4.5mm;
+          width: 169mm;
+          font-size: 13pt;
+          font-weight: 400;
+          line-height: 1.3;
+          white-space: nowrap;
+        }
+        .atc-educator-name {
+          display: inline-block;
+          min-width: 30mm;
+          text-align: center;
+        }
+        .atc-educator-signature {
+          position: absolute;
+          z-index: 1;
+          top: 50%;
+          right: -2mm;
+          width: 28mm;
+          height: 13mm;
+          transform: translateY(-50%);
+          object-fit: contain;
+          mix-blend-mode: multiply;
+        }
         @media print {
-          @page { size: A4 portrait; margin: 8mm; }
-          body { background: white !important; }
+          @page { size: A4 portrait; margin: 0; }
+          html, body { width: 210mm !important; min-width: 210mm !important; background: white !important; }
           body * { visibility: hidden !important; }
           .atc-print-sheet, .atc-print-sheet * { visibility: visible !important; }
-          .atc-print-sheet { position: absolute !important; left: 0; top: 0; width: 194mm !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: 0 !important; }
+          .atc-sheet-preview-host,
+          .atc-sheet-preview-stage {
+            position: static !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            overflow: visible !important;
+          }
+          .atc-print-sheet {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            margin: 0 !important;
+            transform: none !important;
+            box-shadow: none !important;
+          }
           .no-print { display: none !important; }
-          .atc-form-table th, .atc-form-table td { padding: 3px 5px !important; font-size: 10.5px !important; }
         }
       `}</style>
 
@@ -722,54 +987,157 @@ export default function AtcConfirmationsPage() {
       </div>
 
       {selectedSchool && (
-        <section className="atc-print-sheet mx-auto max-w-[850px] bg-white p-8 shadow-lg">
-          <div className="text-center text-[11px] font-bold leading-relaxed">월별 참여 확인서 작성 후 운영사무국으로 메일 제출 (익월 3일까지)</div>
-          <h2 className="mt-2 text-center text-xl font-black">2026 ATC스쿨 전담 에듀케이터 참여 확인서</h2>
+        <div ref={setPrintPreviewHost} className="atc-sheet-preview-host">
+          <div
+            className="atc-sheet-preview-stage"
+            style={{
+              width: A4_PREVIEW_WIDTH_PX * printPreviewScale,
+              height: A4_PREVIEW_HEIGHT_PX * printPreviewScale,
+            }}
+          >
+            <section
+              className="atc-print-sheet"
+              aria-label={`${selectedSchool} ${year}년 ${month}월 ATC스쿨 전담 에듀케이터 참여 확인서`}
+              style={{ transform: `scale(${printPreviewScale})` }}
+            >
+              <Image
+                src="/images/atc-school-logo.png"
+                alt="ATC 컴퓨터교사협회"
+                width={292}
+                height={74}
+                loading="eager"
+                className="atc-source-logo"
+              />
 
-          <table className="atc-form-table mt-5 text-[12px]">
-            <tbody>
-              <tr><th className="w-[16%] bg-slate-50">프로그램명</th><td className="w-[34%] font-bold">ATC스쿨</td><th className="w-[16%] bg-slate-50">학교명</th><td className="w-[34%] font-bold">{selectedSchool}</td></tr>
-              <tr><th className="bg-slate-50">운영기간</th><td className="font-bold">{formatPeriod(operationPeriodStart, operationPeriodEnd) || ""}</td><th className="bg-slate-50">해당월</th><td className="font-bold">{year}년 {month}월</td></tr>
-              <tr><th className="bg-slate-50">강사명</th><td className="font-bold">{profile.name}</td><th className="bg-slate-50">연락처</th><td className="font-bold">{profile.phone}</td></tr>
-              <tr>
-                <th className="bg-slate-50">확 인 자</th>
-                <td colSpan={3}>
-                  <div className="flex min-h-14 items-center gap-3">
-                    <span>(소속) <b>{selectedSchool}</b></span>
-                    <span>(성명) <b>{schoolVerifierName}</b></span>
-                    <span className="ml-auto">학교 담당 교사 서명</span>
-                    {schoolSignatureDataUrl && <img src={schoolSignatureDataUrl} alt="학교 담당교사 서명" className="atc-signature-img h-12 w-24" />}
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+              <table className="atc-title-table" aria-label="문서 제목">
+                <colgroup>
+                  <col style={{ width: "8mm" }} />
+                  <col style={{ width: "1.99mm" }} />
+                  <col />
+                </colgroup>
+                <tbody>
+                  <tr>
+                    <td className="atc-title-marker" aria-hidden="true" />
+                    <td className="atc-title-gap" aria-hidden="true" />
+                    <td className="atc-title-text">2026 ATC스쿨 전담 에듀케이터 참여 확인서</td>
+                  </tr>
+                </tbody>
+              </table>
 
-          <table className="atc-form-table mt-4 text-center text-[11px]">
-            <thead><tr className="bg-slate-50"><th className="w-[12%]">수업횟수</th><th className="w-[23%]">수업일자</th><th className="w-[16%]">수업차시</th><th>비고</th></tr></thead>
-            <tbody>
-              {paddedPrintRows.map((row, index) => (
-                <tr key={`${row?.date || "blank"}-${index}`} className="h-7">
-                  <td>{index + 1}</td>
-                  <td className="font-bold">{row ? formatMonthDay(row.date) : ""}</td>
-                  <td className="font-bold">{row ? row.sessions : ""}</td>
-                  <td className="text-left">{row?.remarks || ""}</td>
-                </tr>
-              ))}
-              <tr className="font-black"><td>합계</td><td>{printRows.length}일</td><td>{totalSessions}차시</td><td /></tr>
-            </tbody>
-          </table>
+              <table className="atc-meta-table" aria-label="참여 확인 기본 정보">
+                <colgroup>
+                  <col style={{ width: "23.25mm" }} />
+                  <col style={{ width: "61.27mm" }} />
+                  <col style={{ width: "23.85mm" }} />
+                  <col style={{ width: "60.63mm" }} />
+                </colgroup>
+                <tbody>
+                  <tr>
+                    <th className="atc-meta-label">프로그램명</th>
+                    <td className="atc-meta-value"><strong>ATC스쿨</strong></td>
+                    <th className="atc-meta-label">학교명</th>
+                    <td className="atc-meta-value">{selectedSchool}</td>
+                  </tr>
+                  <tr>
+                    <th className="atc-meta-label">운영기간</th>
+                    <td colSpan={3} className="atc-meta-value">
+                      <div className="atc-period-value">
+                        {formatPeriod(operationPeriodStart, operationPeriodEnd) && (
+                          <span>{formatPeriod(operationPeriodStart, operationPeriodEnd)}</span>
+                        )}
+                        <span className="atc-current-month">해당월 {year}년 {month}월</span>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th className="atc-meta-label">강사명</th>
+                    <td className="atc-meta-value">{profile.name}</td>
+                    <th className="atc-meta-label">연락처</th>
+                    <td className="atc-meta-value">{profile.phone}</td>
+                  </tr>
+                  <tr>
+                    <th className="atc-meta-label">확인자</th>
+                    <td colSpan={3} className="atc-meta-value">
+                      <div className="atc-verifier-line">
+                        <span>(소속)</span>
+                        <span className="atc-verifier-value">{selectedSchool}</span>
+                        <span>(성명)</span>
+                        <span className="atc-verifier-value">{schoolVerifierName}</span>
+                        <span>(서명)</span>
+                        <span className="atc-school-signature-slot">
+                          {schoolSignatureDataUrl && (
+                            <img
+                              src={schoolSignatureDataUrl}
+                              alt="학교 담당교사 서명"
+                              className="atc-school-signature"
+                            />
+                          )}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
 
-          <div className="mt-3 text-[10.5px]">※ 출석부 월별 해당차수에 해당하는 날짜를 기입.</div>
-          <div className="mt-7 text-center text-[12px] font-bold">본인은 위 사항을 확인하며 참여하였음을 서명으로 증명합니다.</div>
-          <div className="mt-5 text-center text-[12px] font-bold">{getTodayKorean()}</div>
-          <div className="mt-6 flex items-center justify-center gap-3 text-[12px] font-bold">
-            <span>에듀케이터 성명</span><span className="min-w-20 border-b border-slate-500 pb-1 text-center">{profile.name}</span><span>친필서명(인)</span>
-            {profile.signatureDataUrl && <img src={profile.signatureDataUrl} alt="에듀케이터 서명" className="atc-signature-img h-14 w-28" />}
+              <table className="atc-lesson-table" aria-label="월별 수업 내역">
+                <colgroup>
+                  <col style={{ width: "26.77mm" }} />
+                  <col style={{ width: "47.4mm" }} />
+                  <col style={{ width: "47.4mm" }} />
+                  <col style={{ width: "47.39mm" }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>수업횟수</th>
+                    <th>수업일자</th>
+                    <th>수업차시</th>
+                    <th>비고</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="atc-example-row">
+                    <td>예시</td>
+                    <td>4월 1일</td>
+                    <td>4</td>
+                    <td />
+                  </tr>
+                  {paddedPrintRows.map((row, index) => (
+                    <tr key={`${row?.date || "blank"}-${index}`} className="atc-lesson-row">
+                      <td>{index + 1}</td>
+                      <td>{row ? formatMonthDay(row.date) : ""}</td>
+                      <td>{row ? row.sessions : ""}</td>
+                      <td className="atc-remarks-cell">{row?.remarks || ""}</td>
+                    </tr>
+                  ))}
+                  <tr className="atc-total-row">
+                    <td>합계</td>
+                    <td className="atc-total-value">{printRows.length}일</td>
+                    <td className="atc-total-value">{totalSessions}차시</td>
+                    <td />
+                  </tr>
+                </tbody>
+              </table>
+
+              <p className="atc-footnote">※ 출석부 월별 해당차수에 해당하는 날짜를 기입.</p>
+              <p className="atc-confirmation-statement">본인은 위 사항을 확인하며 참여하였음을 서명으로 증명합니다.</p>
+              <p className="atc-document-date">{getTodayKorean()}</p>
+              <div className="atc-educator-line">
+                <span>에듀케이터 성명</span>
+                <span className="atc-educator-name">{profile.name}</span>
+                <span className="atc-educator-signature-slot">
+                  (인)
+                  {profile.signatureDataUrl && (
+                    <img
+                      src={profile.signatureDataUrl}
+                      alt="에듀케이터 서명"
+                      className="atc-educator-signature"
+                    />
+                  )}
+                </span>
+              </div>
+            </section>
           </div>
-
-          <div className="no-print mt-5 rounded-2xl bg-slate-50 p-3 text-xs font-bold text-slate-500">미리보기입니다. 인쇄 / PDF 저장 시 이 안내는 출력되지 않습니다.</div>
-        </section>
+        </div>
       )}
     </main>
   );
