@@ -100,6 +100,9 @@ const sanitizeScheduleSnapshot = (value: unknown) => {
   });
 };
 
+const scheduleFingerprint = (value: unknown) =>
+  JSON.stringify(sanitizeScheduleSnapshot(value));
+
 const getConfirmationDocId = (
   teacherUid: string,
   yearMonth: string,
@@ -172,7 +175,9 @@ export async function GET(request: Request) {
       if (!periodMap.has(candidate.schoolKey)) periodMap.set(candidate.schoolKey, candidate);
     });
 
-    const periods = Array.from(periodMap.values()).map(({ createdAtMs: _createdAtMs, ...period }) => period);
+    const periods = Array.from(periodMap.values()).map(
+      ({ createdAtMs: _createdAtMs, ...period }) => period
+    );
 
     return Response.json({ confirmations, periods });
   } catch (error) {
@@ -200,7 +205,7 @@ export async function PUT(request: Request) {
     }
 
     const schoolVerifierName = normalize(body.schoolVerifierName, 120);
-    const schoolSignatureDataUrl = normalizeSignature(body.schoolSignatureDataUrl);
+    const requestedSchoolSignature = normalizeSignature(body.schoolSignatureDataUrl);
     const educatorSignatureDataUrlSnapshot = normalizeSignature(
       body.educatorSignatureDataUrlSnapshot
     );
@@ -220,17 +225,79 @@ export async function PUT(request: Request) {
     const existingSnapshot = await docRef.get();
     const existing = existingSnapshot.data() || {};
 
+    const previousSignature =
+      typeof existing.schoolSignatureDataUrl === "string"
+        ? existing.schoolSignatureDataUrl
+        : null;
+    const previousVerifierName = normalize(existing.schoolVerifierName, 120);
     const previouslySigned =
       typeof existing.schoolSignedAt === "string" ? existing.schoolSignedAt : "";
     const previouslySubmitted =
       typeof existing.submittedAt === "string" ? existing.submittedAt : "";
 
+    const scheduleChanged =
+      existingSnapshot.exists &&
+      scheduleFingerprint(existing.scheduleSnapshot) !==
+        scheduleFingerprint(scheduleSnapshot);
+    const verifierChanged =
+      existingSnapshot.exists && previousVerifierName !== schoolVerifierName;
+    const signatureChanged = previousSignature !== requestedSchoolSignature;
+    const signedContentChanged = scheduleChanged || verifierChanged;
+
+    // 이미 받은 학교 서명을 일정/확인자 변경 뒤 그대로 재사용하지 않는다.
+    const schoolSignatureDataUrl =
+      signedContentChanged && !signatureChanged ? null : requestedSchoolSignature;
+
+    if (schoolSignatureDataUrl && !schoolVerifierName) {
+      return jsonError(
+        "담당교사 성명을 입력한 뒤 서명해 주세요.",
+        400,
+        "school_verifier_required"
+      );
+    }
+
     const schoolSignedAt = schoolSignatureDataUrl
-      ? previouslySigned || nowIso
+      ? signatureChanged || signedContentChanged
+        ? nowIso
+        : previouslySigned || nowIso
       : "";
-    const submittedAt = markSubmitted
-      ? previouslySubmitted || nowIso
-      : previouslySubmitted;
+
+    let submittedAt = signedContentChanged ? "" : previouslySubmitted;
+
+    if (markSubmitted) {
+      if (scheduleSnapshot.length === 0) {
+        return jsonError(
+          "출강일정이 없는 확인서는 제출완료로 처리할 수 없습니다.",
+          400,
+          "schedule_required"
+        );
+      }
+      if (!schoolSignatureDataUrl || !schoolVerifierName) {
+        return jsonError(
+          "담당교사 확인 서명이 필요합니다.",
+          400,
+          "school_signature_required"
+        );
+      }
+      if (!educatorSignatureDataUrlSnapshot) {
+        return jsonError(
+          "에듀케이터 서명이 필요합니다.",
+          400,
+          "educator_signature_required"
+        );
+      }
+      if (!operationPeriodStart || !operationPeriodEnd) {
+        return jsonError(
+          "수금관리의 운영기간을 확인해 주세요.",
+          400,
+          "operation_period_required"
+        );
+      }
+      submittedAt =
+        signedContentChanged || signatureChanged || !previouslySubmitted
+          ? nowIso
+          : previouslySubmitted;
+    }
 
     let status = "draft";
     if (scheduleSnapshot.length > 0) status = "teacher_signature_pending";
