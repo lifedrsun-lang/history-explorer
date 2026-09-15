@@ -15,7 +15,7 @@ import { auth } from "@/lib/firebase";
 
 type GoogleCalendarEvent = {
   id: string;
-  calendarType: "afterSchool" | "contract";
+  calendarType: "afterSchool" | "contract" | "care";
   calendarName: string;
   summary: string;
   description: string;

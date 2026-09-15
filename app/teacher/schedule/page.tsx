@@ -15,8 +15,8 @@ type ScheduleItem = {
 };
 
 type ScheduleTab = "tasks" | "teaching";
-type CalendarView = "all" | "afterSchool" | "contract";
-type CalendarKind = "afterSchool" | "contract";
+type CalendarView = "all" | "afterSchool" | "contract" | "care";
+type CalendarKind = "afterSchool" | "contract" | "care";
 type ColorKey =
   | "blue"
   | "violet"
@@ -41,10 +41,12 @@ type GoogleCalendarStatus = {
   calendars: {
     afterSchool: CalendarSourceStatus;
     contract: CalendarSourceStatus;
+    care: CalendarSourceStatus;
   };
   targetCalendarNames?: {
     afterSchool: string;
     contract: string;
+    care: string;
   };
 };
 
@@ -101,6 +103,7 @@ const PALETTE_BY_KEY = new Map(PALETTE.map((item) => [item.key, item]));
 const DEFAULT_TARGET_NAMES = {
   afterSchool: "출강일정/방과후",
   contract: "출강일정/건별계약",
+  care: "출강일정/돌봄",
 };
 
 const pad2 = (value: number) => String(value).padStart(2, "0");
@@ -211,8 +214,17 @@ const getAutoColorKey = (schoolName: string): ColorKey => {
   return PALETTE[hash % PALETTE.length].key;
 };
 
-const calendarKindLabel = (kind: CalendarKind) =>
-  kind === "afterSchool" ? "방과후" : "건별계약";
+const calendarKindLabel = (kind: CalendarKind) => {
+  if (kind === "afterSchool") return "방과후";
+  if (kind === "contract") return "건별계약";
+  return "돌봄";
+};
+
+const calendarKindBadgeClass = (kind: CalendarKind) => {
+  if (kind === "afterSchool") return "bg-blue-50 text-blue-700";
+  if (kind === "contract") return "bg-violet-50 text-violet-700";
+  return "bg-emerald-50 text-emerald-700";
+};
 
 export default function TeacherSchedulePage() {
   const [authChecking, setAuthChecking] = useState(true);
@@ -488,6 +500,7 @@ export default function TeacherSchedulePage() {
               calendars: {
                 afterSchool: { found: false, name: DEFAULT_TARGET_NAMES.afterSchool },
                 contract: { found: false, name: DEFAULT_TARGET_NAMES.contract },
+                care: { found: false, name: DEFAULT_TARGET_NAMES.care },
               },
             }
           : current
@@ -557,6 +570,7 @@ export default function TeacherSchedulePage() {
       all: calendarEvents.length,
       afterSchool: calendarEvents.filter((event) => event.calendarType === "afterSchool").length,
       contract: calendarEvents.filter((event) => event.calendarType === "contract").length,
+      care: calendarEvents.filter((event) => event.calendarType === "care").length,
     }),
     [calendarEvents]
   );
@@ -597,8 +611,12 @@ export default function TeacherSchedulePage() {
   const calendarSources = calendarStatus?.calendars || {
     afterSchool: { found: false, name: targetNames.afterSchool },
     contract: { found: false, name: targetNames.contract },
+    care: { found: false, name: targetNames.care },
   };
-  const anyTeachingCalendarFound = calendarSources.afterSchool.found || calendarSources.contract.found;
+  const anyTeachingCalendarFound =
+    calendarSources.afterSchool.found || calendarSources.contract.found || calendarSources.care.found;
+  const allTeachingCalendarsFound =
+    calendarSources.afterSchool.found && calendarSources.contract.found && calendarSources.care.found;
 
   if (authChecking) {
     return (
@@ -665,7 +683,7 @@ export default function TeacherSchedulePage() {
               </div>
             ) : (
               <div className="inline-flex rounded-2xl bg-blue-50 px-3 py-2 text-sm font-black text-blue-700">
-                Google Calendar · 방과후 + 건별계약
+                Google Calendar · 방과후 + 건별계약 + 돌봄
               </div>
             )}
           </div>
@@ -782,7 +800,7 @@ export default function TeacherSchedulePage() {
                 <div>
                   <div className="text-lg font-black text-slate-900">Google Calendar 연동</div>
                   <div className="mt-1 text-sm font-bold leading-6 text-slate-500">
-                    Google의 <span className="font-black text-blue-700">{targetNames.afterSchool}</span>과 <span className="font-black text-violet-700">{targetNames.contract}</span>을 읽기 전용으로 합쳐 보여줍니다.
+                    Google의 <span className="font-black text-blue-700">{targetNames.afterSchool}</span>, <span className="font-black text-violet-700">{targetNames.contract}</span>, <span className="font-black text-emerald-700">{targetNames.care}</span>을 읽기 전용으로 합쳐 보여줍니다.
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -802,7 +820,7 @@ export default function TeacherSchedulePage() {
               ) : calendarStatus && !calendarStatus.connected ? (
                 <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4">
                   <div className="text-sm font-black text-slate-900">Google Calendar를 연결해 주세요.</div>
-                  <div className="mt-1 text-xs font-bold leading-5 text-slate-600">읽기 권한만 사용하며 두 출강 캘린더를 자동으로 찾습니다.</div>
+                  <div className="mt-1 text-xs font-bold leading-5 text-slate-600">읽기 권한만 사용하며 세 출강 캘린더를 자동으로 찾습니다.</div>
                   <button type="button" onClick={() => void connectGoogleCalendar()} disabled={calendarConnecting} className="mt-4 w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white disabled:opacity-50">
                     {calendarConnecting ? "Google 연결 준비 중..." : "Google Calendar 연결"}
                   </button>
@@ -816,18 +834,21 @@ export default function TeacherSchedulePage() {
                   <span className={`rounded-full px-3 py-1.5 text-xs font-black ${calendarSources.contract.found ? "bg-violet-50 text-violet-700" : "bg-amber-50 text-amber-700"}`}>
                     건별계약 {calendarSources.contract.found ? "✓" : "미확인"}
                   </span>
+                  <span className={`rounded-full px-3 py-1.5 text-xs font-black ${calendarSources.care.found ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                    돌봄 {calendarSources.care.found ? "✓" : "미확인"}
+                  </span>
                   <span className="text-xs font-bold text-slate-500">Google → 교사일정 단방향</span>
                 </div>
               ) : null}
 
               {calendarStatus?.connected && !anyTeachingCalendarFound && !calendarLoading && (
                 <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-900">
-                  두 출강 캘린더를 찾지 못했습니다. 이름이 <strong>{targetNames.afterSchool}</strong>, <strong>{targetNames.contract}</strong>인지 확인해 주세요.
+                  세 출강 캘린더를 찾지 못했습니다. 이름이 <strong>{targetNames.afterSchool}</strong>, <strong>{targetNames.contract}</strong>, <strong>{targetNames.care}</strong>인지 확인해 주세요.
                 </div>
               )}
-              {calendarStatus?.connected && anyTeachingCalendarFound && (!calendarSources.afterSchool.found || !calendarSources.contract.found) && !calendarLoading && (
+              {calendarStatus?.connected && anyTeachingCalendarFound && !allTeachingCalendarsFound && !calendarLoading && (
                 <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-900">
-                  한쪽 캘린더만 확인됐습니다. 없는 쪽을 만든 뒤 새로고침하면 자동으로 추가됩니다.
+                  일부 캘린더만 확인됐습니다. 없는 캘린더를 만든 뒤 새로고침하면 자동으로 추가됩니다.
                 </div>
               )}
               {calendarNotice && <div className="mt-3 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{calendarNotice}</div>}
@@ -842,6 +863,7 @@ export default function TeacherSchedulePage() {
                       ["all", "통합", calendarCounts.all],
                       ["afterSchool", "방과후", calendarCounts.afterSchool],
                       ["contract", "건별계약", calendarCounts.contract],
+                      ["care", "돌봄", calendarCounts.care],
                     ] as const).map(([value, label, count]) => (
                       <button
                         key={value}
@@ -852,7 +874,9 @@ export default function TeacherSchedulePage() {
                         }}
                         className={`rounded-2xl px-4 py-2.5 text-sm font-black transition ${
                           calendarView === value
-                            ? value === "contract"
+                            ? value === "care"
+                              ? "bg-emerald-600 text-white"
+                              : value === "contract"
                               ? "bg-violet-600 text-white"
                               : value === "afterSchool"
                                 ? "bg-blue-600 text-white"
@@ -958,7 +982,7 @@ export default function TeacherSchedulePage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${selectedEvent.calendarType === "afterSchool" ? "bg-blue-50 text-blue-700" : "bg-violet-50 text-violet-700"}`}>
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${calendarKindBadgeClass(selectedEvent.calendarType)}`}>
                         {calendarKindLabel(selectedEvent.calendarType)}
                       </span>
                       <span className="text-xs font-black text-slate-400">{getSchoolNameFromSummary(selectedEvent.summary)}</span>
@@ -1008,7 +1032,7 @@ export default function TeacherSchedulePage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-xl font-black text-slate-900">🎨 학교별 색상</div>
-                <div className="mt-1 text-xs font-bold leading-5 text-slate-500">두 출강 캘린더에서 발견한 학교를 기준으로 설정합니다. 지정하지 않은 학교는 자동색이 적용됩니다.</div>
+                <div className="mt-1 text-xs font-bold leading-5 text-slate-500">세 출강 캘린더에서 발견한 학교를 기준으로 설정합니다. 지정하지 않은 학교는 자동색이 적용됩니다.</div>
               </div>
               <button type="button" onClick={() => setColorSettingsOpen(false)} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600">닫기</button>
             </div>

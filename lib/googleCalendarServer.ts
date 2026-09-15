@@ -16,11 +16,12 @@ const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 const GOOGLE_CALENDAR_API_BASE = "https://www.googleapis.com/calendar/v3";
 
-export type TeacherCalendarKind = "afterSchool" | "contract";
+export type TeacherCalendarKind = "afterSchool" | "contract" | "care";
 
 const TARGET_CALENDAR_NAMES: Record<TeacherCalendarKind, string> = {
   afterSchool: "출강일정/방과후",
   contract: "출강일정/건별계약",
+  care: "출강일정/돌봄",
 };
 
 type GoogleTokenResponse = {
@@ -42,6 +43,30 @@ type GoogleCalendarListResponse = {
   items?: GoogleCalendarListEntry[];
 };
 
+type GoogleCalendarEventItem = {
+  id?: string;
+  summary?: string;
+  description?: string;
+  location?: string;
+  htmlLink?: string;
+  status?: string;
+  start?: {
+    date?: string;
+    dateTime?: string;
+    timeZone?: string;
+  };
+  end?: {
+    date?: string;
+    dateTime?: string;
+    timeZone?: string;
+  };
+  updated?: string;
+};
+
+type GoogleCalendarEventsResponse = {
+  items?: GoogleCalendarEventItem[];
+};
+
 type TargetCalendar = {
   id: string;
   summary: string;
@@ -58,6 +83,8 @@ type StoredConnection = {
   afterSchoolCalendarSummary?: string | null;
   contractCalendarId?: string | null;
   contractCalendarSummary?: string | null;
+  careCalendarId?: string | null;
+  careCalendarSummary?: string | null;
   calendarId?: string | null;
   calendarSummary?: string | null;
   connectedAt?: unknown;
@@ -144,6 +171,7 @@ const findTargetCalendars = async (accessToken: string): Promise<TargetCalendars
   return {
     afterSchool: findByName(TARGET_CALENDAR_NAMES.afterSchool),
     contract: findByName(TARGET_CALENDAR_NAMES.contract),
+    care: findByName(TARGET_CALENDAR_NAMES.care),
   };
 };
 
@@ -214,6 +242,8 @@ const targetCalendarPayload = (calendars: TargetCalendars) => ({
   afterSchoolCalendarSummary: calendars.afterSchool?.summary || null,
   contractCalendarId: calendars.contract?.id || null,
   contractCalendarSummary: calendars.contract?.summary || null,
+  careCalendarId: calendars.care?.id || null,
+  careCalendarSummary: calendars.care?.summary || null,
 });
 
 const saveConnection = async (
@@ -338,10 +368,11 @@ export const completeGoogleCalendarConnection = async (
   const calendars = await findTargetCalendars(accessToken);
   await saveConnection(teacherUid, tokenData, calendars);
   return {
-    calendarFound: Boolean(calendars.afterSchool || calendars.contract),
+    calendarFound: Boolean(calendars.afterSchool || calendars.contract || calendars.care),
     calendarsFound: {
       afterSchool: Boolean(calendars.afterSchool),
       contract: Boolean(calendars.contract),
+      care: Boolean(calendars.care),
     },
   };
 };
@@ -351,6 +382,7 @@ export const getGoogleCalendarConnectionStatus = async (teacherUid: string) => {
   const emptyCalendars = {
     afterSchool: { found: false, name: TARGET_CALENDAR_NAMES.afterSchool },
     contract: { found: false, name: TARGET_CALENDAR_NAMES.contract },
+    care: { found: false, name: TARGET_CALENDAR_NAMES.care },
   };
 
   if (!configured) {
@@ -376,7 +408,11 @@ export const getGoogleCalendarConnectionStatus = async (teacherUid: string) => {
   return {
     configured: true,
     connected: true,
-    calendarFound: Boolean(connection?.afterSchoolCalendarId || connection?.contractCalendarId),
+    calendarFound: Boolean(
+      connection?.afterSchoolCalendarId ||
+        connection?.contractCalendarId ||
+        connection?.careCalendarId
+    ),
     calendars: {
       afterSchool: {
         found: Boolean(connection?.afterSchoolCalendarId),
@@ -385,6 +421,10 @@ export const getGoogleCalendarConnectionStatus = async (teacherUid: string) => {
       contract: {
         found: Boolean(connection?.contractCalendarId),
         name: normalize(connection?.contractCalendarSummary) || TARGET_CALENDAR_NAMES.contract,
+      },
+      care: {
+        found: Boolean(connection?.careCalendarId),
+        name: normalize(connection?.careCalendarSummary) || TARGET_CALENDAR_NAMES.care,
       },
     },
   };
@@ -476,12 +516,12 @@ const fetchTargetCalendarEvents = async (
     await parseGoogleError(response, "google_calendar_events_failed");
   }
 
-  const data = await response.json();
-  return Array.isArray(data?.items)
+  const data = (await response.json()) as GoogleCalendarEventsResponse;
+  return Array.isArray(data.items)
     ? data.items
-        .filter((item: any) => normalize(item?.id))
+        .filter((item) => normalize(item.id))
         .map(
-          (item: any): TeacherGoogleCalendarEvent => ({
+          (item): TeacherGoogleCalendarEvent => ({
             id: `${kind}:${normalize(item.id)}`,
             calendarType: kind,
             calendarName: calendar.summary,
@@ -491,14 +531,14 @@ const fetchTargetCalendarEvents = async (
             htmlLink: normalize(item.htmlLink),
             status: normalize(item.status),
             start: {
-              date: normalize(item?.start?.date) || undefined,
-              dateTime: normalize(item?.start?.dateTime) || undefined,
-              timeZone: normalize(item?.start?.timeZone) || undefined,
+              date: normalize(item.start?.date) || undefined,
+              dateTime: normalize(item.start?.dateTime) || undefined,
+              timeZone: normalize(item.start?.timeZone) || undefined,
             },
             end: {
-              date: normalize(item?.end?.date) || undefined,
-              dateTime: normalize(item?.end?.dateTime) || undefined,
-              timeZone: normalize(item?.end?.timeZone) || undefined,
+              date: normalize(item.end?.date) || undefined,
+              dateTime: normalize(item.end?.dateTime) || undefined,
+              timeZone: normalize(item.end?.timeZone) || undefined,
             },
             updated: normalize(item.updated),
           })
@@ -513,23 +553,26 @@ export const listGoogleCalendarEvents = async (
 ) => {
   const { accessToken, calendars } = await ensureGoogleCalendarTargets(teacherUid);
 
-  const [afterSchoolEvents, contractEvents] = await Promise.all([
+  const [afterSchoolEvents, contractEvents, careEvents] = await Promise.all([
     calendars.afterSchool
       ? fetchTargetCalendarEvents(accessToken, "afterSchool", calendars.afterSchool, timeMin, timeMax)
       : Promise.resolve([] as TeacherGoogleCalendarEvent[]),
     calendars.contract
       ? fetchTargetCalendarEvents(accessToken, "contract", calendars.contract, timeMin, timeMax)
       : Promise.resolve([] as TeacherGoogleCalendarEvent[]),
+    calendars.care
+      ? fetchTargetCalendarEvents(accessToken, "care", calendars.care, timeMin, timeMax)
+      : Promise.resolve([] as TeacherGoogleCalendarEvent[]),
   ]);
 
-  const events = [...afterSchoolEvents, ...contractEvents].sort((a, b) => {
+  const events = [...afterSchoolEvents, ...contractEvents, ...careEvents].sort((a, b) => {
     const aTime = a.start.dateTime || a.start.date || "";
     const bTime = b.start.dateTime || b.start.date || "";
     return aTime.localeCompare(bTime);
   });
 
   return {
-    calendarFound: Boolean(calendars.afterSchool || calendars.contract),
+    calendarFound: Boolean(calendars.afterSchool || calendars.contract || calendars.care),
     calendars: {
       afterSchool: {
         found: Boolean(calendars.afterSchool),
@@ -538,6 +581,10 @@ export const listGoogleCalendarEvents = async (
       contract: {
         found: Boolean(calendars.contract),
         name: calendars.contract?.summary || TARGET_CALENDAR_NAMES.contract,
+      },
+      care: {
+        found: Boolean(calendars.care),
+        name: calendars.care?.summary || TARGET_CALENDAR_NAMES.care,
       },
     },
     events,
