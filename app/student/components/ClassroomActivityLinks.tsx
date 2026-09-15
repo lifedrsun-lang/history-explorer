@@ -1,12 +1,14 @@
 "use client";
 
 import { onAuthStateChanged, type User } from "firebase/auth";
+import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 
 import { auth } from "@/lib/firebase";
-import type {
-  ClassroomLesson,
-  GaebongClassroom,
+import {
+  GAEBONG_SCHOOL_NAME,
+  type ClassroomLesson,
+  type GaebongClassroom,
 } from "../data/classroomData";
 
 type Props = {
@@ -148,12 +150,16 @@ export default function ClassroomActivityLinks({ classroom, lesson }: Props) {
       {lesson.links.map((link) => {
         const unlocked = isUnlocked(link.id, link.defaultUnlocked);
         const pending = pendingActivityId === link.id;
+        const showAiSentenceGuide =
+          classroom.schoolName === GAEBONG_SCHOOL_NAME &&
+          lesson.lesson === 3 &&
+          link.id === "convenient-ai-worldcup";
         const activeClass =
           link.kind === "review"
             ? "bg-emerald-500 hover:bg-emerald-600"
             : "bg-sky-500 hover:bg-sky-600";
 
-        return (
+        const activityCard = (
           <div
             key={`${lesson.lesson}-${link.id}`}
             className="flex items-stretch gap-2"
@@ -196,6 +202,23 @@ export default function ClassroomActivityLinks({ classroom, lesson }: Props) {
             )}
           </div>
         );
+
+        if (!showAiSentenceGuide) {
+          return activityCard;
+        }
+
+        return [
+          <Image
+            key="gaebong-ai-sentence-guide"
+            src="/images/classroom/gaebong/ai-sentence-guide.jpg"
+            width={1536}
+            height={688}
+            alt="이렇게 문장을 만들어볼까요? 인공지능 문장 만들기 안내"
+            unoptimized
+            className="block h-auto w-full"
+          />,
+          activityCard,
+        ];
       })}
 
       {errorMessage && (
