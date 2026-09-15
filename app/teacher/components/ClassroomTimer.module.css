@@ -1,0 +1,61 @@
+.phaseGlow {
+  animation: phase-glow 2.4s ease-out;
+}
+
+.phaseBanner {
+  animation: phase-banner 2.4s ease-out forwards;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes phase-glow {
+  0% {
+    box-shadow:
+      0 0 0 0 rgb(255 255 255 / 0.9),
+      0 24px 70px rgb(15 23 42 / 0.2);
+    transform: scale(0.985);
+  }
+
+  35% {
+    box-shadow:
+      0 0 0 12px rgb(255 255 255 / 0.2),
+      0 30px 90px rgb(15 23 42 / 0.38);
+    transform: scale(1.01);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 0 rgb(255 255 255 / 0),
+      0 24px 70px rgb(15 23 42 / 0.2);
+    transform: scale(1);
+  }
+}
+
+@keyframes phase-banner {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -0.75rem) scale(0.9);
+  }
+
+  16%,
+  68% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 0.5rem) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phaseGlow,
+  .phaseBanner {
+    animation: none;
+  }
+
+  .phaseBanner {
+    opacity: 1;
+  }
+}

@@ -139,6 +139,13 @@ const sections: Record<string, ManagementSection> = {
     description: "교사 일정과 비용·운영 상태처럼 공통 관리 기능을 모았습니다.",
     items: [
       {
+        href: "/teacher/timer",
+        icon: "⏱️",
+        title: "40분 수업 타이머",
+        description: "20분 → 10분 → 10분 구간을 자동으로 안내하는 수업용 타이머",
+        className: "border-sky-200 bg-sky-50 text-sky-900",
+      },
+      {
         href: "/teacher/schedule",
         icon: "📅",
         title: "교사일정",
