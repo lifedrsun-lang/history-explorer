@@ -12,19 +12,38 @@ const managementSections = [
   {
     key: "after-school",
     href: "/teacher/manage/after-school",
-    icon: "🌙",
+    icon: "🏫",
     title: "방과후 관리",
     description: "수강생·출석·진도·과제·복습·수강료 관리",
     className: "border-blue-200 bg-blue-50 text-blue-900",
   },
   {
+    key: "teaching",
+    href: "/teacher/manage/teaching",
+    icon: "🚗",
+    title: "출강 관리",
+    description: "출강일정·건별계약·참여확인서·제출서류 관리",
+    className: "border-cyan-200 bg-cyan-50 text-cyan-900",
+  },
+  {
+    key: "care",
+    href: "/teacher/manage/care",
+    icon: "🧸",
+    title: "돌봄/늘봄 관리",
+    description: "돌봄·늘봄 학교 및 기관 관리",
+    className: "border-amber-200 bg-amber-50 text-amber-900",
+  },
+  {
     key: "sun-lab",
     href: "/teacher/manage/sun-lab",
-    icon: "☀️",
+    icon: "✨",
     title: "SUN LAB 관리",
     description: "선랩 수강생·헬로메이플 미션·도서관 관리",
     className: "border-emerald-200 bg-emerald-50 text-emerald-900",
   },
+] as const;
+
+const supportingSections = [
   {
     key: "materials",
     href: "/teacher/manage/materials",
@@ -42,6 +61,10 @@ const managementSections = [
     className: "border-rose-200 bg-rose-50 text-rose-900",
   },
 ] as const;
+
+type ManagementSection =
+  | (typeof managementSections)[number]
+  | (typeof supportingSections)[number];
 
 type DashboardSummary = {
   pendingCoinExchangeCount: number;
@@ -127,7 +150,7 @@ export default function TeacherDashboardGate() {
     };
   }, [loadSummary, pathname, user]);
 
-  const getAlertCount = (key: (typeof managementSections)[number]["key"]) => {
+  const getAlertCount = (key: ManagementSection["key"]) => {
     if (key === "after-school") {
       return (
         summary.pendingAssignmentCount +
@@ -141,6 +164,34 @@ export default function TeacherDashboardGate() {
     }
 
     return 0;
+  };
+
+  const renderManagementSection = (section: ManagementSection) => {
+    const alertCount = getAlertCount(section.key);
+
+    return (
+      <Link
+        key={section.key}
+        href={section.href}
+        className={`group relative rounded-[24px] border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:rounded-[30px] sm:p-6 ${section.className}`}
+      >
+        {alertCount > 0 && (
+          <div className="absolute right-3 top-3 flex min-h-7 min-w-7 items-center justify-center rounded-full bg-red-500 px-2 text-xs font-black text-white shadow-sm">
+            {alertCount}
+          </div>
+        )}
+        <div className="text-3xl sm:text-4xl">{section.icon}</div>
+        <div className="mt-2 text-base font-black leading-tight sm:mt-4 sm:text-2xl">
+          {section.title}
+        </div>
+        <div className="mt-2 hidden text-sm font-bold leading-relaxed opacity-70 sm:block">
+          {section.description}
+        </div>
+        <div className="mt-3 text-xs font-black opacity-80 sm:mt-5 sm:text-sm">
+          관리하기 →
+        </div>
+      </Link>
+    );
   };
 
   if (pathname !== "/teacher" || !authorized) return null;
@@ -204,37 +255,18 @@ export default function TeacherDashboardGate() {
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-3 sm:mt-4 sm:gap-4">
-          {managementSections.map((section) => {
-            const alertCount = getAlertCount(section.key);
+          {managementSections.map(renderManagementSection)}
+        </div>
 
-            return (
-              <Link
-                key={section.key}
-                href={section.href}
-                className={`group relative rounded-[24px] border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:rounded-[30px] sm:p-6 ${section.className}`}
-              >
-                {alertCount > 0 && (
-                  <div className="absolute right-3 top-3 flex min-h-7 min-w-7 items-center justify-center rounded-full bg-red-500 px-2 text-xs font-black text-white shadow-sm">
-                    {alertCount}
-                  </div>
-                )}
-                <div className="text-3xl sm:text-4xl">{section.icon}</div>
-                <div className="mt-2 text-base font-black leading-tight sm:mt-4 sm:text-2xl">
-                  {section.title}
-                </div>
-                <div className="mt-2 hidden text-sm font-bold leading-relaxed opacity-70 sm:block">
-                  {section.description}
-                </div>
-                <div className="mt-3 text-xs font-black opacity-80 sm:mt-5 sm:text-sm">
-                  관리하기 →
-                </div>
-              </Link>
-            );
-          })}
+        <div className="mt-5 text-sm font-black text-slate-500 sm:mt-6 sm:text-base">
+          기타 관리
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-3 sm:gap-4">
+          {supportingSections.map(renderManagementSection)}
         </div>
 
         <div className="mt-4 rounded-3xl border border-slate-200 bg-white px-5 py-4 text-xs font-bold leading-relaxed text-slate-500 shadow-sm sm:text-sm">
-          계약학교 관리는 이번 개편에서 제외하고 기존 기능을 그대로 유지했습니다. 별도 관리 영역은 다음 단계에서 추가할 수 있습니다.
+          기존 데이터와 기능은 그대로 유지하고, 관리 동선만 운영 종류별로 나눴습니다.
         </div>
       </div>
     </div>

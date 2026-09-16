@@ -19,7 +19,7 @@ type ManagementSection = {
 const sections: Record<string, ManagementSection> = {
   "after-school": {
     eyebrow: "AFTER SCHOOL",
-    icon: "🌙",
+    icon: "🏫",
     title: "방과후 관리",
     description: "수강생·출석·진도·과제·복습·수강료를 한 영역에서 관리합니다.",
     items: [
@@ -67,9 +67,52 @@ const sections: Record<string, ManagementSection> = {
       },
     ],
   },
+  teaching: {
+    eyebrow: "TEACHING",
+    icon: "🚗",
+    title: "출강 관리",
+    description: "출강 일정과 건별계약 수금, 참여확인서, 지원·제출서류를 기존 기능으로 관리합니다.",
+    items: [
+      {
+        href: "/teacher/schedule?tab=teaching",
+        icon: "📅",
+        title: "출강 일정",
+        description: "방과후·건별계약 출강일정과 Google Calendar 연동 확인",
+        className: "border-cyan-200 bg-cyan-50 text-cyan-900",
+      },
+      {
+        href: "/teacher/fees",
+        icon: "💰",
+        title: "건별계약 · 수금",
+        description: "계약기간·차시별 강사료와 입금·급여명세 내역 관리",
+        className: "border-blue-200 bg-blue-50 text-blue-900",
+      },
+      {
+        href: "/teacher/atc-confirmations",
+        icon: "🧾",
+        title: "ATC 참여확인서",
+        description: "출강일정과 수금관리 데이터를 연결해 월별 확인서 작성",
+        className: "border-indigo-200 bg-indigo-50 text-indigo-900",
+      },
+      {
+        href: "/teacher/application-documents",
+        icon: "📄",
+        title: "지원 · 제출서류",
+        description: "학교 기본정보와 서명을 반영한 필수 동의서 작성",
+        className: "border-violet-200 bg-violet-50 text-violet-900",
+      },
+    ],
+  },
+  care: {
+    eyebrow: "CARE · NEULBOM",
+    icon: "🧸",
+    title: "돌봄/늘봄 관리",
+    description: "돌봄·늘봄 운영을 위한 관리 영역입니다.",
+    items: [],
+  },
   "sun-lab": {
     eyebrow: "SUN LAB",
-    icon: "☀️",
+    icon: "✨",
     title: "SUN LAB 관리",
     description: "선랩 수강생과 헬로메이플·도서관 등 선랩 전용 기능을 관리합니다.",
     items: [
@@ -219,20 +262,30 @@ export default async function TeacherManagementSectionPage({
           </div>
         </section>
 
-        <section className="mt-4 grid grid-cols-2 gap-3 sm:gap-4">
-          {config.items.map((item) => (
-            <Link
-              key={`${item.href}-${item.title}`}
-              href={item.href}
-              className={`rounded-[24px] border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:rounded-[30px] sm:p-6 ${item.className}`}
-            >
-              <div className="text-3xl sm:text-4xl">{item.icon}</div>
-              <div className="mt-2 text-base font-black leading-tight sm:mt-4 sm:text-2xl">{item.title}</div>
-              <div className="mt-2 hidden text-sm font-bold leading-relaxed opacity-70 sm:block">{item.description}</div>
-              <div className="mt-3 text-xs font-black opacity-80 sm:mt-5 sm:text-sm">관리하기 →</div>
-            </Link>
-          ))}
-        </section>
+        {config.items.length > 0 ? (
+          <section className="mt-4 grid grid-cols-2 gap-3 sm:gap-4">
+            {config.items.map((item) => (
+              <Link
+                key={`${item.href}-${item.title}`}
+                href={item.href}
+                className={`rounded-[24px] border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:rounded-[30px] sm:p-6 ${item.className}`}
+              >
+                <div className="text-3xl sm:text-4xl">{item.icon}</div>
+                <div className="mt-2 text-base font-black leading-tight sm:mt-4 sm:text-2xl">{item.title}</div>
+                <div className="mt-2 hidden text-sm font-bold leading-relaxed opacity-70 sm:block">{item.description}</div>
+                <div className="mt-3 text-xs font-black opacity-80 sm:mt-5 sm:text-sm">관리하기 →</div>
+              </Link>
+            ))}
+          </section>
+        ) : (
+          <section className="mt-4 rounded-[28px] border border-amber-200 bg-amber-50 p-7 text-center shadow-sm sm:rounded-[32px] sm:p-10">
+            <div className="text-4xl">🧸</div>
+            <h2 className="mt-3 text-xl font-black text-amber-950 sm:text-2xl">세부 관리는 준비 중이에요.</h2>
+            <p className="mt-2 text-sm font-bold leading-relaxed text-amber-800">
+              학교·기관별 카드는 추후 이 화면에 추가할 예정입니다.
+            </p>
+          </section>
+        )}
 
         <div className="mt-4 rounded-3xl border border-slate-200 bg-white px-5 py-4 text-xs font-bold leading-relaxed text-slate-500 shadow-sm sm:text-sm">
           기존 데이터와 기능은 그대로 유지하고, 관리 동선만 영역별로 분리했습니다.
