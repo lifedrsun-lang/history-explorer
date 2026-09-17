@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { onAuthStateChanged, User } from "firebase/auth";
 import {
@@ -723,6 +724,7 @@ export default function AtcConfirmationsPage() {
 
       {selectedSchool && (
         <section className="atc-print-sheet mx-auto max-w-[850px] bg-white p-8 shadow-lg">
+          <Image src="/images/atc-logo.png" alt="ATC" width={292} height={74} className="atc-print-logo" priority />
           <div className="text-center text-[11px] font-bold leading-relaxed">월별 참여 확인서 작성 후 운영사무국으로 메일 제출 (익월 3일까지)</div>
           <h2 className="mt-2 text-center text-xl font-black">2026 ATC스쿨 전담 에듀케이터 참여 확인서</h2>
 
@@ -738,7 +740,10 @@ export default function AtcConfirmationsPage() {
                     <span>(소속) <b>{selectedSchool}</b></span>
                     <span>(성명) <b>{schoolVerifierName}</b></span>
                     <span className="ml-auto">학교 담당 교사 서명</span>
-                    {schoolSignatureDataUrl && <img src={schoolSignatureDataUrl} alt="학교 담당교사 서명" className="atc-signature-img h-12 w-24" />}
+                    <span className="atc-signature-slot">
+                      <span aria-hidden="true">(인)</span>
+                      {schoolSignatureDataUrl && <img src={schoolSignatureDataUrl} alt="학교 담당교사 서명" className="atc-signature-img" />}
+                    </span>
                   </div>
                 </td>
               </tr>
@@ -764,8 +769,13 @@ export default function AtcConfirmationsPage() {
           <div className="mt-7 text-center text-[12px] font-bold">본인은 위 사항을 확인하며 참여하였음을 서명으로 증명합니다.</div>
           <div className="mt-5 text-center text-[12px] font-bold">{getTodayKorean()}</div>
           <div className="mt-6 flex items-center justify-center gap-3 text-[12px] font-bold">
-            <span>에듀케이터 성명</span><span className="min-w-20 border-b border-slate-500 pb-1 text-center">{profile.name}</span><span>친필서명(인)</span>
-            {profile.signatureDataUrl && <img src={profile.signatureDataUrl} alt="에듀케이터 서명" className="atc-signature-img h-14 w-28" />}
+            <span>에듀케이터 성명</span>
+            <span className="min-w-20 border-b border-slate-500 pb-1 text-center">{profile.name}</span>
+            <span>친필서명</span>
+            <span className="atc-signature-slot">
+              <span aria-hidden="true">(인)</span>
+              {profile.signatureDataUrl && <img src={profile.signatureDataUrl} alt="에듀케이터 서명" className="atc-signature-img" />}
+            </span>
           </div>
 
           <div className="no-print mt-5 rounded-2xl bg-slate-50 p-3 text-xs font-bold text-slate-500">미리보기입니다. 인쇄 / PDF 저장 시 이 안내는 출력되지 않습니다.</div>

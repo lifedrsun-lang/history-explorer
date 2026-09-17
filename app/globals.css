@@ -133,9 +133,22 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
 
 /* ATC 참여확인서는 원본 양식의 색감과 인쇄 구조를 최대한 유지한다. */
 .atc-print-sheet {
+  position: relative;
   color: #111827;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
+}
+
+.atc-print-sheet .atc-print-logo {
+  position: absolute;
+  top: 22px;
+  right: 32px;
+  width: 112px;
+  height: 34px;
+  max-width: 112px;
+  max-height: 34px;
+  object-fit: contain;
+  object-position: right center;
 }
 
 .atc-print-sheet h2 {
@@ -183,9 +196,9 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
 /* 확인자 행은 서명이 길어져도 셀 밖으로 밀리지 않도록 고정 그리드로 배치한다. */
 .atc-print-sheet .atc-form-table:first-of-type tbody tr:last-child td[colspan="3"] > div {
   display: grid !important;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.8fr) 108px 96px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.8fr) 108px 82px;
   align-items: center;
-  gap: 6px !important;
+  gap: 4px !important;
   width: 100%;
   min-height: 54px;
   overflow: hidden;
@@ -203,23 +216,43 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
   font-size: 10.5px;
 }
 
-.atc-print-sheet .atc-form-table:first-of-type tbody tr:last-child td[colspan="3"] > div > img {
-  width: 96px !important;
-  height: 44px !important;
-  max-width: 96px !important;
-  max-height: 44px !important;
-  object-fit: contain !important;
-  overflow: hidden;
-  justify-self: center;
-}
-
-/* 하단 에듀케이터 서명도 고정 4칸 구조로 묶어 오른쪽 이탈을 막는다. */
-.atc-print-sheet > div.mt-6.flex {
-  display: grid !important;
-  grid-template-columns: auto 92px auto 120px;
+.atc-signature-slot {
+  position: relative;
+  display: inline-flex;
+  width: 82px;
+  height: 46px;
+  max-width: 82px;
+  max-height: 46px;
   align-items: center;
   justify-content: center;
-  gap: 10px !important;
+  overflow: hidden;
+  line-height: 1;
+  flex: 0 0 82px;
+}
+
+.atc-signature-slot > span {
+  color: #334155;
+  white-space: nowrap;
+}
+
+.atc-signature-slot .atc-signature-img {
+  position: absolute;
+  inset: 1px;
+  width: calc(100% - 2px) !important;
+  height: calc(100% - 2px) !important;
+  max-width: 80px !important;
+  max-height: 44px !important;
+  object-fit: contain !important;
+  object-position: center;
+}
+
+/* 하단 에듀케이터 서명은 (인) 자리 안에만 표시한다. */
+.atc-print-sheet > div.mt-6.flex {
+  display: grid !important;
+  grid-template-columns: auto 92px auto 82px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px !important;
   width: 100%;
   overflow: hidden;
 }
@@ -227,16 +260,6 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
 .atc-print-sheet > div.mt-6.flex > span,
 .atc-print-sheet > div.mt-6.flex > img {
   min-width: 0;
-}
-
-.atc-print-sheet > div.mt-6.flex > img {
-  width: 120px !important;
-  height: 48px !important;
-  max-width: 120px !important;
-  max-height: 48px !important;
-  object-fit: contain !important;
-  overflow: hidden;
-  justify-self: center;
 }
 
 @media print {
@@ -247,6 +270,7 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
   }
 
   .atc-print-sheet h2::before,
+  .atc-print-sheet .atc-print-logo,
   .atc-print-sheet .atc-form-table th,
   .atc-print-sheet .atc-form-table thead th {
     -webkit-print-color-adjust: exact !important;
