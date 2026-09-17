@@ -287,6 +287,13 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
   flex: 0 0 82px;
 }
 
+.atc-signature-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
 .atc-signature-slot > span {
   color: #334155;
   white-space: nowrap;

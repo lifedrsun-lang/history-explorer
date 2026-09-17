@@ -13,6 +13,7 @@ import {
 } from "react";
 
 import { auth } from "@/lib/firebase";
+import { trimSignatureCanvas, trimSignatureDataUrl } from "@/lib/signatureCanvas";
 
 type GoogleCalendarEvent = {
   id: string;
@@ -29,6 +30,7 @@ type GoogleCalendarEvent = {
 type Profile = {
   name: string;
   phone: string;
+  birthDate: string;
   signatureDataUrl: string | null;
 };
 
@@ -249,53 +251,6 @@ const getTodayKorean = () =>
     day: "numeric",
   }).format(new Date());
 
-const getTrimmedSignatureDataUrl = (canvas: HTMLCanvasElement) => {
-  const context = canvas.getContext("2d");
-  if (!context) return null;
-
-  const { width, height } = canvas;
-  const pixels = context.getImageData(0, 0, width, height).data;
-  let minX = width;
-  let minY = height;
-  let maxX = -1;
-  let maxY = -1;
-
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const alpha = pixels[(y * width + x) * 4 + 3];
-      if (alpha > 12) {
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x);
-        maxY = Math.max(maxY, y);
-      }
-    }
-  }
-
-  if (maxX < minX || maxY < minY) return null;
-
-  const padding = 18;
-  const sourceX = Math.max(0, minX - padding);
-  const sourceY = Math.max(0, minY - padding);
-  const sourceWidth = Math.min(width - sourceX, maxX - minX + 1 + padding * 2);
-  const sourceHeight = Math.min(height - sourceY, maxY - minY + 1 + padding * 2);
-  const trimmedCanvas = document.createElement("canvas");
-  trimmedCanvas.width = sourceWidth;
-  trimmedCanvas.height = sourceHeight;
-  trimmedCanvas.getContext("2d")?.drawImage(
-    canvas,
-    sourceX,
-    sourceY,
-    sourceWidth,
-    sourceHeight,
-    0,
-    0,
-    sourceWidth,
-    sourceHeight
-  );
-  return trimmedCanvas.toDataURL("image/png");
-};
-
 const getStatusLabel = (
   confirmation: Confirmation | undefined,
   scheduleCount: number,
@@ -316,12 +271,15 @@ export default function AtcConfirmationsPage() {
   const [calendarEvents, setCalendarEvents] = useState<GoogleCalendarEvent[]>([]);
   const [confirmations, setConfirmations] = useState<Confirmation[]>([]);
   const [periods, setPeriods] = useState<OperationPeriod[]>([]);
-  const [profile, setProfile] = useState<Profile>({ name: "", phone: "", signatureDataUrl: null });
+  const [profile, setProfile] = useState<Profile>({ name: "", phone: "", birthDate: "", signatureDataUrl: null });
   const [selectedSchool, setSelectedSchool] = useState("");
   const [schoolVerifierName, setSchoolVerifierName] = useState("");
   const [schoolSignatureDataUrl, setSchoolSignatureDataUrl] = useState<string | null>(null);
   const [signatureMode, setSignatureMode] = useState(true);
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
+  const [educatorSignatureDialogOpen, setEducatorSignatureDialogOpen] = useState(false);
+  const [educatorSignatureDraft, setEducatorSignatureDraft] = useState<string | null>(null);
+  const [educatorSignatureSaving, setEducatorSignatureSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -329,6 +287,8 @@ export default function AtcConfirmationsPage() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
   const signatureBeforeEditRef = useRef<string | null>(null);
+  const educatorCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const educatorDrawingRef = useRef(false);
 
   useEffect(() =>
     onAuthStateChanged(auth, (currentUser) => {
@@ -360,13 +320,16 @@ export default function AtcConfirmationsPage() {
     if (!user) return;
     try {
       const data = await requestJson("/api/teacher/application-documents/profile");
+      const rawSignature =
+        typeof data?.profile?.signatureDataUrl === "string"
+          ? data.profile.signatureDataUrl
+          : null;
+      const normalizedSignature = await trimSignatureDataUrl(rawSignature);
       setProfile({
         name: String(data?.profile?.name || ""),
         phone: String(data?.profile?.phone || ""),
-        signatureDataUrl:
-          typeof data?.profile?.signatureDataUrl === "string"
-            ? data.profile.signatureDataUrl
-            : null,
+        birthDate: String(data?.profile?.birthDate || ""),
+        signatureDataUrl: normalizedSignature,
       });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "강사 정보를 불러오지 못했습니다.");
@@ -557,7 +520,7 @@ export default function AtcConfirmationsPage() {
     } catch {
       // 이미 해제된 포인터는 무시한다.
     }
-    setSchoolSignatureDataUrl(getTrimmedSignatureDataUrl(canvas));
+    setSchoolSignatureDataUrl(trimSignatureCanvas(canvas));
   };
 
   const openSignatureDialog = () => {
@@ -581,6 +544,93 @@ export default function AtcConfirmationsPage() {
     setSignatureMode(false);
     setSignatureDialogOpen(false);
     signatureBeforeEditRef.current = null;
+  };
+
+  const resetEducatorCanvas = () => {
+    const canvas = educatorCanvasRef.current;
+    if (canvas) canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const openEducatorSignatureDialog = () => {
+    setEducatorSignatureDraft(null);
+    setEducatorSignatureDialogOpen(true);
+    requestAnimationFrame(() => requestAnimationFrame(resetEducatorCanvas));
+  };
+
+  const startEducatorDrawing = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    const canvas = educatorCanvasRef.current;
+    if (!canvas) return;
+    educatorDrawingRef.current = true;
+    canvas.setPointerCapture(event.pointerId);
+    const rect = canvas.getBoundingClientRect();
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.lineWidth = 9;
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.strokeStyle = "#020617";
+    context.beginPath();
+    context.moveTo(
+      (event.clientX - rect.left) * (canvas.width / rect.width),
+      (event.clientY - rect.top) * (canvas.height / rect.height)
+    );
+  };
+
+  const drawEducatorSignature = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (!educatorDrawingRef.current) return;
+    const canvas = educatorCanvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.lineTo(
+      (event.clientX - rect.left) * (canvas.width / rect.width),
+      (event.clientY - rect.top) * (canvas.height / rect.height)
+    );
+    context.stroke();
+  };
+
+  const finishEducatorDrawing = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    const canvas = educatorCanvasRef.current;
+    if (!canvas || !educatorDrawingRef.current) return;
+    educatorDrawingRef.current = false;
+    try {
+      canvas.releasePointerCapture(event.pointerId);
+    } catch {
+      // 이미 해제된 포인터는 무시한다.
+    }
+    setEducatorSignatureDraft(trimSignatureCanvas(canvas));
+  };
+
+  const saveEducatorSignature = async () => {
+    if (!educatorSignatureDraft) return;
+    setEducatorSignatureSaving(true);
+    setErrorMessage("");
+    try {
+      const data = await requestJson("/api/teacher/application-documents/profile", {
+        method: "PUT",
+        body: JSON.stringify({
+          name: profile.name,
+          phone: profile.phone,
+          birthDate: profile.birthDate,
+          signatureDataUrl: educatorSignatureDraft,
+        }),
+      });
+      setProfile((current) => ({
+        ...current,
+        signatureDataUrl:
+          typeof data?.profile?.signatureDataUrl === "string"
+            ? data.profile.signatureDataUrl
+            : educatorSignatureDraft,
+      }));
+      setEducatorSignatureDialogOpen(false);
+      setEducatorSignatureDraft(null);
+      setNoticeMessage("기본 서명을 저장했습니다. 참여확인서와 학교 필수서류에 같은 서명이 적용됩니다.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "기본 서명을 저장하지 못했습니다.");
+    } finally {
+      setEducatorSignatureSaving(false);
+    }
   };
 
   const handleSave = async (markSubmitted = false) => {
@@ -811,6 +861,34 @@ export default function AtcConfirmationsPage() {
           </div>
         )}
 
+        {educatorSignatureDialogOpen && (
+          <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="에듀케이터 기본 서명">
+            <div className="w-full max-w-5xl rounded-3xl bg-white p-4 shadow-2xl sm:p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-black text-slate-900">에듀케이터 기본 서명</h2>
+                  <p className="mt-1 text-xs font-bold text-slate-500">여기서 저장한 서명은 참여확인서와 학교 필수서류에 공통으로 적용됩니다.</p>
+                </div>
+                <button type="button" onClick={() => { setEducatorSignatureDialogOpen(false); setEducatorSignatureDraft(null); }} disabled={educatorSignatureSaving} className="shrink-0 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black disabled:opacity-40">취소</button>
+              </div>
+              <canvas
+                ref={educatorCanvasRef}
+                width={1200}
+                height={440}
+                onPointerDown={startEducatorDrawing}
+                onPointerMove={drawEducatorSignature}
+                onPointerUp={finishEducatorDrawing}
+                onPointerCancel={finishEducatorDrawing}
+                className="mt-4 h-[48vh] min-h-64 max-h-[420px] w-full touch-none rounded-2xl border-2 border-dashed border-blue-300 bg-white shadow-inner"
+              />
+              <div className="mt-4 flex flex-wrap justify-end gap-2">
+                <button type="button" onClick={() => { resetEducatorCanvas(); setEducatorSignatureDraft(null); }} disabled={educatorSignatureSaving} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-black disabled:opacity-40">서명 지우기</button>
+                <button type="button" onClick={() => void saveEducatorSignature()} disabled={!educatorSignatureDraft || educatorSignatureSaving} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40">{educatorSignatureSaving ? "저장 중" : "기본 서명으로 저장"}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {selectedSchool && (
           <div className="mb-5 flex flex-wrap justify-end gap-2 rounded-3xl bg-white p-4 shadow-sm">
             <button type="button" onClick={() => void handleSave(false)} disabled={saving || loading} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50">{saving ? "저장 중" : "현재 내용 저장"}</button>
@@ -875,10 +953,10 @@ export default function AtcConfirmationsPage() {
           <div className="atc-footer-signature mt-6 flex items-center gap-3">
             <span>에듀케이터 성명</span>
             <span className="atc-educator-name min-w-20 border-b border-slate-500 pb-1 text-center">{profile.name}</span>
-            <span className="atc-signature-slot">
+            <button type="button" onClick={openEducatorSignatureDialog} className="atc-signature-slot atc-signature-button" title="에듀케이터 기본 서명 수정">
               <span aria-hidden="true">(인)</span>
               {profile.signatureDataUrl && <img src={profile.signatureDataUrl} alt="에듀케이터 서명" className="atc-signature-img" />}
-            </span>
+            </button>
           </div>
 
           <div className="no-print mt-5 rounded-2xl bg-slate-50 p-3 text-xs font-bold text-slate-500">미리보기입니다. 인쇄 / PDF 저장 시 이 안내는 출력되지 않습니다.</div>

@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { auth } from "@/lib/firebase";
+import { trimSignatureCanvas } from "@/lib/signatureCanvas";
 
 type Profile = {
   name: string;
@@ -193,8 +194,8 @@ export default function TeacherApplicationDocumentsPage() {
     const previous = lastPointRef.current;
     const context = canvas?.getContext("2d");
     if (!canvas || !current || !previous || !context) return;
-    context.strokeStyle = "#111";
-    context.lineWidth = 4;
+    context.strokeStyle = "#020617";
+    context.lineWidth = 9;
     context.lineCap = "round";
     context.lineJoin = "round";
     context.beginPath();
@@ -225,7 +226,7 @@ export default function TeacherApplicationDocumentsPage() {
     setErrorMessage("");
     try {
       const canvas = canvasRef.current;
-      const nextSignature = signatureHasInk && canvas ? canvas.toDataURL("image/png") : null;
+      const nextSignature = signatureHasInk && canvas ? trimSignatureCanvas(canvas) : null;
       const data = await requestJson("/api/teacher/application-documents/profile", {
         method: "PUT",
         body: JSON.stringify({ name, phone, birthDate, signatureDataUrl: nextSignature }),
@@ -241,7 +242,7 @@ export default function TeacherApplicationDocumentsPage() {
 
   const signatureForDocument = (() => {
     const canvas = canvasRef.current;
-    if (canvas && signatureHasInk) return canvas.toDataURL("image/png");
+    if (canvas && signatureHasInk) return trimSignatureCanvas(canvas);
     return signatureDataUrl;
   })();
 
@@ -320,8 +321,8 @@ export default function TeacherApplicationDocumentsPage() {
               <label className="text-sm font-black">전화번호<input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold" /></label>
               <label className="text-sm font-black sm:col-span-2">생년월일<input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold" /></label>
             </div>
-            <div className="mt-5 flex items-center justify-between"><div><div className="text-sm font-black">등록 서명</div><div className="text-xs font-bold text-slate-400">마우스나 터치로 한 번 등록</div></div><button type="button" onClick={resetSignature} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black">지우기</button></div>
-            <canvas ref={canvasRef} width={760} height={220} onPointerDown={beginDrawing} onPointerMove={draw} onPointerUp={endDrawing} onPointerCancel={endDrawing} className="mt-3 h-40 w-full touch-none rounded-2xl border-2 border-dashed border-slate-300 bg-white" />
+            <div className="mt-5 flex items-center justify-between"><div><div className="text-sm font-black">등록 서명</div><div className="text-xs font-bold text-slate-400">크게 서명하면 여백을 정리해 모든 서류에 일괄 적용합니다.</div></div><button type="button" onClick={resetSignature} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black">지우기</button></div>
+            <canvas ref={canvasRef} width={1200} height={440} onPointerDown={beginDrawing} onPointerMove={draw} onPointerUp={endDrawing} onPointerCancel={endDrawing} className="mt-3 h-64 w-full touch-none rounded-2xl border-2 border-dashed border-slate-300 bg-white" />
             <button type="button" onClick={saveProfile} disabled={saving} className="mt-5 w-full rounded-2xl bg-slate-900 px-5 py-3 text-sm font-black text-white disabled:opacity-50">{saving ? "저장 중..." : "기본정보 · 서명 저장"}</button>
           </section>
 
