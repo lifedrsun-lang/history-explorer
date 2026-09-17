@@ -174,7 +174,7 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
 .atc-print-sheet .atc-title {
   font-family: "HYHeadLineM", "HY헤드라인M", "Malgun Gothic", sans-serif;
   font-size: 16pt;
-  font-weight: normal !important;
+  font-weight: 700 !important;
 }
 
 .atc-print-sheet h2::before {
@@ -255,7 +255,7 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
 /* 확인자 행은 서명이 길어져도 셀 밖으로 밀리지 않도록 고정 그리드로 배치한다. */
 .atc-print-sheet .atc-verifier-row {
   display: grid !important;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 82px;
+  grid-template-columns: 40.5% minmax(0, 1fr) 82px;
   align-items: center;
   gap: 4px !important;
   width: 100%;
@@ -266,6 +266,11 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
 .atc-print-sheet .atc-verifier-row > span {
   min-width: 0;
   line-height: 1.3;
+}
+
+.atc-print-sheet .atc-verifier-affiliation {
+  padding-left: 8px;
+  text-align: left;
 }
 
 .atc-signature-slot {

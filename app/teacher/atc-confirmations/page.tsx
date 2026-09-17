@@ -753,7 +753,7 @@ export default function AtcConfirmationsPage() {
                 <th className="bg-slate-50">확 인 자</th>
                 <td colSpan={3}>
                   <div className="atc-verifier-row flex min-h-14 items-center gap-3">
-                    <span>(소속) <b>{officialSelectedSchool}</b></span>
+                    <span className="atc-verifier-affiliation">(소속) <b>{officialSelectedSchool}</b></span>
                     <span>(성명) <b>{schoolVerifierName}</b></span>
                     <span className="atc-signature-slot">
                       <span aria-hidden="true">(서명)</span>
