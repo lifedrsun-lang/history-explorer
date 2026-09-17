@@ -730,9 +730,10 @@ export default function AtcConfirmationsPage() {
 
       {selectedSchool && (
         <section className="atc-print-sheet mx-auto max-w-[850px] bg-white p-8 shadow-lg">
-          <Image src="/images/atc-logo.png" alt="ATC" width={292} height={74} className="atc-print-logo" priority />
-          <div className="text-center text-[11px] font-bold leading-relaxed">월별 참여 확인서 작성 후 운영사무국으로 메일 제출 (익월 3일까지)</div>
-          <h2 className="atc-title mt-2">2026 ATC스쿨 전담 에듀케이터 참여 확인서</h2>
+          <div className="atc-logo-row">
+            <Image src="/images/atc-logo.png" alt="ATC" width={292} height={74} className="atc-print-logo" priority />
+          </div>
+          <h2 className="atc-title">2026 ATC스쿨 전담 에듀케이터 참여 확인서</h2>
 
           <table className="atc-form-table atc-summary-table mt-5">
             <tbody>
@@ -742,12 +743,11 @@ export default function AtcConfirmationsPage() {
               <tr>
                 <th className="bg-slate-50">확 인 자</th>
                 <td colSpan={3}>
-                  <div className="flex min-h-14 items-center gap-3">
+                  <div className="atc-verifier-row flex min-h-14 items-center gap-3">
                     <span>(소속) <b>{selectedSchool}</b></span>
                     <span>(성명) <b>{schoolVerifierName}</b></span>
-                    <span className="ml-auto">학교 담당 교사 서명</span>
                     <span className="atc-signature-slot">
-                      <span aria-hidden="true">(인)</span>
+                      <span aria-hidden="true">(서명)</span>
                       {schoolSignatureDataUrl && <img src={schoolSignatureDataUrl} alt="학교 담당교사 서명" className="atc-signature-img" />}
                     </span>
                   </div>
@@ -779,11 +779,10 @@ export default function AtcConfirmationsPage() {
 
           <div className="atc-attendance-note mt-3">※ 출석부 월별 해당차수에 해당하는 날짜를 기입.</div>
           <div className="atc-footer-statement mt-7 text-center">본인은 위 사항을 확인하며 참여하였음을 서명으로 증명합니다.</div>
-          <div className="atc-footer-date mt-5 text-center">{getTodayKorean()}</div>
-          <div className="atc-footer-signature mt-6 flex items-center justify-center gap-3">
+          <div className="atc-footer-date mt-5">{getTodayKorean()}</div>
+          <div className="atc-footer-signature mt-6 flex items-center gap-3">
             <span>에듀케이터 성명</span>
             <span className="atc-educator-name min-w-20 border-b border-slate-500 pb-1 text-center">{profile.name}</span>
-            <span>친필서명</span>
             <span className="atc-signature-slot">
               <span aria-hidden="true">(인)</span>
               {profile.signatureDataUrl && <img src={profile.signatureDataUrl} alt="에듀케이터 서명" className="atc-signature-img" />}

@@ -140,15 +140,20 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
 }
 
 .atc-print-sheet .atc-print-logo {
-  position: absolute;
-  top: 22px;
-  right: 32px;
-  width: 112px;
-  height: 34px;
-  max-width: 112px;
-  max-height: 34px;
+  width: 51.87mm;
+  height: 13.29mm;
+  max-width: 51.87mm;
+  max-height: 13.29mm;
   object-fit: contain;
   object-position: right center;
+}
+
+.atc-print-sheet .atc-logo-row {
+  display: flex;
+  min-height: 13.29mm;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 5mm;
 }
 
 .atc-print-sheet h2 {
@@ -157,8 +162,11 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
   align-items: center;
   justify-content: flex-start;
   min-height: 34px;
-  padding: 0 0 8px 34px;
+  padding: 7px 0 8px 34px;
+  border-top: 1px solid #86a9c8;
+  border-right: 0;
   border-bottom: 3px solid #86a9c8;
+  border-left: 0;
   line-height: 1.25;
   text-align: left;
 }
@@ -245,9 +253,9 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
 }
 
 /* 확인자 행은 서명이 길어져도 셀 밖으로 밀리지 않도록 고정 그리드로 배치한다. */
-.atc-print-sheet .atc-form-table:first-of-type tbody tr:last-child td[colspan="3"] > div {
+.atc-print-sheet .atc-verifier-row {
   display: grid !important;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.8fr) 108px 82px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 82px;
   align-items: center;
   gap: 4px !important;
   width: 100%;
@@ -255,16 +263,9 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
   overflow: hidden;
 }
 
-.atc-print-sheet .atc-form-table:first-of-type tbody tr:last-child td[colspan="3"] > div > span {
+.atc-print-sheet .atc-verifier-row > span {
   min-width: 0;
   line-height: 1.3;
-}
-
-.atc-print-sheet .atc-form-table:first-of-type tbody tr:last-child td[colspan="3"] > div > span:nth-of-type(3) {
-  margin-left: 0 !important;
-  text-align: center;
-  white-space: nowrap;
-  font-size: 10pt;
 }
 
 .atc-signature-slot {
@@ -297,19 +298,24 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
   object-position: center;
 }
 
-/* 하단 에듀케이터 서명은 (인) 자리 안에만 표시한다. */
-.atc-print-sheet > div.mt-6.flex {
+/* 하단 날짜와 에듀케이터 성명은 원본 양식처럼 오른쪽에 정렬한다. */
+.atc-print-sheet .atc-footer-date {
+  text-align: right;
+}
+
+.atc-print-sheet .atc-footer-signature {
   display: grid !important;
-  grid-template-columns: auto 92px auto 82px;
+  grid-template-columns: auto 92px 82px;
   align-items: center;
-  justify-content: center;
+  justify-content: end;
   gap: 5px !important;
   width: 100%;
   overflow: hidden;
+  text-align: right;
 }
 
-.atc-print-sheet > div.mt-6.flex > span,
-.atc-print-sheet > div.mt-6.flex > img {
+.atc-print-sheet .atc-footer-signature > span,
+.atc-print-sheet .atc-footer-signature > img {
   min-width: 0;
 }
 
