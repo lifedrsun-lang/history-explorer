@@ -734,9 +734,20 @@ export default function AtcConfirmationsPage() {
           body { background: white !important; }
           body * { visibility: hidden !important; }
           .atc-print-sheet, .atc-print-sheet * { visibility: visible !important; }
-          .atc-print-sheet { position: absolute !important; left: 0; top: 0; width: 194mm !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: 0 !important; }
+          .atc-print-sheet { position: absolute !important; left: 0; top: 0; width: 194mm !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: 0 !important; break-inside: avoid !important; page-break-inside: avoid !important; }
           .no-print { display: none !important; }
-          .atc-form-table th, .atc-form-table td { padding: 3px 5px !important; font-size: 10.5px !important; }
+          .atc-logo-row { margin-bottom: 3mm !important; }
+          .atc-title { min-height: 8mm !important; padding-top: 1.5mm !important; padding-bottom: 1.5mm !important; }
+          .atc-summary-table { margin-top: 3mm !important; }
+          .atc-lesson-table { margin-top: 3mm !important; }
+          .atc-form-table th, .atc-form-table td { padding: 0.7mm 1mm !important; font-size: 10pt !important; line-height: 1.1 !important; }
+          .atc-lesson-table tr { height: 4.8mm !important; }
+          .atc-lesson-table th, .atc-lesson-table td { height: 4.8mm !important; padding-top: 0.35mm !important; padding-bottom: 0.35mm !important; }
+          .atc-verifier-row { min-height: 11mm !important; }
+          .atc-attendance-note { margin-top: 2mm !important; }
+          .atc-footer-statement { margin-top: 4mm !important; }
+          .atc-footer-date { margin-top: 2.5mm !important; }
+          .atc-footer-signature { margin-top: 2.5mm !important; }
         }
       `}</style>
 
