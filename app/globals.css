@@ -174,7 +174,7 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
 .atc-print-sheet .atc-title {
   font-family: "HYHeadLineM", "HY헤드라인M", "Malgun Gothic", sans-serif;
   font-size: 16pt;
-  font-weight: 400;
+  font-weight: normal !important;
 }
 
 .atc-print-sheet h2::before {

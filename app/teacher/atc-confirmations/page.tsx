@@ -143,6 +143,14 @@ const isSameSchool = (left: string, right: string) => {
   return a === b || a.endsWith(b) || b.endsWith(a);
 };
 
+const getOfficialSchoolName = (value: string) => {
+  const schoolName = String(value || "").trim();
+  if (schoolName.endsWith("초") && !schoolName.endsWith("초등학교")) {
+    return `${schoolName.slice(0, -1)}초등학교`;
+  }
+  return schoolName;
+};
+
 const getSchoolNameFromSummary = (summary: string) => {
   const withoutOwnerPrefix = summary.replace(/^[^)]{1,30}\)\s*/, "").trim();
   const firstSegment = withoutOwnerPrefix.split("/")[0]?.trim() || "";
@@ -594,6 +602,7 @@ export default function AtcConfirmationsPage() {
   const selectedStatus = getStatusLabel(selectedConfirmation, currentScheduleSnapshot.length, scheduleChanged);
   const year = Number(yearMonth.slice(0, 4));
   const month = Number(yearMonth.slice(5));
+  const officialSelectedSchool = getOfficialSchoolName(selectedSchool);
 
   return (
     <main className="min-h-screen bg-[#f5f7fb] px-3 py-5 text-slate-800">
@@ -737,14 +746,14 @@ export default function AtcConfirmationsPage() {
 
           <table className="atc-form-table atc-summary-table mt-5">
             <tbody>
-              <tr><th className="w-[16%] bg-slate-50">프로그램명</th><td className="w-[34%] font-bold">ATC스쿨</td><th className="w-[16%] bg-slate-50">학교명</th><td className="w-[34%] font-bold">{selectedSchool}</td></tr>
+              <tr><th className="w-[16%] bg-slate-50">프로그램명</th><td className="w-[34%] font-bold">ATC스쿨</td><th className="w-[16%] bg-slate-50">학교명</th><td className="w-[34%] font-bold">{officialSelectedSchool}</td></tr>
               <tr><th className="bg-slate-50">운영기간</th><td className="font-bold">{formatPeriod(operationPeriodStart, operationPeriodEnd) || ""}</td><th className="bg-slate-50">해당월</th><td className="font-bold">{year}년 {month}월</td></tr>
               <tr><th className="bg-slate-50">강사명</th><td className="font-bold">{profile.name}</td><th className="bg-slate-50">연락처</th><td className="font-bold">{profile.phone}</td></tr>
               <tr>
                 <th className="bg-slate-50">확 인 자</th>
                 <td colSpan={3}>
                   <div className="atc-verifier-row flex min-h-14 items-center gap-3">
-                    <span>(소속) <b>{selectedSchool}</b></span>
+                    <span>(소속) <b>{officialSelectedSchool}</b></span>
                     <span>(성명) <b>{schoolVerifierName}</b></span>
                     <span className="atc-signature-slot">
                       <span aria-hidden="true">(서명)</span>
