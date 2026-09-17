@@ -699,7 +699,20 @@ export default function AtcConfirmationsPage() {
       setErrorMessage("서명 후 출강 일정이 변경되어 현재 문서는 출력할 수 없습니다. 새 일정 저장 후 담당교사 서명을 다시 받아 주세요.");
       return;
     }
-    window.print();
+
+    const originalTitle = document.title;
+    const educatorName = profile.name.trim() || "에듀케이터";
+    const printFileName = `${yearMonth.slice(0, 4)} ATC SCHOOL 전담 에듀케이터 참여확인서_${selectedSchool}_${yearMonth.slice(5)}월_${educatorName}`
+      .replace(/[\\/:*?"<>|]/g, "-")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    document.title = printFileName;
+    try {
+      window.print();
+    } finally {
+      document.title = originalTitle;
+    }
   };
 
   if (authChecking) {
