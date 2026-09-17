@@ -155,11 +155,18 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   min-height: 34px;
   padding: 0 0 8px 34px;
   border-bottom: 3px solid #86a9c8;
   line-height: 1.25;
+  text-align: left;
+}
+
+.atc-print-sheet .atc-title {
+  font-family: "HYHeadLineM", "HY헤드라인M", "Malgun Gothic", sans-serif;
+  font-size: 16pt;
+  font-weight: 400;
 }
 
 .atc-print-sheet h2::before {
@@ -177,20 +184,64 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
 .atc-print-sheet .atc-form-table th,
 .atc-print-sheet .atc-form-table td {
   border-color: #334155 !important;
+  font-family: "Malgun Gothic", "맑은 고딕", sans-serif;
+  font-size: 10pt;
+  text-align: center;
 }
 
 .atc-print-sheet .atc-form-table th {
   background: #dbe8f3 !important;
   color: #111827;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .atc-print-sheet .atc-form-table thead th {
   background: #c9ddec !important;
 }
 
-.atc-print-sheet .atc-form-table tbody tr:last-child.font-black td {
+.atc-print-sheet .atc-summary-table td {
+  font-weight: 700;
+}
+
+.atc-print-sheet .atc-lesson-table tbody td {
+  font-weight: 400;
+}
+
+.atc-print-sheet .atc-lesson-table .atc-remarks-cell {
+  text-align: left;
+}
+
+.atc-print-sheet .atc-lesson-table .atc-example-row td {
+  color: rgb(128, 128, 128);
+  font-style: italic;
+  font-weight: 400;
+}
+
+.atc-print-sheet .atc-lesson-table .atc-total-row td {
   background: #f8fafc;
+  font-weight: 400;
+}
+
+.atc-print-sheet .atc-lesson-table .atc-total-row td.font-bold {
+  font-weight: 700;
+}
+
+.atc-print-sheet .atc-attendance-note {
+  font-family: "Malgun Gothic", "맑은 고딕", sans-serif;
+  font-size: 10pt;
+  font-weight: 700;
+}
+
+.atc-print-sheet .atc-footer-statement,
+.atc-print-sheet .atc-footer-date,
+.atc-print-sheet .atc-footer-signature {
+  font-family: "Malgun Gothic", "맑은 고딕", sans-serif;
+  font-size: 13pt;
+  font-weight: 400;
+}
+
+.atc-print-sheet .atc-educator-name {
+  font-weight: 700;
 }
 
 /* 확인자 행은 서명이 길어져도 셀 밖으로 밀리지 않도록 고정 그리드로 배치한다. */
@@ -213,7 +264,7 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
   margin-left: 0 !important;
   text-align: center;
   white-space: nowrap;
-  font-size: 10.5px;
+  font-size: 10pt;
 }
 
 .atc-signature-slot {

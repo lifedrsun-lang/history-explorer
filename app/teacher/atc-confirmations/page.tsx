@@ -726,9 +726,9 @@ export default function AtcConfirmationsPage() {
         <section className="atc-print-sheet mx-auto max-w-[850px] bg-white p-8 shadow-lg">
           <Image src="/images/atc-logo.png" alt="ATC" width={292} height={74} className="atc-print-logo" priority />
           <div className="text-center text-[11px] font-bold leading-relaxed">월별 참여 확인서 작성 후 운영사무국으로 메일 제출 (익월 3일까지)</div>
-          <h2 className="mt-2 text-center text-xl font-black">2026 ATC스쿨 전담 에듀케이터 참여 확인서</h2>
+          <h2 className="atc-title mt-2">2026 ATC스쿨 전담 에듀케이터 참여 확인서</h2>
 
-          <table className="atc-form-table mt-5 text-[12px]">
+          <table className="atc-form-table atc-summary-table mt-5">
             <tbody>
               <tr><th className="w-[16%] bg-slate-50">프로그램명</th><td className="w-[34%] font-bold">ATC스쿨</td><th className="w-[16%] bg-slate-50">학교명</th><td className="w-[34%] font-bold">{selectedSchool}</td></tr>
               <tr><th className="bg-slate-50">운영기간</th><td className="font-bold">{formatPeriod(operationPeriodStart, operationPeriodEnd) || ""}</td><th className="bg-slate-50">해당월</th><td className="font-bold">{year}년 {month}월</td></tr>
@@ -750,27 +750,33 @@ export default function AtcConfirmationsPage() {
             </tbody>
           </table>
 
-          <table className="atc-form-table mt-4 text-center text-[11px]">
+          <table className="atc-form-table atc-lesson-table mt-4">
             <thead><tr className="bg-slate-50"><th className="w-[12%]">수업횟수</th><th className="w-[23%]">수업일자</th><th className="w-[16%]">수업차시</th><th>비고</th></tr></thead>
             <tbody>
+              <tr className="atc-example-row h-7">
+                <td>예시</td>
+                <td>4월 1일</td>
+                <td>4</td>
+                <td className="atc-remarks-cell" />
+              </tr>
               {paddedPrintRows.map((row, index) => (
                 <tr key={`${row?.date || "blank"}-${index}`} className="h-7">
                   <td>{index + 1}</td>
-                  <td className="font-bold">{row ? formatMonthDay(row.date) : ""}</td>
-                  <td className="font-bold">{row ? row.sessions : ""}</td>
-                  <td className="text-left">{row?.remarks || ""}</td>
+                  <td>{row ? formatMonthDay(row.date) : ""}</td>
+                  <td>{row ? row.sessions : ""}</td>
+                  <td className="atc-remarks-cell">{row?.remarks || ""}</td>
                 </tr>
               ))}
-              <tr className="font-black"><td>합계</td><td>{printRows.length}일</td><td>{totalSessions}차시</td><td /></tr>
+              <tr className="atc-total-row"><td>합계</td><td className="font-bold">{printRows.length}일</td><td className="font-bold">{totalSessions}차시</td><td className="atc-remarks-cell" /></tr>
             </tbody>
           </table>
 
-          <div className="mt-3 text-[10.5px]">※ 출석부 월별 해당차수에 해당하는 날짜를 기입.</div>
-          <div className="mt-7 text-center text-[12px] font-bold">본인은 위 사항을 확인하며 참여하였음을 서명으로 증명합니다.</div>
-          <div className="mt-5 text-center text-[12px] font-bold">{getTodayKorean()}</div>
-          <div className="mt-6 flex items-center justify-center gap-3 text-[12px] font-bold">
+          <div className="atc-attendance-note mt-3">※ 출석부 월별 해당차수에 해당하는 날짜를 기입.</div>
+          <div className="atc-footer-statement mt-7 text-center">본인은 위 사항을 확인하며 참여하였음을 서명으로 증명합니다.</div>
+          <div className="atc-footer-date mt-5 text-center">{getTodayKorean()}</div>
+          <div className="atc-footer-signature mt-6 flex items-center justify-center gap-3">
             <span>에듀케이터 성명</span>
-            <span className="min-w-20 border-b border-slate-500 pb-1 text-center">{profile.name}</span>
+            <span className="atc-educator-name min-w-20 border-b border-slate-500 pb-1 text-center">{profile.name}</span>
             <span>친필서명</span>
             <span className="atc-signature-slot">
               <span aria-hidden="true">(인)</span>
