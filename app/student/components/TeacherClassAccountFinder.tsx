@@ -6,13 +6,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { auth } from "@/lib/firebase";
 import { parseClassroomAccountCsv, type ClassroomAccount } from "@/lib/classroomAccountRoster";
 import {
-  getSupportedClassroomSchoolName,
+  normalizeSchoolName,
   WONJONG_SCHOOL_NAME,
 } from "@/lib/gaebongClassroom";
 import type { SchoolClassroom } from "../data/classroomData";
 import StudentClassAccountFinder from "./StudentClassAccountFinder";
 
-type Props = { classroom: SchoolClassroom };
+type Props = { classroom: SchoolClassroom; studentPreview?: boolean };
 type AccessState = "checking" | "authorized" | "hidden";
 type ApiResponse = {
   accounts?: ClassroomAccount[];
@@ -20,13 +20,20 @@ type ApiResponse = {
   error?: string;
 };
 
+const EMPTY_ACCOUNT: ClassroomAccount = {
+  classNumber: 0,
+  nickname: "",
+  accountId: "",
+  temporaryPassword: "",
+};
+
 const COLLAPSED_ACCOUNT_COUNT = 3;
 
-const getRosterUrl = (classroom: SchoolClassroom, school: string) => {
+const getRosterUrl = (school: string, grade: number, classNumber: number) => {
   const params = new URLSearchParams({
     school,
-    grade: String(classroom.grade),
-    classNumber: String(classroom.classNumber),
+    grade: String(grade),
+    classNumber: String(classNumber),
   });
   return `/api/teacher/class-account-roster?${params.toString()}`;
 };
@@ -47,7 +54,10 @@ const formatChangedAt = (value?: string) => {
   }).format(date);
 };
 
-export default function TeacherClassAccountFinder({ classroom }: Props) {
+export default function TeacherClassAccountFinder({
+  classroom,
+  studentPreview = false,
+}: Props) {
   const [user, setUser] = useState<User | null>(null);
   const [accessState, setAccessState] = useState<AccessState>("checking");
   const [accounts, setAccounts] = useState<ClassroomAccount[]>([]);
@@ -62,15 +72,22 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
   const [editingPasswordNumber, setEditingPasswordNumber] = useState<number | null>(null);
   const [changedPasswordInput, setChangedPasswordInput] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
+  const [accountDraft, setAccountDraft] = useState<ClassroomAccount | null>(null);
+  const [editingAccountNumber, setEditingAccountNumber] = useState<number | null>(null);
+  const [savingAccount, setSavingAccount] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const school = getSupportedClassroomSchoolName(classroom);
+  const school = normalizeSchoolName(classroom.schoolName);
   const schoolLabel = classroom.schoolDisplayName || "서울 개봉초";
   const isWonjongGrade2 = school === WONJONG_SCHOOL_NAME && (classroom.grade === 1 || classroom.grade === 2);
   const passwordChangeEnabled = Boolean(school && school !== WONJONG_SCHOOL_NAME);
+  const rosterUrl = useMemo(
+    () => getRosterUrl(school, classroom.grade, classroom.classNumber),
+    [classroom.classNumber, classroom.grade, school]
+  );
 
   useEffect(() => {
-    if (!school) return;
+    if (studentPreview) return;
     let activeRequest: AbortController | null = null;
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -86,6 +103,8 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
       setChangedPasswordInput("");
       setNotice("");
       setErrorMessage("");
+      setAccountDraft(null);
+      setEditingAccountNumber(null);
 
       if (!currentUser) {
         setAccessState("hidden");
@@ -100,7 +119,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
         try {
           const token = await currentUser.getIdToken();
           setAccessState("authorized");
-          const response = await fetch(getRosterUrl(classroom, school), {
+          const response = await fetch(rosterUrl, {
             headers: { Authorization: `Bearer ${token}` },
             cache: "no-store",
             signal: controller.signal,
@@ -124,7 +143,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
       activeRequest?.abort();
       unsubscribe();
     };
-  }, [classroom, school]);
+  }, [rosterUrl, studentPreview]);
 
   const displayedAccounts = useMemo(() => {
     if (highlightedNumber !== null) return accounts.filter((account) => account.classNumber === highlightedNumber);
@@ -216,6 +235,15 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
     }
   };
 
+  const togglePasswordVisibility = (studentNumber: number) => {
+    setVisiblePasswords((current) => {
+      const next = new Set(current);
+      if (next.has(studentNumber)) next.delete(studentNumber);
+      else next.add(studentNumber);
+      return next;
+    });
+  };
+
   const startPasswordEdit = (account: ClassroomAccount) => {
     setEditingPasswordNumber(account.classNumber);
     setChangedPasswordInput(account.changedPassword || "");
@@ -279,7 +307,95 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
     }
   };
 
-  if (!school || accessState === "checking") return null;
+  const saveAccount = async () => {
+    if (!user || !school || !accountDraft || savingAccount) return;
+    if (
+      !Number.isInteger(accountDraft.classNumber) ||
+      accountDraft.classNumber < 1 ||
+      accountDraft.classNumber > 25 ||
+      !accountDraft.nickname.trim() ||
+      !accountDraft.accountId.trim() ||
+      !accountDraft.temporaryPassword.trim()
+    ) {
+      setErrorMessage("학생 번호(1~25), 닉네임, 아이디, 임시 비밀번호를 모두 입력해 주세요.");
+      return;
+    }
+
+    setSavingAccount(true);
+    setErrorMessage("");
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/teacher/class-account-roster", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          school,
+          grade: classroom.grade,
+          classNumber: classroom.classNumber,
+          studentNumber: accountDraft.classNumber,
+          nickname: accountDraft.nickname,
+          accountId: accountDraft.accountId,
+          temporaryPassword: accountDraft.temporaryPassword,
+        }),
+      });
+      const body = await readResponseBody(response);
+      if (!response.ok || !body.account) {
+        throw new Error(body.error || "학생 계정을 저장하지 못했습니다.");
+      }
+      setAccounts((current) =>
+        [...current.filter((item) => item.classNumber !== body.account!.classNumber), body.account!]
+          .sort((a, b) => a.classNumber - b.classNumber)
+      );
+      setAccountDraft(null);
+      setEditingAccountNumber(null);
+      setNotice(`${body.account.classNumber}번 학생 계정을 저장했어요.`);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "학생 계정을 저장하지 못했습니다.");
+    } finally {
+      setSavingAccount(false);
+    }
+  };
+
+  const removeAccount = async (account: ClassroomAccount) => {
+    if (!user || !school || savingAccount) return;
+    if (!window.confirm(`${account.classNumber}번 ${account.nickname} 계정을 삭제할까요?`)) return;
+    setSavingAccount(true);
+    setErrorMessage("");
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/teacher/class-account-roster", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          school,
+          grade: classroom.grade,
+          classNumber: classroom.classNumber,
+          studentNumber: account.classNumber,
+        }),
+      });
+      const body = await readResponseBody(response);
+      if (!response.ok) throw new Error(body.error || "학생 계정을 삭제하지 못했습니다.");
+      setAccounts((current) =>
+        current.filter((item) => item.classNumber !== account.classNumber)
+      );
+      setAccountDraft(null);
+      setEditingAccountNumber(null);
+      setNotice(`${account.classNumber}번 학생 계정을 삭제했어요.`);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "학생 계정을 삭제하지 못했습니다.");
+    } finally {
+      setSavingAccount(false);
+    }
+  };
+
+  if (studentPreview) return <StudentClassAccountFinder classroom={classroom} />;
+  if (accessState === "checking") return null;
   if (accessState === "hidden") return <StudentClassAccountFinder classroom={classroom} />;
 
   return (
@@ -294,6 +410,26 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
       </div>
 
       <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => void handleFile(event.target.files?.[0])} />
+
+      <div className="mt-4 flex justify-end">
+        <button type="button" onClick={() => { setAccountDraft({ ...EMPTY_ACCOUNT }); setEditingAccountNumber(null); }} className="rounded-xl bg-sky-100 px-3 py-2 text-xs font-black text-sky-700">+ 학생 계정 추가</button>
+      </div>
+
+      {accountDraft && (
+        <div className="mt-3 rounded-[20px] border border-sky-100 bg-sky-50 p-3">
+          <div className="text-xs font-black text-sky-800">학생 계정 등록·수정</div>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <input type="number" min="1" max="25" disabled={editingAccountNumber !== null} aria-label="학생 번호" placeholder="학생 번호" value={accountDraft.classNumber || ""} onChange={(event) => setAccountDraft((current) => current ? { ...current, classNumber: Number(event.target.value) } : current)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold disabled:bg-slate-100" />
+            <input aria-label="학생 닉네임" placeholder="닉네임" value={accountDraft.nickname} onChange={(event) => setAccountDraft((current) => current ? { ...current, nickname: event.target.value } : current)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold" />
+            <input aria-label="학생 계정 아이디" placeholder="학급 아이디" value={accountDraft.accountId} onChange={(event) => setAccountDraft((current) => current ? { ...current, accountId: event.target.value } : current)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold" />
+            <input aria-label="학생 임시 비밀번호" placeholder="임시 비밀번호" value={accountDraft.temporaryPassword} onChange={(event) => setAccountDraft((current) => current ? { ...current, temporaryPassword: event.target.value } : current)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold" />
+          </div>
+          <div className="mt-2 flex gap-2">
+            <button type="button" disabled={savingAccount} onClick={() => void saveAccount()} className="flex-1 rounded-xl bg-sky-500 px-3 py-2 text-xs font-black text-white disabled:opacity-50">{savingAccount ? "저장 중" : "학생 계정 저장"}</button>
+            <button type="button" disabled={savingAccount} onClick={() => { setAccountDraft(null); setEditingAccountNumber(null); }} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-500">취소</button>
+          </div>
+        </div>
+      )}
 
       {accounts.length === 0 ? (
         <div className="mt-4 rounded-[22px] border border-dashed border-rose-200 bg-rose-50/70 p-4 text-center">
@@ -336,7 +472,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
                     <div className="rounded-2xl bg-white p-2">
                       <div className="flex items-center justify-between gap-1">
                         <div className="text-[9px] font-black text-slate-400">비밀번호</div>
-                        <button type="button" onClick={() => setVisiblePasswords((current) => { const next = new Set(current); next.has(account.classNumber) ? next.delete(account.classNumber) : next.add(account.classNumber); return next; })} className="text-[9px] font-black text-amber-700">{passwordVisible ? "가림" : "보기"}</button>
+                        <button type="button" onClick={() => togglePasswordVisibility(account.classNumber)} className="text-[9px] font-black text-amber-700">{passwordVisible ? "가림" : "보기"}</button>
                       </div>
                       <div className="mt-1 space-y-1.5">
                         <div className="flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1.5">
@@ -353,7 +489,7 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
                       {account.passwordChangedAt && <div className="mt-1 text-[8px] font-bold text-slate-400">저장 {formatChangedAt(account.passwordChangedAt)}</div>}
                     </div>
                   ) : (
-                    <div className="rounded-2xl bg-white p-2"><div className="text-[9px] font-black text-slate-400">비밀번호</div><div className="mt-1 flex gap-1"><code className="min-w-0 flex-1 truncate text-[10px] font-black">{passwordVisible ? account.temporaryPassword : "••••••"}</code><button type="button" onClick={() => setVisiblePasswords((current) => { const next = new Set(current); next.has(account.classNumber) ? next.delete(account.classNumber) : next.add(account.classNumber); return next; })} className="text-[9px] font-black text-amber-700">{passwordVisible ? "가림" : "보기"}</button><button type="button" onClick={() => void copyText("비밀번호", account.temporaryPassword)} className="text-[9px] font-black text-sky-700">복사</button></div></div>
+                    <div className="rounded-2xl bg-white p-2"><div className="text-[9px] font-black text-slate-400">비밀번호</div><div className="mt-1 flex gap-1"><code className="min-w-0 flex-1 truncate text-[10px] font-black">{passwordVisible ? account.temporaryPassword : "••••••"}</code><button type="button" onClick={() => togglePasswordVisibility(account.classNumber)} className="text-[9px] font-black text-amber-700">{passwordVisible ? "가림" : "보기"}</button><button type="button" onClick={() => void copyText("비밀번호", account.temporaryPassword)} className="text-[9px] font-black text-sky-700">복사</button></div></div>
                   )}
                 </div>
 
@@ -371,6 +507,12 @@ export default function TeacherClassAccountFinder({ classroom }: Props) {
                     ) : (
                       <button type="button" onClick={() => startPasswordEdit(account)} className="w-full rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[10px] font-black text-emerald-700">{account.changedPassword ? "변경 후 비밀번호 수정" : "변경 후 비밀번호 저장"}</button>
                     )}
+                  </div>
+                )}
+                {!isTemporaryRoster && (
+                  <div className="mt-2 flex gap-2">
+                    <button type="button" onClick={() => { setAccountDraft({ ...account }); setEditingAccountNumber(account.classNumber); }} className="flex-1 rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-[10px] font-black text-sky-700">계정 정보 수정</button>
+                    <button type="button" disabled={savingAccount} onClick={() => void removeAccount(account)} className="rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-[10px] font-black text-rose-600 disabled:opacity-50">삭제</button>
                   </div>
                 )}
               </div>

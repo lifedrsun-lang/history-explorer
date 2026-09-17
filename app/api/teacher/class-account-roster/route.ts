@@ -1,6 +1,8 @@
 import {
   getClassroomAccountRoster,
+  deleteClassroomAccount,
   replaceClassroomAccountRoster,
+  upsertClassroomAccount,
   type ClassroomAccountRosterKey,
 } from "@/lib/classroomAccountRosterServer";
 import { parseClassroomAccountCsv } from "@/lib/classroomAccountRoster";
@@ -8,7 +10,8 @@ import {
   handleRouteError,
   verifyTeacherRequest,
 } from "@/lib/assignmentServer";
-import { getSupportedClassroomSchoolName } from "@/lib/gaebongClassroom";
+import { getContractSchoolForClassroom } from "@/lib/contractSchoolsServer";
+import { normalizeSchoolName } from "@/lib/gaebongClassroom";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,6 +45,8 @@ const mapRouteError = (error: unknown) => {
       "too_many_accounts",
       "duplicate_student_number",
       "duplicate_account_id",
+      "invalid_classroom_account",
+      "invalid_student_number",
     ].includes(message)
   ) {
     return jsonPrivate(
@@ -49,7 +54,11 @@ const mapRouteError = (error: unknown) => {
         error:
           message === "invalid_account_csv_headers"
             ? "CSV 열 이름을 확인해 주세요. 학급 번호·닉네임·학급 아이디·비밀번호가 필요합니다."
-            : "CSV 학생 계정 정보를 확인해 주세요.",
+            : message === "invalid_classroom_account"
+              ? "학생 번호·닉네임·아이디·임시 비밀번호를 확인해 주세요."
+              : message === "duplicate_account_id"
+                ? "같은 학급 아이디가 이미 등록되어 있어요."
+                : "CSV 학생 계정 정보를 확인해 주세요.",
         code: message,
       },
       { status: 400 }
@@ -62,16 +71,18 @@ const mapRouteError = (error: unknown) => {
   return response;
 };
 
-const getSupportedClassroomKey = (key: ClassroomAccountRosterKey) => {
-  const school = getSupportedClassroomSchoolName(key);
-
-  if (!school) {
-    return null;
-  }
+const getSupportedClassroomKey = async (key: ClassroomAccountRosterKey) => {
+  const resolved = await getContractSchoolForClassroom(
+    key.school,
+    key.grade,
+    key.classNumber,
+    { includeUnpublished: true, includeInactive: true }
+  );
+  if (!resolved) return null;
 
   return {
     ...key,
-    school,
+    school: normalizeSchoolName(resolved.school.schoolName),
   } satisfies ClassroomAccountRosterKey;
 };
 
@@ -96,7 +107,7 @@ const readClassroomKeyFromForm = (formData: FormData): ClassroomAccountRosterKey
 export async function GET(request: Request) {
   try {
     await verifyTeacherRequest(request);
-    const key = getSupportedClassroomKey(readClassroomKeyFromUrl(request));
+    const key = await getSupportedClassroomKey(readClassroomKeyFromUrl(request));
 
     if (!key) {
       return jsonPrivate(
@@ -115,8 +126,42 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const teacher = await verifyTeacherRequest(request);
+    if (request.headers.get("content-type")?.includes("application/json")) {
+      const body = (await request.json().catch(() => ({}))) as {
+        school?: unknown;
+        grade?: unknown;
+        classNumber?: unknown;
+        studentNumber?: unknown;
+        nickname?: unknown;
+        accountId?: unknown;
+        temporaryPassword?: unknown;
+      };
+      const key = await getSupportedClassroomKey({
+        school: String(body.school || "").trim(),
+        grade: Number(body.grade),
+        classNumber: Number(body.classNumber),
+      });
+      if (!key) {
+        return jsonPrivate(
+          { error: "지원하지 않는 학급입니다.", code: "unsupported_classroom" },
+          { status: 404 }
+        );
+      }
+      const account = await upsertClassroomAccount(
+        key,
+        {
+          classNumber: Number(body.studentNumber),
+          nickname: String(body.nickname || ""),
+          accountId: String(body.accountId || ""),
+          temporaryPassword: String(body.temporaryPassword || ""),
+        },
+        teacher.uid
+      );
+      return jsonPrivate({ account });
+    }
+
     const formData = await request.formData();
-    const key = getSupportedClassroomKey(readClassroomKeyFromForm(formData));
+    const key = await getSupportedClassroomKey(readClassroomKeyFromForm(formData));
 
     if (!key) {
       return jsonPrivate(
@@ -146,6 +191,33 @@ export async function POST(request: Request) {
     const savedAccounts = await getClassroomAccountRoster(key);
 
     return jsonPrivate({ accounts: savedAccounts, count: savedAccounts.length });
+  } catch (error) {
+    return mapRouteError(error);
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    await verifyTeacherRequest(request);
+    const body = (await request.json().catch(() => ({}))) as {
+      school?: unknown;
+      grade?: unknown;
+      classNumber?: unknown;
+      studentNumber?: unknown;
+    };
+    const key = await getSupportedClassroomKey({
+      school: String(body.school || "").trim(),
+      grade: Number(body.grade),
+      classNumber: Number(body.classNumber),
+    });
+    if (!key) {
+      return jsonPrivate(
+        { error: "지원하지 않는 학급입니다.", code: "unsupported_classroom" },
+        { status: 404 }
+      );
+    }
+    await deleteClassroomAccount(key, Number(body.studentNumber));
+    return jsonPrivate({ deleted: true });
   } catch (error) {
     return mapRouteError(error);
   }

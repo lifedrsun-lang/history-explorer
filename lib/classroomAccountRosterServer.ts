@@ -302,3 +302,85 @@ export const replaceClassroomAccountRoster = async (
     throw new Error("account_roster_replace_incomplete");
   }
 };
+
+const normalizeAccount = (account: ClassroomAccount) => {
+  const classNumber = Number(account.classNumber);
+  const nickname = String(account.nickname || "").trim();
+  const accountId = String(account.accountId || "").trim();
+  const temporaryPassword = String(account.temporaryPassword || "").trim();
+
+  if (
+    !Number.isInteger(classNumber) ||
+    classNumber < 1 ||
+    classNumber > 99 ||
+    !nickname ||
+    nickname.length > 100 ||
+    !accountId ||
+    accountId.length > 256 ||
+    !temporaryPassword ||
+    temporaryPassword.length > 256
+  ) {
+    throw new Error("invalid_classroom_account");
+  }
+
+  return { classNumber, nickname, accountId, temporaryPassword };
+};
+
+export const upsertClassroomAccount = async (
+  key: ClassroomAccountRosterKey,
+  account: ClassroomAccount,
+  updatedBy: string
+) => {
+  const normalized = normalizeAccount(account);
+  const supabase = getSupabaseServer();
+  const { error } = await supabase.from(TABLE_NAME).upsert(
+    {
+      school: key.school,
+      grade: key.grade,
+      class_number: key.classNumber,
+      student_number: normalized.classNumber,
+      nickname: normalized.nickname,
+      account_id: normalized.accountId,
+      temp_password: normalized.temporaryPassword,
+      updated_by: updatedBy,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "school,grade,class_number,student_number" }
+  );
+
+  if (error) {
+    if ((error as { code?: string }).code === "23505") {
+      throw new Error("duplicate_account_id");
+    }
+    throw error;
+  }
+  return getClassroomAccount(key, normalized.classNumber);
+};
+
+export const deleteClassroomAccount = async (
+  key: ClassroomAccountRosterKey,
+  studentNumber: number
+) => {
+  if (!Number.isInteger(studentNumber) || studentNumber < 1 || studentNumber > 99) {
+    throw new Error("invalid_student_number");
+  }
+
+  const supabase = getSupabaseServer();
+  const { error } = await supabase
+    .from(TABLE_NAME)
+    .delete()
+    .eq("school", key.school)
+    .eq("grade", key.grade)
+    .eq("class_number", key.classNumber)
+    .eq("student_number", studentNumber);
+  if (error) throw error;
+
+  const { error: passwordError } = await supabase
+    .from(PASSWORD_CHANGE_TABLE_NAME)
+    .delete()
+    .eq("school", key.school)
+    .eq("grade", key.grade)
+    .eq("class_number", key.classNumber)
+    .eq("student_number", studentNumber);
+  if (passwordError) throw passwordError;
+};

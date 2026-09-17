@@ -14,6 +14,7 @@ import {
 type Props = {
   classroom: GaebongClassroom;
   lesson: ClassroomLesson;
+  studentPreview?: boolean;
 };
 
 type ActivityMap = Record<string, boolean>;
@@ -23,7 +24,11 @@ const REFRESH_MS = 10000;
 const activityStateUrl = (token: string) =>
   `/api/classroom/${encodeURIComponent(token)}/activity-state`;
 
-export default function ClassroomActivityLinks({ classroom, lesson }: Props) {
+export default function ClassroomActivityLinks({
+  classroom,
+  lesson,
+  studentPreview = false,
+}: Props) {
   const [teacherUser, setTeacherUser] = useState<User | null>(null);
   const [activities, setActivities] = useState<ActivityMap>({});
   const [pendingActivityId, setPendingActivityId] = useState<string | null>(null);
@@ -31,8 +36,12 @@ export default function ClassroomActivityLinks({ classroom, lesson }: Props) {
 
   const refreshState = useCallback(async () => {
     try {
+      const authToken = teacherUser ? await teacherUser.getIdToken() : null;
       const response = await fetch(activityStateUrl(classroom.directToken), {
         cache: "no-store",
+        ...(authToken
+          ? { headers: { Authorization: `Bearer ${authToken}` } }
+          : {}),
       });
 
       if (!response.ok) {
@@ -48,7 +57,7 @@ export default function ClassroomActivityLinks({ classroom, lesson }: Props) {
     } catch {
       // 서버 상태 조회 실패 시 수업 데이터의 기본 잠금 상태를 그대로 사용한다.
     }
-  }, [classroom.directToken]);
+  }, [classroom.directToken, teacherUser]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -59,7 +68,7 @@ export default function ClassroomActivityLinks({ classroom, lesson }: Props) {
   }, []);
 
   useEffect(() => {
-    void refreshState();
+    const initialRefresh = window.setTimeout(() => void refreshState(), 0);
 
     const interval = window.setInterval(() => {
       void refreshState();
@@ -72,6 +81,7 @@ export default function ClassroomActivityLinks({ classroom, lesson }: Props) {
     window.addEventListener("focus", handleFocus);
 
     return () => {
+      window.clearTimeout(initialRefresh);
       window.clearInterval(interval);
       window.removeEventListener("focus", handleFocus);
     };
@@ -141,7 +151,7 @@ export default function ClassroomActivityLinks({ classroom, lesson }: Props) {
 
   return (
     <div className="mt-4 grid gap-2">
-      {teacherUser && (
+      {teacherUser && !studentPreview && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-[11px] font-black text-amber-800">
           🔐 교사 모드 · 오른쪽 상태 버튼을 눌러 활동을 열거나 잠글 수 있어요.
         </div>
@@ -184,7 +194,7 @@ export default function ClassroomActivityLinks({ classroom, lesson }: Props) {
               </div>
             )}
 
-            {teacherUser && (
+            {teacherUser && !studentPreview && (
               <button
                 type="button"
                 onClick={() => toggleActivity(link.id, unlocked)}

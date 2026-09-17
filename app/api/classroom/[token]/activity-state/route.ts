@@ -2,10 +2,9 @@ import { FieldValue } from "firebase-admin/firestore";
 
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { verifyTeacherRequest } from "@/lib/assignmentServer";
-import { getClassroomByToken } from "@/app/student/data/classroomData";
 import {
   getAllowedActivityIdsForClassroom,
-  getManagedContractClassroomByToken,
+  getContractClassroomByToken,
 } from "@/lib/contractSchoolsServer";
 
 export const dynamic = "force-dynamic";
@@ -18,10 +17,13 @@ type RouteContext = {
 
 type ActivityMap = Record<string, boolean>;
 
-const getAllowedActivityIds = async (token: string) => {
-  const classroom =
-    getClassroomByToken(token) ||
-    (await getManagedContractClassroomByToken(token));
+const getAllowedActivityIds = async (
+  token: string,
+  includeUnpublished = false
+) => {
+  const classroom = await getContractClassroomByToken(token, {
+    includeUnpublished,
+  });
 
   if (!classroom) {
     return null;
@@ -53,10 +55,12 @@ const normalizeActivities = (
   return result;
 };
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   try {
     const { token } = await context.params;
-    const allowed = await getAllowedActivityIds(token);
+    const hasTeacherToken = request.headers.has("authorization");
+    if (hasTeacherToken) await verifyTeacherRequest(request);
+    const allowed = await getAllowedActivityIds(token, hasTeacherToken);
 
     if (!allowed) {
       return Response.json({ error: "classroom_not_found" }, { status: 404 });
@@ -78,6 +82,14 @@ export async function GET(_request: Request, context: RouteContext) {
       }
     );
   } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (
+      message === "teacher_auth_required" ||
+      message.includes("auth/") ||
+      message.includes("token")
+    ) {
+      return Response.json({ error: "teacher_auth_required" }, { status: 401 });
+    }
     console.error("classroom activity state GET failed", error);
     return Response.json({ error: "server_error" }, { status: 500 });
   }
@@ -87,7 +99,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const teacher = await verifyTeacherRequest(request);
     const { token } = await context.params;
-    const allowed = await getAllowedActivityIds(token);
+    const allowed = await getAllowedActivityIds(token, true);
 
     if (!allowed) {
       return Response.json({ error: "classroom_not_found" }, { status: 404 });

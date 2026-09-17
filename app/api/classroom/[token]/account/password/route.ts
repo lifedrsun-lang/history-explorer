@@ -1,11 +1,11 @@
-import { getClassroomByToken } from "@/app/student/data/classroomData";
 import {
   setClassroomAccountChangedPasswordOnce,
 } from "@/lib/classroomAccountRosterServer";
 import {
-  getSupportedClassroomSchoolName,
+  normalizeSchoolName,
   WONJONG_SCHOOL_NAME,
 } from "@/lib/gaebongClassroom";
+import { getContractClassroomByToken } from "@/lib/contractSchoolsServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ export async function POST(
 ) {
   try {
     const { token } = await params;
-    const classroom = getClassroomByToken(token);
+    const classroom = await getContractClassroomByToken(token);
 
     if (!classroom) {
       return jsonPrivate(
@@ -40,14 +40,7 @@ export async function POST(
       );
     }
 
-    const school = getSupportedClassroomSchoolName(classroom);
-
-    if (!school) {
-      return jsonPrivate(
-        { error: "비밀번호 저장을 지원하지 않는 수업방이에요." },
-        { status: 404 }
-      );
-    }
+    const school = normalizeSchoolName(classroom.schoolName);
 
     if (school === WONJONG_SCHOOL_NAME) {
       return jsonPrivate(

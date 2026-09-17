@@ -1,7 +1,6 @@
 import ClassroomBoard from "../../components/ClassroomBoard";
 import ManagedSchoolClassroomEntry from "../../components/ManagedSchoolClassroomEntry";
-import { getClassroomByToken } from "../../data/classroomData";
-import { getManagedContractClassroomByToken } from "@/lib/contractSchoolsServer";
+import { getContractClassroomByToken } from "@/lib/contractSchoolsServer";
 
 export const dynamic = "force-dynamic";
 
@@ -13,9 +12,7 @@ type Props = {
 
 export default async function ClassroomDirectPage({ params }: Props) {
   const { token } = await params;
-  const classroom =
-    getClassroomByToken(token) ||
-    (await getManagedContractClassroomByToken(token));
+  const classroom = await getContractClassroomByToken(token);
 
   if (classroom) {
     return <ClassroomBoard classroom={classroom} directAccess />;
