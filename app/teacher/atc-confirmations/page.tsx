@@ -734,20 +734,24 @@ export default function AtcConfirmationsPage() {
           body { background: white !important; }
           body * { visibility: hidden !important; }
           .atc-print-sheet, .atc-print-sheet * { visibility: visible !important; }
-          .atc-print-sheet { position: absolute !important; left: 0; top: 0; width: 194mm !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: 0 !important; break-inside: avoid !important; page-break-inside: avoid !important; }
+          .atc-print-sheet { position: absolute !important; left: 0; top: 0; display: flex !important; flex-direction: column !important; width: 194mm !important; height: 281mm !important; box-sizing: border-box !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: 0 !important; break-inside: avoid !important; page-break-inside: avoid !important; }
           .no-print { display: none !important; }
           .atc-logo-row { margin-bottom: 3mm !important; }
           .atc-title { min-height: 8mm !important; padding-top: 1.5mm !important; padding-bottom: 1.5mm !important; }
           .atc-summary-table { margin-top: 3mm !important; }
           .atc-lesson-table { margin-top: 3mm !important; }
-          .atc-form-table th, .atc-form-table td { padding: 0.7mm 1mm !important; font-size: 10pt !important; line-height: 1.1 !important; }
-          .atc-lesson-table tr { height: 4.8mm !important; }
-          .atc-lesson-table th, .atc-lesson-table td { height: 4.8mm !important; padding-top: 0.35mm !important; padding-bottom: 0.35mm !important; }
+          .atc-form-table th, .atc-form-table td { padding: 1mm 1.4mm !important; font-size: 10pt !important; line-height: 1.15 !important; }
+          .atc-lesson-table tr { height: 5.6mm !important; }
+          .atc-lesson-table thead tr { height: 6.2mm !important; }
+          .atc-lesson-table th, .atc-lesson-table td { height: 5.6mm !important; padding-top: 0.55mm !important; padding-bottom: 0.55mm !important; }
+          .atc-lesson-table .atc-total-row { height: 7.4mm !important; }
+          .atc-lesson-table .atc-total-row td { height: 7.4mm !important; padding-top: 1mm !important; padding-bottom: 1mm !important; }
           .atc-verifier-row { min-height: 11mm !important; }
-          .atc-attendance-note { margin-top: 2mm !important; }
-          .atc-footer-statement { margin-top: 4mm !important; }
-          .atc-footer-date { margin-top: 2.5mm !important; }
-          .atc-footer-signature { margin-top: 2.5mm !important; }
+          .atc-attendance-note { margin-top: 3mm !important; }
+          .atc-footer-block { margin-top: auto !important; padding-bottom: 3mm !important; }
+          .atc-footer-statement { margin-top: 0 !important; }
+          .atc-footer-date { margin-top: 5mm !important; }
+          .atc-footer-signature { margin-top: 5mm !important; }
         }
       `}</style>
 
@@ -959,15 +963,17 @@ export default function AtcConfirmationsPage() {
           </table>
 
           <div className="atc-attendance-note mt-3">※ 출석부 월별 해당차수에 해당하는 날짜를 기입.</div>
-          <div className="atc-footer-statement mt-7 text-center">본인은 위 사항을 확인하며 참여하였음을 서명으로 증명합니다.</div>
-          <div className="atc-footer-date mt-5">{getTodayKorean()}</div>
-          <div className="atc-footer-signature mt-6 flex items-center gap-3">
-            <span>에듀케이터 성명</span>
-            <span className="atc-educator-name min-w-20 border-b border-slate-500 pb-1 text-center">{profile.name}</span>
-            <button type="button" onClick={openEducatorSignatureDialog} className="atc-signature-slot atc-signature-button" title="에듀케이터 기본 서명 수정">
-              <span aria-hidden="true">(인)</span>
-              {profile.signatureDataUrl && <img src={profile.signatureDataUrl} alt="에듀케이터 서명" className="atc-signature-img" />}
-            </button>
+          <div className="atc-footer-block">
+            <div className="atc-footer-statement mt-7 text-center">본인은 위 사항을 확인하며 참여하였음을 서명으로 증명합니다.</div>
+            <div className="atc-footer-date mt-5">{getTodayKorean()}</div>
+            <div className="atc-footer-signature mt-6 flex items-center gap-3">
+              <span>에듀케이터 성명</span>
+              <span className="atc-educator-name min-w-20 border-b border-slate-500 pb-1 text-center">{profile.name}</span>
+              <button type="button" onClick={openEducatorSignatureDialog} className="atc-signature-slot atc-signature-button" title="에듀케이터 기본 서명 수정">
+                <span aria-hidden="true">(인)</span>
+                {profile.signatureDataUrl && <img src={profile.signatureDataUrl} alt="에듀케이터 서명" className="atc-signature-img" />}
+              </button>
+            </div>
           </div>
 
           <div className="no-print mt-5 rounded-2xl bg-slate-50 p-3 text-xs font-bold text-slate-500">미리보기입니다. 인쇄 / PDF 저장 시 이 안내는 출력되지 않습니다.</div>
