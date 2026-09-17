@@ -86,11 +86,12 @@ const sanitizeScheduleSnapshot = (value: unknown) => {
     const data = entry as Record<string, unknown>;
     const date = normalizeDate(data.date);
     const summary = normalize(data.summary, 500);
-    if (!date || !summary) return [];
+    const calendarType = normalize(data.calendarType, 40);
+    if (!date || !summary || calendarType !== "contract") return [];
     return [
       {
         eventId: normalize(data.eventId, 220),
-        calendarType: normalize(data.calendarType, 40),
+        calendarType,
         date,
         summary,
         gradeClass: normalize(data.gradeClass, 80),
@@ -147,6 +148,7 @@ export async function GET(request: Request) {
 
     const candidates: PeriodCandidate[] = feeSnapshot.docs.flatMap((docItem) => {
       const data = docItem.data();
+      if (normalize(data.type, 40) !== "contract") return [];
       const schoolName = normalize(data.schoolName);
       const schoolKey = normalizeSchoolKey(schoolName);
       const startDate = normalizeDate(data.contractStartDate);

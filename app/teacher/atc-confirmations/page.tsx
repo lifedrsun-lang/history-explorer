@@ -73,6 +73,9 @@ type DailyRow = {
   remarks: string;
 };
 
+const isContractCalendarEvent = (event: GoogleCalendarEvent) =>
+  event.calendarType === "contract";
+
 const pad2 = (value: number) => String(value).padStart(2, "0");
 
 const getCurrentYearMonth = () => {
@@ -328,7 +331,10 @@ export default function AtcConfirmationsPage() {
       ]);
       setConfirmations(Array.isArray(atcData?.confirmations) ? atcData.confirmations : []);
       setPeriods(Array.isArray(atcData?.periods) ? atcData.periods : []);
-      setCalendarEvents(Array.isArray(calendarData?.events) ? calendarData.events : []);
+      const events = Array.isArray(calendarData?.events)
+        ? (calendarData.events as GoogleCalendarEvent[])
+        : [];
+      setCalendarEvents(events.filter(isContractCalendarEvent));
     } catch (error) {
       setCalendarEvents([]);
       setErrorMessage(
@@ -612,7 +618,7 @@ export default function AtcConfirmationsPage() {
           <div>
             <div className="text-xs font-black tracking-[0.2em] text-blue-600">ATC SCHOOL</div>
             <h1 className="mt-1 text-2xl font-black">전담 에듀케이터 참여확인서</h1>
-            <p className="mt-1 text-sm text-slate-500">교사 출강일정과 수금관리 운영기간을 연결해 월별 확인서를 작성합니다.</p>
+            <p className="mt-1 text-sm text-slate-500">건별계약 출강일정과 수금관리 운영기간을 연결해 월별 확인서를 작성합니다.</p>
           </div>
           <div className="flex gap-2">
             <Link href="/teacher/schedule?tab=teaching" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold">출강일정</Link>
@@ -634,7 +640,7 @@ export default function AtcConfirmationsPage() {
               <button type="button" onClick={() => void loadMonth()} disabled={loading} className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-black disabled:opacity-50">{loading ? "불러오는 중" : "일정 새로고침"}</button>
             </div>
             {schoolNames.length === 0 ? (
-              <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">이 달에 출강일정으로 확인되는 학교가 없습니다.</div>
+              <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">이 달에 건별계약 출강일정으로 확인되는 학교가 없습니다.</div>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {schoolNames.map((school) => {
