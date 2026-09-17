@@ -10,6 +10,7 @@ import { auth, db } from "@/lib/firebase";
 import {
   WORLD_CULTURE_SERIES,
   getWorldCultureLessonTitle,
+  isArchivePresentationCategory,
   isNamedCardCategory,
   isPresentationCategory,
   isWorldCultureSeries,
@@ -247,7 +248,7 @@ export default function NewTeacherPresentationPage() {
         updatedAt: serverTimestamp(),
       });
 
-      const section = draft.category === "boardgame" || draft.category === "archive_coding" || draft.category === "facilitator" || draft.category === "personal_study"
+      const section = isArchivePresentationCategory(draft.category)
         ? "&section=archive"
         : "";
       router.push(`/teacher/presentations?category=${draft.category}${section}`);
@@ -273,7 +274,7 @@ export default function NewTeacherPresentationPage() {
 
   const backHref = lockedCategory
     ? `/teacher/presentations?category=${lockedCategory}${
-        lockedCategory === "boardgame" || lockedCategory === "archive_coding" || lockedCategory === "facilitator" || lockedCategory === "personal_study"
+        isArchivePresentationCategory(lockedCategory)
           ? "&section=archive"
           : ""
       }`

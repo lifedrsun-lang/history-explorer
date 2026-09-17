@@ -25,6 +25,7 @@ import {
   getWorldCultureBook,
   getWorldCultureLessonTitle,
   getWorldCultureSeriesOrder,
+  isArchivePresentationCategory,
   isNamedCardCategory,
   isPresentationCategory,
   isWorldCultureSeries,
@@ -160,6 +161,15 @@ const TEACHING_LIBRARIES: LibraryCard[] = [
     soft: "bg-lime-50",
     border: "border-lime-100 hover:border-lime-300",
   },
+  {
+    value: "boardgame",
+    label: "보드게임",
+    icon: "🎲",
+    description: "보드게임 수업과 활동 자료를 게임별로 관리합니다.",
+    accent: "text-orange-700",
+    soft: "bg-orange-50",
+    border: "border-orange-100 hover:border-orange-300",
+  },
 ];
 
 const ARCHIVE_LIBRARIES: LibraryCard[] = [
@@ -182,15 +192,6 @@ const ARCHIVE_LIBRARIES: LibraryCard[] = [
     border: "border-teal-100 hover:border-teal-300",
   },
   {
-    value: "boardgame",
-    label: "보드게임",
-    icon: "🎲",
-    description: "보드게임 수업과 활동에 필요한 자료를 카드별로 모아 둡니다.",
-    accent: "text-orange-700",
-    soft: "bg-orange-50",
-    border: "border-orange-100 hover:border-orange-300",
-  },
-  {
     value: "archive_coding",
     label: "코딩",
     icon: "💻",
@@ -202,7 +203,7 @@ const ARCHIVE_LIBRARIES: LibraryCard[] = [
 ];
 
 const ALL_LIBRARIES = [...TEACHING_LIBRARIES, ...ARCHIVE_LIBRARIES];
-const MOVABLE_ARCHIVE_CATEGORIES: PresentationCategory[] = [
+const MOVABLE_NAMED_CARD_CATEGORIES: PresentationCategory[] = [
   "personal_study",
   "facilitator",
   "boardgame",
@@ -564,7 +565,7 @@ function TeacherPresentationsPageContent() {
   const activeLibrary = isPresentationCategory(requestedCategory) ? requestedCategory : null;
   const isArchiveSection =
     searchParams.get("section") === "archive" ||
-    (activeLibrary !== null && MOVABLE_ARCHIVE_CATEGORIES.includes(activeLibrary));
+    isArchivePresentationCategory(activeLibrary);
   const visibleLibraries = isArchiveSection ? ARCHIVE_LIBRARIES : TEACHING_LIBRARIES;
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
@@ -761,7 +762,7 @@ function TeacherPresentationsPageContent() {
     setWorldSeriesFilter("all");
     setWorldBookFilter("all");
     setWorldLessonFilter("all");
-    const section = MOVABLE_ARCHIVE_CATEGORIES.includes(category)
+    const section = isArchivePresentationCategory(category)
       ? "&section=archive"
       : "";
     router.push(`/teacher/presentations?category=${category}${section}`, { scroll: false });
@@ -896,7 +897,7 @@ function TeacherPresentationsPageContent() {
             </h1>
             <p className="mt-2 text-sm font-bold text-slate-500">
               {isArchiveSection
-                ? "내 공부자료·퍼실리테이터·보드게임·코딩 자료를 나누어 관리합니다."
+                ? "내 공부자료·퍼실리테이터·코딩 자료를 나누어 관리합니다."
                 : "수업자료를 과목과 코딩 제품별로 나누어 관리합니다."}
             </p>
           </div>
@@ -1083,8 +1084,8 @@ function TeacherPresentationsPageContent() {
                         isFavorite={isFavorite}
                         onToggleFavorite={onToggleFavorite}
                         moveTargets={
-                          MOVABLE_ARCHIVE_CATEGORIES.includes(item.card.category)
-                            ? MOVABLE_ARCHIVE_CATEGORIES.filter(
+                          MOVABLE_NAMED_CARD_CATEGORIES.includes(item.card.category)
+                            ? MOVABLE_NAMED_CARD_CATEGORIES.filter(
                                 (category) => category !== item.card.category
                               )
                             : []

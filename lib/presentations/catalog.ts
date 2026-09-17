@@ -23,6 +23,16 @@ export function isPresentationCategory(
   );
 }
 
+export function isArchivePresentationCategory(
+  value: unknown
+): value is "archive_coding" | "facilitator" | "personal_study" {
+  return (
+    value === "archive_coding" ||
+    value === "facilitator" ||
+    value === "personal_study"
+  );
+}
+
 export function normalizePresentationCategory(
   value: unknown
 ): PresentationCategory {

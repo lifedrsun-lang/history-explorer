@@ -11,6 +11,7 @@ import {
   WORLD_CULTURE_SERIES,
   getNumber,
   getWorldCultureLessonTitle,
+  isArchivePresentationCategory,
   isNamedCardCategory,
   isWorldCultureSeries,
   normalizeCardDisplayName,
@@ -260,7 +261,7 @@ export default function EditTeacherPresentationPage() {
         updatedAt: serverTimestamp(),
       });
 
-      const section = draft.category === "boardgame" || draft.category === "archive_coding" || draft.category === "facilitator" || draft.category === "personal_study"
+      const section = isArchivePresentationCategory(draft.category)
         ? "&section=archive"
         : "";
       router.push(`/teacher/presentations?category=${draft.category}${section}`);
@@ -284,7 +285,7 @@ export default function EditTeacherPresentationPage() {
     setErrorMessage("");
     try {
       await deleteDoc(doc(db, "presentations", presentationId));
-      const section = draft.category === "boardgame" || draft.category === "archive_coding" || draft.category === "facilitator" || draft.category === "personal_study"
+      const section = isArchivePresentationCategory(draft.category)
         ? "&section=archive"
         : "";
       router.push(`/teacher/presentations?category=${draft.category}${section}`);
@@ -313,7 +314,7 @@ export default function EditTeacherPresentationPage() {
         <div className="rounded-3xl bg-white p-5 shadow-md">
           <Link
             href={`/teacher/presentations?category=${draft.category}${
-              draft.category === "boardgame" || draft.category === "archive_coding" || draft.category === "facilitator" || draft.category === "personal_study"
+              isArchivePresentationCategory(draft.category)
                 ? "&section=archive"
                 : ""
             }`}

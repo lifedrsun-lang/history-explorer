@@ -170,7 +170,7 @@ const sections: Record<string, ManagementSection> = {
         href: "/teacher/presentations?section=archive",
         icon: "📁",
         title: "자료실",
-        description: "공부자료·퍼실리테이터·보드게임·코딩 자료를 보관",
+        description: "공부자료·퍼실리테이터·코딩 자료를 보관",
         className: "border-rose-200 bg-rose-50 text-rose-900",
       },
       {
