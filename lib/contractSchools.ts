@@ -13,7 +13,7 @@ import {
 } from "@/app/student/data/classroomData";
 
 export const CONTRACT_SCHOOL_COLLECTION = "contract_school_configs";
-export const CONTRACT_SCHOOL_SCHEMA_VERSION = 1;
+export const CONTRACT_SCHOOL_SCHEMA_VERSION = 2;
 
 export type ContractSchoolClassroom = {
   id: string;
@@ -22,6 +22,7 @@ export type ContractSchoolClassroom = {
   label: string;
   monsterId: string;
   directToken: string;
+  active: boolean;
 };
 
 export type ContractSchoolLesson = {
@@ -80,11 +81,13 @@ const toSeedSchool = ({
   schoolDisplayName,
   location,
   classrooms,
+  hasSchoolPassword = false,
 }: {
   slug: string;
   schoolDisplayName: string;
   location: string;
   classrooms: SchoolClassroom[];
+  hasSchoolPassword?: boolean;
 }): ContractSchoolConfig => {
   const firstClassroom = classrooms[0];
   const lessonNumbers = Array.from(
@@ -137,6 +140,7 @@ const toSeedSchool = ({
     label: classroom.label,
     monsterId: classroom.monsterId,
     directToken: classroom.directToken,
+    active: true,
   }));
 
   const lessonVisibility = Object.fromEntries(
@@ -160,13 +164,56 @@ const toSeedSchool = ({
     displayName: schoolDisplayName,
     location,
     published: true,
-    hasSchoolPassword: false,
+    hasSchoolPassword,
     classrooms: schoolClassrooms,
     lessons,
     lessonVisibility,
     source: "default",
   };
 };
+
+const SHINSANGDO_CLASSROOMS: SchoolClassroom[] = [
+  {
+    schoolName: "서울 신상도초등학교",
+    schoolDisplayName: "서울 신상도초",
+    grade: 6,
+    classNumber: 5,
+    label: "6학년 5반",
+    monsterId: "slime",
+    directToken: "ss6c5-f8a2d7k4qn",
+    lessons: [],
+  },
+  {
+    schoolName: "서울 신상도초등학교",
+    schoolDisplayName: "서울 신상도초",
+    grade: 6,
+    classNumber: 8,
+    label: "6학년 8반",
+    monsterId: "guardian-angel-slime",
+    directToken: "ss6c8-m3v9p2r6tx",
+    lessons: [],
+  },
+  {
+    schoolName: "서울 신상도초등학교",
+    schoolDisplayName: "서울 신상도초",
+    grade: 6,
+    classNumber: 9,
+    label: "6학년 9반",
+    monsterId: "blue-mushroom",
+    directToken: "ss6c9-b7w4h8z2kc",
+    lessons: [],
+  },
+  {
+    schoolName: "서울 신상도초등학교",
+    schoolDisplayName: "서울 신상도초",
+    grade: 6,
+    classNumber: 3,
+    label: "6학년 3반",
+    monsterId: "orange-mushroom",
+    directToken: "ss6c3-j5n8q4y7du",
+    lessons: [],
+  },
+];
 
 export const DEFAULT_CONTRACT_SCHOOLS: ContractSchoolConfig[] = [
   toSeedSchool({
@@ -192,6 +239,13 @@ export const DEFAULT_CONTRACT_SCHOOLS: ContractSchoolConfig[] = [
     schoolDisplayName: GAEBONG_SCHOOL_DISPLAY_NAME,
     location: "각 학년 교실",
     classrooms: GAEBONG_CLASSROOMS,
+  }),
+  toSeedSchool({
+    slug: "shinsangdo",
+    schoolDisplayName: "서울 신상도초",
+    location: "컴퓨터실",
+    classrooms: SHINSANGDO_CLASSROOMS,
+    hasSchoolPassword: true,
   }),
 ];
 
@@ -232,7 +286,9 @@ export const toSchoolClassroom = (
 });
 
 export const toSchoolClassrooms = (school: ContractSchoolConfig) =>
-  school.classrooms.map((classroom) => toSchoolClassroom(school, classroom));
+  school.classrooms
+    .filter((classroom) => classroom.active !== false)
+    .map((classroom) => toSchoolClassroom(school, classroom));
 
 export const toContractSchoolSummary = (
   school: ContractSchoolConfig

@@ -36,12 +36,14 @@ const getInitialLesson = (classroom: SchoolClassroom) => {
 type Props = {
   classroom: SchoolClassroom;
   directAccess?: boolean;
+  studentPreview?: boolean;
   onBack?: () => void;
 };
 
 export default function ClassroomBoard({
   classroom,
   directAccess = false,
+  studentPreview = false,
   onBack,
 }: Props) {
   const initialLesson = useMemo(
@@ -102,7 +104,10 @@ export default function ClassroomBoard({
           </div>
         </header>
 
-        <TeacherClassAccountFinder classroom={classroom} />
+        <TeacherClassAccountFinder
+          classroom={classroom}
+          studentPreview={studentPreview}
+        />
 
         <section className="rounded-[28px] border border-white/80 bg-white/90 p-4 shadow-sm">
           <div className="mb-3">
@@ -173,6 +178,7 @@ export default function ClassroomBoard({
                         <ClassroomActivityLinks
                           classroom={classroom}
                           lesson={lesson}
+                          studentPreview={studentPreview}
                         />
                       )}
                     </div>

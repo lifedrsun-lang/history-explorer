@@ -1,6 +1,12 @@
 import "server-only";
 
-import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "crypto";
+import {
+  randomBytes,
+  randomInt,
+  randomUUID,
+  scryptSync,
+  timingSafeEqual,
+} from "crypto";
 import { FieldValue } from "firebase-admin/firestore";
 
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
@@ -20,6 +26,7 @@ import {
   type ContractSchoolConfig,
   type ContractSchoolLesson,
 } from "@/lib/contractSchools";
+import { getSchoolPassword, normalizeSchoolText } from "@/app/student/data/schoolInfo";
 
 type StoredContractSchool = Omit<
   ContractSchoolConfig,
@@ -111,7 +118,12 @@ const fromStoredSchool = (
   location: normalizeText(data.location),
   published: data.published === true,
   hasSchoolPassword: Boolean(data.passwordHash && data.passwordSalt),
-  classrooms: Array.isArray(data.classrooms) ? data.classrooms : [],
+  classrooms: Array.isArray(data.classrooms)
+    ? data.classrooms.map((classroom) => ({
+        ...classroom,
+        active: classroom.active !== false,
+      }))
+    : [],
   lessons: Array.isArray(data.lessons) ? data.lessons : [],
   lessonVisibility:
     data.lessonVisibility && typeof data.lessonVisibility === "object"
@@ -182,6 +194,9 @@ export const getContractSchool = async (
 const makeDirectToken = (slug: string, grade: number, classNumber: number) =>
   `${slug.slice(0, 8)}-${grade}c${classNumber}-${randomBytes(5).toString("hex")}`;
 
+const makeRandomMonsterId = () =>
+  CLASSROOM_MONSTERS[randomInt(CLASSROOM_MONSTERS.length)].id;
+
 const normalizeClassrooms = (
   value: unknown,
   baseSchool: ContractSchoolConfig,
@@ -196,7 +211,7 @@ const normalizeClassrooms = (
   );
   const seen = new Set<string>();
 
-  return value.map((item, index) => {
+  return value.map((item) => {
     const source = item as Partial<ContractSchoolClassroom>;
     const grade = normalizeInteger(source.grade, "grade", 1, 12);
     const classNumber = normalizeInteger(
@@ -211,21 +226,21 @@ const normalizeClassrooms = (
     seen.add(id);
 
     const existing = existingById.get(id);
-    const monsterId = CLASSROOM_MONSTERS.some(
-      (monster) => monster.id === source.monsterId
-    )
-      ? String(source.monsterId)
-      : existing?.monsterId ||
-        CLASSROOM_MONSTERS[index % CLASSROOM_MONSTERS.length].id;
+    const monsterId = existing?.monsterId || makeRandomMonsterId();
+    const requestedLabel = normalizeText(source.label);
 
     return {
       id,
       grade,
       classNumber,
-      label: `${grade}학년 ${classNumber}반`,
+      label:
+        requestedLabel && requestedLabel.length <= 60
+          ? requestedLabel
+          : existing?.label || `${grade}학년 ${classNumber}반`,
       monsterId,
       directToken:
         existing?.directToken || makeDirectToken(slug, grade, classNumber),
+      active: source.active !== false,
     } satisfies ContractSchoolClassroom;
   });
 };
@@ -456,17 +471,26 @@ export const updateContractSchool = async (
   );
   const published = draft.published === true;
 
-  if (published && (classrooms.length === 0 || lessons.length === 0)) {
+  if (
+    published &&
+    !baseSchool.published &&
+    (classrooms.length === 0 || lessons.length === 0)
+  ) {
     throw new Error("school_setup_incomplete");
   }
 
   const password = normalizeText(draft.schoolPassword);
   if (password.length > MAX_PASSWORD) throw new Error("invalid_school_password");
 
-  let passwordFields = {
-    passwordSalt: storedData?.passwordSalt || null,
-    passwordHash: storedData?.passwordHash || null,
-  };
+  const legacyPassword = !storedData && baseSchool.hasSchoolPassword
+    ? getSchoolPassword(baseSchool.schoolName) || ""
+    : "";
+  let passwordFields = legacyPassword
+    ? makePasswordFields(legacyPassword)
+    : {
+        passwordSalt: storedData?.passwordSalt || null,
+        passwordHash: storedData?.passwordHash || null,
+      };
 
   if (draft.clearSchoolPassword === true) {
     passwordFields = { passwordSalt: null, passwordHash: null };
@@ -524,17 +548,69 @@ export const verifyContractSchoolPassword = async (
 ) => {
   const slug = normalizeContractSchoolSlug(slugValue);
   const snapshot = await getStoredSchoolSnapshot(slug);
-  if (!snapshot.exists) return false;
-  const data = snapshot.data() as StoredContractSchool;
   const password = normalizeText(passwordValue);
-  if (!data.passwordHash || !data.passwordSalt || !password) return false;
+  if (!password) return false;
+
+  if (!snapshot.exists) {
+    const defaultSchool = getDefaultContractSchool(slug);
+    const legacyPassword = defaultSchool?.hasSchoolPassword
+      ? getSchoolPassword(defaultSchool.schoolName)
+      : undefined;
+
+    if (!legacyPassword) return false;
+    const actual = Buffer.from(password);
+    const expected = Buffer.from(legacyPassword);
+    return expected.length === actual.length && timingSafeEqual(expected, actual);
+  }
+
+  const data = snapshot.data() as StoredContractSchool;
+  if (!data.passwordHash || !data.passwordSalt) return false;
 
   const actual = scryptSync(password, data.passwordSalt, 32);
   const expected = Buffer.from(data.passwordHash, "hex");
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 };
 
-export const getManagedContractClassroomByToken = async (tokenValue: unknown) => {
+export const getContractSchoolForClassroom = async (
+  schoolValue: unknown,
+  gradeValue: unknown,
+  classNumberValue: unknown,
+  options: { includeUnpublished?: boolean; includeInactive?: boolean } = {}
+) => {
+  const schoolName = normalizeSchoolText(schoolValue);
+  const grade = Number(gradeValue);
+  const classNumber = Number(classNumberValue);
+
+  if (!schoolName || !Number.isInteger(grade) || !Number.isInteger(classNumber)) {
+    return null;
+  }
+
+  const schools = await getAllContractSchools();
+  for (const school of schools) {
+    if (!options.includeUnpublished && !school.published) continue;
+    if (
+      normalizeSchoolText(school.schoolName) !== schoolName &&
+      normalizeSchoolText(school.displayName) !== schoolName
+    ) {
+      continue;
+    }
+
+    const classroom = school.classrooms.find(
+      (item) =>
+        (options.includeInactive || item.active !== false) &&
+        item.grade === grade &&
+        item.classNumber === classNumber
+    );
+    if (classroom) return { school, classroom };
+  }
+
+  return null;
+};
+
+export const getContractClassroomByToken = async (
+  tokenValue: unknown,
+  options: { includeUnpublished?: boolean } = {}
+) => {
   const token = normalizeText(tokenValue);
   if (!token) return null;
 
@@ -545,15 +621,40 @@ export const getManagedContractClassroomByToken = async (tokenValue: unknown) =>
     .limit(1)
     .get();
 
-  if (snapshot.empty) return null;
-  const document = snapshot.docs[0];
-  const school = fromStoredSchool(
-    document.id,
-    document.data() as StoredContractSchool
-  );
-  if (!school.published) return null;
-  const classroom = school.classrooms.find((item) => item.directToken === token);
-  return classroom ? toSchoolClassroom(school, classroom) : null;
+  if (!snapshot.empty) {
+    const document = snapshot.docs[0];
+    const school = fromStoredSchool(
+      document.id,
+      document.data() as StoredContractSchool
+    );
+    const classroom = school.classrooms.find(
+      (item) => item.directToken === token && item.active !== false
+    );
+    if (
+      classroom &&
+      (options.includeUnpublished === true || school.published)
+    ) {
+      return toSchoolClassroom(school, classroom);
+    }
+    return null;
+  }
+
+  for (const school of DEFAULT_CONTRACT_SCHOOLS) {
+    if (!options.includeUnpublished && !school.published) continue;
+    const classroom = school.classrooms.find(
+      (item) => item.directToken === token && item.active !== false
+    );
+    if (classroom) {
+      const storedOverride = await getStoredSchoolSnapshot(school.slug);
+      if (!storedOverride.exists) return toSchoolClassroom(school, classroom);
+    }
+  }
+
+  return null;
+};
+
+export const getManagedContractClassroomByToken = async (tokenValue: unknown) => {
+  return getContractClassroomByToken(tokenValue);
 };
 
 export const removeLegacyLessonLinkOverrides = (

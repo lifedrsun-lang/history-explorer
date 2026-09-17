@@ -7,9 +7,10 @@ import {
   verifyTeacherRequest,
 } from "@/lib/assignmentServer";
 import {
-  getSupportedClassroomSchoolName,
+  normalizeSchoolName,
   WONJONG_SCHOOL_NAME,
 } from "@/lib/gaebongClassroom";
+import { getContractSchoolForClassroom } from "@/lib/contractSchoolsServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,7 +77,15 @@ export async function POST(request: Request) {
       grade: Number(body.grade),
       classNumber: Number(body.classNumber),
     };
-    const school = getSupportedClassroomSchoolName(rawKey);
+    const resolved = await getContractSchoolForClassroom(
+      rawKey.school,
+      rawKey.grade,
+      rawKey.classNumber,
+      { includeUnpublished: true, includeInactive: true }
+    );
+    const school = resolved
+      ? normalizeSchoolName(resolved.school.schoolName)
+      : null;
 
     if (!school) {
       return jsonPrivate(

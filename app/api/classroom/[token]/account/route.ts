@@ -1,9 +1,9 @@
 import { getClassroomAccount } from "@/lib/classroomAccountRosterServer";
 import {
-  getSupportedClassroomSchoolName,
+  normalizeSchoolName,
   WONJONG_SCHOOL_NAME,
 } from "@/lib/gaebongClassroom";
-import { getClassroomByToken } from "@/app/student/data/classroomData";
+import { getContractClassroomByToken } from "@/lib/contractSchoolsServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,7 +22,7 @@ export async function POST(
 ) {
   try {
     const { token } = await params;
-    const classroom = getClassroomByToken(token);
+    const classroom = await getContractClassroomByToken(token);
 
     if (!classroom) {
       return jsonPrivate(
@@ -31,14 +31,7 @@ export async function POST(
       );
     }
 
-    const school = getSupportedClassroomSchoolName(classroom);
-
-    if (!school) {
-      return jsonPrivate(
-        { error: "계정 찾기를 지원하지 않는 수업방이에요." },
-        { status: 404 }
-      );
-    }
+    const school = normalizeSchoolName(classroom.schoolName);
 
     const body = (await request.json().catch(() => ({}))) as {
       studentNumber?: unknown;
