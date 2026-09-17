@@ -35,6 +35,7 @@ import {
 import {
   getStudentGroupLabel,
 } from "./data/studentGroups";
+import type { ContractSchoolSummary } from "@/lib/contractSchools";
 
 type Props = {
   program?: StudentProgram;
@@ -45,6 +46,7 @@ export default function StudentHistoryPage({
 }: Props) {
   const [students, setStudents] = useState<any[]>([]);
   const [allSchools, setAllSchools] = useState<string[]>([]);
+  const [contractSchools, setContractSchools] = useState<ContractSchoolSummary[]>([]);
 
   const [searchName, setSearchName] = useState("");
   const [selectedSchool, setSelectedSchool] = useState("");
@@ -276,7 +278,20 @@ export default function StudentHistoryPage({
 
   const fetchSchools = async () => {
     try {
-      const allList = await fetchAllStudents();
+      const [allList, contractResponse] = await Promise.all([
+        fetchAllStudents(),
+        fetch("/api/classroom/schools", { cache: "no-store" }).catch(() => null),
+      ]);
+      const contractPayload = contractResponse?.ok
+        ? ((await contractResponse.json().catch(() => ({}))) as {
+            schools?: ContractSchoolSummary[];
+          })
+        : {};
+      const publishedContractSchools = Array.isArray(contractPayload.schools)
+        ? contractPayload.schools
+        : [];
+
+      setContractSchools(publishedContractSchools);
 
       const schoolSet = new Set<string>();
 
@@ -293,6 +308,7 @@ export default function StudentHistoryPage({
       const mergedSchools = Array.from(
         new Set([
           ...DEFAULT_SCHOOLS,
+          ...publishedContractSchools.map((school) => school.displayName),
           ...Array.from(schoolSet),
         ])
       );
@@ -301,6 +317,7 @@ export default function StudentHistoryPage({
     } catch (error) {
       console.error("학교 목록 불러오기 실패:", error);
       setAllSchools(DEFAULT_SCHOOLS);
+      setContractSchools([]);
     }
   };
 
@@ -539,6 +556,7 @@ export default function StudentHistoryPage({
     return (
       <SchoolSelect
         schools={allSchools}
+        contractSchools={contractSchools}
         onSelect={handleSchoolSelect}
       />
     );

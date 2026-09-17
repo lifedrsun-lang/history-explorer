@@ -1,6 +1,4 @@
-"use client";
-
-import SchoolMonsterClassPortal from "../../components/SchoolMonsterClassPortal";
+import ManagedSchoolClassroomEntry from "../../components/ManagedSchoolClassroomEntry";
 import {
   GWANGIL_CLASSROOMS,
   GWANGIL_SCHOOL_DISPLAY_NAME,
@@ -8,13 +6,10 @@ import {
 
 export default function GwangilClassroomEntryPage() {
   return (
-    <SchoolMonsterClassPortal
+    <ManagedSchoolClassroomEntry
       schoolSlug="gwangil"
-      schoolDisplayName={GWANGIL_SCHOOL_DISPLAY_NAME}
-      classrooms={GWANGIL_CLASSROOMS}
-      onChangeSchool={() => {
-        window.location.href = "/student/history";
-      }}
+      fallbackDisplayName={GWANGIL_SCHOOL_DISPLAY_NAME}
+      fallbackClassrooms={GWANGIL_CLASSROOMS}
     />
   );
 }

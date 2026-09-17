@@ -1,6 +1,4 @@
-"use client";
-
-import SchoolMonsterClassPortal from "../../components/SchoolMonsterClassPortal";
+import ManagedSchoolClassroomEntry from "../../components/ManagedSchoolClassroomEntry";
 import {
   WOLMUN_CLASSROOMS,
   WOLMUN_SCHOOL_DISPLAY_NAME,
@@ -8,13 +6,10 @@ import {
 
 export default function WolmunClassroomEntryPage() {
   return (
-    <SchoolMonsterClassPortal
+    <ManagedSchoolClassroomEntry
       schoolSlug="wolmun"
-      schoolDisplayName={WOLMUN_SCHOOL_DISPLAY_NAME}
-      classrooms={WOLMUN_CLASSROOMS}
-      onChangeSchool={() => {
-        window.location.href = "/student/history";
-      }}
+      fallbackDisplayName={WOLMUN_SCHOOL_DISPLAY_NAME}
+      fallbackClassrooms={WOLMUN_CLASSROOMS}
     />
   );
 }

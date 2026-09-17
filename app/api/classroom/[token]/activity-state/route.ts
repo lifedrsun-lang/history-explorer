@@ -3,6 +3,10 @@ import { FieldValue } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getClassroomByToken } from "@/app/student/data/classroomData";
+import {
+  getAllowedActivityIdsForClassroom,
+  getManagedContractClassroomByToken,
+} from "@/lib/contractSchoolsServer";
 
 export const dynamic = "force-dynamic";
 
@@ -14,8 +18,10 @@ type RouteContext = {
 
 type ActivityMap = Record<string, boolean>;
 
-const getAllowedActivityIds = (token: string) => {
-  const classroom = getClassroomByToken(token);
+const getAllowedActivityIds = async (token: string) => {
+  const classroom =
+    getClassroomByToken(token) ||
+    (await getManagedContractClassroomByToken(token));
 
   if (!classroom) {
     return null;
@@ -23,9 +29,7 @@ const getAllowedActivityIds = (token: string) => {
 
   return {
     classroom,
-    ids: new Set(
-      classroom.lessons.flatMap((lesson) => lesson.links.map((link) => link.id))
-    ),
+    ids: getAllowedActivityIdsForClassroom(classroom),
   };
 };
 
@@ -52,7 +56,7 @@ const normalizeActivities = (
 export async function GET(_request: Request, context: RouteContext) {
   try {
     const { token } = await context.params;
-    const allowed = getAllowedActivityIds(token);
+    const allowed = await getAllowedActivityIds(token);
 
     if (!allowed) {
       return Response.json({ error: "classroom_not_found" }, { status: 404 });
@@ -83,7 +87,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const teacher = await verifyTeacherRequest(request);
     const { token } = await context.params;
-    const allowed = getAllowedActivityIds(token);
+    const allowed = await getAllowedActivityIds(token);
 
     if (!allowed) {
       return Response.json({ error: "classroom_not_found" }, { status: 404 });

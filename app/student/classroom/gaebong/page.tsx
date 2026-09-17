@@ -1,13 +1,15 @@
-"use client";
-
-import GaebongClassPortal from "../../components/GaebongClassPortal";
+import ManagedSchoolClassroomEntry from "../../components/ManagedSchoolClassroomEntry";
+import {
+  GAEBONG_CLASSROOMS,
+  GAEBONG_SCHOOL_DISPLAY_NAME,
+} from "../../data/classroomData";
 
 export default function GaebongClassroomEntryPage() {
   return (
-    <GaebongClassPortal
-      onChangeSchool={() => {
-        window.location.href = "/student/history";
-      }}
+    <ManagedSchoolClassroomEntry
+      schoolSlug="gaebong"
+      fallbackDisplayName={GAEBONG_SCHOOL_DISPLAY_NAME}
+      fallbackClassrooms={GAEBONG_CLASSROOMS}
     />
   );
 }

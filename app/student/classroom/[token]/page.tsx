@@ -1,18 +1,9 @@
-import { notFound } from "next/navigation";
-
 import ClassroomBoard from "../../components/ClassroomBoard";
-import {
-  ALL_CLASSROOMS,
-  getClassroomByToken,
-} from "../../data/classroomData";
+import ManagedSchoolClassroomEntry from "../../components/ManagedSchoolClassroomEntry";
+import { getClassroomByToken } from "../../data/classroomData";
+import { getManagedContractClassroomByToken } from "@/lib/contractSchoolsServer";
 
-export const dynamicParams = false;
-
-export function generateStaticParams() {
-  return ALL_CLASSROOMS.map((classroom) => ({
-    token: classroom.directToken,
-  }));
-}
+export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{
@@ -22,11 +13,13 @@ type Props = {
 
 export default async function ClassroomDirectPage({ params }: Props) {
   const { token } = await params;
-  const classroom = getClassroomByToken(token);
+  const classroom =
+    getClassroomByToken(token) ||
+    (await getManagedContractClassroomByToken(token));
 
-  if (!classroom) {
-    notFound();
+  if (classroom) {
+    return <ClassroomBoard classroom={classroom} directAccess />;
   }
 
-  return <ClassroomBoard classroom={classroom} directAccess />;
+  return <ManagedSchoolClassroomEntry schoolSlug={token} />;
 }

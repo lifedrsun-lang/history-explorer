@@ -38,7 +38,10 @@ export default function SchoolMonsterClassPortal({ schoolSlug, schoolDisplayName
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
-  const getStorageKey = (classroom: SchoolClassroom) => `${schoolSlug}-classroom-monster-lockout:${getClassKey(classroom)}`;
+  const getStorageKey = (classroom: SchoolClassroom) =>
+    schoolSlug === "gaebong"
+      ? `gaebong-classroom-monster-lockout:${classroom.classNumber}`
+      : `${schoolSlug}-classroom-monster-lockout:${getClassKey(classroom)}`;
 
   const readLockoutState = (classroom: SchoolClassroom) => {
     try {
@@ -58,6 +61,11 @@ export default function SchoolMonsterClassPortal({ schoolSlug, schoolDisplayName
   };
 
   const isLocked = Boolean(lockedUntil && lockedUntil > now);
+  const currentClassroom = selectedClassroom
+    ? classrooms.find(
+        (classroom) => getClassKey(classroom) === getClassKey(selectedClassroom)
+      ) || selectedClassroom
+    : null;
   const remainingSeconds = lockedUntil ? Math.max(0, Math.ceil((lockedUntil - now) / 1000)) : 0;
   const remainingMinutes = Math.floor(remainingSeconds / 60);
   const remainingClockSeconds = remainingSeconds % 60;
@@ -104,16 +112,16 @@ export default function SchoolMonsterClassPortal({ schoolSlug, schoolDisplayName
   };
 
   const chooseMonster = (monster: ClassroomMonster) => {
-    if (!selectedClassroom) return;
-    const currentLockout = readLockoutState(selectedClassroom);
+    if (!currentClassroom) return;
+    const currentLockout = readLockoutState(currentClassroom);
     if (currentLockout.lockedUntil) {
       setFailedAttempts(currentLockout.failedAttempts);
       setLockedUntil(currentLockout.lockedUntil);
       setNow(Date.now());
       return;
     }
-    if (monster.id === selectedClassroom.monsterId) {
-      window.localStorage.removeItem(getStorageKey(selectedClassroom));
+    if (monster.id === currentClassroom.monsterId) {
+      window.localStorage.removeItem(getStorageKey(currentClassroom));
       setFailedAttempts(0);
       setLockedUntil(null);
       setIsUnlocked(true);
@@ -123,7 +131,7 @@ export default function SchoolMonsterClassPortal({ schoolSlug, schoolDisplayName
     const nextFailedAttempts = failedAttempts + 1;
     if (nextFailedAttempts >= MAX_FAILED_ATTEMPTS) {
       const nextLockedUntil = Date.now() + LOCKOUT_MS;
-      window.localStorage.setItem(getStorageKey(selectedClassroom), JSON.stringify({ failedAttempts: MAX_FAILED_ATTEMPTS, lockedUntil: nextLockedUntil }));
+      window.localStorage.setItem(getStorageKey(currentClassroom), JSON.stringify({ failedAttempts: MAX_FAILED_ATTEMPTS, lockedUntil: nextLockedUntil }));
       setFailedAttempts(MAX_FAILED_ATTEMPTS);
       setLockedUntil(nextLockedUntil);
       setNow(Date.now());
@@ -131,14 +139,14 @@ export default function SchoolMonsterClassPortal({ schoolSlug, schoolDisplayName
       setMonsterOptions(shuffleMonsters());
       return;
     }
-    window.localStorage.setItem(getStorageKey(selectedClassroom), JSON.stringify({ failedAttempts: nextFailedAttempts, lockedUntil: null }));
+    window.localStorage.setItem(getStorageKey(currentClassroom), JSON.stringify({ failedAttempts: nextFailedAttempts, lockedUntil: null }));
     setFailedAttempts(nextFailedAttempts);
     setErrorMessage(`앗! 우리 반 몬스터가 아니에요. ${MAX_FAILED_ATTEMPTS - nextFailedAttempts}번 더 틀리면 10분 동안 잠겨요.`);
     setMonsterOptions(shuffleMonsters());
   };
 
-  if (selectedClassroom && isUnlocked) {
-    return <ClassroomBoard classroom={selectedClassroom} onBack={resetClassroom} />;
+  if (currentClassroom && isUnlocked) {
+    return <ClassroomBoard classroom={currentClassroom} onBack={resetClassroom} />;
   }
 
   return (
@@ -155,7 +163,7 @@ export default function SchoolMonsterClassPortal({ schoolSlug, schoolDisplayName
           </div>
         </header>
 
-        {!selectedClassroom ? (
+        {!currentClassroom ? (
           <section className="rounded-[30px] border border-white/80 bg-white/95 p-4 shadow-sm">
             {gradeGroups.map(({ grade, rooms }) => (
               <div key={grade} className="mb-5 last:mb-0">
@@ -174,7 +182,7 @@ export default function SchoolMonsterClassPortal({ schoolSlug, schoolDisplayName
         ) : (
           <section className="rounded-[30px] border border-amber-100 bg-white/95 p-4 shadow-sm">
             <div className="rounded-[26px] border border-dashed border-amber-200 bg-gradient-to-br from-amber-50 via-white to-yellow-50 px-4 py-5 text-center">
-              <h2 className="text-2xl font-black text-slate-800">{schoolDisplayName} <span className="text-emerald-600">{selectedClassroom.grade}학년</span> <span className="text-orange-500">{selectedClassroom.classNumber}반</span></h2>
+              <h2 className="text-2xl font-black text-slate-800">{schoolDisplayName} <span className="text-emerald-600">{currentClassroom.grade}학년</span> <span className="text-orange-500">{currentClassroom.classNumber}반</span></h2>
               <p className="mt-3 text-base font-black text-slate-700">우리 반 <span className="text-violet-600">비밀번호 몬스터</span>를 찾아 눌러 보세요</p>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">

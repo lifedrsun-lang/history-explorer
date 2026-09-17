@@ -74,6 +74,13 @@ const sections: Record<string, ManagementSection> = {
     description: "출강 일정과 건별계약 수금, 참여확인서, 지원·제출서류를 기존 기능으로 관리합니다.",
     items: [
       {
+        href: "/teacher/contract-schools",
+        icon: "🏫",
+        title: "건별 수업 관리",
+        description: "학교·학년반·차시·링크 등록과 반별 공개 상태 관리",
+        className: "border-sky-200 bg-sky-50 text-sky-900",
+      },
+      {
         href: "/teacher/schedule?tab=teaching",
         icon: "📅",
         title: "출강 일정",

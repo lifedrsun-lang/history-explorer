@@ -1,9 +1,23 @@
 import Link from "next/link";
-import { getSchoolInfo, getSchoolLoginCard, isGaebongSchool } from "../data/schoolInfo";
+import type { ContractSchoolSummary } from "@/lib/contractSchools";
+import {
+  getSchoolInfo,
+  getSchoolLoginCard,
+  isGaebongSchool,
+  normalizeSchoolText,
+} from "../data/schoolInfo";
 
-type Props = { schools: string[]; onSelect: (school: string) => void };
+type Props = {
+  schools: string[];
+  contractSchools?: ContractSchoolSummary[];
+  onSelect: (school: string) => void;
+};
 
-export default function SchoolSelect({ schools, onSelect }: Props) {
+export default function SchoolSelect({
+  schools,
+  contractSchools = [],
+  onSelect,
+}: Props) {
   return (
     <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 text-slate-800 px-3 py-6 sm:px-4 sm:py-8">
       <div className="max-w-xl mx-auto">
@@ -24,17 +38,28 @@ export default function SchoolSelect({ schools, onSelect }: Props) {
               "광명 광일초등학교": "/student/classroom/gwangil",
               "화성 월문초등학교": "/student/classroom/wolmun",
             };
-            const classroomRoute = schoolInfo ? routeBySchool[schoolInfo.name] : undefined;
+            const contractSchool = contractSchools.find((item) => {
+              const target = normalizeSchoolText(school);
+              return (
+                normalizeSchoolText(item.schoolName) === target ||
+                normalizeSchoolText(item.displayName) === target
+              );
+            });
+            const classroomRoute = contractSchool
+              ? `/student/classroom/${contractSchool.slug}`
+              : schoolInfo
+                ? routeBySchool[schoolInfo.name]
+                : undefined;
             const cardClassName = "block h-full min-h-[112px] w-full bg-white border border-sky-100 rounded-3xl p-4 text-center text-slate-700 shadow-sm transition hover:bg-sky-50";
             const cardBody = (
               <div className="flex h-full flex-col items-center justify-center">
                 <div className="text-base sm:text-lg font-black leading-snug text-slate-800">{cardInfo.title}</div>
-                <div className="mt-2 text-xs sm:text-sm font-bold text-sky-700">📍 {cardInfo.location}</div>
+                <div className="mt-2 text-xs sm:text-sm font-bold text-sky-700">📍 {contractSchool?.location || cardInfo.location}</div>
               </div>
             );
 
             if (isGaebongSchool(school) || classroomRoute) {
-              return <Link key={school} href={isGaebongSchool(school) ? "/student/classroom/gaebong" : classroomRoute!} className={cardClassName}>{cardBody}</Link>;
+              return <Link key={school} href={classroomRoute || "/student/classroom/gaebong"} className={cardClassName}>{cardBody}</Link>;
             }
 
             return <button key={school} onClick={() => onSelect(school)} className={cardClassName}>{cardBody}</button>;
