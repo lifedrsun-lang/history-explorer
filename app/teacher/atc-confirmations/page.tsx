@@ -249,6 +249,53 @@ const getTodayKorean = () =>
     day: "numeric",
   }).format(new Date());
 
+const getTrimmedSignatureDataUrl = (canvas: HTMLCanvasElement) => {
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+
+  const { width, height } = canvas;
+  const pixels = context.getImageData(0, 0, width, height).data;
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const alpha = pixels[(y * width + x) * 4 + 3];
+      if (alpha > 12) {
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+
+  if (maxX < minX || maxY < minY) return null;
+
+  const padding = 18;
+  const sourceX = Math.max(0, minX - padding);
+  const sourceY = Math.max(0, minY - padding);
+  const sourceWidth = Math.min(width - sourceX, maxX - minX + 1 + padding * 2);
+  const sourceHeight = Math.min(height - sourceY, maxY - minY + 1 + padding * 2);
+  const trimmedCanvas = document.createElement("canvas");
+  trimmedCanvas.width = sourceWidth;
+  trimmedCanvas.height = sourceHeight;
+  trimmedCanvas.getContext("2d")?.drawImage(
+    canvas,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    0,
+    0,
+    sourceWidth,
+    sourceHeight
+  );
+  return trimmedCanvas.toDataURL("image/png");
+};
+
 const getStatusLabel = (
   confirmation: Confirmation | undefined,
   scheduleCount: number,
@@ -274,12 +321,14 @@ export default function AtcConfirmationsPage() {
   const [schoolVerifierName, setSchoolVerifierName] = useState("");
   const [schoolSignatureDataUrl, setSchoolSignatureDataUrl] = useState<string | null>(null);
   const [signatureMode, setSignatureMode] = useState(true);
+  const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [noticeMessage, setNoticeMessage] = useState("");
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
+  const signatureBeforeEditRef = useRef<string | null>(null);
 
   useEffect(() =>
     onAuthStateChanged(auth, (currentUser) => {
@@ -435,6 +484,8 @@ export default function AtcConfirmationsPage() {
     const signature = selectedConfirmation?.schoolSignatureDataUrl || null;
     setSchoolSignatureDataUrl(signature);
     setSignatureMode(!signature);
+    setSignatureDialogOpen(false);
+    signatureBeforeEditRef.current = null;
     const canvas = canvasRef.current;
     canvas?.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
   }, [selectedConfirmation?.id, selectedConfirmation?.schoolSignatureDataUrl]);
@@ -472,10 +523,10 @@ export default function AtcConfirmationsPage() {
     const rect = canvas.getBoundingClientRect();
     const context = canvas.getContext("2d");
     if (!context) return;
-    context.lineWidth = 3;
+    context.lineWidth = 9;
     context.lineCap = "round";
     context.lineJoin = "round";
-    context.strokeStyle = "#111827";
+    context.strokeStyle = "#020617";
     context.beginPath();
     context.moveTo(
       (event.clientX - rect.left) * (canvas.width / rect.width),
@@ -506,13 +557,30 @@ export default function AtcConfirmationsPage() {
     } catch {
       // 이미 해제된 포인터는 무시한다.
     }
-    setSchoolSignatureDataUrl(canvas.toDataURL("image/png"));
+    setSchoolSignatureDataUrl(getTrimmedSignatureDataUrl(canvas));
   };
 
-  const handleResign = () => {
+  const openSignatureDialog = () => {
+    signatureBeforeEditRef.current = schoolSignatureDataUrl;
     setSchoolSignatureDataUrl(null);
     setSignatureMode(true);
-    requestAnimationFrame(resetCanvas);
+    setSignatureDialogOpen(true);
+    requestAnimationFrame(() => requestAnimationFrame(resetCanvas));
+  };
+
+  const cancelSignatureDialog = () => {
+    const previousSignature = signatureBeforeEditRef.current;
+    setSchoolSignatureDataUrl(previousSignature);
+    setSignatureMode(!previousSignature);
+    setSignatureDialogOpen(false);
+    signatureBeforeEditRef.current = null;
+  };
+
+  const useSignature = () => {
+    if (!schoolSignatureDataUrl) return;
+    setSignatureMode(false);
+    setSignatureDialogOpen(false);
+    signatureBeforeEditRef.current = null;
   };
 
   const handleSave = async (markSubmitted = false) => {
@@ -702,29 +770,44 @@ export default function AtcConfirmationsPage() {
               {schoolSignatureDataUrl && !signatureMode ? (
                 <div className="mt-4 rounded-2xl border border-slate-200 p-3">
                   <div className="text-xs font-bold text-slate-500">반영된 담당교사 서명</div>
-                  <img src={schoolSignatureDataUrl} alt="학교 담당교사 서명" className="mt-2 h-24 w-full object-contain" />
-                  <button type="button" onClick={handleResign} className="mt-2 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-black">다시 서명받기</button>
+                  <img src={schoolSignatureDataUrl} alt="학교 담당교사 서명" className="atc-signature-preview mt-2 h-24 w-full object-contain" />
+                  <button type="button" onClick={openSignatureDialog} className="mt-2 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-black">다시 서명받기</button>
                 </div>
               ) : (
-                <div className="mt-4">
-                  <div className="mb-2 text-xs font-bold text-slate-500">아래 칸에 마우스나 터치로 직접 서명하면 미리보기에 즉시 반영됩니다.</div>
-                  <canvas
-                    ref={canvasRef}
-                    width={720}
-                    height={220}
-                    onPointerDown={startDrawing}
-                    onPointerMove={drawSignature}
-                    onPointerUp={finishDrawing}
-                    onPointerCancel={finishDrawing}
-                    className="h-36 w-full touch-none rounded-2xl border-2 border-dashed border-slate-300 bg-white"
-                  />
-                  <div className="mt-2 flex gap-2">
-                    <button type="button" onClick={() => { resetCanvas(); setSchoolSignatureDataUrl(null); }} className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-black">서명 지우기</button>
-                    {schoolSignatureDataUrl && <button type="button" onClick={() => setSignatureMode(false)} className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-black text-white">이 서명 사용</button>}
-                  </div>
+                <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                  <div className="text-xs font-bold text-slate-500">버튼을 누르면 큰 서명판이 열립니다. 마우스나 터치로 서명해 주세요.</div>
+                  <button type="button" onClick={openSignatureDialog} className="mt-3 rounded-xl bg-blue-600 px-4 py-2 text-sm font-black text-white">큰 화면에서 서명하기</button>
                 </div>
               )}
             </section>
+          </div>
+        )}
+
+        {signatureDialogOpen && (
+          <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="학교 담당교사 서명">
+            <div className="w-full max-w-5xl rounded-3xl bg-white p-4 shadow-2xl sm:p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-black text-slate-900">학교 담당교사 서명</h2>
+                  <p className="mt-1 text-xs font-bold text-slate-500">아래의 넓은 영역에 서명해 주세요. 저장될 때 불필요한 여백은 자동으로 정리됩니다.</p>
+                </div>
+                <button type="button" onClick={cancelSignatureDialog} className="shrink-0 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black">취소</button>
+              </div>
+              <canvas
+                ref={canvasRef}
+                width={1200}
+                height={440}
+                onPointerDown={startDrawing}
+                onPointerMove={drawSignature}
+                onPointerUp={finishDrawing}
+                onPointerCancel={finishDrawing}
+                className="mt-4 h-[48vh] min-h-64 max-h-[420px] w-full touch-none rounded-2xl border-2 border-dashed border-blue-300 bg-white shadow-inner"
+              />
+              <div className="mt-4 flex flex-wrap justify-end gap-2">
+                <button type="button" onClick={() => { resetCanvas(); setSchoolSignatureDataUrl(null); }} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-black">서명 지우기</button>
+                <button type="button" onClick={useSignature} disabled={!schoolSignatureDataUrl} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40">이 서명 사용</button>
+              </div>
+            </div>
           </div>
         )}
 

@@ -301,6 +301,13 @@ a[href*="/teacher/presentations/new?"][href*="category=history"][class*="border-
   max-height: 44px !important;
   object-fit: contain !important;
   object-position: center;
+  filter: contrast(1.8);
+  opacity: 1;
+}
+
+.atc-signature-preview {
+  filter: contrast(1.8);
+  opacity: 1;
 }
 
 /* 하단 날짜와 에듀케이터 성명은 원본 양식처럼 오른쪽에 정렬한다. */
