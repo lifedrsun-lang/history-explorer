@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { AFTER_SCHOOL_SCHOOLS } from "@/lib/afterSchool";
+
 type ManagementItem = {
   href: string;
   icon: string;
@@ -16,12 +18,18 @@ type ManagementSection = {
   items: ManagementItem[];
 };
 
+const AFTER_SCHOOL_CARD_STYLES = [
+  "border-sky-200 bg-sky-50 text-sky-950",
+  "border-indigo-200 bg-indigo-50 text-indigo-950",
+  "border-cyan-200 bg-cyan-50 text-cyan-950",
+];
+
 const sections: Record<string, ManagementSection> = {
   "after-school": {
     eyebrow: "AFTER SCHOOL",
     icon: "🏫",
     title: "방과후 관리",
-    description: "수강생·출석·진도·과제·복습·수강료를 한 영역에서 관리합니다.",
+    description: "학교별 수강생 관리와 수업용 코인 지급을 빠르게 이용합니다.",
     items: [
       {
         href: "/teacher/students?status=active",
@@ -269,20 +277,50 @@ export default async function TeacherManagementSectionPage({
           </div>
         </section>
 
+        {section === "after-school" && (
+          <section className="mt-4">
+            <div className="mb-3 px-1">
+              <h2 className="text-lg font-black text-slate-900 sm:text-xl">학교 선택</h2>
+              <p className="mt-1 text-xs font-bold text-slate-500 sm:text-sm">
+                학교를 먼저 선택하면 수강생 관리와 코인 지급으로 이동할 수 있어요.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
+              {AFTER_SCHOOL_SCHOOLS.map((school, index) => (
+                <Link
+                  key={school.slug}
+                  href={`/teacher/after-school/${school.slug}`}
+                  className={`rounded-[26px] border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:p-6 ${AFTER_SCHOOL_CARD_STYLES[index]}`}
+                >
+                  <div className="text-3xl">🏫</div>
+                  <div className="mt-3 text-xl font-black">{school.shortName}</div>
+                  <div className="mt-1 text-xs font-bold opacity-65">{school.location}</div>
+                  <div className="mt-5 text-sm font-black">학교 관리 열기 →</div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
         {config.items.length > 0 ? (
-          <section className="mt-4 grid grid-cols-2 gap-3 sm:gap-4">
-            {config.items.map((item) => (
-              <Link
-                key={`${item.href}-${item.title}`}
-                href={item.href}
-                className={`rounded-[24px] border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:rounded-[30px] sm:p-6 ${item.className}`}
-              >
-                <div className="text-3xl sm:text-4xl">{item.icon}</div>
-                <div className="mt-2 text-base font-black leading-tight sm:mt-4 sm:text-2xl">{item.title}</div>
-                <div className="mt-2 hidden text-sm font-bold leading-relaxed opacity-70 sm:block">{item.description}</div>
-                <div className="mt-3 text-xs font-black opacity-80 sm:mt-5 sm:text-sm">관리하기 →</div>
-              </Link>
-            ))}
+          <section className="mt-5">
+            {section === "after-school" && (
+              <h2 className="mb-3 px-1 text-lg font-black text-slate-900 sm:text-xl">방과후 공통 관리</h2>
+            )}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              {config.items.map((item) => (
+                <Link
+                  key={`${item.href}-${item.title}`}
+                  href={item.href}
+                  className={`rounded-[24px] border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:rounded-[30px] sm:p-6 ${item.className}`}
+                >
+                  <div className="text-3xl sm:text-4xl">{item.icon}</div>
+                  <div className="mt-2 text-base font-black leading-tight sm:mt-4 sm:text-2xl">{item.title}</div>
+                  <div className="mt-2 hidden text-sm font-bold leading-relaxed opacity-70 sm:block">{item.description}</div>
+                  <div className="mt-3 text-xs font-black opacity-80 sm:mt-5 sm:text-sm">관리하기 →</div>
+                </Link>
+              ))}
+            </div>
           </section>
         ) : (
           <section className="mt-4 rounded-[28px] border border-amber-200 bg-amber-50 p-7 text-center shadow-sm sm:rounded-[32px] sm:p-10">
