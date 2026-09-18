@@ -37,7 +37,7 @@ export const AFTER_SCHOOL_SCHOOLS: AfterSchoolSchool[] = [
     slug: "saesol",
     name: "화성 새솔초등학교",
     displayName: "화성 새솔초",
-    shortName: "새솔초",
+    shortName: "화성 새솔초",
     location: "5F 음악실",
     aliases: ["화성 새솔초등학교", "화성 새솔초", "새솔초등학교", "새솔초"],
   },
