@@ -43,9 +43,21 @@ export default function SchoolSelect({
         <div className="grid grid-cols-2 gap-3 rounded-[32px] border border-white/80 bg-white/80 p-3 sm:p-4 shadow-sm">
           <Link
             href="/student/book"
-            className="flex h-full min-h-[112px] w-full items-center justify-center rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-100 via-white to-slate-200 p-4 text-center text-slate-700 shadow-sm transition hover:from-slate-50 hover:via-white hover:to-sky-50"
+            className="flex h-full min-h-[112px] w-full items-center justify-center rounded-3xl border border-slate-200 bg-white p-4 text-center shadow-sm transition hover:border-slate-300 hover:shadow-md"
           >
-            <div className="bg-[linear-gradient(180deg,#5d4a25_0%,#9b7d45_34%,#d8c89f_52%,#a4864b_68%,#5f4926_100%)] bg-clip-text text-base font-black leading-snug tracking-[0.08em] text-transparent [text-shadow:0_1px_0_rgba(255,255,255,0.75),0_2px_3px_rgba(74,54,24,0.24)] sm:text-lg">
+            <div
+              className="text-lg font-black leading-snug tracking-[0.1em] sm:text-xl"
+              style={{
+                backgroundImage:
+                  "linear-gradient(180deg, #4b3818 0%, #9f7e3a 30%, #e1d0a2 48%, #8a672a 70%, #3e2c12 100%)",
+                backgroundClip: "text",
+                WebkitBackgroundClip: "text",
+                color: "transparent",
+                WebkitTextFillColor: "transparent",
+                textShadow:
+                  "0 1px 0 rgba(255, 255, 255, 0.55), 0 2px 2px rgba(63, 44, 16, 0.3)",
+              }}
+            >
               SUN LAB
             </div>
           </Link>
