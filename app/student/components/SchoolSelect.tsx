@@ -45,7 +45,9 @@ export default function SchoolSelect({
             href="/student/book"
             className="flex h-full min-h-[112px] w-full items-center justify-center rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-100 via-white to-slate-200 p-4 text-center text-slate-700 shadow-sm transition hover:from-slate-50 hover:via-white hover:to-sky-50"
           >
-            <div className="text-base sm:text-lg font-black leading-snug text-slate-800">SUN LAB</div>
+            <div className="bg-[linear-gradient(180deg,#5d4a25_0%,#9b7d45_34%,#d8c89f_52%,#a4864b_68%,#5f4926_100%)] bg-clip-text text-base font-black leading-snug tracking-[0.08em] text-transparent [text-shadow:0_1px_0_rgba(255,255,255,0.75),0_2px_3px_rgba(74,54,24,0.24)] sm:text-lg">
+              SUN LAB
+            </div>
           </Link>
 
           {schoolCards.map(({ school, contractSchool }) => {
@@ -71,7 +73,7 @@ export default function SchoolSelect({
               <div className="flex h-full flex-col">
                 {isCompleted && (
                   <div className="self-start rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-600">
-                    [종강]
+                    종강
                   </div>
                 )}
                 <div className="flex flex-1 flex-col items-center justify-center">
