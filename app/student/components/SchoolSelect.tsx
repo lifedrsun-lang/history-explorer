@@ -1,4 +1,8 @@
 import Link from "next/link";
+import {
+  AFTER_SCHOOL_SCHOOLS,
+  matchesAfterSchoolSchool,
+} from "@/lib/afterSchool";
 import type { ContractSchoolSummary } from "@/lib/contractSchools";
 import {
   getSchoolInfo,
@@ -26,13 +30,17 @@ export default function SchoolSelect({
           normalizeSchoolText(item.schoolName) === target ||
           normalizeSchoolText(item.displayName) === target
       );
+      const afterSchool = AFTER_SCHOOL_SCHOOLS.find((item) =>
+        matchesAfterSchoolSchool(school, item)
+      );
+      const completed =
+        contractSchool?.completed === true || afterSchool?.completed === true;
 
-      return { school, contractSchool, index };
+      return { school, contractSchool, completed, index };
     })
     .sort(
       (left, right) =>
-        Number(left.contractSchool?.completed === true) -
-          Number(right.contractSchool?.completed === true) ||
+        Number(left.completed) - Number(right.completed) ||
         left.index - right.index
     );
 
@@ -48,7 +56,7 @@ export default function SchoolSelect({
             <div className="text-base sm:text-lg font-black leading-snug text-slate-800">SUN LAB</div>
           </Link>
 
-          {schoolCards.map(({ school, contractSchool }) => {
+          {schoolCards.map(({ school, contractSchool, completed }) => {
             const cardInfo = getSchoolLoginCard(school);
             const schoolInfo = getSchoolInfo(school);
             const routeBySchool: Record<string, string> = {
@@ -61,7 +69,7 @@ export default function SchoolSelect({
               : schoolInfo
                 ? routeBySchool[schoolInfo.name]
                 : undefined;
-            const isCompleted = contractSchool?.completed === true;
+            const isCompleted = completed;
             const cardClassName = `block h-full min-h-[112px] w-full rounded-3xl border p-4 text-center text-slate-700 shadow-sm transition ${
               isCompleted
                 ? "border-slate-200 bg-white hover:bg-slate-50"
@@ -71,7 +79,7 @@ export default function SchoolSelect({
               <div className="flex h-full flex-col">
                 {isCompleted && (
                   <div className="self-start rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-600">
-                    [종강]
+                    종강
                   </div>
                 )}
                 <div className="flex flex-1 flex-col items-center justify-center">
