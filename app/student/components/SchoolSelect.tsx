@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   AFTER_SCHOOL_SCHOOLS,
   matchesAfterSchoolSchool,
+  type AfterSchoolStatus,
 } from "@/lib/afterSchool";
 import type { ContractSchoolSummary } from "@/lib/contractSchools";
 import {
@@ -15,6 +16,14 @@ type Props = {
   schools: string[];
   contractSchools?: ContractSchoolSummary[];
   onSelect: (school: string) => void;
+};
+
+type SchoolCardStatus = AfterSchoolStatus;
+
+const STATUS_ORDER: Record<SchoolCardStatus, number> = {
+  active: 0,
+  paused: 1,
+  completed: 2,
 };
 
 export default function SchoolSelect({
@@ -33,15 +42,15 @@ export default function SchoolSelect({
       const afterSchool = AFTER_SCHOOL_SCHOOLS.find((item) =>
         matchesAfterSchoolSchool(school, item)
       );
-      const completed =
-        contractSchool?.completed === true || afterSchool?.completed === true;
+      const status: SchoolCardStatus = contractSchool?.completed
+        ? "completed"
+        : afterSchool?.status || "active";
 
-      return { school, contractSchool, completed, index };
+      return { school, contractSchool, status, index };
     })
     .sort(
       (left, right) =>
-        Number(left.completed) - Number(right.completed) ||
-        left.index - right.index
+        STATUS_ORDER[left.status] - STATUS_ORDER[right.status] || left.index - right.index
     );
 
   return (
@@ -56,7 +65,7 @@ export default function SchoolSelect({
             <div className="text-base sm:text-lg font-black leading-snug text-slate-800">SUN LAB</div>
           </Link>
 
-          {schoolCards.map(({ school, contractSchool, completed }) => {
+          {schoolCards.map(({ school, contractSchool, status }) => {
             const cardInfo = getSchoolLoginCard(school);
             const schoolInfo = getSchoolInfo(school);
             const routeBySchool: Record<string, string> = {
@@ -69,22 +78,32 @@ export default function SchoolSelect({
               : schoolInfo
                 ? routeBySchool[schoolInfo.name]
                 : undefined;
-            const isCompleted = completed;
+            const isCompleted = status === "completed";
+            const isPaused = status === "paused";
+            const statusLabel = isCompleted ? "종강" : isPaused ? "휴강" : null;
             const cardClassName = `block h-full min-h-[112px] w-full rounded-3xl border p-4 text-center text-slate-700 shadow-sm transition ${
               isCompleted
                 ? "border-slate-200 bg-white hover:bg-slate-50"
+                : isPaused
+                  ? "border-amber-200 bg-amber-50 hover:bg-amber-100"
                 : "border-sky-200 bg-sky-50 hover:bg-sky-100"
             }`;
             const cardBody = (
               <div className="flex h-full flex-col">
-                {isCompleted && (
-                  <div className="self-start rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-600">
-                    종강
+                {statusLabel && (
+                  <div className={`self-start rounded-full border px-2.5 py-1 text-[11px] font-black ${
+                    isPaused
+                      ? "border-amber-300 bg-amber-100 text-amber-700"
+                      : "border-slate-300 bg-slate-100 text-slate-600"
+                  }`}>
+                    {statusLabel}
                   </div>
                 )}
                 <div className="flex flex-1 flex-col items-center justify-center">
                   <div className="text-base sm:text-lg font-black leading-snug text-slate-800">{cardInfo.title}</div>
-                  <div className={`mt-2 text-xs sm:text-sm font-bold ${isCompleted ? "text-slate-500" : "text-sky-700"}`}>📍 {contractSchool?.location || cardInfo.location}</div>
+                  <div className={`mt-2 text-xs sm:text-sm font-bold ${
+                    isCompleted ? "text-slate-500" : isPaused ? "text-amber-700" : "text-sky-700"
+                  }`}>📍 {contractSchool?.location || cardInfo.location}</div>
                 </div>
               </div>
             );

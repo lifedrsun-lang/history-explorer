@@ -1,6 +1,7 @@
 import { normalizeSchoolText } from "@/app/student/data/schoolInfo";
 
 export type AfterSchoolClass = "A반" | "B반";
+export type AfterSchoolStatus = "active" | "paused" | "completed";
 
 export type AfterSchoolSchool = {
   slug: string;
@@ -8,7 +9,7 @@ export type AfterSchoolSchool = {
   displayName: string;
   shortName: string;
   location: string;
-  completed: boolean;
+  status: AfterSchoolStatus;
   aliases: string[];
 };
 
@@ -19,7 +20,7 @@ export const AFTER_SCHOOL_SCHOOLS: AfterSchoolSchool[] = [
     displayName: "김포 사우초",
     shortName: "김포 사우초",
     location: "4F 특기적성2실",
-    completed: true,
+    status: "paused",
     aliases: ["김포 사우초등학교", "김포 사우초", "사우초등학교", "사우초"],
   },
   {
@@ -28,7 +29,7 @@ export const AFTER_SCHOOL_SCHOOLS: AfterSchoolSchool[] = [
     displayName: "김포 하늘빛초",
     shortName: "김포 하늘빛초",
     location: "2F 맞춤3교실",
-    completed: false,
+    status: "active",
     aliases: [
       "김포 하늘빛초등학교",
       "김포 하늘빛초",
@@ -42,7 +43,7 @@ export const AFTER_SCHOOL_SCHOOLS: AfterSchoolSchool[] = [
     displayName: "화성 새솔초",
     shortName: "화성 새솔초",
     location: "5F 음악실",
-    completed: true,
+    status: "active",
     aliases: ["화성 새솔초등학교", "화성 새솔초", "새솔초등학교", "새솔초"],
   },
 ];
