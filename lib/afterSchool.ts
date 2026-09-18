@@ -16,7 +16,7 @@ export const AFTER_SCHOOL_SCHOOLS: AfterSchoolSchool[] = [
     slug: "sau",
     name: "김포 사우초등학교",
     displayName: "김포 사우초",
-    shortName: "사우초",
+    shortName: "김포 사우초",
     location: "4F 특기적성2실",
     aliases: ["김포 사우초등학교", "김포 사우초", "사우초등학교", "사우초"],
   },
@@ -24,7 +24,7 @@ export const AFTER_SCHOOL_SCHOOLS: AfterSchoolSchool[] = [
     slug: "haneulbit",
     name: "김포 하늘빛초등학교",
     displayName: "김포 하늘빛초",
-    shortName: "하늘빛초",
+    shortName: "김포 하늘빛초",
     location: "2F 맞춤3교실",
     aliases: [
       "김포 하늘빛초등학교",
