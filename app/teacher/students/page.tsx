@@ -43,6 +43,7 @@ import {
 } from "@/lib/studentEnrollment";
 import StudentCard from "../components/StudentCard";
 import StudentEditModal from "../components/StudentEditModal";
+import { normalizeSchoolText } from "@/app/student/data/schoolInfo";
 
 const CLASS_OPTIONS = ["전체", "A반", "B반"] as const;
 const BULK_CLASS_OPTIONS = ["A반", "B반"] as const;
@@ -128,8 +129,15 @@ export default function TeacherStudentsPage() {
   };
 
   useEffect(() => {
-    const status = new URLSearchParams(window.location.search).get("status");
-    setSelectedStatus(status === "paused" ? "paused" : "active");
+    const timeout = window.setTimeout(() => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const status = searchParams.get("status");
+      const school = searchParams.get("school");
+      setSelectedStatus(status === "paused" ? "paused" : "active");
+      if (school) setSelectedSchool(school);
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
   }, []);
 
   useEffect(() => {
@@ -454,11 +462,18 @@ export default function TeacherStudentsPage() {
   };
 
   const schoolOptions = useMemo(
-    () => [
-      "전체학교",
-      ...Array.from(new Set(students.map((student) => String(student?.school || "미지정")))).sort((a, b) => a.localeCompare(b, "ko-KR")),
-    ],
-    [students]
+    () => {
+      const schools = Array.from(
+        new Set(students.map((student) => String(student?.school || "미지정")))
+      ).sort((a, b) => a.localeCompare(b, "ko-KR"));
+      const requestedSchool =
+        selectedSchool !== "전체학교" && !schools.includes(selectedSchool)
+          ? [selectedSchool]
+          : [];
+
+      return ["전체학교", ...requestedSchool, ...schools];
+    },
+    [selectedSchool, students]
   );
 
   const bulkSchoolOptions = useMemo(
@@ -551,7 +566,10 @@ export default function TeacherStudentsPage() {
     const keyword = searchTerm.trim().toLowerCase();
     const baseStudents = students.filter((student) => {
       if (getSimpleStatus(student) !== selectedStatus) return false;
-      if (selectedSchool !== "전체학교" && String(student?.school || "미지정") !== selectedSchool) return false;
+      if (
+        selectedSchool !== "전체학교" &&
+        normalizeSchoolText(student?.school) !== normalizeSchoolText(selectedSchool)
+      ) return false;
       if (selectedProgram !== "all" && getStudentProgramValue(student?.program) !== selectedProgram) return false;
       if (keyword && !String(student?.name || "").toLowerCase().includes(keyword)) return false;
       return true;
@@ -569,7 +587,10 @@ export default function TeacherStudentsPage() {
     return students
       .filter((student) => {
         if (getSimpleStatus(student) !== selectedStatus) return false;
-        if (selectedSchool !== "전체학교" && String(student?.school || "미지정") !== selectedSchool) return false;
+        if (
+          selectedSchool !== "전체학교" &&
+          normalizeSchoolText(student?.school) !== normalizeSchoolText(selectedSchool)
+        ) return false;
         if (selectedProgram !== "all" && getStudentProgramValue(student?.program) !== selectedProgram) return false;
         if (selectedClass !== "전체" && getTeachingClass(student) !== selectedClass) return false;
         if (keyword && !String(student?.name || "").toLowerCase().includes(keyword)) return false;
