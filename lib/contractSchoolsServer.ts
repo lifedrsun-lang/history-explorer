@@ -44,6 +44,7 @@ type SchoolDraft = {
   displayName?: unknown;
   location?: unknown;
   published?: unknown;
+  completed?: unknown;
   classrooms?: unknown;
   lessons?: unknown;
   lessonVisibility?: unknown;
@@ -117,6 +118,10 @@ const fromStoredSchool = (
   displayName: normalizeText(data.displayName),
   location: normalizeText(data.location),
   published: data.published === true,
+  completed:
+    typeof data.completed === "boolean"
+      ? data.completed
+      : getDefaultContractSchool(slug)?.completed === true,
   hasSchoolPassword: Boolean(data.passwordHash && data.passwordSalt),
   classrooms: Array.isArray(data.classrooms)
     ? data.classrooms.map((classroom) => ({
@@ -430,6 +435,7 @@ export const createContractSchool = async (
     displayName,
     location,
     published: false,
+    completed: false,
     classrooms: [],
     lessons: [],
     lessonVisibility: {},
@@ -518,6 +524,7 @@ export const updateContractSchool = async (
       false
     ),
     published,
+    completed: draft.completed === true,
     classrooms,
     lessons,
     lessonVisibility,

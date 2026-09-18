@@ -18,6 +18,24 @@ export default function SchoolSelect({
   contractSchools = [],
   onSelect,
 }: Props) {
+  const schoolCards = schools
+    .map((school, index) => {
+      const target = normalizeSchoolText(school);
+      const contractSchool = contractSchools.find(
+        (item) =>
+          normalizeSchoolText(item.schoolName) === target ||
+          normalizeSchoolText(item.displayName) === target
+      );
+
+      return { school, contractSchool, index };
+    })
+    .sort(
+      (left, right) =>
+        Number(left.contractSchool?.completed === true) -
+          Number(right.contractSchool?.completed === true) ||
+        left.index - right.index
+    );
+
   return (
     <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 text-slate-800 px-3 py-6 sm:px-4 sm:py-8">
       <div className="max-w-xl mx-auto">
@@ -30,7 +48,7 @@ export default function SchoolSelect({
             <div className="text-base sm:text-lg font-black leading-snug text-slate-800">SUN LAB</div>
           </Link>
 
-          {schools.map((school) => {
+          {schoolCards.map(({ school, contractSchool }) => {
             const cardInfo = getSchoolLoginCard(school);
             const schoolInfo = getSchoolInfo(school);
             const routeBySchool: Record<string, string> = {
@@ -38,23 +56,28 @@ export default function SchoolSelect({
               "광명 광일초등학교": "/student/classroom/gwangil",
               "화성 월문초등학교": "/student/classroom/wolmun",
             };
-            const contractSchool = contractSchools.find((item) => {
-              const target = normalizeSchoolText(school);
-              return (
-                normalizeSchoolText(item.schoolName) === target ||
-                normalizeSchoolText(item.displayName) === target
-              );
-            });
             const classroomRoute = contractSchool
               ? `/student/classroom/${contractSchool.slug}`
               : schoolInfo
                 ? routeBySchool[schoolInfo.name]
                 : undefined;
-            const cardClassName = "block h-full min-h-[112px] w-full bg-white border border-sky-100 rounded-3xl p-4 text-center text-slate-700 shadow-sm transition hover:bg-sky-50";
+            const isCompleted = contractSchool?.completed === true;
+            const cardClassName = `block h-full min-h-[112px] w-full rounded-3xl border p-4 text-center text-slate-700 shadow-sm transition ${
+              isCompleted
+                ? "border-slate-200 bg-white hover:bg-slate-50"
+                : "border-sky-200 bg-sky-50 hover:bg-sky-100"
+            }`;
             const cardBody = (
-              <div className="flex h-full flex-col items-center justify-center">
-                <div className="text-base sm:text-lg font-black leading-snug text-slate-800">{cardInfo.title}</div>
-                <div className="mt-2 text-xs sm:text-sm font-bold text-sky-700">📍 {contractSchool?.location || cardInfo.location}</div>
+              <div className="flex h-full flex-col">
+                {isCompleted && (
+                  <div className="self-start rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-600">
+                    [종강]
+                  </div>
+                )}
+                <div className="flex flex-1 flex-col items-center justify-center">
+                  <div className="text-base sm:text-lg font-black leading-snug text-slate-800">{cardInfo.title}</div>
+                  <div className={`mt-2 text-xs sm:text-sm font-bold ${isCompleted ? "text-slate-500" : "text-sky-700"}`}>📍 {contractSchool?.location || cardInfo.location}</div>
+                </div>
               </div>
             );
 

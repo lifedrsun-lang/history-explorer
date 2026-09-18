@@ -70,6 +70,7 @@ export default function ManagedSchoolClassroomEntry({
               fallbackClassrooms[0].schoolName,
             location: "",
             published: true,
+            completed: false,
             hasSchoolPassword: false,
           });
           setRequiresPassword(false);

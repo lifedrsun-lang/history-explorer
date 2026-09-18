@@ -13,7 +13,7 @@ import {
 } from "@/app/student/data/classroomData";
 
 export const CONTRACT_SCHOOL_COLLECTION = "contract_school_configs";
-export const CONTRACT_SCHOOL_SCHEMA_VERSION = 2;
+export const CONTRACT_SCHOOL_SCHEMA_VERSION = 3;
 
 export type ContractSchoolClassroom = {
   id: string;
@@ -43,6 +43,7 @@ export type ContractSchoolConfig = {
   displayName: string;
   location: string;
   published: boolean;
+  completed: boolean;
   hasSchoolPassword: boolean;
   classrooms: ContractSchoolClassroom[];
   lessons: ContractSchoolLesson[];
@@ -59,6 +60,7 @@ export type ContractSchoolSummary = Pick<
   | "displayName"
   | "location"
   | "published"
+  | "completed"
   | "hasSchoolPassword"
 >;
 
@@ -82,12 +84,14 @@ const toSeedSchool = ({
   location,
   classrooms,
   hasSchoolPassword = false,
+  completed = false,
 }: {
   slug: string;
   schoolDisplayName: string;
   location: string;
   classrooms: SchoolClassroom[];
   hasSchoolPassword?: boolean;
+  completed?: boolean;
 }): ContractSchoolConfig => {
   const firstClassroom = classrooms[0];
   const lessonNumbers = Array.from(
@@ -164,6 +168,7 @@ const toSeedSchool = ({
     displayName: schoolDisplayName,
     location,
     published: true,
+    completed,
     hasSchoolPassword,
     classrooms: schoolClassrooms,
     lessons,
@@ -221,6 +226,7 @@ export const DEFAULT_CONTRACT_SCHOOLS: ContractSchoolConfig[] = [
     schoolDisplayName: WONJONG_SCHOOL_DISPLAY_NAME,
     location: "컴퓨터실",
     classrooms: WONJONG_CLASSROOMS,
+    completed: true,
   }),
   toSeedSchool({
     slug: "wolmun",
@@ -298,5 +304,6 @@ export const toContractSchoolSummary = (
   displayName: school.displayName,
   location: school.location,
   published: school.published,
+  completed: school.completed,
   hasSchoolPassword: school.hasSchoolPassword,
 });
