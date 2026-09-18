@@ -43,21 +43,15 @@ export default function SchoolSelect({
         <div className="grid grid-cols-2 gap-3 rounded-[32px] border border-white/80 bg-white/80 p-3 sm:p-4 shadow-sm">
           <Link
             href="/student/book"
-            className="flex h-full min-h-[112px] w-full items-center justify-center rounded-3xl border border-slate-200 bg-white p-4 text-center shadow-sm transition hover:border-slate-300 hover:shadow-md"
+            className="flex h-full min-h-[112px] w-full items-center justify-center rounded-3xl border border-[#5f4318] p-4 text-center transition hover:shadow-lg"
+            style={{
+              backgroundImage:
+                "linear-gradient(135deg, #35230c 0%, #664718 18%, #a47e38 37%, #cfb578 49%, #896527 64%, #533812 82%, #2f1e09 100%)",
+              boxShadow:
+                "inset 0 1px 0 rgba(255, 255, 255, 0.38), inset 0 -1px 0 rgba(35, 22, 6, 0.5), 0 4px 12px rgba(61, 42, 13, 0.22)",
+            }}
           >
-            <div
-              className="text-lg font-black leading-snug tracking-[0.1em] sm:text-xl"
-              style={{
-                backgroundImage:
-                  "linear-gradient(180deg, #4b3818 0%, #9f7e3a 30%, #e1d0a2 48%, #8a672a 70%, #3e2c12 100%)",
-                backgroundClip: "text",
-                WebkitBackgroundClip: "text",
-                color: "transparent",
-                WebkitTextFillColor: "transparent",
-                textShadow:
-                  "0 1px 0 rgba(255, 255, 255, 0.55), 0 2px 2px rgba(63, 44, 16, 0.3)",
-              }}
-            >
+            <div className="text-lg font-black leading-snug tracking-[0.1em] text-black sm:text-xl">
               SUN LAB
             </div>
           </Link>
