@@ -3,6 +3,7 @@ export type PresentationCategory =
   | "coding"
   | "hello_maple"
   | "world"
+  | "teaching_boardgame"
   | "boardgame"
   | "archive_coding"
   | "facilitator"
@@ -16,6 +17,7 @@ export function isPresentationCategory(
     value === "coding" ||
     value === "hello_maple" ||
     value === "world" ||
+    value === "teaching_boardgame" ||
     value === "boardgame" ||
     value === "archive_coding" ||
     value === "facilitator" ||
@@ -25,8 +27,9 @@ export function isPresentationCategory(
 
 export function isArchivePresentationCategory(
   value: unknown
-): value is "archive_coding" | "facilitator" | "personal_study" {
+): value is "boardgame" | "archive_coding" | "facilitator" | "personal_study" {
   return (
+    value === "boardgame" ||
     value === "archive_coding" ||
     value === "facilitator" ||
     value === "personal_study"
@@ -80,8 +83,14 @@ export function resolveStoredPresentationCategory(
 
 export function isNamedCardCategory(
   category: PresentationCategory
-): category is "boardgame" | "archive_coding" | "facilitator" | "personal_study" {
+): category is
+  | "teaching_boardgame"
+  | "boardgame"
+  | "archive_coding"
+  | "facilitator"
+  | "personal_study" {
   return (
+    category === "teaching_boardgame" ||
     category === "boardgame" ||
     category === "archive_coding" ||
     category === "facilitator" ||

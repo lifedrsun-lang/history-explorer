@@ -118,6 +118,7 @@ const CATEGORY_LABELS: Record<PresentationCategory, string> = {
   coding: "코딩",
   hello_maple: "코딩(헬로메이플)",
   world: "세계문화",
+  teaching_boardgame: "보드게임",
   boardgame: "보드게임",
   archive_coding: "코딩",
   facilitator: "퍼실리테이터",
@@ -162,7 +163,7 @@ const TEACHING_LIBRARIES: LibraryCard[] = [
     border: "border-lime-100 hover:border-lime-300",
   },
   {
-    value: "boardgame",
+    value: "teaching_boardgame",
     label: "보드게임",
     icon: "🎲",
     description: "보드게임 수업과 활동 자료를 게임별로 관리합니다.",
@@ -190,6 +191,15 @@ const ARCHIVE_LIBRARIES: LibraryCard[] = [
     accent: "text-teal-700",
     soft: "bg-teal-50",
     border: "border-teal-100 hover:border-teal-300",
+  },
+  {
+    value: "boardgame",
+    label: "보드게임",
+    icon: "🎲",
+    description: "내가 공부할 보드게임 자료를 게임별로 모아 둡니다.",
+    accent: "text-orange-700",
+    soft: "bg-orange-50",
+    border: "border-orange-100 hover:border-orange-300",
   },
   {
     value: "archive_coding",
@@ -246,10 +256,11 @@ const CATEGORY_ORDER: Record<PresentationCategory, number> = {
   personal_study: 1,
   facilitator: 2,
   archive_coding: 3,
-  history: 4,
-  coding: 5,
-  hello_maple: 6,
-  world: 7,
+  teaching_boardgame: 4,
+  history: 5,
+  coding: 6,
+  hello_maple: 7,
+  world: 8,
 };
 
 const DIRECT_WORLD_COVERS: Record<string, string> = {
@@ -587,6 +598,7 @@ function TeacherPresentationsPageContent() {
       world: 0,
       coding: 0,
       hello_maple: 0,
+      teaching_boardgame: 0,
       boardgame: 0,
       archive_coding: 0,
       facilitator: 0,
@@ -897,7 +909,7 @@ function TeacherPresentationsPageContent() {
             </h1>
             <p className="mt-2 text-sm font-bold text-slate-500">
               {isArchiveSection
-                ? "내 공부자료·퍼실리테이터·코딩 자료를 나누어 관리합니다."
+                ? "내 공부자료·퍼실리테이터·보드게임·코딩 자료를 나누어 관리합니다."
                 : "수업자료를 과목과 코딩 제품별로 나누어 관리합니다."}
             </p>
           </div>
@@ -972,8 +984,10 @@ function TeacherPresentationsPageContent() {
                 <p className="mt-1 text-sm font-bold text-slate-500">
                   {activeLibrary === "personal_study"
                     ? "배우며 받은 PPT와 참고자료를 카드이름별로 차곡차곡 보관합니다."
+                      : activeLibrary === "teaching_boardgame"
+                        ? "수업에 사용하는 보드게임 자료를 게임별 카드로 관리합니다."
                       : activeLibrary === "boardgame"
-                        ? "같은 보드게임 이름의 자료는 한 카드 안에 함께 모입니다."
+                        ? "내가 공부하는 보드게임 자료를 게임별 카드로 관리합니다."
                       : activeLibrary === "facilitator"
                         ? "퍼실리테이터 과정 자료를 다른 공부자료와 분리해 관리합니다."
                       : activeLibrary === "archive_coding"
@@ -1360,7 +1374,7 @@ function NamedResourceCard({
   const isLessonCard = card.category === "coding" || card.category === "hello_maple";
   const isWonjongHelloMaple = isWonjongHelloMapleCard(card);
   const icon =
-    card.category === "boardgame"
+    card.category === "boardgame" || card.category === "teaching_boardgame"
       ? "🎲"
       : card.category === "personal_study"
         ? "🌱"
@@ -1370,7 +1384,7 @@ function NamedResourceCard({
           ? "💻"
         : "📁";
   const accent =
-    card.category === "boardgame"
+    card.category === "boardgame" || card.category === "teaching_boardgame"
       ? "text-orange-700"
       : card.category === "personal_study"
         ? "text-rose-700"
@@ -1380,7 +1394,7 @@ function NamedResourceCard({
           ? "text-emerald-700"
         : "text-blue-700";
   const soft =
-    card.category === "boardgame"
+    card.category === "boardgame" || card.category === "teaching_boardgame"
       ? "bg-orange-50"
       : card.category === "personal_study"
         ? "bg-rose-50"

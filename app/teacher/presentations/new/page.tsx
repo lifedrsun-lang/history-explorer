@@ -49,6 +49,7 @@ const CATEGORY_LABELS: Record<PresentationCategory, string> = {
   world: "세계문화",
   coding: "코딩",
   hello_maple: "코딩(헬로메이플)",
+  teaching_boardgame: "보드게임",
   boardgame: "보드게임",
   archive_coding: "코딩",
   facilitator: "퍼실리테이터",
@@ -64,7 +65,8 @@ const CATEGORIES: Array<{
   { value: "world", label: "세계문화", description: "모나르떼 세계문화 PPT" },
   { value: "coding", label: "코딩", description: "코딩 수업 PPT" },
   { value: "hello_maple", label: "코딩(헬로메이플)", description: "헬로메이플 전용 수업자료" },
-  { value: "boardgame", label: "보드게임", description: "게임별 수업·활동 자료" },
+  { value: "teaching_boardgame", label: "보드게임(수업자료)", description: "수업에 사용하는 게임별 자료" },
+  { value: "boardgame", label: "보드게임(자료실)", description: "내가 공부하는 게임별 자료" },
   { value: "archive_coding", label: "코딩", description: "자료실용 코딩 참고자료" },
   { value: "facilitator", label: "퍼실리테이터", description: "퍼실리테이터 과정 자료" },
   { value: "personal_study", label: "내 공부자료", description: "개인 학습 자료 아카이브" },
@@ -367,7 +369,7 @@ export default function NewTeacherPresentationPage() {
                   value={draft.cardName}
                   maxLength={80}
                   placeholder={
-                    draft.category === "boardgame"
+                    draft.category === "boardgame" || draft.category === "teaching_boardgame"
                       ? "예: 카탄"
                       : draft.category === "personal_study"
                         ? "예: 임상심리학"
