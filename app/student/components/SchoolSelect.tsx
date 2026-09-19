@@ -3,6 +3,7 @@ import {
   AFTER_SCHOOL_SCHOOLS,
   matchesAfterSchoolSchool,
   type AfterSchoolStatus,
+  type AfterSchoolStatusMap,
 } from "@/lib/afterSchool";
 import type { ContractSchoolSummary } from "@/lib/contractSchools";
 import {
@@ -15,6 +16,7 @@ import {
 type Props = {
   schools: string[];
   contractSchools?: ContractSchoolSummary[];
+  afterSchoolStatuses?: AfterSchoolStatusMap;
   onSelect: (school: string) => void;
 };
 
@@ -29,6 +31,7 @@ const STATUS_ORDER: Record<SchoolCardStatus, number> = {
 export default function SchoolSelect({
   schools,
   contractSchools = [],
+  afterSchoolStatuses = {},
   onSelect,
 }: Props) {
   const schoolCards = schools
@@ -44,7 +47,9 @@ export default function SchoolSelect({
       );
       const status: SchoolCardStatus = contractSchool?.completed
         ? "completed"
-        : afterSchool?.status || "active";
+        : afterSchool
+          ? afterSchoolStatuses[afterSchool.slug] || afterSchool.status
+          : "active";
 
       return { school, contractSchool, status, index };
     })

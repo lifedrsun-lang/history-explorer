@@ -1,18 +1,23 @@
 import {
   getAllContractSchools,
 } from "@/lib/contractSchoolsServer";
+import { getAfterSchoolStatuses } from "@/lib/afterSchoolStatusServer";
 import { toContractSchoolSummary } from "@/lib/contractSchools";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const schools = (await getAllContractSchools())
+    const [contractSchools, afterSchoolStatuses] = await Promise.all([
+      getAllContractSchools(),
+      getAfterSchoolStatuses(),
+    ]);
+    const schools = contractSchools
       .filter((school) => school.published)
       .map(toContractSchoolSummary);
 
     return Response.json(
-      { schools },
+      { schools, afterSchoolStatuses },
       { headers: { "Cache-Control": "no-store, max-age=0" } }
     );
   } catch (error) {

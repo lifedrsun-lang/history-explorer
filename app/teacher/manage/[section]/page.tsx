@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { AFTER_SCHOOL_SCHOOLS } from "@/lib/afterSchool";
+import AfterSchoolSchoolCards from "./AfterSchoolSchoolCards";
 
 type ManagementItem = {
   href: string;
@@ -17,12 +17,6 @@ type ManagementSection = {
   description: string;
   items: ManagementItem[];
 };
-
-const AFTER_SCHOOL_CARD_STYLES = [
-  "border-sky-200 bg-sky-50 text-sky-950",
-  "border-indigo-200 bg-indigo-50 text-indigo-950",
-  "border-cyan-200 bg-cyan-50 text-cyan-950",
-];
 
 const sections: Record<string, ManagementSection> = {
   "after-school": {
@@ -285,20 +279,7 @@ export default async function TeacherManagementSectionPage({
                 학교를 먼저 선택하면 수강생 관리와 코인 지급으로 이동할 수 있어요.
               </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
-              {AFTER_SCHOOL_SCHOOLS.map((school, index) => (
-                <Link
-                  key={school.slug}
-                  href={`/teacher/after-school/${school.slug}`}
-                  className={`rounded-[26px] border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:p-6 ${AFTER_SCHOOL_CARD_STYLES[index]}`}
-                >
-                  <div className="text-3xl">🏫</div>
-                  <div className="mt-3 text-xl font-black">{school.shortName}</div>
-                  <div className="mt-1 text-xs font-bold opacity-65">{school.location}</div>
-                  <div className="mt-5 text-sm font-black">학교 관리 열기 →</div>
-                </Link>
-              ))}
-            </div>
+            <AfterSchoolSchoolCards />
           </section>
         )}
 

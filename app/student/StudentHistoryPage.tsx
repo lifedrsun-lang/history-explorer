@@ -36,6 +36,7 @@ import {
   getStudentGroupLabel,
 } from "./data/studentGroups";
 import type { ContractSchoolSummary } from "@/lib/contractSchools";
+import type { AfterSchoolStatusMap } from "@/lib/afterSchool";
 
 type Props = {
   program?: StudentProgram;
@@ -47,6 +48,8 @@ export default function StudentHistoryPage({
   const [students, setStudents] = useState<any[]>([]);
   const [allSchools, setAllSchools] = useState<string[]>([]);
   const [contractSchools, setContractSchools] = useState<ContractSchoolSummary[]>([]);
+  const [afterSchoolStatuses, setAfterSchoolStatuses] =
+    useState<AfterSchoolStatusMap>({});
 
   const [searchName, setSearchName] = useState("");
   const [selectedSchool, setSelectedSchool] = useState("");
@@ -285,6 +288,7 @@ export default function StudentHistoryPage({
       const contractPayload = contractResponse?.ok
         ? ((await contractResponse.json().catch(() => ({}))) as {
             schools?: ContractSchoolSummary[];
+            afterSchoolStatuses?: AfterSchoolStatusMap;
           })
         : {};
       const publishedContractSchools = Array.isArray(contractPayload.schools)
@@ -292,6 +296,7 @@ export default function StudentHistoryPage({
         : [];
 
       setContractSchools(publishedContractSchools);
+      setAfterSchoolStatuses(contractPayload.afterSchoolStatuses || {});
 
       const schoolSet = new Set<string>();
 
@@ -318,6 +323,7 @@ export default function StudentHistoryPage({
       console.error("학교 목록 불러오기 실패:", error);
       setAllSchools(DEFAULT_SCHOOLS);
       setContractSchools([]);
+      setAfterSchoolStatuses({});
     }
   };
 
@@ -557,6 +563,7 @@ export default function StudentHistoryPage({
       <SchoolSelect
         schools={allSchools}
         contractSchools={contractSchools}
+        afterSchoolStatuses={afterSchoolStatuses}
         onSelect={handleSchoolSelect}
       />
     );

@@ -2,6 +2,18 @@ import { normalizeSchoolText } from "@/app/student/data/schoolInfo";
 
 export type AfterSchoolClass = "A반" | "B반";
 export type AfterSchoolStatus = "active" | "paused" | "completed";
+export type AfterSchoolStatusMap = Record<string, AfterSchoolStatus>;
+
+export const AFTER_SCHOOL_STATUS_COLLECTION = "after_school_school_statuses";
+
+export const AFTER_SCHOOL_STATUS_OPTIONS: Array<{
+  value: AfterSchoolStatus;
+  label: string;
+}> = [
+  { value: "active", label: "진행중" },
+  { value: "paused", label: "휴강" },
+  { value: "completed", label: "종강" },
+];
 
 export type AfterSchoolSchool = {
   slug: string;
@@ -50,6 +62,11 @@ export const AFTER_SCHOOL_SCHOOLS: AfterSchoolSchool[] = [
 
 export const getAfterSchoolSchool = (slug: string) =>
   AFTER_SCHOOL_SCHOOLS.find((school) => school.slug === slug) || null;
+
+export const isAfterSchoolStatus = (
+  value: unknown
+): value is AfterSchoolStatus =>
+  value === "active" || value === "paused" || value === "completed";
 
 export const matchesAfterSchoolSchool = (
   value: unknown,
