@@ -60,15 +60,15 @@ export default function SchoolSelect({
         <div className="grid grid-cols-2 gap-3 rounded-[32px] border border-white/80 bg-white/80 p-3 sm:p-4 shadow-sm">
           <Link
             href="/student/book"
-            className="flex h-full min-h-[112px] w-full items-center justify-center rounded-3xl border border-[#5f4318] p-4 text-center transition hover:shadow-lg"
+            className="flex h-full min-h-[112px] w-full items-center justify-center rounded-3xl border border-[#d8c59f] p-4 text-center transition hover:shadow-md"
             style={{
               backgroundImage:
-                "linear-gradient(135deg, #35230c 0%, #664718 18%, #a47e38 37%, #cfb578 49%, #896527 64%, #533812 82%, #2f1e09 100%)",
+                "linear-gradient(135deg, #f7f1e4 0%, #eee1c8 32%, #dcc59c 50%, #f5ecdc 72%, #e7d7b9 100%)",
               boxShadow:
-                "inset 0 1px 0 rgba(255, 255, 255, 0.38), inset 0 -1px 0 rgba(35, 22, 6, 0.5), 0 4px 12px rgba(61, 42, 13, 0.22)",
+                "inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 2px 8px rgba(94, 70, 30, 0.10)",
             }}
           >
-            <div className="text-lg font-black leading-snug tracking-[0.1em] text-black sm:text-xl">
+            <div className="text-lg font-black leading-snug tracking-[0.1em] text-[#6f5a34] sm:text-xl">
               SUN LAB
             </div>
           </Link>
