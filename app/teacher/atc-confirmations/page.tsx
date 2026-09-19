@@ -286,6 +286,7 @@ export default function AtcConfirmationsPage() {
   const [noticeMessage, setNoticeMessage] = useState("");
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
+  const requestedSchoolRef = useRef("");
   const signatureBeforeEditRef = useRef<string | null>(null);
   const educatorCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const educatorDrawingRef = useRef(false);
@@ -295,6 +296,15 @@ export default function AtcConfirmationsPage() {
       setUser(currentUser);
       setAuthChecking(false);
     }), []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedYearMonth = params.get("yearMonth") || "";
+    requestedSchoolRef.current = params.get("school") || "";
+    if (!/^\d{4}-\d{2}$/.test(requestedYearMonth)) return;
+    const timeout = window.setTimeout(() => setYearMonth(requestedYearMonth), 0);
+    return () => window.clearTimeout(timeout);
+  }, []);
 
   const requestJson = useCallback(
     async (url: string, init?: RequestInit) => {
@@ -379,18 +389,32 @@ export default function AtcConfirmationsPage() {
     () =>
       Array.from(
         new Set(
-          calendarEvents
-            .map((event) => getSchoolNameFromSummary(event.summary))
-            .filter((school) => school && school !== "기타")
+          [
+            ...calendarEvents.map((event) =>
+              getSchoolNameFromSummary(event.summary)
+            ),
+            ...confirmations.map((confirmation) => confirmation.schoolName),
+          ].filter((school) => school && school !== "기타")
         )
       ).sort((a, b) => a.localeCompare(b, "ko-KR")),
-    [calendarEvents]
+    [calendarEvents, confirmations]
   );
 
   useEffect(() => {
     if (schoolNames.length === 0) {
       setSelectedSchool("");
       return;
+    }
+    const requestedSchool = requestedSchoolRef.current;
+    if (requestedSchool) {
+      requestedSchoolRef.current = "";
+      const match = schoolNames.find((school) =>
+        isSameSchool(school, requestedSchool)
+      );
+      if (match) {
+        setSelectedSchool(match);
+        return;
+      }
     }
     if (!schoolNames.includes(selectedSchool)) setSelectedSchool(schoolNames[0]);
   }, [schoolNames, selectedSchool]);
@@ -455,10 +479,11 @@ export default function AtcConfirmationsPage() {
 
   const printSnapshot = useMemo(() => {
     if (
-      selectedConfirmation?.schoolSignatureDataUrl &&
-      !scheduleChanged &&
+      selectedConfirmation &&
       Array.isArray(selectedConfirmation.scheduleSnapshot) &&
-      selectedConfirmation.scheduleSnapshot.length > 0
+      selectedConfirmation.scheduleSnapshot.length > 0 &&
+      ((selectedConfirmation.schoolSignatureDataUrl && !scheduleChanged) ||
+        currentScheduleSnapshot.length === 0)
     ) {
       return selectedConfirmation.scheduleSnapshot;
     }

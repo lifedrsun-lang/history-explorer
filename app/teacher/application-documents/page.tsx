@@ -11,6 +11,8 @@ import {
 } from "react";
 
 import { auth } from "@/lib/firebase";
+import type { ContractSchoolConfig } from "@/lib/contractSchools";
+import type { SchoolDocumentKind } from "@/lib/schoolDocuments";
 import { trimSignatureCanvas } from "@/lib/signatureCanvas";
 
 type Profile = {
@@ -21,6 +23,11 @@ type Profile = {
 };
 
 type IdentityType = "resident" | "passport" | "foreign" | "driver";
+
+type SchoolOption = Pick<
+  ContractSchoolConfig,
+  "slug" | "schoolName" | "displayName"
+>;
 
 const EMPTY_PROFILE: Profile = {
   name: "",
@@ -50,6 +57,7 @@ export default function TeacherApplicationDocumentsPage() {
   const [authChecking, setAuthChecking] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [recording, setRecording] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [notice, setNotice] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -61,6 +69,8 @@ export default function TeacherApplicationDocumentsPage() {
   const [signatureHasInk, setSignatureHasInk] = useState(false);
 
   const [schoolName, setSchoolName] = useState("");
+  const [schoolSlug, setSchoolSlug] = useState("");
+  const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [documentDate, setDocumentDate] = useState(todayText());
   const [residentNumber, setResidentNumber] = useState("");
   const [identityType, setIdentityType] = useState<IdentityType>("resident");
@@ -148,16 +158,46 @@ export default function TeacherApplicationDocumentsPage() {
       return;
     }
     let cancelled = false;
-    const loadProfile = async () => {
+    const loadPageData = async () => {
       setLoading(true);
       try {
-        const data = await requestJson("/api/teacher/application-documents/profile");
+        const [data, schoolData] = await Promise.all([
+          requestJson("/api/teacher/application-documents/profile"),
+          requestJson("/api/teacher/contract-schools"),
+        ]);
         if (cancelled) return;
         const profile = (data?.profile || EMPTY_PROFILE) as Profile;
+        const nextSchools = Array.isArray(schoolData?.schools)
+          ? (schoolData.schools as SchoolOption[])
+          : [];
         setName(profile.name || "");
         setPhone(profile.phone || "");
         setBirthDate(profile.birthDate || "");
         setSignatureDataUrl(profile.signatureDataUrl || null);
+        setSchools(nextSchools);
+
+        const params = new URLSearchParams(window.location.search);
+        const requestedSlug = params.get("schoolSlug") || "";
+        const requestedSchool = nextSchools.find(
+          (school) => school.slug === requestedSlug
+        );
+        if (requestedSchool) {
+          setSchoolSlug(requestedSchool.slug);
+          setSchoolName(requestedSchool.schoolName);
+        }
+        const requestedDate = params.get("documentDate") || "";
+        if (/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
+          setDocumentDate(requestedDate);
+        }
+        const requestedTypes = (params.get("documentTypes") || "")
+          .split(",")
+          .filter(Boolean);
+        if (requestedTypes.length > 0) {
+          setIncludeCrimeConsent(requestedTypes.includes("crime-consent"));
+          setIncludeAdminConsent(
+            requestedTypes.includes("administrative-consent")
+          );
+        }
         window.requestAnimationFrame(() => paintSignature(profile.signatureDataUrl || null));
       } catch (error) {
         if (!cancelled) setErrorMessage(error instanceof Error ? error.message : "기본정보를 불러오지 못했습니다.");
@@ -165,7 +205,7 @@ export default function TeacherApplicationDocumentsPage() {
         if (!cancelled) setLoading(false);
       }
     };
-    void loadProfile();
+    void loadPageData();
     return () => {
       cancelled = true;
     };
@@ -248,7 +288,7 @@ export default function TeacherApplicationDocumentsPage() {
 
   const dateParts = splitDate(documentDate);
 
-  const printDocuments = () => {
+  const printDocuments = async () => {
     if (!schoolName.trim()) return setErrorMessage("학교명을 입력해 주세요.");
     if (!name.trim()) return setErrorMessage("성명을 입력해 주세요.");
     if (!phone.trim()) return setErrorMessage("전화번호를 입력해 주세요.");
@@ -257,7 +297,51 @@ export default function TeacherApplicationDocumentsPage() {
     if (includeAdminConsent && !birthDate) return setErrorMessage("생년월일을 입력해 주세요.");
     if (!includeCrimeConsent && !includeAdminConsent) return setErrorMessage("출력할 서류를 하나 이상 선택해 주세요.");
     setErrorMessage("");
-    window.setTimeout(() => window.print(), 80);
+    setNotice("");
+
+    const documentKinds: SchoolDocumentKind[] = [];
+    if (includeCrimeConsent) documentKinds.push("crime-consent");
+    if (includeAdminConsent) documentKinds.push("administrative-consent");
+
+    if (schoolSlug) {
+      setRecording(true);
+      try {
+        await requestJson("/api/teacher/school-documents", {
+          method: "POST",
+          body: JSON.stringify({
+            schoolSlug,
+            documentDate,
+            documentKinds,
+          }),
+        });
+        setNotice("학교카드 제출서류함에 문서 기록을 추가했습니다. PDF 파일 자체는 브라우저에서 저장해 주세요.");
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error
+            ? `${error.message} 문서 인쇄는 계속 진행합니다.`
+            : "학교카드에 문서 기록을 남기지 못했지만 인쇄는 계속 진행합니다."
+        );
+      } finally {
+        setRecording(false);
+      }
+    } else {
+      setNotice("학교카드와 연결되지 않은 학교명입니다. 인쇄는 가능하지만 학교별 서류함에는 기록되지 않습니다.");
+    }
+
+    const originalTitle = document.title;
+    const selectedTitles = [
+      includeCrimeConsent ? "성범죄·아동학대 전력 조회 동의서" : "",
+      includeAdminConsent ? "행정정보 공동이용 사전동의서" : "",
+    ].filter(Boolean);
+    document.title = `${schoolName}_${selectedTitles.join("_")}_${documentDate}`
+      .replace(/[\\/:*?"<>|]/g, "-")
+      .replace(/\s+/g, " ")
+      .trim();
+    try {
+      window.print();
+    } finally {
+      document.title = originalTitle;
+    }
   };
 
   if (authChecking || loading) {
@@ -330,7 +414,8 @@ export default function TeacherApplicationDocumentsPage() {
             <h2 className="text-xl font-black">2. 이번 제출 정보</h2>
             <p className="mt-1 text-xs font-bold text-rose-500">주민등록번호와 신분확인번호는 저장하지 않습니다.</p>
             <div className="mt-5 grid gap-4">
-              <label className="text-sm font-black">학교명<input value={schoolName} onChange={(e) => setSchoolName(e.target.value)} placeholder="예: 서울신상도초등학교" className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold" /></label>
+              <label className="text-sm font-black">학교카드 연결<select value={schoolSlug} onChange={(e) => { const nextSlug = e.target.value; const school = schools.find((item) => item.slug === nextSlug); setSchoolSlug(nextSlug); if (school) setSchoolName(school.schoolName); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold"><option value="">학교카드 미연결 · 직접 입력</option>{schools.map((school) => <option key={school.slug} value={school.slug}>{school.displayName}</option>)}</select></label>
+              <label className="text-sm font-black">학교명<input value={schoolName} onChange={(e) => { const nextName = e.target.value; setSchoolName(nextName); const selected = schools.find((school) => school.slug === schoolSlug); if (selected && selected.schoolName !== nextName) setSchoolSlug(""); }} placeholder="예: 서울신상도초등학교" className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold" /><span className="mt-1 block text-[11px] font-bold text-slate-400">학교카드를 선택하면 생성 기록이 해당 학교 서류함에 연결됩니다.</span></label>
               <label className="text-sm font-black">작성일<input type="date" value={documentDate} onChange={(e) => setDocumentDate(e.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold" /></label>
               <label className="text-sm font-black">주민등록번호<input value={residentNumber} onChange={(e) => setResidentNumber(e.target.value)} autoComplete="off" className="mt-2 w-full rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 font-bold" /></label>
               <div className="rounded-2xl border border-slate-200 p-4">
@@ -350,7 +435,7 @@ export default function TeacherApplicationDocumentsPage() {
               <h2 className="text-xl font-black">3. 서류 선택</h2>
               <div className="mt-3 flex flex-col gap-3 text-sm font-black sm:flex-row sm:gap-6"><label className="flex items-center gap-2"><input type="checkbox" checked={includeCrimeConsent} onChange={(e) => setIncludeCrimeConsent(e.target.checked)} className="h-5 w-5" />성범죄·아동학대 전력 조회 동의서</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeAdminConsent} onChange={(e) => setIncludeAdminConsent(e.target.checked)} className="h-5 w-5" />행정정보 공동이용 사전동의서</label></div>
             </div>
-            <button type="button" onClick={printDocuments} className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-black text-white shadow-lg">PDF로 저장 · 인쇄</button>
+            <button type="button" onClick={() => void printDocuments()} disabled={recording} className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-black text-white shadow-lg disabled:opacity-50">{recording ? "학교카드에 기록 중..." : "PDF로 저장 · 인쇄"}</button>
           </div>
         </section>
         <div className="mt-5 text-center text-xs font-bold text-slate-400">아래는 A4 실제 출력 미리보기입니다.</div>

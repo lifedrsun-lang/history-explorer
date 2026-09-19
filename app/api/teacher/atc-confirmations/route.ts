@@ -6,6 +6,7 @@ import {
   verifyTeacherRequest,
 } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
+import { resolveContractSchoolSlugForName } from "@/lib/schoolDocumentsServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -220,6 +221,7 @@ export async function PUT(request: Request) {
     );
     const markSubmitted = body.markSubmitted === true;
     const nowIso = new Date().toISOString();
+    const schoolSlug = await resolveContractSchoolSlugForName(schoolName);
     const { db } = getFirebaseAdmin();
     const docRef = db
       .collection(CONFIRMATION_COLLECTION)
@@ -310,6 +312,7 @@ export async function PUT(request: Request) {
       teacherUid: teacher.uid,
       programName: "ATC스쿨",
       yearMonth,
+      schoolSlug: schoolSlug || normalize(existing.schoolSlug, 40),
       schoolName,
       schoolVerifierName,
       schoolSignatureDataUrl,

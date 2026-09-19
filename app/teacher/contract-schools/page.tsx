@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { auth } from "@/lib/firebase";
 import TeacherClassAccountFinder from "@/app/student/components/TeacherClassAccountFinder";
+import SchoolDocumentsPanel from "@/app/teacher/contract-schools/SchoolDocumentsPanel";
 import type {
   ContractSchoolClassroom,
   ContractSchoolConfig,
@@ -628,6 +629,8 @@ export default function ContractSchoolsPage() {
               </div>
               <button type="button" disabled={saving} onClick={() => void saveSchool(selectedSchool)} className="mt-4 w-full rounded-2xl bg-slate-900 py-3 text-sm font-black text-white disabled:opacity-50">{saving ? "저장 중" : "학교 기본 설정 저장"}</button>
             </div>
+
+            <SchoolDocumentsPanel school={selectedSchool} user={user} />
 
             <div className="rounded-[28px] bg-white p-5 shadow-lg sm:p-7">
               <div className="flex flex-wrap items-end justify-between gap-3">
