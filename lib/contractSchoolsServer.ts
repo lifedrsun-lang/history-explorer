@@ -7,7 +7,7 @@ import {
   scryptSync,
   timingSafeEqual,
 } from "crypto";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, type DocumentSnapshot } from "firebase-admin/firestore";
 
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import {
@@ -22,6 +22,7 @@ import {
   getDefaultContractSchool,
   makeClassroomId,
   toSchoolClassroom,
+  upgradeLegacyLessonLinks,
   type ContractSchoolClassroom,
   type ContractSchoolConfig,
   type ContractSchoolLesson,
@@ -108,36 +109,113 @@ const serializeDate = (value: unknown) => {
 const cloneSchool = (school: ContractSchoolConfig): ContractSchoolConfig =>
   JSON.parse(JSON.stringify(school)) as ContractSchoolConfig;
 
+const migrateGaebongMindmapLinks = (
+  slug: string,
+  lessons: ContractSchoolLesson[]
+) => {
+  if (slug !== "gaebong") return lessons;
+
+  const seedMindmapLinks =
+    getDefaultContractSchool(slug)?.lessons
+      .find((lesson) => lesson.lesson === 3)
+      ?.links.filter(
+        (link) =>
+          link.targetType === "class" &&
+          (link.id === "helpful-ai-mindmap" ||
+            link.id.startsWith("helpful-ai-mindmap-class-"))
+      ) || [];
+  const seedHrefs = new Set(seedMindmapLinks.map((link) => link.href));
+
+  if (seedMindmapLinks.length === 0) return lessons;
+
+  return lessons.map((lesson) => {
+    if (lesson.lesson !== 3) return lesson;
+    const commonLinkIndex = lesson.links.findIndex(
+      (link) =>
+        link.id === "helpful-ai-mindmap" &&
+        link.targetType !== "class" &&
+        seedHrefs.has(link.href)
+    );
+    if (commonLinkIndex < 0) return lesson;
+
+    const commonLink = lesson.links[commonLinkIndex];
+    return {
+      ...lesson,
+      links: lesson.links.flatMap((link, index) =>
+        index === commonLinkIndex
+          ? seedMindmapLinks.map((seedLink) => ({
+              ...seedLink,
+              label: commonLink.label,
+              kind: commonLink.kind,
+              defaultUnlocked: commonLink.defaultUnlocked,
+            }))
+          : [link]
+      ),
+    };
+  });
+};
+
 const fromStoredSchool = (
   slug: string,
   data: StoredContractSchool
-): ContractSchoolConfig => ({
-  schemaVersion: Number(data.schemaVersion || CONTRACT_SCHOOL_SCHEMA_VERSION),
-  slug,
-  schoolName: normalizeText(data.schoolName),
-  displayName: normalizeText(data.displayName),
-  location: normalizeText(data.location),
-  published: data.published === true,
-  completed:
-    typeof data.completed === "boolean"
-      ? data.completed
-      : getDefaultContractSchool(slug)?.completed === true,
-  hasSchoolPassword: Boolean(data.passwordHash && data.passwordSalt),
-  classrooms: Array.isArray(data.classrooms)
+): ContractSchoolConfig => {
+  const storedSchemaVersion = Number(data.schemaVersion || 0);
+  const classrooms = Array.isArray(data.classrooms)
     ? data.classrooms.map((classroom) => ({
         ...classroom,
         active: classroom.active !== false,
       }))
-    : [],
-  lessons: Array.isArray(data.lessons) ? data.lessons : [],
-  lessonVisibility:
-    data.lessonVisibility && typeof data.lessonVisibility === "object"
-      ? data.lessonVisibility
-      : {},
-  source: "managed",
-  createdAt: serializeDate(data.createdAt),
-  updatedAt: serializeDate(data.updatedAt),
-});
+    : [];
+  const classroomIds = classrooms.map((classroom) => classroom.id);
+  const upgradedLessons = (Array.isArray(data.lessons) ? data.lessons : []).map(
+    (lesson) => upgradeLegacyLessonLinks(lesson, classroomIds)
+  );
+  const lessons =
+    storedSchemaVersion < CONTRACT_SCHOOL_SCHEMA_VERSION
+      ? migrateGaebongMindmapLinks(slug, upgradedLessons)
+      : upgradedLessons;
+
+  return {
+    schemaVersion: CONTRACT_SCHOOL_SCHEMA_VERSION,
+    slug,
+    schoolName: normalizeText(data.schoolName),
+    displayName: normalizeText(data.displayName),
+    location: normalizeText(data.location),
+    published: data.published === true,
+    completed:
+      typeof data.completed === "boolean"
+        ? data.completed
+        : getDefaultContractSchool(slug)?.completed === true,
+    hasSchoolPassword: Boolean(data.passwordHash && data.passwordSalt),
+    classrooms,
+    lessons,
+    lessonVisibility:
+      data.lessonVisibility && typeof data.lessonVisibility === "object"
+        ? data.lessonVisibility
+        : {},
+    source: "managed",
+    createdAt: serializeDate(data.createdAt),
+    updatedAt: serializeDate(data.updatedAt),
+  };
+};
+
+const fromStoredSchoolSnapshot = async (snapshot: DocumentSnapshot) => {
+  const data = snapshot.data() as StoredContractSchool;
+  const school = fromStoredSchool(snapshot.id, data);
+
+  if (Number(data.schemaVersion || 0) < CONTRACT_SCHOOL_SCHEMA_VERSION) {
+    await snapshot.ref.set(
+      {
+        schemaVersion: CONTRACT_SCHOOL_SCHEMA_VERSION,
+        lessons: school.lessons,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+  }
+
+  return school;
+};
 
 const getStoredSchoolSnapshot = async (slug: string) => {
   const { db } = getFirebaseAdmin();
@@ -161,12 +239,10 @@ export const getAllContractSchools = async (): Promise<ContractSchoolConfig[]> =
     DEFAULT_CONTRACT_SCHOOLS.map((school) => [school.slug, cloneSchool(school)])
   );
 
-  snapshot.forEach((document) => {
-    bySlug.set(
-      document.id,
-      fromStoredSchool(document.id, document.data() as StoredContractSchool)
-    );
-  });
+  const storedSchools = await Promise.all(
+    snapshot.docs.map((document) => fromStoredSchoolSnapshot(document))
+  );
+  storedSchools.forEach((school) => bySlug.set(school.slug, school));
 
   return Array.from(bySlug.values()).sort((a, b) => {
     if (a.source !== b.source) return a.source === "default" ? -1 : 1;
@@ -181,10 +257,7 @@ export const getContractSchool = async (
   const normalizedSlug = normalizeContractSchoolSlug(slug);
   const snapshot = await getStoredSchoolSnapshot(normalizedSlug);
   const school = snapshot.exists
-    ? fromStoredSchool(
-        normalizedSlug,
-        snapshot.data() as StoredContractSchool
-      )
+    ? await fromStoredSchoolSnapshot(snapshot)
     : getDefaultContractSchool(normalizedSlug)
       ? cloneSchool(getDefaultContractSchool(normalizedSlug)!)
       : null;
@@ -252,7 +325,8 @@ const normalizeClassrooms = (
 
 const normalizeLink = (
   value: unknown,
-  existingLinks: Map<string, ClassroomLink>
+  existingLinks: Map<string, ClassroomLink>,
+  classroomIds: Set<string>
 ): ClassroomLink => {
   const source = value as Partial<ClassroomLink>;
   const providedId = normalizeText(source.id);
@@ -272,6 +346,24 @@ const normalizeLink = (
   }
 
   const existing = existingLinks.get(id);
+  const targetType = source.targetType === "class" ? "class" : "all";
+  const targetClassroomIds =
+    targetType === "class" && Array.isArray(source.targetClassroomIds)
+      ? Array.from(
+          new Set(source.targetClassroomIds.map((classroomId) => normalizeText(classroomId)))
+        )
+      : [];
+
+  if (
+    (source.targetType !== undefined &&
+      source.targetType !== "all" &&
+      source.targetType !== "class") ||
+    (targetType === "class" &&
+      (targetClassroomIds.length === 0 ||
+        targetClassroomIds.some((classroomId) => !classroomIds.has(classroomId))))
+  ) {
+    throw new Error("invalid_link_targets");
+  }
 
   return {
     id,
@@ -282,10 +374,16 @@ const normalizeLink = (
       typeof source.defaultUnlocked === "boolean"
         ? source.defaultUnlocked
         : existing?.defaultUnlocked ?? true,
+    targetType,
+    ...(targetType === "class" ? { targetClassroomIds } : {}),
   };
 };
 
-const normalizeLessons = (value: unknown, baseSchool: ContractSchoolConfig) => {
+const normalizeLessons = (
+  value: unknown,
+  baseSchool: ContractSchoolConfig,
+  classrooms: ContractSchoolClassroom[]
+) => {
   if (!Array.isArray(value) || value.length > MAX_LESSONS) {
     throw new Error("invalid_lessons");
   }
@@ -295,6 +393,7 @@ const normalizeLessons = (value: unknown, baseSchool: ContractSchoolConfig) => {
   );
   const seenIds = new Set<string>();
   const seenNumbers = new Set<number>();
+  const classroomIds = new Set(classrooms.map((classroom) => classroom.id));
 
   return value
     .map((item) => {
@@ -318,7 +417,7 @@ const normalizeLessons = (value: unknown, baseSchool: ContractSchoolConfig) => {
       );
       const linkIds = new Set<string>();
       const links = source.links.map((link) => {
-        const normalized = normalizeLink(link, existingLinks);
+        const normalized = normalizeLink(link, existingLinks, classroomIds);
         if (linkIds.has(normalized.id)) throw new Error("duplicate_link");
         linkIds.add(normalized.id);
         return normalized;
@@ -468,7 +567,7 @@ export const updateContractSchool = async (
     ? fromStoredSchool(slug, storedData)
     : cloneSchool(defaultSchool!);
   const classrooms = normalizeClassrooms(draft.classrooms, baseSchool, slug);
-  const lessons = normalizeLessons(draft.lessons, baseSchool);
+  const lessons = normalizeLessons(draft.lessons, baseSchool, classrooms);
   const lessonVisibility = normalizeLessonVisibility(
     draft.lessonVisibility,
     classrooms,
@@ -630,10 +729,7 @@ export const getContractClassroomByToken = async (
 
   if (!snapshot.empty) {
     const document = snapshot.docs[0];
-    const school = fromStoredSchool(
-      document.id,
-      document.data() as StoredContractSchool
-    );
+    const school = await fromStoredSchoolSnapshot(document);
     const classroom = school.classrooms.find(
       (item) => item.directToken === token && item.active !== false
     );

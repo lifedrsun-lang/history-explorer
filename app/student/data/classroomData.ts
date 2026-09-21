@@ -8,6 +8,8 @@ export type ClassroomLink = {
   href: string;
   kind?: "activity" | "review";
   defaultUnlocked?: boolean;
+  targetType?: "all" | "class";
+  targetClassroomIds?: string[];
 };
 
 export type ClassroomLesson = {

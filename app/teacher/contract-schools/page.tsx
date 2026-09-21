@@ -55,6 +55,7 @@ const getErrorMessage = (code?: string) => {
     invalid_school_name: "학교명을 확인해 주세요.",
     invalid_display_name: "학생 화면 표시명을 확인해 주세요.",
     invalid_link_url: "링크 주소는 http:// 또는 https://로 시작해야 해요.",
+    invalid_link_targets: "특정 반 링크는 노출할 반을 1개 이상 선택해 주세요.",
     duplicate_classroom: "같은 학년·반을 두 번 등록할 수 없어요.",
     duplicate_lesson: "같은 차시 번호를 두 번 등록할 수 없어요.",
     school_setup_incomplete: "학생페이지에 노출하려면 반과 차시를 먼저 등록해 주세요.",
@@ -406,6 +407,54 @@ export default function ContractSchoolsPage() {
     }));
   };
 
+  const setLinkTargetType = (
+    lessonId: string,
+    linkId: string,
+    targetType: "all" | "class"
+  ) => {
+    const firstClassroomId = selectedSchool?.classrooms.find(
+      (classroom) => classroom.active !== false
+    )?.id;
+    updateLessonLinks(lessonId, (links) =>
+      links.map((link) => {
+        if (link.id !== linkId) return link;
+        if (targetType === "all") {
+          const commonLink = { ...link, targetType };
+          delete commonLink.targetClassroomIds;
+          return commonLink;
+        }
+        return {
+          ...link,
+          targetType,
+          targetClassroomIds:
+            link.targetClassroomIds?.length || !firstClassroomId
+              ? link.targetClassroomIds || []
+              : [firstClassroomId],
+        };
+      })
+    );
+  };
+
+  const toggleLinkTargetClassroom = (
+    lessonId: string,
+    linkId: string,
+    classroomId: string
+  ) => {
+    updateLessonLinks(lessonId, (links) =>
+      links.map((link) => {
+        if (link.id !== linkId) return link;
+        const selectedIds = new Set(link.targetClassroomIds || []);
+        if (selectedIds.has(classroomId)) selectedIds.delete(classroomId);
+        else selectedIds.add(classroomId);
+        return {
+          ...link,
+          targetType: "class",
+          targetClassroomIds: Array.from(selectedIds),
+        };
+      })
+    );
+  };
+
   const toggleLessonVisibility = async (lessonId: string, classroomId: string) => {
     if (!selectedSchool || saving) return;
     const currentValue = selectedSchool.lessonVisibility[classroomId]?.[lessonId] === true;
@@ -710,7 +759,7 @@ export default function ContractSchoolsPage() {
                       </div>
                       <label className="block text-xs font-black text-slate-600">설명<textarea value={lesson.message} onChange={(event) => updateLesson(lesson.id, (current) => ({ ...current, message: event.target.value }))} rows={3} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" /></label>
                       <div>
-                        <div className="flex items-center justify-between"><div className="text-sm font-black text-slate-800">링크 목록</div><button type="button" onClick={() => updateLessonLinks(lesson.id, (links) => [...links, { id: makeClientId("link"), label: "새 링크", href: "https://", kind: "activity", defaultUnlocked: false }])} className="rounded-xl bg-sky-100 px-3 py-2 text-xs font-black text-sky-700">+ 링크 추가</button></div>
+                        <div className="flex items-center justify-between"><div className="text-sm font-black text-slate-800">링크 목록</div><button type="button" onClick={() => updateLessonLinks(lesson.id, (links) => [...links, { id: makeClientId("link"), label: "새 링크", href: "https://", kind: "activity", defaultUnlocked: false, targetType: "all" }])} className="rounded-xl bg-sky-100 px-3 py-2 text-xs font-black text-sky-700">+ 링크 추가</button></div>
                         <div className="mt-2 space-y-2">
                           {lesson.links.map((link, linkIndex) => <div key={link.id} className="rounded-2xl border border-sky-100 bg-sky-50/50 p-3">
                             <div className="grid gap-2 sm:grid-cols-[1fr_1.5fr_auto]">
@@ -723,7 +772,23 @@ export default function ContractSchoolsPage() {
                               </div>
                             </div>
                             <div className="mt-3 border-t border-sky-100 pt-3">
-                              <div className="mb-2 text-[11px] font-black text-slate-500">반별 링크 공개</div>
+                              <div className="text-[11px] font-black text-slate-500">링크 노출 대상</div>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <button type="button" aria-pressed={link.targetType !== "class"} onClick={() => setLinkTargetType(lesson.id, link.id, "all")} className={`rounded-xl px-3 py-2 text-[11px] font-black transition ${link.targetType !== "class" ? "border border-sky-300 bg-sky-100 text-sky-700" : "border border-slate-200 bg-white text-slate-500"}`}>전체 반</button>
+                                <button type="button" aria-pressed={link.targetType === "class"} onClick={() => setLinkTargetType(lesson.id, link.id, "class")} className={`rounded-xl px-3 py-2 text-[11px] font-black transition ${link.targetType === "class" ? "border border-violet-300 bg-violet-100 text-violet-700" : "border border-slate-200 bg-white text-slate-500"}`}>특정 반</button>
+                              </div>
+                              {link.targetType === "class" && <div className="mt-2 rounded-xl border border-violet-100 bg-white p-2">
+                                <div className="flex flex-wrap gap-2">
+                                  {selectedSchool.classrooms.filter((classroom) => classroom.active !== false).map((classroom) => {
+                                    const targeted = link.targetClassroomIds?.includes(classroom.id) === true;
+                                    return <button key={classroom.id} type="button" aria-pressed={targeted} onClick={() => toggleLinkTargetClassroom(lesson.id, link.id, classroom.id)} className={`rounded-lg px-2.5 py-1.5 text-[11px] font-black transition ${targeted ? "bg-violet-600 text-white" : "bg-slate-100 text-slate-500"}`}>{classLabel(classroom)} {targeted ? "✓" : ""}</button>;
+                                  })}
+                                </div>
+                                {!link.targetClassroomIds?.length && <div className="mt-2 text-[11px] font-black text-rose-600">노출할 반을 1개 이상 선택해 주세요.</div>}
+                              </div>}
+                            </div>
+                            <div className="mt-3 border-t border-sky-100 pt-3">
+                              <div className="mb-2 text-[11px] font-black text-slate-500">학생 활동 버튼 공개 상태</div>
                               <div className="flex flex-wrap gap-2">
                                 {selectedSchool.classrooms.filter((classroom) => classroom.active !== false).map((classroom) => {
                                   const unlocked = isLinkUnlocked(classroom.id, link);

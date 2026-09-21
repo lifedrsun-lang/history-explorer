@@ -13,7 +13,7 @@ import {
 } from "@/app/student/data/classroomData";
 
 export const CONTRACT_SCHOOL_COLLECTION = "contract_school_configs";
-export const CONTRACT_SCHOOL_SCHEMA_VERSION = 3;
+export const CONTRACT_SCHOOL_SCHEMA_VERSION = 4;
 
 export type ContractSchoolClassroom = {
   id: string;
@@ -78,6 +78,94 @@ const lessonLinksSignature = (links: ClassroomLink[]) =>
     }))
   );
 
+const classroomLinkSignature = (link: ClassroomLink) =>
+  JSON.stringify({
+    id: link.id,
+    label: link.label,
+    href: link.href,
+    kind: link.kind || "activity",
+    defaultUnlocked: link.defaultUnlocked ?? true,
+  });
+
+const makeUniqueLinkId = (preferredId: string, usedIds: Set<string>) => {
+  if (!usedIds.has(preferredId)) {
+    usedIds.add(preferredId);
+    return preferredId;
+  }
+
+  let suffix = 2;
+  while (usedIds.has(`${preferredId}-class-${suffix}`)) suffix += 1;
+  const id = `${preferredId}-class-${suffix}`;
+  usedIds.add(id);
+  return id;
+};
+
+export const upgradeLegacyLessonLinks = (
+  lesson: ContractSchoolLesson,
+  classroomIds: string[]
+): ContractSchoolLesson => {
+  if (!lesson.legacyClassLinks || classroomIds.length === 0) {
+    return lesson;
+  }
+
+  const grouped = new Map<
+    string,
+    {
+      link: ClassroomLink;
+      classroomIds: string[];
+      linkIndex: number;
+      classroomIndex: number;
+    }
+  >();
+
+  classroomIds.forEach((classroomId, classroomIndex) => {
+    const classroomLinks = lesson.legacyClassLinks?.[classroomId] || lesson.links;
+    classroomLinks.forEach((link, linkIndex) => {
+      const signature = classroomLinkSignature(link);
+      const existing = grouped.get(signature);
+      if (existing) {
+        existing.classroomIds.push(classroomId);
+        return;
+      }
+      grouped.set(signature, {
+        link,
+        classroomIds: [classroomId],
+        linkIndex,
+        classroomIndex,
+      });
+    });
+  });
+
+  const usedIds = new Set<string>();
+  const links = Array.from(grouped.values())
+    .sort(
+      (a, b) =>
+        a.linkIndex - b.linkIndex || a.classroomIndex - b.classroomIndex
+    )
+    .map(({ link, classroomIds: targetClassroomIds }) => {
+      const id = makeUniqueLinkId(link.id, usedIds);
+      if (targetClassroomIds.length === classroomIds.length) {
+        const commonLink: ClassroomLink = { ...link, id, targetType: "all" };
+        delete commonLink.targetClassroomIds;
+        return commonLink;
+      }
+      return { ...link, id, targetType: "class" as const, targetClassroomIds };
+    });
+
+  const upgradedLesson = { ...lesson, links };
+  delete upgradedLesson.legacyClassLinks;
+  delete upgradedLesson.clearLegacyClassLinks;
+  return upgradedLesson;
+};
+
+export const isLinkVisibleToClassroom = (
+  link: ClassroomLink,
+  classroomId: string
+) =>
+  link.targetType !== "class" ||
+  (Array.isArray(link.targetClassroomIds) &&
+    link.targetClassroomIds.includes(classroomId));
+
 const toSeedSchool = ({
   slug,
   schoolDisplayName,
@@ -98,7 +186,7 @@ const toSeedSchool = ({
     new Set(classrooms.flatMap((classroom) => classroom.lessons.map((lesson) => lesson.lesson)))
   ).sort((a, b) => a - b);
 
-  const lessons = lessonNumbers.map((lessonNumber) => {
+  const lessonsWithLegacyLinks = lessonNumbers.map((lessonNumber) => {
     const commonLesson =
       firstClassroom.lessons.find((lesson) => lesson.lesson === lessonNumber) ||
       classrooms
@@ -146,6 +234,10 @@ const toSeedSchool = ({
     directToken: classroom.directToken,
     active: true,
   }));
+  const classroomIds = schoolClassrooms.map((classroom) => classroom.id);
+  const lessons = lessonsWithLegacyLinks.map((lesson) =>
+    upgradeLegacyLessonLinks(lesson, classroomIds)
+  );
 
   const lessonVisibility = Object.fromEntries(
     classrooms.map((classroom) => [
@@ -286,7 +378,17 @@ export const toSchoolClassroom = (
     ...(lesson.date ? { date: lesson.date } : {}),
     title: lesson.title,
     message: lesson.message,
-    links: lesson.legacyClassLinks?.[classroom.id] || lesson.links,
+    links: (lesson.legacyClassLinks?.[classroom.id] || lesson.links)
+      .filter((link) => isLinkVisibleToClassroom(link, classroom.id))
+      .map((link) => ({
+        id: link.id,
+        label: link.label,
+        href: link.href,
+        ...(link.kind ? { kind: link.kind } : {}),
+        ...(typeof link.defaultUnlocked === "boolean"
+          ? { defaultUnlocked: link.defaultUnlocked }
+          : {}),
+      })),
     expandLocked: school.lessonVisibility[classroom.id]?.[lesson.id] !== true,
   })) satisfies ClassroomLesson[],
 });
