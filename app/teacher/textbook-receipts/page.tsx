@@ -214,7 +214,7 @@ export default function TextbookReceiptsPage() {
         }),
       });
       setNotice(
-        `${scopedSchool.schoolName} ${quarters.find((item) => item.key === quarter)?.label} 명단 ${studentSnapshots.length}명을 확정 저장하고 수강료에 반영했습니다.`
+        `${scopedSchool.schoolName} ${quarters.find((item) => item.key === quarter)?.label} 확정명단 ${studentSnapshots.length}명과 교재 수령기록을 저장했습니다.`
       );
       await load();
     } catch (saveError) {
@@ -238,7 +238,7 @@ export default function TextbookReceiptsPage() {
           <div className="text-xs font-black text-indigo-600">교재 수령인원 확인</div>
           <h1 className="mt-1 text-2xl font-black text-slate-900">학교별 · 분기별 교재 수령 명단</h1>
           <p className="mt-2 text-sm font-bold text-slate-500">
-            분기 명단과 텀별 교재 수령을 확정하면 학생 정보·전화번호를 보존하고 수강료에 자동 반영합니다.
+            분기 확정명단은 수강료 관리와 함께 사용하고, 여기서는 텀별 교재 수령 여부를 따로 관리합니다.
           </p>
           <div className={`mt-5 grid gap-3 ${requestedSchool ? "" : "sm:grid-cols-2"}`}>
             {!requestedSchool && (
