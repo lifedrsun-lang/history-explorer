@@ -67,7 +67,9 @@ export default function TextbookReceiptsPage(){
     const next:Record<string,boolean[]>={};
     school.students.forEach((student)=>{
       const feeChecks=Array.isArray(feeMap[student.id])?feeMap[student.id]!.slice(0,3).map(Boolean):[false,false,false];
-      if(school.rule==="all_after_enrollment"&&feeChecks.some(Boolean)) next[student.id]=[true,true,true];
+      const historicalQ2=school.rule==="all_after_enrollment"&&quarter==="Q2"&&student.id.startsWith("history_saesol_q2_");
+      if(historicalQ2) next[student.id]=[true,true,true];
+      else if(school.rule==="all_after_enrollment"&&feeChecks.some(Boolean)) next[student.id]=[true,true,true];
       else next[student.id]=[Boolean(feeChecks[0]),Boolean(feeChecks[1]),Boolean(feeChecks[2])];
     });
     setReceipts(next);
@@ -76,7 +78,7 @@ export default function TextbookReceiptsPage(){
   const visibleStudents=useMemo(()=>school?.students.filter((student)=>{
     const fee=school.quarterParticipation?.[quarter]?.[student.id]||[];
     const receipt=receipts[student.id]||[];
-    return fee.some(Boolean)||receipt.some(Boolean);
+    return fee.some(Boolean)||receipt.some(Boolean)||(school.rule==="all_after_enrollment"&&quarter==="Q2"&&student.id.startsWith("history_saesol_q2_"));
   })||[],[school,quarter,receipts]);
 
   const totals=[0,1,2].map((term)=>visibleStudents.filter((student)=>Boolean(receipts[student.id]?.[term])).length);
