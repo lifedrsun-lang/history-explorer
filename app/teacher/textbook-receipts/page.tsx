@@ -108,12 +108,12 @@ export default function TextbookReceiptsPage(){
         <div className="text-xs font-black text-indigo-600">교재 수령인원 확인</div>
         <h1 className="mt-1 text-2xl font-black text-slate-900">학교별 · 분기별 교재 수령 명단</h1>
         <p className="mt-2 text-sm font-bold text-slate-500">수강료 계산의 텀별 체크를 불러와 교재 수령 기준으로 정리하고, 나중에 다시 확인할 수 있도록 확정 저장합니다.</p>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <label className="text-xs font-black text-slate-600">학교
+        <div className={`mt-5 grid gap-3 ${requestedSchool?"":"sm:grid-cols-2"}`}>
+          {!requestedSchool&&<label className="text-xs font-black text-slate-600">학교
             <select value={schoolId} onChange={(e)=>setSchoolId(e.target.value)} className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold">
               {schools.map((item)=><option key={item.contractId} value={item.contractId}>{item.schoolName}{item.title?` · ${item.title}`:""}</option>)}
             </select>
-          </label>
+          </label>}
           <label className="text-xs font-black text-slate-600">분기
             <select value={quarter} onChange={(e)=>setQuarter(e.target.value as Quarter)} className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold">
               {quarters.map((item)=><option key={item.key} value={item.key}>{item.label}</option>)}
