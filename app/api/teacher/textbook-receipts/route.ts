@@ -21,31 +21,63 @@ type StudentSnapshot = {
   phone: string;
 };
 
-const SAESOL_Q2_ROSTER = [
-  { name: "황현서", grade: "2학년", schoolClass: "8반" },
-  { name: "권유하", grade: "1학년", schoolClass: "10반" },
-  { name: "최유나", grade: "2학년", schoolClass: "1반" },
-  { name: "오채은", grade: "1학년", schoolClass: "7반" },
-  { name: "김민결", grade: "2학년", schoolClass: "2반" },
-  { name: "문지혁", grade: "2학년", schoolClass: "5반" },
-  { name: "정예주", grade: "1학년", schoolClass: "2반" },
-  { name: "임주원", grade: "3학년", schoolClass: "5반" },
-  { name: "오하윤", grade: "4학년", schoolClass: "11반" },
-  { name: "홍성빈", grade: "6학년", schoolClass: "2반" },
-  { name: "홍성현", grade: "3학년", schoolClass: "3반" },
-  { name: "이상윤", grade: "4학년", schoolClass: "6반" },
-  { name: "허다은", grade: "3학년", schoolClass: "1반" },
-  { name: "최라엘", grade: "3학년", schoolClass: "1반" },
-  { name: "홍무화", grade: "3학년", schoolClass: "4반" },
-  { name: "한성연", grade: "3학년", schoolClass: "5반" },
-  { name: "김재윤", grade: "3학년", schoolClass: "7반" },
-  { name: "최재용", grade: "3학년", schoolClass: "1반" },
-  { name: "김도윤", grade: "3학년", schoolClass: "8반" },
-  { name: "권제나", grade: "3학년", schoolClass: "9반" },
-  { name: "한정우", grade: "3학년", schoolClass: "6반" },
-  { name: "경세아", grade: "6학년", schoolClass: "1반" },
-  { name: "최하늘", grade: "3학년", schoolClass: "2반" },
-] as const;
+type OfficialRosterStudent = {
+  name: string;
+  grade: string;
+  schoolClass: string;
+};
+
+const Q2_ROSTERS: Record<string, readonly OfficialRosterStudent[]> = {
+  새솔초: [
+    { name: "황현서", grade: "2학년", schoolClass: "8반" },
+    { name: "권유하", grade: "1학년", schoolClass: "10반" },
+    { name: "최유나", grade: "2학년", schoolClass: "1반" },
+    { name: "오채은", grade: "1학년", schoolClass: "7반" },
+    { name: "김민결", grade: "2학년", schoolClass: "2반" },
+    { name: "문지혁", grade: "2학년", schoolClass: "5반" },
+    { name: "정예주", grade: "1학년", schoolClass: "2반" },
+    { name: "임주원", grade: "3학년", schoolClass: "5반" },
+    { name: "오하윤", grade: "4학년", schoolClass: "11반" },
+    { name: "홍성빈", grade: "6학년", schoolClass: "2반" },
+    { name: "홍성현", grade: "3학년", schoolClass: "3반" },
+    { name: "이상윤", grade: "4학년", schoolClass: "6반" },
+    { name: "허다은", grade: "3학년", schoolClass: "1반" },
+    { name: "최라엘", grade: "3학년", schoolClass: "1반" },
+    { name: "홍무화", grade: "3학년", schoolClass: "4반" },
+    { name: "한성연", grade: "3학년", schoolClass: "5반" },
+    { name: "김재윤", grade: "3학년", schoolClass: "7반" },
+    { name: "최재용", grade: "3학년", schoolClass: "1반" },
+    { name: "김도윤", grade: "3학년", schoolClass: "8반" },
+    { name: "권제나", grade: "3학년", schoolClass: "9반" },
+    { name: "한정우", grade: "3학년", schoolClass: "6반" },
+    { name: "경세아", grade: "6학년", schoolClass: "1반" },
+    { name: "최하늘", grade: "3학년", schoolClass: "2반" },
+  ],
+  하늘빛초: [
+    { name: "정해인", grade: "2학년", schoolClass: "7반" },
+    { name: "박민찬", grade: "1학년", schoolClass: "3반" },
+    { name: "김유건", grade: "2학년", schoolClass: "6반" },
+    { name: "이채민", grade: "1학년", schoolClass: "2반" },
+    { name: "이하윤", grade: "2학년", schoolClass: "4반" },
+    { name: "최유정", grade: "3학년", schoolClass: "6반" },
+    { name: "정유하", grade: "4학년", schoolClass: "8반" },
+    { name: "이서안", grade: "3학년", schoolClass: "6반" },
+    { name: "이서완", grade: "3학년", schoolClass: "7반" },
+    { name: "조서우", grade: "4학년", schoolClass: "5반" },
+    { name: "육서아", grade: "3학년", schoolClass: "3반" },
+    { name: "이은채", grade: "3학년", schoolClass: "4반" },
+    { name: "임아름", grade: "3학년", schoolClass: "8반" },
+    { name: "한서아", grade: "3학년", schoolClass: "9반" },
+  ],
+  사우초: [
+    { name: "이민석", grade: "1학년", schoolClass: "1반" },
+    { name: "이로운", grade: "1학년", schoolClass: "3반" },
+    { name: "왕건우", grade: "2학년", schoolClass: "2반" },
+    { name: "최준호", grade: "2학년", schoolClass: "2반" },
+    { name: "이결", grade: "3학년", schoolClass: "3반" },
+    { name: "하서희", grade: "6학년", schoolClass: "1반" },
+  ],
+};
 
 const normalize = (value: unknown) => String(value || "").trim();
 
@@ -114,7 +146,7 @@ const getStudentPhone = (data: FirebaseFirestore.DocumentData) => {
 const getRule = (schoolName: string) => {
   const key = normalizeSchoolName(schoolName);
   if (key.includes("새솔초")) return "all_after_enrollment";
-  if (key.includes("하늘빛초")) return "started_terms_only";
+  if (key.includes("하늘빛초") || key.includes("사우초")) return "started_terms_only";
   return "follow_fee_checks";
 };
 
@@ -149,7 +181,37 @@ const sanitizeStudentSnapshots = (value: unknown, fallbackSchool: string) => {
         phone: normalizePhone(source.phone),
       } satisfies StudentSnapshot;
     })
-    .filter((student) => student.id && student.name);
+    .filter(
+      (student) =>
+        student.id &&
+        student.name &&
+        isSameSchool(student.school, fallbackSchool)
+    );
+};
+
+const buildOfficialQ2Roster = (
+  schoolName: string,
+  currentStudents: StudentSnapshot[],
+  rememberedStudents: StudentSnapshot[] = []
+) => {
+  const roster = Q2_ROSTERS[normalizeSchoolName(schoolName)];
+  if (!roster) return [];
+
+  const sources = [...rememberedStudents, ...currentStudents];
+  return roster.map((official) => {
+    const existing = sources.find((student) => student.name === official.name);
+    return {
+      id:
+        existing?.id ||
+        `history_${normalizeSchoolName(schoolName)}_q2_${official.name}`,
+      name: official.name,
+      school: normalize(schoolName),
+      grade: official.grade,
+      schoolClass: official.schoolClass,
+      enrollmentStatus: existing?.enrollmentStatus || "ended",
+      phone: existing?.phone || "",
+    } satisfies StudentSnapshot;
+  });
 };
 
 export async function GET(request: Request) {
@@ -184,21 +246,31 @@ export async function GET(request: Request) {
         rule: getRule(contract.schoolName),
         quarterParticipation: contract.quarterParticipation || {},
         quarterStudentSnapshots: (() => {
-          if (!normalizeSchoolName(contract.schoolName).includes("새솔초")) return {};
-          const current = students.filter((student) => isSameSchool(student.school, contract.schoolName));
-          const q2 = SAESOL_Q2_ROSTER.map((rosterStudent) => {
-            const existing = current.find((student) => student.name === rosterStudent.name);
-            return {
-              id: existing?.id || `history_saesol_q2_${rosterStudent.name}`,
-              name: rosterStudent.name,
-              school: normalize(contract.schoolName),
-              grade: rosterStudent.grade,
-              schoolClass: rosterStudent.schoolClass,
-              enrollmentStatus: existing?.enrollmentStatus || "ended",
-              phone: existing?.phone || "",
-            } satisfies StudentSnapshot;
-          });
-          return { Q2: q2 };
+          const current = students.filter((student) =>
+            isSameSchool(student.school, contract.schoolName)
+          );
+          const savedRecord = records.find(
+            (record) =>
+              normalize(record.contractId) === contract.id &&
+              normalize(record.quarter) === "Q2"
+          );
+          const remembered = [
+            ...(Array.isArray(contract.quarterStudentSnapshots?.Q2)
+              ? contract.quarterStudentSnapshots.Q2
+              : []),
+            ...(Array.isArray(savedRecord?.studentSnapshots)
+              ? savedRecord.studentSnapshots
+              : []),
+          ] as StudentSnapshot[];
+          const officialQ2 = buildOfficialQ2Roster(
+            contract.schoolName,
+            current,
+            remembered
+          );
+
+          return officialQ2.length > 0
+            ? { ...(contract.quarterStudentSnapshots || {}), Q2: officialQ2 }
+            : contract.quarterStudentSnapshots || {};
         })(),
         students: (() => {
           const current = students.filter((student) => isSameSchool(student.school, contract.schoolName));
@@ -249,16 +321,30 @@ export async function POST(request: Request) {
       return jsonError("학교 정보가 일치하지 않습니다.", 400, "school_scope_mismatch");
     }
 
+    const studentSnapshots = sanitizeStudentSnapshots(
+      body?.studentSnapshots,
+      schoolName
+    );
+    const allowedStudentIds = new Set(
+      studentSnapshots.map((student) => student.id)
+    );
     const receipts: Record<string, boolean[]> = {};
     if (body?.receipts && typeof body.receipts === "object") {
-      Object.entries(body.receipts as Record<string, unknown>).forEach(([studentId, checks]) => {
-        receipts[studentId] = normalizeChecks(checks);
-      });
+      Object.entries(body.receipts as Record<string, unknown>).forEach(
+        ([studentId, checks]) => {
+          if (!allowedStudentIds.has(studentId)) return;
+          receipts[studentId] = normalizeChecks(checks);
+        }
+      );
     }
-    const studentSnapshots = sanitizeStudentSnapshots(body?.studentSnapshots, schoolName);
 
     const id = `${teacher.uid}__${contractId}__${quarter}`;
-    await db.collection(RECORDS).doc(id).set(
+    const recordRef = db.collection(RECORDS).doc(id);
+    const contractRef = db.collection(FEES).doc(contractId);
+    const batch = db.batch();
+
+    batch.set(
+      recordRef,
       {
         teacherUid: teacher.uid,
         contractId,
@@ -267,13 +353,32 @@ export async function POST(request: Request) {
         receipts,
         studentSnapshots,
         rule: getRule(schoolName),
+        source: "textbook_receipts",
+        snapshotVersion: 2,
         confirmedAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true }
     );
+    batch.update(contractRef, {
+      quarterParticipation: {
+        ...(contract?.quarterParticipation || {}),
+        [quarter]: receipts,
+      },
+      quarterStudentSnapshots: {
+        ...(contract?.quarterStudentSnapshots || {}),
+        [quarter]: studentSnapshots,
+      },
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
 
-    return Response.json({ ok: true, id, studentCount: studentSnapshots.length });
+    return Response.json({
+      ok: true,
+      id,
+      studentCount: studentSnapshots.length,
+      reflectedToFees: true,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "teacher_auth_required") return jsonError("교사 로그인이 필요합니다.", 401, message);
