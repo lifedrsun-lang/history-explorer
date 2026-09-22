@@ -103,6 +103,15 @@ const hasCheckedParticipation = (contracts: any[], studentId: string) =>
     });
   });
 
+const hasRosterSnapshot = (contracts: any[], studentId: string) =>
+  contracts.some((contract) =>
+    Object.values(contract?.quarterStudentSnapshots || {}).some(
+      (quarterValue: any) =>
+        Array.isArray(quarterValue) &&
+        quarterValue.some((student: any) => normalize(student?.id) === studentId)
+    )
+  );
+
 const sanitizeQuarterParticipation = (value: unknown) => {
   if (!value || typeof value !== "object") return {};
   const result: Record<string, Record<string, boolean[]>> = {};
@@ -284,7 +293,8 @@ export async function GET(request: Request) {
           student.name &&
           student.school &&
           student.teachingClass &&
-          hasCheckedParticipation(contracts, student.id)
+          (hasRosterSnapshot(contracts, student.id) ||
+            hasCheckedParticipation(contracts, student.id))
       )
       .sort((a, b) => {
         if (a.school !== b.school) {
