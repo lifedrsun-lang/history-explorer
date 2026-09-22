@@ -67,6 +67,13 @@ const sections: Record<string, ManagementSection> = {
         description: "방과후 수강료와 수입 내역을 확인하고 관리",
         className: "border-teal-200 bg-teal-50 text-teal-900",
       },
+      {
+        href: "/teacher/textbook-receipts",
+        icon: "📚",
+        title: "교재 수령인원",
+        description: "학교별·분기별 1~3텀 교재 수령 학생과 인원 확인",
+        className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+      },
     ],
   },
   teaching: {
