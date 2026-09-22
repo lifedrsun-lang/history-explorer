@@ -21,6 +21,7 @@ export default async function AfterSchoolSchoolPage({
   if (!school) notFound();
 
   const studentManagementHref = `/teacher/students?status=active&school=${encodeURIComponent(school.name)}`;
+  const textbookReceiptsHref = `/teacher/textbook-receipts?school=${encodeURIComponent(school.name)}`;
 
   return (
     <main className="min-h-[100dvh] bg-[#f5f7fb] p-3 sm:p-6">
@@ -66,6 +67,17 @@ export default async function AfterSchoolSchoolPage({
               수강중 학생을 반별로 보고 보너스·과제·퀴즈 코인을 바로 지급합니다.
             </p>
             <div className="mt-6 text-sm font-black">수업용 지급 화면 열기 →</div>
+          </Link>
+          <Link
+            href={textbookReceiptsHref}
+            className="rounded-[28px] border border-emerald-200 bg-emerald-50 p-5 text-emerald-950 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:p-7"
+          >
+            <div className="text-4xl">📚</div>
+            <h2 className="mt-4 text-2xl font-black">교재 수령인원</h2>
+            <p className="mt-2 text-sm font-bold leading-relaxed text-emerald-700">
+              {school.shortName}의 분기별 1~3텀 교재 수령 학생과 인원을 확인합니다.
+            </p>
+            <div className="mt-6 text-sm font-black">교재 수령 현황 열기 →</div>
           </Link>
         </section>
       </div>
