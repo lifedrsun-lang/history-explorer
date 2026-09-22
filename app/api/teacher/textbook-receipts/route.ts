@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 const RECORDS = "teacher_textbook_receipts";
 const FEES = "teacher_fee_contracts";
+const SAESOL_Q2_ROSTER = [{name:"황현서",grade:"2학년",schoolClass:"8반"},{name:"권유하",grade:"1학년",schoolClass:"10반"},{name:"최유나",grade:"2학년",schoolClass:"1반"},{name:"오채은",grade:"1학년",schoolClass:"7반"},{name:"김민결",grade:"2학년",schoolClass:"2반"},{name:"문지혁",grade:"2학년",schoolClass:"5반"},{name:"정예주",grade:"1학년",schoolClass:"2반"},{name:"임주원",grade:"3학년",schoolClass:"5반"},{name:"오하윤",grade:"4학년",schoolClass:"11반"},{name:"홍성빈",grade:"6학년",schoolClass:"2반"},{name:"홍성현",grade:"3학년",schoolClass:"3반"},{name:"이상윤",grade:"4학년",schoolClass:"6반"},{name:"허다은",grade:"3학년",schoolClass:"1반"},{name:"최라엘",grade:"3학년",schoolClass:"1반"},{name:"홍무화",grade:"3학년",schoolClass:"4반"},{name:"한성연",grade:"3학년",schoolClass:"5반"},{name:"김재윤",grade:"3학년",schoolClass:"7반"},{name:"최재용",grade:"3학년",schoolClass:"1반"},{name:"김도윤",grade:"3학년",schoolClass:"8반"},{name:"권제나",grade:"3학년",schoolClass:"9반"},{name:"한정우",grade:"3학년",schoolClass:"6반"},{name:"경세아",grade:"6학년",schoolClass:"1반"},{name:"최하늘",grade:"3학년",schoolClass:"2반"}];
 const normalize = (value: unknown) => String(value || "").trim();
 
 const normalizeSchoolName = (value: unknown) =>
@@ -86,6 +87,13 @@ export async function GET(request: Request) {
               enrollmentStatus: getEnrollmentStatus(data),
             });
           });
+          if (normalizeSchoolName(contract.schoolName).includes("새솔초")) {
+            SAESOL_Q2_ROSTER.forEach((snapshot) => {
+              if (Array.from(byId.values()).some((student) => student.name === snapshot.name)) return;
+              const id = "history_saesol_q2_" + snapshot.name;
+              byId.set(id, { id, name:snapshot.name, school:normalize(contract.schoolName), grade:snapshot.grade, schoolClass:snapshot.schoolClass, enrollmentStatus:"ended" });
+            });
+          }
           return Array.from(byId.values()).filter((student) => student.name);
         })(),
       })),
