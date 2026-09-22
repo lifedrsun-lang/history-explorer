@@ -240,22 +240,50 @@ export async function GET(request: Request) {
         normalize(a.schoolName).localeCompare(normalize(b.schoolName), "ko-KR")
       );
 
-    const students = studentSnapshot.docs
-      .map((docItem) => {
-        const data = docItem.data();
-        return {
-          id: docItem.id,
-          name: normalize(data?.name),
-          school: normalize(data?.school),
-          grade: normalize(data?.grade),
-          teachingClass: getTeachingClass(data),
-          enrollmentStatus: getEnrollmentStatus(data),
-        };
-      })
-      .filter((student) => student.name && student.school)
+    const currentStudents = studentSnapshot.docs.map((docItem) => {
+      const data = docItem.data();
+      return {
+        id: docItem.id,
+        name: normalize(data?.name),
+        school: normalize(data?.school),
+        grade: normalize(data?.grade),
+        teachingClass: getTeachingClass(data),
+        enrollmentStatus: getEnrollmentStatus(data),
+      };
+    });
+
+    const snapshotStudents = contracts.flatMap((contract: any) =>
+      Object.values(contract.quarterStudentSnapshots || {}).flatMap(
+        (quarterValue: any) =>
+          (Array.isArray(quarterValue) ? quarterValue : []).map(
+            (student: any) => ({
+              id: normalize(student?.id),
+              name: normalize(student?.name),
+              school:
+                normalize(student?.school) || normalize(contract.schoolName),
+              grade: normalize(student?.grade),
+              teachingClass: getTeachingClass(student),
+              enrollmentStatus:
+                normalize(student?.enrollmentStatus) || "ended",
+            })
+          )
+      )
+    );
+
+    const studentById = new Map<string, any>();
+    snapshotStudents.forEach((student: any) => {
+      if (student.id) studentById.set(student.id, student);
+    });
+    currentStudents.forEach((student) => {
+      if (student.id) studentById.set(student.id, student);
+    });
+
+    const students = Array.from(studentById.values())
       .filter(
         (student) =>
-          student.enrollmentStatus !== "ended" ||
+          student.name &&
+          student.school &&
+          student.teachingClass &&
           hasCheckedParticipation(contracts, student.id)
       )
       .sort((a, b) => {
