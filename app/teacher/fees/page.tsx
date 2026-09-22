@@ -30,6 +30,7 @@ type FeeContract = {
   monthLabels?: string[];
   participation?: Record<string, boolean[]>;
   quarterParticipation?: Partial<Record<QuarterKey, Record<string, boolean[]>>>;
+  quarterStudentSnapshots?: Partial<Record<QuarterKey, FeeStudent[]>>;
   workSessions?: Record<string, Record<string, number>>;
   contractStartDate?: string;
   contractEndDate?: string;
@@ -253,16 +254,28 @@ export default function TeacherFeesPage() {
     });
   };
 
-  const getMatchingStudents = (contract: FeeContract) =>
-    students.filter(
+  const getMatchingStudents = (
+    contract: FeeContract,
+    quarterKey: QuarterKey = quarter
+  ) => {
+    const quarterRoster = contract.quarterStudentSnapshots?.[quarterKey] || [];
+    const rosterIds = new Set(quarterRoster.map((student) => student.id));
+
+    return students.filter(
       (student) =>
         isSameSchool(student.school, contract.schoolName) &&
         Boolean(student.teachingClass) &&
-        (student.enrollmentStatus !== "ended" || hasHistoricalParticipation(contract, student.id))
+        (rosterIds.size > 0
+          ? rosterIds.has(student.id)
+          : student.enrollmentStatus !== "ended" ||
+            hasHistoricalParticipation(contract, student.id))
     );
+  };
 
-  const getBulkStudents = (contract: FeeContract) =>
-    getMatchingStudents(contract).filter((student) => student.enrollmentStatus !== "ended");
+  const getBulkStudents = (
+    contract: FeeContract,
+    quarterKey: QuarterKey = quarter
+  ) => getMatchingStudents(contract, quarterKey);
 
   const getQuarterMap = (contract: FeeContract, quarterKey: QuarterKey) => {
     const stored = contract.quarterParticipation?.[quarterKey];
@@ -336,7 +349,7 @@ export default function TeacherFeesPage() {
     quarterKey: QuarterKey,
     termIndex: number
   ) =>
-    getMatchingStudents(contract).reduce((sum, student) => {
+    getMatchingStudents(contract, quarterKey).reduce((sum, student) => {
       if (!getChecks(contract, student, quarterKey)[termIndex]) return sum;
       const rate =
         student.teachingClass === "A반"
@@ -1135,9 +1148,7 @@ export default function TeacherFeesPage() {
 
       <section className="mt-3 space-y-3">
         {afterschoolContracts.map((contract) => {
-          const matchingStudents = getMatchingStudents(contract).filter(
-            (student) => getChecks(contract, student, quarter).some(Boolean)
-          );
+          const matchingStudents = getMatchingStudents(contract, quarter);
           const termTotals = [0, 1, 2].map((index) =>
             getTermTotal(contract, quarter, index)
           );
@@ -1157,7 +1168,7 @@ export default function TeacherFeesPage() {
                   <div className="mt-1 text-xl font-black text-slate-900">{contract.schoolName}</div>
                   <div className="text-sm font-bold text-slate-500">{contract.title || ""}</div>
                   <div className="mt-1 text-[11px] font-bold text-slate-400">
-                    교재 수령인원에서 확정된 {matchingStudents.length}명
+                    분기 확정명단 {matchingStudents.length}명
                   </div>
                 </div>
                 <button
@@ -1194,7 +1205,7 @@ export default function TeacherFeesPage() {
               </div>
 
               <div className="mt-3 rounded-xl bg-indigo-50 px-3 py-2 text-[11px] font-bold text-indigo-700">
-                학생과 텀 체크는 교재 수령인원에서 확정한 내용이 자동 반영됩니다.
+                교재 관리와 같은 분기 확정명단을 사용합니다. 아래 체크는 수강료 참여 여부만 관리합니다.
               </div>
               <div className="mt-2 rounded-xl bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500">
                 입금·급여명세서 입력은 입금관리 탭에서 1텀·2텀·3텀 단위로 관리합니다.
@@ -1212,9 +1223,27 @@ export default function TeacherFeesPage() {
                 <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200">
                   <div className="grid grid-cols-[1fr_62px_62px_62px] bg-slate-50 px-3 py-2 text-center text-[11px] font-black text-slate-500">
                     <div className="text-left">학생</div>
-                    {[0, 1, 2].map((termIndex) => (
-                      <div key={termIndex}>{termIndex + 1}텀</div>
-                    ))}
+                    {[0, 1, 2].map((termIndex) => {
+                      const allChecked = isAllParticipationChecked(contract, termIndex);
+                      return (
+                        <label
+                          key={termIndex}
+                          className="flex cursor-pointer flex-col items-center gap-1"
+                          title={`${termIndex + 1}텀 수강료 참여 전체 체크/해제`}
+                        >
+                          <span>{termIndex + 1}텀</span>
+                          <input
+                            type="checkbox"
+                            checked={allChecked}
+                            onChange={(event) =>
+                              void setAllParticipation(contract, termIndex, event.target.checked)
+                            }
+                            className="h-4 w-4 accent-emerald-600"
+                          />
+                          <span className="text-[9px]">전체</span>
+                        </label>
+                      );
+                    })}
                   </div>
 
                   {matchingStudents.map((student) => {
@@ -1238,9 +1267,11 @@ export default function TeacherFeesPage() {
                             <input
                               type="checkbox"
                               checked={checks[termIndex]}
-                              disabled
-                              title="교재 수령인원에서 확정됩니다"
-                              className="h-5 w-5 accent-emerald-600 disabled:opacity-100"
+                              onChange={() =>
+                                void toggleParticipation(contract, student, termIndex)
+                              }
+                              title="수강료 참여 여부"
+                              className="h-5 w-5 accent-emerald-600"
                             />
                           </label>
                         ))}
