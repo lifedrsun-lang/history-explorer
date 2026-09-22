@@ -139,11 +139,11 @@ export default function TextbookReceiptsPage() {
 
   const sourceStudents = useMemo(() => {
     if (!scopedSchool) return [];
+    const seeded = scopedSchool.quarterStudentSnapshots?.[quarter];
+    if (Array.isArray(seeded) && seeded.length > 0) return seeded;
     if (Array.isArray(selectedRecord?.studentSnapshots) && selectedRecord.studentSnapshots.length > 0) {
       return selectedRecord.studentSnapshots;
     }
-    const seeded = scopedSchool.quarterStudentSnapshots?.[quarter];
-    if (Array.isArray(seeded) && seeded.length > 0) return seeded;
 
     const feeMap = scopedSchool.quarterParticipation?.[quarter] || {};
     return scopedSchool.students.filter((student) => {
@@ -214,7 +214,7 @@ export default function TextbookReceiptsPage() {
         }),
       });
       setNotice(
-        `${scopedSchool.schoolName} ${quarters.find((item) => item.key === quarter)?.label} 교재 수령 명단 ${studentSnapshots.length}명을 확정 저장했습니다.`
+        `${scopedSchool.schoolName} ${quarters.find((item) => item.key === quarter)?.label} 명단 ${studentSnapshots.length}명을 확정 저장하고 수강료에 반영했습니다.`
       );
       await load();
     } catch (saveError) {
@@ -238,7 +238,7 @@ export default function TextbookReceiptsPage() {
           <div className="text-xs font-black text-indigo-600">교재 수령인원 확인</div>
           <h1 className="mt-1 text-2xl font-black text-slate-900">학교별 · 분기별 교재 수령 명단</h1>
           <p className="mt-2 text-sm font-bold text-slate-500">
-            수강료 계산의 텀별 체크를 불러오고, 확정 시 학생 정보와 전화번호를 해당 분기의 기록으로 보존합니다.
+            분기 명단과 텀별 교재 수령을 확정하면 학생 정보·전화번호를 보존하고 수강료에 자동 반영합니다.
           </p>
           <div className={`mt-5 grid gap-3 ${requestedSchool ? "" : "sm:grid-cols-2"}`}>
             {!requestedSchool && (
@@ -290,7 +290,7 @@ export default function TextbookReceiptsPage() {
               {loading ? (
                 <div className="p-8 text-center text-sm font-bold text-slate-400">불러오는 중...</div>
               ) : studentSnapshots.length === 0 ? (
-                <div className="p-8 text-center text-sm font-bold text-slate-400">이 분기에 수강 체크된 학생이 없습니다.</div>
+                <div className="p-8 text-center text-sm font-bold text-slate-400">이 분기 확정 명단이 없습니다.</div>
               ) : studentSnapshots.map((student) => (
                 <div
                   key={student.id}
@@ -327,7 +327,11 @@ export default function TextbookReceiptsPage() {
             </div>
           </div>
           <div className="border-t border-slate-200 bg-slate-50 p-5">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              <div className="rounded-2xl bg-white p-3 text-center">
+                <div className="text-[11px] font-black text-slate-400">확정 명단</div>
+                <div className="mt-1 text-xl font-black">{studentSnapshots.length}명</div>
+              </div>
               <div className="rounded-2xl bg-white p-3 text-center">
                 <div className="text-[11px] font-black text-slate-400">수령 학생</div>
                 <div className="mt-1 text-xl font-black">{uniqueCount}명</div>
