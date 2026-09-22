@@ -21,6 +21,7 @@ const ruleLabel=(rule:string)=>{
 export default function TextbookReceiptsPage(){
   const searchParams=useSearchParams();
   const requestedSchool=searchParams.get("school")||"";
+  const normalizeSchool=(v:string)=>v.replace(/\s/g,"").replace(/초등학교/g,"초").replace(/초등/g,"초");
   const [user,setUser]=useState<User|null>(null);
   const [authChecking,setAuthChecking]=useState(true);
   const [schools,setSchools]=useState<School[]>([]);
@@ -51,35 +52,36 @@ export default function TextbookReceiptsPage(){
       const data=await requestJson("/api/teacher/textbook-receipts");
       const next=Array.isArray(data.schools)?data.schools:[];
       setSchools(next);setRecords(Array.isArray(data.records)?data.records:[]);
-      setSchoolId((current)=>current||next.find((item:School)=>item.schoolName===requestedSchool)?.contractId||next[0]?.contractId||"");
+      setSchoolId((current)=>current||next.find((item:School)=>normalizeSchool(item.schoolName)===normalizeSchool(requestedSchool))?.contractId||next[0]?.contractId||"");
     }catch(e){setError(e instanceof Error?e.message:"불러오지 못했습니다.");}
     finally{setLoading(false)}
   },[requestJson,user,requestedSchool]);
 
   useEffect(()=>{void load()},[load]);
   const school=schools.find((item)=>item.contractId===schoolId);
+  const scopedSchool=requestedSchool?schools.find((item)=>normalizeSchool(item.schoolName)===normalizeSchool(requestedSchool)):school;
 
   useEffect(()=>{
-    if(!school)return;
-    const saved=records.find((item)=>item.contractId===school.contractId&&item.quarter===quarter);
+    if(!scopedSchool)return;
+    const saved=records.find((item)=>item.contractId===scopedSchool.contractId&&item.quarter===quarter);
     if(saved?.receipts){setReceipts(saved.receipts);return;}
-    const feeMap=school.quarterParticipation?.[quarter]||{};
+    const feeMap=scopedSchool.quarterParticipation?.[quarter]||{};
     const next:Record<string,boolean[]>={};
-    school.students.forEach((student)=>{
+    scopedSchool.students.forEach((student)=>{
       const feeChecks=Array.isArray(feeMap[student.id])?feeMap[student.id]!.slice(0,3).map(Boolean):[false,false,false];
-      const historicalQ2=school.rule==="all_after_enrollment"&&quarter==="Q2"&&student.id.startsWith("history_saesol_q2_");
+      const historicalQ2=scopedSchool.rule==="all_after_enrollment"&&quarter==="Q2"&&student.id.startsWith("history_saesol_q2_");
       if(historicalQ2) next[student.id]=[true,true,true];
-      else if(school.rule==="all_after_enrollment"&&feeChecks.some(Boolean)) next[student.id]=[true,true,true];
+      else if(scopedSchool.rule==="all_after_enrollment"&&feeChecks.some(Boolean)) next[student.id]=[true,true,true];
       else next[student.id]=[Boolean(feeChecks[0]),Boolean(feeChecks[1]),Boolean(feeChecks[2])];
     });
     setReceipts(next);
-  },[school,quarter,records]);
+  },[scopedSchool,quarter,records]);
 
-  const visibleStudents=useMemo(()=>school?.students.filter((student)=>{
-    const fee=school.quarterParticipation?.[quarter]?.[student.id]||[];
+  const visibleStudents=useMemo(()=>scopedSchool?.students.filter((student)=>{
+    const fee=scopedSchool.quarterParticipation?.[quarter]?.[student.id]||[];
     const receipt=receipts[student.id]||[];
-    return fee.some(Boolean)||receipt.some(Boolean)||(school.rule==="all_after_enrollment"&&quarter==="Q2"&&student.id.startsWith("history_saesol_q2_"));
-  })||[],[school,quarter,receipts]);
+    return fee.some(Boolean)||receipt.some(Boolean)||(scopedSchool.rule==="all_after_enrollment"&&quarter==="Q2"&&student.id.startsWith("history_saesol_q2_"));
+  })||[],[scopedSchool,quarter,receipts]);
 
   const totals=[0,1,2].map((term)=>visibleStudents.filter((student)=>Boolean(receipts[student.id]?.[term])).length);
   const uniqueCount=visibleStudents.filter((student)=>(receipts[student.id]||[]).some(Boolean)).length;
@@ -94,7 +96,7 @@ export default function TextbookReceiptsPage(){
     if(!school)return;
     setSaving(true);setError("");setNotice("");
     try{
-      await requestJson("/api/teacher/textbook-receipts",{method:"POST",body:JSON.stringify({contractId:school.contractId,schoolName:school.schoolName,quarter,receipts})});
+      await requestJson("/api/teacher/textbook-receipts",{method:"POST",body:JSON.stringify({contractId:scopedSchool.contractId,schoolName:school.schoolName,quarter,receipts})});
       setNotice(`${school.schoolName} ${quarters.find(q=>q.key===quarter)?.label} 교재 수령인원을 확정 저장했습니다.`);
       await load();
     }catch(e){setError(e instanceof Error?e.message:"저장하지 못했습니다.");}
@@ -122,7 +124,7 @@ export default function TextbookReceiptsPage(){
             </select>
           </label>
         </div>
-        {school&&<div className="mt-4 rounded-2xl bg-indigo-50 px-4 py-3 text-sm font-black text-indigo-800">{school.schoolName} 기준 · {ruleLabel(school.rule)}</div>}
+        {school&&<div className="mt-4 rounded-2xl bg-indigo-50 px-4 py-3 text-sm font-black text-indigo-800">{school.schoolName} 기준 · {ruleLabel(scopedSchool.rule)}</div>}
         {error&&<div className="mt-3 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{error}</div>}
         {notice&&<div className="mt-3 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{notice}</div>}
       </section>
