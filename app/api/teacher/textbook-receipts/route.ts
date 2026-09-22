@@ -43,6 +43,7 @@ export async function GET(request: Request) {
     ]);
 
     const contracts = feeSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as any));
+    const studentById = new Map(studentSnapshot.docs.map((doc) => [doc.id, doc.data()]));
     const students = studentSnapshot.docs.map((doc) => {
       const data = doc.data();
       return {
@@ -63,7 +64,30 @@ export async function GET(request: Request) {
         title: normalize(contract.title),
         rule: getRule(contract.schoolName),
         quarterParticipation: contract.quarterParticipation || {},
-        students: students.filter((student) => isSameSchool(student.school, contract.schoolName)),
+        students: (() => {
+          const current = students.filter((student) => isSameSchool(student.school, contract.schoolName));
+          const historicalIds = new Set<string>();
+          Object.values(contract.quarterParticipation || {}).forEach((quarterValue: any) => {
+            Object.entries(quarterValue || {}).forEach(([studentId, checks]: any) => {
+              if (Array.isArray(checks) && checks.slice(0, 3).some(Boolean)) historicalIds.add(studentId);
+            });
+          });
+          const byId = new Map(current.map((student) => [student.id, student]));
+          historicalIds.forEach((studentId) => {
+            if (byId.has(studentId)) return;
+            const data = studentById.get(studentId);
+            if (!data) return;
+            byId.set(studentId, {
+              id: studentId,
+              name: normalize(data.name),
+              school: normalize(data.school) || normalize(contract.schoolName),
+              grade: normalize(data.grade),
+              schoolClass: normalize(data.schoolClass || data.className || data.class),
+              enrollmentStatus: getEnrollmentStatus(data),
+            });
+          });
+          return Array.from(byId.values()).filter((student) => student.name);
+        })(),
       })),
       records,
     });
