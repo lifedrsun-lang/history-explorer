@@ -361,10 +361,6 @@ export async function POST(request: Request) {
       { merge: true }
     );
     batch.update(contractRef, {
-      quarterParticipation: {
-        ...(contract?.quarterParticipation || {}),
-        [quarter]: receipts,
-      },
       quarterStudentSnapshots: {
         ...(contract?.quarterStudentSnapshots || {}),
         [quarter]: studentSnapshots,
@@ -377,7 +373,7 @@ export async function POST(request: Request) {
       ok: true,
       id,
       studentCount: studentSnapshots.length,
-      reflectedToFees: true,
+      rosterReflectedToFees: true,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
