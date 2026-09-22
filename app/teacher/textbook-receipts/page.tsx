@@ -2,6 +2,7 @@
 
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { auth } from "@/lib/firebase";
 
 type Quarter = "Q1" | "Q2" | "Q3" | "Q4";
@@ -18,6 +19,8 @@ const ruleLabel=(rule:string)=>{
 };
 
 export default function TextbookReceiptsPage(){
+  const searchParams=useSearchParams();
+  const requestedSchool=searchParams.get("school")||"";
   const [user,setUser]=useState<User|null>(null);
   const [authChecking,setAuthChecking]=useState(true);
   const [schools,setSchools]=useState<School[]>([]);
@@ -48,10 +51,10 @@ export default function TextbookReceiptsPage(){
       const data=await requestJson("/api/teacher/textbook-receipts");
       const next=Array.isArray(data.schools)?data.schools:[];
       setSchools(next);setRecords(Array.isArray(data.records)?data.records:[]);
-      setSchoolId((current)=>current||next[0]?.contractId||"");
+      setSchoolId((current)=>current||next.find((item:School)=>item.schoolName===requestedSchool)?.contractId||next[0]?.contractId||"");
     }catch(e){setError(e instanceof Error?e.message:"불러오지 못했습니다.");}
     finally{setLoading(false)}
-  },[requestJson,user]);
+  },[requestJson,user,requestedSchool]);
 
   useEffect(()=>{void load()},[load]);
   const school=schools.find((item)=>item.contractId===schoolId);
