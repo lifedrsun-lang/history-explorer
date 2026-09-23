@@ -46,7 +46,7 @@ const Q2_ROSTERS: Record<string, readonly OfficialRosterStudent[]> = {
     { name: "홍무화", grade: "3학년", schoolClass: "4반" },
     { name: "한성연", grade: "3학년", schoolClass: "5반" },
     { name: "김재윤", grade: "3학년", schoolClass: "7반" },
-    { name: "최재용", grade: "3학년", schoolClass: "1반" },
+    { name: "최재웅", grade: "3학년", schoolClass: "1반" },
     { name: "김도윤", grade: "3학년", schoolClass: "8반" },
     { name: "권제나", grade: "3학년", schoolClass: "9반" },
     { name: "한정우", grade: "3학년", schoolClass: "6반" },
