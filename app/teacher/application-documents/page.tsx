@@ -53,6 +53,27 @@ const splitDate = (value: string) => {
 
 const checkedBox = (checked: boolean) => (checked ? "☑" : "□");
 
+const DocumentSignature = ({
+  dataUrl,
+  className = "",
+}: {
+  dataUrl: string | null;
+  className?: string;
+}) => (
+  <span className={`relative inline-block h-[11mm] w-[34mm] ${className}`}>
+    <span className="absolute inset-0 flex items-center justify-center whitespace-nowrap text-[7.8pt] text-slate-500">
+      (서명 또는 인)
+    </span>
+    {dataUrl && (
+      <img
+        src={dataUrl}
+        alt="서명"
+        className="absolute left-1/2 top-1/2 z-10 max-h-[11mm] max-w-[32mm] -translate-x-1/2 -translate-y-1/2 object-contain"
+      />
+    )}
+  </span>
+);
+
 export default function TeacherApplicationDocumentsPage() {
   const [authChecking, setAuthChecking] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -444,36 +465,43 @@ export default function TeacherApplicationDocumentsPage() {
       <div className="forms-preview mx-auto mt-4 flex max-w-[210mm] flex-col gap-5">
         {includeCrimeConsent && (
           <section className="official-page relative h-[297mm] w-[210mm] bg-white text-black shadow-xl" style={{ fontFamily: '"Batang", "Times New Roman", serif' }}>
-            <div className="absolute left-[22mm] right-[20mm] top-[18mm] text-[7.8pt]">■ 아동복지법 시행규칙 [별지 제12호의5서식] &lt;개정 2019. 6. 12.&gt;</div>
-            <h2 className="absolute left-0 right-0 top-[31mm] text-center text-[15.8pt] font-bold tracking-[-0.02em]">성범죄 경력 및 아동학대관련범죄 전력 조회 동의서</h2>
+            <div className="absolute left-[22mm] right-[20mm] top-[17mm] whitespace-nowrap text-[7.5pt]">
+              ■ 아동ㆍ청소년의 성보호에 관한 법률 시행규칙 [별지 제10호의2서식] &lt;개정 2022. 3. 14.&gt;
+            </div>
+            <div className="absolute right-[20mm] top-[17mm] text-[7pt]">(앞쪽)</div>
+            <h2 className="absolute left-0 right-0 top-[30mm] text-center text-[15.8pt] font-bold tracking-[-0.02em]">성범죄 경력 및 아동학대관련범죄 전력 조회 동의서</h2>
 
-            <div className="absolute left-[22mm] right-[20mm] top-[49mm] h-[48mm] border-y border-black text-[9pt]">
+            <div className="absolute left-[20mm] right-[20mm] top-[45mm] h-[51mm] border-y border-black text-[8.5pt]">
               <div className="absolute bottom-0 left-[16mm] top-0 border-l border-black" />
-              <div className="absolute left-[16mm] right-0 top-[16mm] border-t border-black" />
-              <div className="absolute left-[16mm] right-0 top-[32mm] border-t border-black" />
-              <div className="absolute left-0 top-[19mm] w-[16mm] text-center font-bold">대상자</div>
-              <div className="absolute left-[20mm] top-[4.5mm]">성&nbsp;&nbsp;명(외국인의 경우 영문명)</div>
-              <div className="absolute right-[4mm] top-[4.5mm] font-sans text-[10pt] font-semibold">{name}</div>
-              <div className="absolute left-[20mm] top-[20mm]">주민등록번호(외국인의 경우 외국인등록번호/국적)</div>
-              <div className="absolute right-[4mm] top-[20mm] font-sans text-[10pt] font-semibold">{residentNumber}</div>
-              <div className="absolute left-[20mm] top-[36mm]">연락처(휴대전화 등)</div>
-              <div className="absolute right-[4mm] top-[36mm] font-sans text-[10pt] font-semibold">{phone}</div>
+              <div className="absolute left-[16mm] right-0 top-[17mm] border-t border-black" />
+              <div className="absolute left-[16mm] right-0 top-[34mm] border-t border-black" />
+              <div className="absolute left-0 top-[20mm] w-[16mm] text-center font-bold">대상자</div>
+              <div className="absolute left-[18mm] top-[5mm]">성&nbsp;&nbsp;명(외국인의 경우 영문명)</div>
+              <div className="absolute right-[3mm] top-[5mm] font-sans text-[9.5pt] font-semibold">{name}</div>
+              <div className="absolute left-[18mm] top-[21.5mm]">주민등록번호(외국인의 경우 외국인등록번호/국적)</div>
+              <div className="absolute right-[3mm] top-[21.5mm] font-sans text-[9.5pt] font-semibold">{residentNumber}</div>
+              <div className="absolute left-[18mm] top-[38.5mm]">연락처(휴대전화 등)</div>
+              <div className="absolute right-[3mm] top-[38.5mm] font-sans text-[9.5pt] font-semibold">{phone}</div>
             </div>
 
-            <p className="absolute left-[23mm] right-[21mm] top-[108mm] text-justify text-[9pt] leading-[1.85]">
+            <p className="absolute left-[22mm] right-[20mm] top-[109mm] text-justify text-[8.3pt] leading-[1.75]">
               본인은 <strong className="font-sans">{schoolName || "________________"}</strong>의 취업(예정)자 또는 노무 제공(예정)자로서 「아동ㆍ청소년의 성보호에 관한 법률」 제56조 및 같은 법 시행령 제25조에 따른 성범죄 경력 조회와 「아동복지법」 제29조의3 및 같은 법 시행령 제26조의5에 따른 아동학대관련범죄 전력 조회에 동의합니다.
             </p>
 
-            <div className="absolute right-[34mm] top-[151mm] text-[9pt]">{dateParts.year || "202 "}년&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{dateParts.month}월&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{dateParts.day}일</div>
-            <div className="absolute right-[33mm] top-[165mm] flex items-center gap-[12mm] text-[9pt]"><span>동의자</span><span className="font-sans font-semibold">{name}</span><span className="relative inline-block h-[13mm] w-[32mm] text-right text-[7.8pt] text-slate-500">(서명 또는 인){signatureForDocument && <img src={signatureForDocument} alt="서명" className="absolute inset-0 m-auto max-h-[13mm] max-w-[30mm] object-contain" />}</span></div>
-            <div className="absolute left-[38mm] top-[184mm] w-[53mm] border-b border-black" />
-            <div className="absolute left-[91mm] top-[179mm] text-[11pt] font-bold">경찰서장</div>
-            <div className="absolute left-[120mm] top-[180mm] text-[8pt]">귀하</div>
-            <div className="absolute left-[22mm] right-[20mm] top-[191mm] border-t border-black" />
+            <div className="absolute right-[31mm] top-[137mm] text-[8.5pt]">{dateParts.year || "202 "}년&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{dateParts.month}월&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{dateParts.day}일</div>
+            <div className="absolute left-[109mm] top-[154mm] flex h-[11mm] items-center text-[8.5pt]">
+              <span className="w-[21mm]">동의자</span>
+              <span className="w-[29mm] font-sans font-semibold">{name}</span>
+              <DocumentSignature dataUrl={signatureForDocument} />
+            </div>
+            <div className="absolute left-[43mm] top-[177mm] w-[51mm] border-b border-black" />
+            <div className="absolute left-[94mm] top-[171.5mm] text-[11pt] font-bold">경찰서장</div>
+            <div className="absolute left-[123mm] top-[173mm] text-[8pt]">귀하</div>
+            <div className="absolute left-[20mm] right-[20mm] top-[181.5mm] border-t border-black" />
 
-            <div className="absolute left-[22mm] right-[20mm] top-[201mm] border border-black text-[7.2pt] leading-[1.55]">
-              <div className="border-b border-black bg-[#eeeeee] px-[3mm] py-[1.5mm] text-[8.5pt] font-bold">유의사항</div>
-              <ol className="list-decimal space-y-[1mm] px-[8mm] py-[3mm]">
+            <div className="absolute left-[20mm] right-[20mm] top-[229mm] text-[6.8pt] leading-[1.45]">
+              <div className="border-y border-black bg-[#b5b5b5] px-[3mm] py-[1.5mm] text-center text-[8pt] font-bold">유의사항</div>
+              <ol className="list-decimal space-y-[0.8mm] border-b border-black px-[7mm] py-[2mm]">
                 <li>개인정보 수집항목: 성명, 주민등록번호(외국인의 경우 외국인등록번호 및 국적, 외국인등록번호가 없는 경우 생년월일 및 여권번호)</li>
                 <li>개인정보 제공 거부에 따른 제한사항: 개인정보 제공 동의를 거부하는 경우에는 취업에 제한을 받을 수 있습니다.</li>
                 <li>개인정보의 수집ㆍ이용 목적: 수집된 개인정보는 성범죄 경력 조회 요청, 아동학대관련범죄 전력 조회 요청 등을 위하여 사용됩니다.</li>
@@ -486,37 +514,47 @@ export default function TeacherApplicationDocumentsPage() {
 
         {includeAdminConsent && (
           <section className="official-page relative h-[297mm] w-[210mm] bg-white text-black shadow-xl" style={{ fontFamily: '"Batang", "Times New Roman", serif' }}>
-            <div className="absolute left-[23mm] top-[17mm] text-[8pt]">「행정정보 공동이용 지침」</div>
-            <div className="absolute left-[23mm] top-[25mm] text-[8pt]">「행정정보 공동이용 지침」 [별지 제8호 서식]</div>
-            <h2 className="absolute left-0 right-0 top-[39mm] text-center text-[17pt] font-bold">행정정보 공동이용 사전동의서</h2>
+            <div className="absolute left-[15mm] top-[19mm] whitespace-nowrap text-[8pt] font-bold">「행정정보 공동이용 지침」 [별지 제8호 서식]</div>
+            <div className="absolute left-[15mm] right-[26mm] top-[27mm] h-[240mm] border border-black" />
+            <h2 className="absolute left-0 right-0 top-[31mm] text-center text-[17pt] font-bold tracking-[0.16em]">행정정보 공동이용 사전동의서</h2>
 
-            <div className="absolute left-[24mm] right-[22mm] top-[62mm] text-[10pt] leading-[1.8]">
-              <div><strong>1. 이용기관 명칭 :</strong> <span className="font-sans font-semibold">{schoolName}</span></div>
-              <div className="mt-[5mm]"><strong>2. 이용사무(이용목적) :</strong> 결격사유 유무 조회, 범죄경력 유무 조회</div>
-              <div className="mt-[5mm] font-bold">3. 공동이용 행정정보(구비서류)</div>
+            <div className="absolute left-[19mm] right-[30mm] top-[45mm] text-[9pt] leading-[1.7]">
+              <div className="absolute left-0 right-0 top-0"><strong>1. 이용기관 명칭 :</strong> <span className="font-sans font-semibold">{schoolName}</span></div>
+              <div className="absolute left-0 right-0 top-[13mm]"><strong>2. 이용사무(이용목적) :</strong> <span className="font-bold text-blue-700">결격사유 유무 조회, 범죄경력 유무 조회</span></div>
+              <div className="absolute left-0 right-0 top-[26mm] font-bold">3. 공동이용 행정정보(구비서류)</div>
 
-              <table className="mt-[3mm] w-full table-fixed border-collapse text-center text-[9pt]">
+              <table className="absolute left-0 right-0 top-[35mm] w-full table-fixed border-collapse text-center text-[8.2pt] leading-none">
                 <tbody>
-                  <tr><th className="w-[13%] border border-black py-[2mm]">연번</th><th className="w-[37%] border border-black py-[2mm]">행정정보명</th><th className="w-[13%] border border-black py-[2mm]">연번</th><th className="w-[37%] border border-black py-[2mm]">행정정보명</th></tr>
-                  <tr><td className="border border-black py-[3mm]">1</td><td className="border border-black py-[3mm]">결격사유 유무 조회</td><td className="border border-black py-[3mm]">2</td><td className="border border-black py-[3mm]">범죄경력 유무 조회</td></tr>
+                  <tr className="h-[7mm]"><th className="w-[13%] border border-black">연번</th><th className="w-[37%] border border-black">행정정보명</th><th className="w-[13%] border border-black">연번</th><th className="w-[37%] border border-black">행정정보명</th></tr>
+                  <tr className="h-[8mm]"><td className="border border-black">1</td><td className="border border-black">결격사유 유무 조회</td><td className="border border-black">2</td><td className="border border-black">범죄경력 유무 조회</td></tr>
+                  <tr className="h-[8mm]"><td className="border border-black" /><td className="border border-black" /><td className="border border-black" /><td className="border border-black" /></tr>
+                  <tr className="h-[8mm]"><td className="border border-black" /><td className="border border-black" /><td className="border border-black" /><td className="border border-black" /></tr>
+                  <tr className="h-[8mm]"><td className="border border-black" /><td className="border border-black" /><td className="border border-black" /><td className="border border-black" /></tr>
                 </tbody>
               </table>
 
-              <p className="mt-[5mm] text-[8pt] leading-[1.65]">※ 이용기관은 본인이 동의한 위 공동이용 행정정보를 확인하기 위해「개인정보 보호법」시행령 제19조에 따라 주민등록번호, 여권번호, 운전면허의 면허번호 또는 외국인등록번호가 포함된 행정정보를 처리할 수 있습니다. 이용기관이 요청하는 경우 기재하여 주십시오.(필요시 기재사항)</p>
-              <div className="mt-[3mm] text-center text-[9pt]">( {checkedBox(identityType === "resident")} 주민등록&nbsp;&nbsp;{checkedBox(identityType === "passport")} 여권&nbsp;&nbsp;{checkedBox(identityType === "foreign")} 외국인등록&nbsp;&nbsp;{checkedBox(identityType === "driver")} 운전면허 ) 번호 : <span className="font-sans font-semibold">{identityNumber}</span></div>
+              <p className="absolute left-0 right-0 top-[89mm] pl-[3mm] text-[8pt] leading-[1.65]">※ 이용기관은 본인이 동의한 위 공동이용 행정정보를 확인하기 위해「개인정보 보호법」시행령 제19조에 따라 주민등록번호, 여권번호, 운전면허의 면허번호 또는 외국인등록번호가 포함된 행정정보를 처리할 수 있습니다. 이용기관이 요청하는 경우 기재하여 주십시오.(필요시 기재사항)</p>
+              <div className="absolute left-0 right-0 top-[116mm] text-center text-[8.5pt]">( {checkedBox(identityType === "resident")} 주민등록&nbsp;&nbsp;{checkedBox(identityType === "passport")} 여권&nbsp;&nbsp;{checkedBox(identityType === "foreign")} 외국인등록&nbsp;&nbsp;{checkedBox(identityType === "driver")} 운전면허 ) 번호 : <span className="font-sans font-semibold">{identityNumber}</span></div>
 
-              <div className="mt-[7mm] font-bold">4. 정보주체(본인) 동의사항</div>
-              <p className="mt-[3mm] text-[9pt] leading-[1.8]">○ 본인은 위 사무의 처리를 위하여 「전자정부법」제36조에 따른 행정정보 공동이용을 통해 이용기관의 업무처리담당자가 전자적으로 본인의 구비서류(공동이용 행정정보)를 확인하는 것에 동의합니다.</p>
-              <p className="mt-[2mm] text-[8pt] leading-[1.7]">※ 만일, 본인이 위 행정정보 이용에 대해 동의를 하지 아니할 경우에도 불이익은 없습니다. 다만, 동의하지 아니한 경우에는 본인이 해당 구비서류를 제출하여야 합니다.</p>
+              <div className="absolute left-0 right-0 top-[135mm] font-bold">4. 정보주체(본인) 동의사항</div>
+              <p className="absolute left-0 right-0 top-[145mm] pl-[3mm] text-[8.2pt] leading-[1.65]">○ 본인은 위 사무의 처리를 위하여 「전자정부법」 제36조에 따른 행정정보 공동이용을 통해 이용기관의 업무처리담당자가 전자적으로 본인의 구비서류(공동이용 행정정보)를 확인하는 것에 동의합니다.</p>
+              <p className="absolute left-0 right-0 top-[164mm] pl-[3mm] text-[8pt] leading-[1.65]">※ 만일, 본인이 위 행정정보 이용에 대해 동의를 하지 아니할 경우에도 불이익은 없습니다. 다만, 동의하지 아니한 경우에는 본인이 해당 구비서류를 제출하여야 합니다.</p>
             </div>
 
-            <div className="absolute right-[32mm] top-[206mm] text-[9pt]">{dateParts.year || "202 "}년&nbsp;&nbsp;&nbsp;{dateParts.month}월&nbsp;&nbsp;&nbsp;{dateParts.day}일</div>
-            <div className="absolute left-[65mm] top-[221mm] grid grid-cols-[32mm_40mm_38mm] items-center gap-y-[4mm] text-[9pt]">
-              <span>대상자&nbsp;&nbsp;본인&nbsp;&nbsp;성&nbsp;&nbsp;&nbsp;&nbsp;명 :</span><strong className="font-sans">{name}</strong><span className="relative h-[12mm] text-[7.8pt] text-slate-500">(서명 또는 인){signatureForDocument && <img src={signatureForDocument} alt="서명" className="absolute inset-0 m-auto max-h-[12mm] max-w-[30mm] object-contain" />}</span>
-              <span className="col-start-1">생년월일 :</span><strong className="font-sans">{birthDate}</strong><span />
-              <span className="col-start-1">전화번호 :</span><strong className="font-sans">{phone}</strong><span />
+            <div className="absolute right-[31mm] top-[230mm] text-[8.5pt]">{dateParts.year || "202 "}년&nbsp;&nbsp;&nbsp;{dateParts.month}월&nbsp;&nbsp;&nbsp;{dateParts.day}일</div>
+            <div className="absolute left-[43mm] top-[241mm] h-[12mm] text-[8.5pt]">
+              <span className="absolute left-0 top-[3mm] whitespace-nowrap">대상자&nbsp;&nbsp;&nbsp;본인</span>
+              <span className="absolute left-[49mm] top-[3mm] whitespace-nowrap">성&nbsp;&nbsp;&nbsp;&nbsp;명 :</span>
+              <strong className="absolute left-[72mm] top-[3mm] whitespace-nowrap font-sans">{name}</strong>
+              <DocumentSignature dataUrl={signatureForDocument} className="absolute left-[92mm] top-0" />
             </div>
-            <div className="absolute bottom-[15mm] left-[24mm] right-[22mm] text-[7.3pt]">※ 개별 법령에서 필요로 하는 동의와 별개로 행정정보 공동이용 사전동의 필요</div>
+            <div className="absolute left-[92mm] top-[251mm] text-[8.5pt]">
+              <span className="inline-block w-[23mm]">생년월일 :</span><strong className="font-sans">{birthDate}</strong>
+            </div>
+            <div className="absolute left-[92mm] top-[259mm] text-[8.5pt]">
+              <span className="inline-block w-[23mm]">전화번호 :</span><strong className="font-sans">{phone}</strong>
+            </div>
+            <div className="absolute left-[15mm] top-[271mm] text-[7pt] text-blue-700">※ 개별 법령에서 필요로 하는 동의와 별개로 행정정보 공동이용 사전동의 필요</div>
           </section>
         )}
       </div>
