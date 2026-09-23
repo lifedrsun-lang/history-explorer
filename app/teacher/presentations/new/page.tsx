@@ -3,10 +3,19 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { collection, doc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
+import BoardgameCardFields from "@/app/teacher/presentations/BoardgameCardFields";
 import { auth, db } from "@/lib/firebase";
+import {
+  getPresentationCardIdentityKey,
+  getPresentationCardMetadataId,
+  isBoardgameCategory,
+  normalizeBrandName,
+  PRESENTATION_CARD_METADATA_DOCUMENT_TYPE,
+  PRESENTATION_CARDS_COLLECTION,
+} from "@/lib/presentations/cardMetadata";
 import {
   WORLD_CULTURE_SERIES,
   getWorldCultureLessonTitle,
@@ -15,7 +24,6 @@ import {
   isPresentationCategory,
   isWorldCultureSeries,
   normalizeCardDisplayName,
-  normalizeCardKey,
   type PresentationCategory,
   type WorldCultureSeries,
 } from "@/lib/presentations/catalog";
@@ -28,6 +36,8 @@ type PresentationDraft = {
   bookNumber: string;
   lessonNumber: string;
   cardName: string;
+  brandName: string;
+  coverImageDataUrl: string;
   resourceTitle: string;
   resourceKind: PersonalStudyResourceKind;
   pptUrl: string;
@@ -39,6 +49,8 @@ const EMPTY_DRAFT: PresentationDraft = {
   bookNumber: "",
   lessonNumber: "1",
   cardName: "",
+  brandName: "",
+  coverImageDataUrl: "",
   resourceTitle: "",
   resourceKind: "link",
   pptUrl: "",
@@ -114,6 +126,7 @@ export default function NewTeacherPresentationPage() {
   const [lockedBookNumber, setLockedBookNumber] = useState("");
   const [lockedLessonNumber, setLockedLessonNumber] = useState("");
   const [lockedCardName, setLockedCardName] = useState("");
+  const [lockedCardKey, setLockedCardKey] = useState("");
   const [isQuickAdd, setIsQuickAdd] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -151,6 +164,7 @@ export default function NewTeacherPresentationPage() {
     if (!isPresentationCategory(categoryParam)) return;
 
     const cardNameParam = normalizeCardDisplayName(params.get("cardName"));
+    const cardKeyParam = String(params.get("cardKey") || "").trim();
     const bookNumberParam = String(params.get("bookNumber") || "").trim();
     const lessonNumberParam = String(params.get("lessonNumber") || "").trim();
     const worldSeriesParam = params.get("worldSeries");
@@ -163,8 +177,10 @@ export default function NewTeacherPresentationPage() {
         : bookNumberParam;
     const normalizedLessonNumber = normalizeLessonParam(lessonNumberParam || "1");
 
+    /* eslint-disable react-hooks/set-state-in-effect -- URL parameters initialize this client-only form after hydration. */
     setLockedCategory(categoryParam);
     setLockedCardName(cardNameParam);
+    setLockedCardKey(cardKeyParam);
     setLockedBookNumber(bookNumberParam);
     setLockedLessonNumber(lessonNumberParam ? normalizedLessonNumber : "");
     setIsQuickAdd(params.get("quick") === "1");
@@ -177,6 +193,7 @@ export default function NewTeacherPresentationPage() {
       lessonNumber: normalizedLessonNumber,
       cardName: cardNameParam,
     }));
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   useEffect(() => {
@@ -225,13 +242,23 @@ export default function NewTeacherPresentationPage() {
     try {
       const cardName = normalizeCardDisplayName(draft.cardName);
       const isNamedCategory = isNamedCardCategory(draft.category);
+      const brandName = normalizeBrandName(draft.brandName);
+      const cardKey = isNamedCategory
+        ? lockedCardKey ||
+          getPresentationCardIdentityKey(
+            cardName,
+            isBoardgameCategory(draft.category) ? brandName : ""
+          )
+        : "";
+      const presentationRef = doc(collection(db, "presentations"));
+      const batch = writeBatch(db);
 
-      await addDoc(collection(db, "presentations"), {
-        schemaVersion: 6,
+      batch.set(presentationRef, {
+        schemaVersion: 7,
         libraryCategoryVersion: 1,
         category: draft.category,
         cardName,
-        cardKey: cardName ? normalizeCardKey(cardName) : "",
+        cardKey,
         resourceTitle: draft.resourceTitle.trim(),
         resourceKind: draft.category === "personal_study" ? draft.resourceKind : "",
         worldSeries: draft.category === "world" ? draft.worldSeries : "",
@@ -249,6 +276,33 @@ export default function NewTeacherPresentationPage() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+
+      if (isBoardgameCategory(draft.category) && !lockedCardName) {
+        batch.set(
+          doc(
+            db,
+            PRESENTATION_CARDS_COLLECTION,
+            getPresentationCardMetadataId(draft.category, cardKey)
+          ),
+          {
+            schemaVersion: 1,
+            documentType: PRESENTATION_CARD_METADATA_DOCUMENT_TYPE,
+            libraryCategoryVersion: 1,
+            category: draft.category,
+            cardKey,
+            cardName,
+            brandName,
+            coverImageDataUrl: draft.coverImageDataUrl,
+            createdBy: currentUser.uid,
+            updatedBy: currentUser.uid,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
+
+      await batch.commit();
 
       const section = isArchivePresentationCategory(draft.category)
         ? "&section=archive"
@@ -382,6 +436,15 @@ export default function NewTeacherPresentationPage() {
                   같은 이름은 띄어쓰기·대소문자 차이를 정리해 한 카드 안에 모읍니다.
                 </span>
               </label>
+            ) : null}
+
+            {isBoardgameCategory(draft.category) && !isNamedCardContext ? (
+              <BoardgameCardFields
+                brandName={draft.brandName}
+                coverImageDataUrl={draft.coverImageDataUrl}
+                onBrandNameChange={(value) => updateDraft("brandName", value)}
+                onCoverImageChange={(value) => updateDraft("coverImageDataUrl", value)}
+              />
             ) : null}
 
             <label className="text-sm font-black text-slate-700">

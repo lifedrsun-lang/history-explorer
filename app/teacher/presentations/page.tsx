@@ -6,17 +6,20 @@ import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
-  doc,
   getDocs,
   orderBy,
   query,
-  serverTimestamp,
   Timestamp,
-  writeBatch,
 } from "firebase/firestore";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { auth, db } from "@/lib/firebase";
+import {
+  getBoardgameCardMetadata,
+  getBoardgameCardMetadataMapKey,
+  isBoardgameCategory,
+  type BoardgameCardMetadata,
+} from "@/lib/presentations/cardMetadata";
 import {
   WORLD_CULTURE_SERIES,
   getHistoryBook,
@@ -68,7 +71,10 @@ type PresentationBook = {
 type PresentationNamedCard = {
   key: string;
   category: PresentationCategory;
+  cardKey: string;
   displayName: string;
+  brandName: string;
+  coverImageDataUrl: string;
   resources: PresentationListItem[];
 };
 
@@ -213,13 +219,6 @@ const ARCHIVE_LIBRARIES: LibraryCard[] = [
 ];
 
 const ALL_LIBRARIES = [...TEACHING_LIBRARIES, ...ARCHIVE_LIBRARIES];
-const MOVABLE_NAMED_CARD_CATEGORIES: PresentationCategory[] = [
-  "personal_study",
-  "facilitator",
-  "boardgame",
-  "archive_coding",
-];
-
 const LINKED_LIBRARY_RESOURCES: LinkedLibraryResource[] = [
   {
     id: "hello-maple-source",
@@ -293,6 +292,7 @@ function buildNamedCardAddHref(card: PresentationNamedCard, lessonNumber?: numbe
   const params = new URLSearchParams({
     category: card.category,
     cardName: card.displayName,
+    cardKey: card.cardKey,
     quick: "1",
   });
 
@@ -509,17 +509,28 @@ function groupPersonalStudyLectures(resources: PresentationListItem[]) {
   });
 }
 
-function groupNamedCards(items: PresentationListItem[]) {
+function groupNamedCards(
+  items: PresentationListItem[],
+  metadataByCard: Map<string, BoardgameCardMetadata>
+) {
   const groups = new Map<string, PresentationNamedCard>();
   const oldestFirst = [...items].sort((a, b) => a.createdAt - b.createdAt);
 
   for (const item of oldestFirst) {
     if (!item.cardKey) continue;
     const key = `${item.category}:card:${item.cardKey}`;
+    const metadata = isBoardgameCategory(item.category)
+      ? metadataByCard.get(
+          getBoardgameCardMetadataMapKey(item.category, item.cardKey)
+        )
+      : undefined;
     const group = groups.get(key) ?? {
       key,
       category: item.category,
-      displayName: item.cardName,
+      cardKey: item.cardKey,
+      displayName: metadata?.cardName || item.cardName,
+      brandName: metadata?.brandName || "",
+      coverImageDataUrl: metadata?.coverImageDataUrl || "",
       resources: [],
     };
     group.resources.push(item);
@@ -588,7 +599,10 @@ function TeacherPresentationsPageContent() {
   const [hiddenCodingCardKeys, setHiddenCodingCardKeys] = useState<Set<string>>(
     getStoredHiddenCodingCardKeys
   );
-  const [movingCardKey, setMovingCardKey] = useState("");
+  const [boardgameCardMetadata, setBoardgameCardMetadata] = useState<
+    Map<string, BoardgameCardMetadata>
+  >(new Map());
+  const [expandedBoardgameCardKey, setExpandedBoardgameCardKey] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
 
@@ -634,8 +648,12 @@ function TeacherPresentationsPageContent() {
     [filteredPresentations]
   );
   const namedCards = useMemo(
-    () => groupNamedCards(filteredPresentations.filter((item) => item.cardKey)),
-    [filteredPresentations]
+    () =>
+      groupNamedCards(
+        filteredPresentations.filter((item) => item.cardKey),
+        boardgameCardMetadata
+      ),
+    [boardgameCardMetadata, filteredPresentations]
   );
   const linkedLibraryResources = useMemo(
     () =>
@@ -684,6 +702,15 @@ function TeacherPresentationsPageContent() {
       (a, b) => Number(favoriteCardKeys.has(b.favoriteKey)) - Number(favoriteCardKeys.has(a.favoriteKey))
     );
   }, [allLibraryCards, favoriteCardKeys, hiddenCodingCardKeys]);
+  const boardgameDisplayCards = useMemo(
+    () =>
+      displayLibraryCards.flatMap((item) =>
+        item.kind === "named" && isBoardgameCategory(item.card.category)
+          ? [{ favoriteKey: item.favoriteKey, card: item.card }]
+          : []
+      ),
+    [displayLibraryCards]
+  );
   const worldLessonOptions = useMemo(
     () =>
       getLessonNumbers(
@@ -711,6 +738,17 @@ function TeacherPresentationsPageContent() {
           query(collection(db, "presentations"), orderBy("createdAt", "desc"))
         );
 
+        const nextMetadata = new Map<string, BoardgameCardMetadata>();
+        snapshot.docs.forEach((metadataDocument) => {
+          const metadata = getBoardgameCardMetadata(metadataDocument.data());
+          if (!metadata) return;
+          nextMetadata.set(
+            getBoardgameCardMetadataMapKey(metadata.category, metadata.cardKey),
+            metadata
+          );
+        });
+        setBoardgameCardMetadata(nextMetadata);
+
         setPresentations(
           snapshot.docs
             .map((docItem) => {
@@ -734,6 +772,7 @@ function TeacherPresentationsPageContent() {
                   ) || "이름 없는 카드"
                 : "";
               const cardName = storedCardName || fallbackCardName;
+              const storedCardKey = String(data?.cardKey || "").trim();
 
               return {
                 id: docItem.id,
@@ -749,7 +788,7 @@ function TeacherPresentationsPageContent() {
                 ),
                 resourceTitle: String(data?.resourceTitle || data?.title || "").trim(),
                 cardName,
-                cardKey: cardName ? normalizeCardKey(cardName) : "",
+                cardKey: storedCardKey || (cardName ? normalizeCardKey(cardName) : ""),
                 pptUrl: String(data?.pptUrl || ""),
                 createdAt:
                   data?.createdAt instanceof Timestamp
@@ -759,6 +798,7 @@ function TeacherPresentationsPageContent() {
             })
             .filter((item) => item.pptUrl)
         );
+
       } catch (error) {
         console.error("Presentation list load failed:", error);
         setLoadError("수업자료 목록을 불러오지 못했습니다.");
@@ -771,6 +811,7 @@ function TeacherPresentationsPageContent() {
   }, [router]);
 
   const openLibrary = (category: PresentationCategory) => {
+    setExpandedBoardgameCardKey(null);
     setWorldSeriesFilter("all");
     setWorldBookFilter("all");
     setWorldLessonFilter("all");
@@ -781,6 +822,7 @@ function TeacherPresentationsPageContent() {
   };
 
   const closeLibrary = () => {
+    setExpandedBoardgameCardKey(null);
     setWorldSeriesFilter("all");
     setWorldBookFilter("all");
     setWorldLessonFilter("all");
@@ -836,43 +878,6 @@ function TeacherPresentationsPageContent() {
       localStorage.removeItem(HIDDEN_CODING_CARDS_STORAGE_KEY);
     } catch (error) {
       console.warn("Hidden coding cards could not be restored:", error);
-    }
-  };
-
-  const moveNamedCard = async (
-    card: PresentationNamedCard,
-    targetCategory: PresentationCategory
-  ) => {
-    if (card.category === targetCategory || movingCardKey) return;
-
-    const confirmed = window.confirm(
-      `${card.displayName} 카드를 ${CATEGORY_LABELS[targetCategory]}로 이동할까요?\n\n카드 안의 자료와 링크는 그대로 유지됩니다.`
-    );
-    if (!confirmed) return;
-
-    setMovingCardKey(card.key);
-    try {
-      const batch = writeBatch(db);
-      card.resources.forEach((resource) => {
-        batch.update(doc(db, "presentations", resource.id), {
-          category: targetCategory,
-          libraryCategoryVersion: 1,
-          updatedAt: serverTimestamp(),
-        });
-      });
-      await batch.commit();
-
-      const movedIds = new Set(card.resources.map((resource) => resource.id));
-      setPresentations((current) =>
-        current.map((resource) =>
-          movedIds.has(resource.id) ? { ...resource, category: targetCategory } : resource
-        )
-      );
-    } catch (error) {
-      console.error("Presentation card move failed:", error);
-      window.alert("카드를 이동하지 못했습니다. 잠시 후 다시 시도해 주세요.");
-    } finally {
-      setMovingCardKey("");
     }
   };
 
@@ -1070,12 +1075,25 @@ function TeacherPresentationsPageContent() {
             {!isLoading &&
             !loadError &&
             (presentationBooks.length > 0 || namedCards.length > 0 || linkedLibraryResources.length > 0) ? (
-              <div
-                className={`mt-5 grid gap-3 ${
-                  activeLibrary === "personal_study" ? "" : "md:grid-cols-2 xl:grid-cols-3"
-                }`}
-              >
-                {displayLibraryCards.map((item) => {
+              activeLibrary && isBoardgameCategory(activeLibrary) ? (
+                <BoardgameLibrary
+                  cards={boardgameDisplayCards}
+                  expandedCardKey={expandedBoardgameCardKey}
+                  onToggleCard={(cardKey) =>
+                    setExpandedBoardgameCardKey((current) =>
+                      current === cardKey ? null : cardKey
+                    )
+                  }
+                  favoriteCardKeys={favoriteCardKeys}
+                  onToggleFavorite={toggleFavoriteCard}
+                />
+              ) : (
+                <div
+                  className={`mt-5 grid gap-3 ${
+                    activeLibrary === "personal_study" ? "" : "md:grid-cols-2 xl:grid-cols-3"
+                  }`}
+                >
+                  {displayLibraryCards.map((item) => {
                   const isFavorite = favoriteCardKeys.has(item.favoriteKey);
                   const onToggleFavorite = () => toggleFavoriteCard(item.favoriteKey);
 
@@ -1097,15 +1115,6 @@ function TeacherPresentationsPageContent() {
                         card={item.card}
                         isFavorite={isFavorite}
                         onToggleFavorite={onToggleFavorite}
-                        moveTargets={
-                          MOVABLE_NAMED_CARD_CATEGORIES.includes(item.card.category)
-                            ? MOVABLE_NAMED_CARD_CATEGORIES.filter(
-                                (category) => category !== item.card.category
-                              )
-                            : []
-                        }
-                        isMoving={movingCardKey === item.card.key}
-                        onMove={(targetCategory) => moveNamedCard(item.card, targetCategory)}
                         onHide={
                           item.card.category === "coding" || item.card.category === "hello_maple"
                             ? () => hideCodingCard(item.favoriteKey, item.card.displayName)
@@ -1139,8 +1148,9 @@ function TeacherPresentationsPageContent() {
                       onToggleFavorite={onToggleFavorite}
                     />
                   );
-                })}
-              </div>
+                  })}
+                </div>
+              )
             ) : null}
           </section>
         )}
@@ -1353,21 +1363,218 @@ function PersonalStudyResourceRow({
   );
 }
 
+function BoardgameLibrary({
+  cards,
+  expandedCardKey,
+  onToggleCard,
+  favoriteCardKeys,
+  onToggleFavorite,
+}: {
+  cards: Array<{ favoriteKey: string; card: PresentationNamedCard }>;
+  expandedCardKey: string | null;
+  onToggleCard: (cardKey: string) => void;
+  favoriteCardKeys: Set<string>;
+  onToggleFavorite: (favoriteKey: string) => void;
+}) {
+  const expandedCard = cards.find(({ card }) => card.key === expandedCardKey)?.card;
+
+  return (
+    <div className="mt-5 grid items-start gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
+      <div className="grid gap-3 xl:grid-cols-2">
+        {cards.map(({ favoriteKey, card }) => {
+          const isExpanded = expandedCardKey === card.key;
+          const panelId = `boardgame-resources-${encodeURIComponent(card.key)}`;
+
+          return (
+            <div key={favoriteKey}>
+              <BoardgameSummaryCard
+                card={card}
+                isExpanded={isExpanded}
+                isFavorite={favoriteCardKeys.has(favoriteKey)}
+                panelId={panelId}
+                onToggle={() => onToggleCard(card.key)}
+                onToggleFavorite={() => onToggleFavorite(favoriteKey)}
+              />
+              {isExpanded ? (
+                <div className="mt-2 lg:hidden">
+                  <BoardgameResourcePanel card={card} id={panelId} />
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="hidden lg:sticky lg:top-4 lg:block">
+        {expandedCard ? (
+          <BoardgameResourcePanel
+            card={expandedCard}
+            id={`boardgame-resources-${encodeURIComponent(expandedCard.key)}`}
+          />
+        ) : (
+          <div className="flex min-h-64 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-orange-200 bg-orange-50/50 p-6 text-center">
+            <div className="text-4xl" aria-hidden="true">🎲</div>
+            <p className="mt-3 text-sm font-black text-orange-800">카드를 선택해 주세요</p>
+            <p className="mt-1 text-xs font-bold leading-5 text-slate-500">
+              대표 사진이나 카드 본문을 누르면 이 영역에 자료 링크가 표시됩니다.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BoardgameSummaryCard({
+  card,
+  isExpanded,
+  isFavorite,
+  panelId,
+  onToggle,
+  onToggleFavorite,
+}: {
+  card: PresentationNamedCard;
+  isExpanded: boolean;
+  isFavorite: boolean;
+  panelId: string;
+  onToggle: () => void;
+  onToggleFavorite: () => void;
+}) {
+  const firstResource = card.resources[0];
+
+  return (
+    <article
+      className={`overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:shadow-md ${
+        isExpanded ? "border-orange-300 ring-4 ring-orange-100" : "border-slate-200"
+      }`}
+    >
+      <button
+        type="button"
+        aria-expanded={isExpanded}
+        aria-controls={panelId}
+        onClick={onToggle}
+        className="flex w-full items-center gap-4 p-3 text-left outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-orange-100"
+      >
+        <span className="relative aspect-[4/3] w-28 shrink-0 overflow-hidden rounded-xl border border-orange-100 bg-orange-50">
+          {card.coverImageDataUrl ? (
+            <Image
+              src={card.coverImageDataUrl}
+              alt={`${card.displayName} 대표 사진`}
+              fill
+              sizes="112px"
+              unoptimized
+              className="object-cover"
+            />
+          ) : (
+            <span className="flex h-full items-center justify-center text-4xl" aria-label="기본 주사위 이미지">
+              🎲
+            </span>
+          )}
+        </span>
+
+        <span className="min-w-0 flex-1">
+          <span className="block break-words text-lg font-black leading-6 text-slate-800">
+            {card.displayName}
+          </span>
+          {card.brandName ? (
+            <span className="mt-1 block truncate text-xs font-black text-orange-700">
+              {card.brandName}
+            </span>
+          ) : null}
+          <span className="mt-1 block text-xs font-bold text-slate-400">
+            자료 {card.resources.length}개
+          </span>
+        </span>
+
+        <span
+          aria-hidden="true"
+          className={`shrink-0 text-lg font-black text-orange-400 transition-transform ${
+            isExpanded ? "rotate-180" : ""
+          }`}
+        >
+          ⌄
+        </span>
+      </button>
+
+      <div className="flex flex-wrap items-center justify-end gap-1.5 border-t border-slate-100 px-3 py-2">
+        <Link
+          href={buildNamedCardAddHref(card)}
+          className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-black text-slate-600 transition hover:bg-white hover:text-slate-900"
+        >
+          + 자료
+        </Link>
+        {firstResource ? (
+          <Link
+            href={`/teacher/presentations/${firstResource.id}/edit`}
+            className="inline-flex h-9 items-center justify-center rounded-xl border border-orange-200 bg-orange-50 px-3 text-xs font-black text-orange-700 transition hover:bg-orange-100"
+          >
+            카드 수정
+          </Link>
+        ) : null}
+        <FavoriteButton
+          label={card.displayName}
+          isFavorite={isFavorite}
+          onToggle={onToggleFavorite}
+        />
+      </div>
+    </article>
+  );
+}
+
+function BoardgameResourcePanel({
+  card,
+  id,
+}: {
+  card: PresentationNamedCard;
+  id: string;
+}) {
+  return (
+    <section
+      id={id}
+      aria-label={`${card.displayName} 자료 목록`}
+      className="flex max-h-[min(65vh,34rem)] flex-col overflow-hidden rounded-3xl border border-orange-200 bg-white shadow-md"
+    >
+      <div className="shrink-0 border-b border-orange-100 bg-orange-50 px-4 py-3">
+        <p className="text-xs font-black text-orange-700">자료 목록</p>
+        <div className="mt-1 flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="break-words text-lg font-black leading-6 text-slate-800">
+              {card.displayName}
+            </h3>
+            {card.brandName ? (
+              <p className="mt-0.5 truncate text-xs font-bold text-slate-500">
+                {card.brandName}
+              </p>
+            ) : null}
+          </div>
+          <span className="shrink-0 text-xs font-black text-orange-700">
+            {card.resources.length}개
+          </span>
+        </div>
+      </div>
+
+      <div className="grid min-h-0 gap-2 overflow-y-auto overscroll-contain p-3">
+        {card.resources.map((resource, index) => (
+          <ResourceRow
+            key={resource.id}
+            resource={resource}
+            label={resource.resourceTitle || `자료 ${index + 1}`}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function NamedResourceCard({
   card,
   isFavorite,
   onToggleFavorite,
-  moveTargets,
-  isMoving,
-  onMove,
   onHide,
 }: {
   card: PresentationNamedCard;
   isFavorite: boolean;
   onToggleFavorite: () => void;
-  moveTargets: PresentationCategory[];
-  isMoving: boolean;
-  onMove: (targetCategory: PresentationCategory) => void;
   onHide?: () => void;
 }) {
   const [expandedLesson, setExpandedLesson] = useState<number | null>(null);
@@ -1437,25 +1644,6 @@ function NamedResourceCard({
           <p className="mt-1 text-xs font-bold text-slate-400">자료 {card.resources.length}개</p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          {moveTargets.length > 0 ? (
-            <select
-              aria-label={`${card.displayName} 카드 이동`}
-              value=""
-              disabled={isMoving}
-              onChange={(event) => {
-                const targetCategory = event.target.value;
-                if (isPresentationCategory(targetCategory)) onMove(targetCategory);
-              }}
-              className="h-9 max-w-28 rounded-xl border border-slate-200 bg-white px-2 text-xs font-black text-slate-600 disabled:opacity-50"
-            >
-              <option value="">{isMoving ? "이동 중..." : "카드 이동"}</option>
-              {moveTargets.map((category) => (
-                <option key={category} value={category}>
-                  → {CATEGORY_LABELS[category]}
-                </option>
-              ))}
-            </select>
-          ) : null}
           <Link
             href={buildNamedCardAddHref(card)}
             className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-black text-slate-600 transition hover:bg-white hover:text-slate-900"
@@ -1699,10 +1887,13 @@ function CompactBookCard({
               className="object-contain p-1"
             />
           ) : isWorld ? (
-            <img
+            <Image
               src={coverUrl!}
               alt={`${book.bookNumber} ${book.shortTitle} 표지`}
-              className="h-full w-full object-contain p-1"
+              fill
+              unoptimized
+              sizes="80px"
+              className="object-contain p-1"
               onError={() => setCoverFailed(true)}
             />
           ) : (

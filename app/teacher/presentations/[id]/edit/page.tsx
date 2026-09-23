@@ -3,10 +3,21 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { deleteDoc, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { deleteDoc, doc, getDoc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { useParams, useRouter } from "next/navigation";
 
+import BoardgameCardFields from "@/app/teacher/presentations/BoardgameCardFields";
 import { auth, db } from "@/lib/firebase";
+import {
+  getBoardgameCardMetadata,
+  getPresentationCardIdentityKey,
+  getPresentationCardMetadataId,
+  isBoardgameCategory,
+  normalizeBrandName,
+  PRESENTATION_CARD_METADATA_DOCUMENT_TYPE,
+  PRESENTATION_CARDS_COLLECTION,
+  type BoardgameCategory,
+} from "@/lib/presentations/cardMetadata";
 import {
   WORLD_CULTURE_SERIES,
   getNumber,
@@ -29,6 +40,8 @@ type PresentationDraft = {
   bookNumber: string;
   lessonNumber: string;
   cardName: string;
+  brandName: string;
+  coverImageDataUrl: string;
   resourceTitle: string;
   resourceKind: PersonalStudyResourceKind;
   pptUrl: string;
@@ -40,9 +53,17 @@ const EMPTY_DRAFT: PresentationDraft = {
   bookNumber: "",
   lessonNumber: "1",
   cardName: "",
+  brandName: "",
+  coverImageDataUrl: "",
   resourceTitle: "",
   resourceKind: "link",
   pptUrl: "",
+};
+
+type SourceCardContext = {
+  category: PresentationCategory;
+  cardName: string;
+  cardKey: string;
 };
 
 const CATEGORIES: Array<{
@@ -118,6 +139,7 @@ export default function EditTeacherPresentationPage() {
   const [authorized, setAuthorized] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [draft, setDraft] = useState<PresentationDraft>(EMPTY_DRAFT);
+  const [sourceCardContext, setSourceCardContext] = useState<SourceCardContext | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -180,6 +202,36 @@ export default function EditTeacherPresentationPage() {
           category === "personal_study" && isPersonalStudyResourceKind(data?.resourceKind)
             ? data.resourceKind
             : inferPersonalStudyResourceKind(resourceTitle, pptUrl);
+        const storedCardName = normalizeCardDisplayName(data?.cardName);
+        const cardName =
+          storedCardName ||
+          (isNamedCardCategory(category)
+            ? normalizeCardDisplayName(data?.resourceTitle || data?.title || data?.bookNumber) ||
+              "이름 없는 카드"
+            : "");
+        const cardKey =
+          String(data?.cardKey || "").trim() || (cardName ? normalizeCardKey(cardName) : "");
+        let brandName = "";
+        let coverImageDataUrl = "";
+
+        if (isBoardgameCategory(category) && cardKey) {
+          try {
+            const metadataSnapshot = await getDoc(
+              doc(
+                db,
+                PRESENTATION_CARDS_COLLECTION,
+                getPresentationCardMetadataId(category, cardKey)
+              )
+            );
+            const metadata = metadataSnapshot.exists()
+              ? getBoardgameCardMetadata(metadataSnapshot.data())
+              : null;
+            brandName = metadata?.brandName || "";
+            coverImageDataUrl = metadata?.coverImageDataUrl || "";
+          } catch (metadataError) {
+            console.warn("Board game card metadata could not be loaded:", metadataError);
+          }
+        }
 
         setDraft({
           category,
@@ -195,11 +247,18 @@ export default function EditTeacherPresentationPage() {
               : String(data?.bookNumber || ""),
           lessonNumber:
             String(data?.lessonNumber || data?.title || "").match(/([1-9]\d*)\s*차시/)?.[1] || "1",
-          cardName: normalizeCardDisplayName(data?.cardName),
+          cardName,
+          brandName,
+          coverImageDataUrl,
           resourceTitle,
           resourceKind,
           pptUrl,
         });
+        setSourceCardContext(
+          isNamedCardCategory(category) && cardKey
+            ? { category, cardName, cardKey }
+            : null
+        );
       } catch (error) {
         console.error("Presentation load failed:", error);
         setErrorMessage("PPT 정보를 불러오지 못했습니다.");
@@ -240,12 +299,28 @@ export default function EditTeacherPresentationPage() {
     try {
       const cardName = normalizeCardDisplayName(draft.cardName);
       const isNamedCategory = isNamedCardCategory(draft.category);
-      await updateDoc(doc(db, "presentations", presentationId), {
-        schemaVersion: 6,
+      const brandName = normalizeBrandName(draft.brandName);
+      const staysOnSameCard = Boolean(
+        sourceCardContext &&
+          sourceCardContext.category === draft.category &&
+          normalizeCardKey(sourceCardContext.cardName) === normalizeCardKey(cardName)
+      );
+      const cardKey = isNamedCategory
+        ? staysOnSameCard && sourceCardContext
+          ? sourceCardContext.cardKey
+          : getPresentationCardIdentityKey(
+              cardName,
+              isBoardgameCategory(draft.category) ? brandName : ""
+            )
+        : "";
+      const batch = writeBatch(db);
+
+      batch.update(doc(db, "presentations", presentationId), {
+        schemaVersion: 7,
         libraryCategoryVersion: 1,
         category: draft.category,
         cardName,
-        cardKey: cardName ? normalizeCardKey(cardName) : "",
+        cardKey,
         resourceTitle: draft.resourceTitle.trim(),
         resourceKind: draft.category === "personal_study" ? draft.resourceKind : "",
         worldSeries: draft.category === "world" ? draft.worldSeries : "",
@@ -261,6 +336,32 @@ export default function EditTeacherPresentationPage() {
         updatedBy: currentUser.uid,
         updatedAt: serverTimestamp(),
       });
+
+      if (isBoardgameCategory(draft.category)) {
+        batch.set(
+          doc(
+            db,
+            PRESENTATION_CARDS_COLLECTION,
+            getPresentationCardMetadataId(draft.category, cardKey)
+          ),
+          {
+            schemaVersion: 1,
+            documentType: PRESENTATION_CARD_METADATA_DOCUMENT_TYPE,
+            libraryCategoryVersion: 1,
+            category: draft.category as BoardgameCategory,
+            cardKey,
+            cardName,
+            brandName,
+            coverImageDataUrl: draft.coverImageDataUrl,
+            updatedBy: currentUser.uid,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
+
+      await batch.commit();
 
       const section = isArchivePresentationCategory(draft.category)
         ? "&section=archive"
@@ -371,6 +472,15 @@ export default function EditTeacherPresentationPage() {
                 앞뒤 공백과 띄어쓰기·대소문자 차이는 정리되어 중복 카드가 생기지 않습니다.
               </span>
             </label>
+
+            {isBoardgameCategory(draft.category) ? (
+              <BoardgameCardFields
+                brandName={draft.brandName}
+                coverImageDataUrl={draft.coverImageDataUrl}
+                onBrandNameChange={(value) => updateDraft("brandName", value)}
+                onCoverImageChange={(value) => updateDraft("coverImageDataUrl", value)}
+              />
+            ) : null}
 
             <label className="text-sm font-black text-slate-700">
               자료이름 (선택)
