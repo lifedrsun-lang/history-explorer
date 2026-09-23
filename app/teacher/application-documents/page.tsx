@@ -93,6 +93,7 @@ export default function TeacherApplicationDocumentsPage() {
   const [schoolSlug, setSchoolSlug] = useState("");
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [documentDate, setDocumentDate] = useState(todayText());
+  const [policeStationName, setPoliceStationName] = useState("");
   const [residentNumber, setResidentNumber] = useState("");
   const [identityType, setIdentityType] = useState<IdentityType>("resident");
   const [identityNumber, setIdentityNumber] = useState("");
@@ -308,6 +309,11 @@ export default function TeacherApplicationDocumentsPage() {
   })();
 
   const dateParts = splitDate(documentDate);
+  const identityNumberForDocument =
+    identityType === "resident" ? residentNumber : identityNumber;
+  const policeStationForDocument = policeStationName
+    .trim()
+    .replace(/경찰서장?$/, "");
 
   const printDocuments = async () => {
     if (!schoolName.trim()) return setErrorMessage("학교명을 입력해 주세요.");
@@ -433,17 +439,22 @@ export default function TeacherApplicationDocumentsPage() {
 
           <section className="rounded-[28px] bg-white p-5 shadow-lg sm:p-7">
             <h2 className="text-xl font-black">2. 이번 제출 정보</h2>
-            <p className="mt-1 text-xs font-bold text-rose-500">주민등록번호와 신분확인번호는 저장하지 않습니다.</p>
+            <p className="mt-1 text-xs font-bold text-rose-500">주민등록번호·신분확인번호·경찰서명은 저장하지 않습니다.</p>
             <div className="mt-5 grid gap-4">
               <label className="text-sm font-black">학교카드 연결<select value={schoolSlug} onChange={(e) => { const nextSlug = e.target.value; const school = schools.find((item) => item.slug === nextSlug); setSchoolSlug(nextSlug); if (school) setSchoolName(school.schoolName); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold"><option value="">학교카드 미연결 · 직접 입력</option>{schools.map((school) => <option key={school.slug} value={school.slug}>{school.displayName}</option>)}</select></label>
               <label className="text-sm font-black">학교명<input value={schoolName} onChange={(e) => { const nextName = e.target.value; setSchoolName(nextName); const selected = schools.find((school) => school.slug === schoolSlug); if (selected && selected.schoolName !== nextName) setSchoolSlug(""); }} placeholder="예: 서울신상도초등학교" className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold" /><span className="mt-1 block text-[11px] font-bold text-slate-400">학교카드를 선택하면 생성 기록이 해당 학교 서류함에 연결됩니다.</span></label>
               <label className="text-sm font-black">작성일<input type="date" value={documentDate} onChange={(e) => setDocumentDate(e.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold" /></label>
+              <label className="text-sm font-black">경찰서명 · 필요 시<input value={policeStationName} onChange={(e) => setPoliceStationName(e.target.value)} placeholder="예: 부천소사 또는 부천소사경찰서" className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold" /><span className="mt-1 block text-[11px] font-bold text-slate-400">입력하면 첫 번째 서식의 경찰서장 앞에 자동으로 표시됩니다.</span></label>
               <label className="text-sm font-black">주민등록번호<input value={residentNumber} onChange={(e) => setResidentNumber(e.target.value)} autoComplete="off" className="mt-2 w-full rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 font-bold" /></label>
               <div className="rounded-2xl border border-slate-200 p-4">
                 <div className="text-sm font-black">행정정보 공동이용 번호 · 필요 시</div>
                 <div className="mt-3 grid gap-3 sm:grid-cols-[150px_1fr]">
                   <select value={identityType} onChange={(e) => setIdentityType(e.target.value as IdentityType)} className="rounded-xl border border-slate-200 px-3 py-3 text-sm font-bold"><option value="resident">주민등록</option><option value="passport">여권</option><option value="foreign">외국인등록</option><option value="driver">운전면허</option></select>
-                  <input value={identityNumber} onChange={(e) => setIdentityNumber(e.target.value)} autoComplete="off" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold" />
+                  {identityType === "resident" ? (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{residentNumber || "위 주민등록번호가 자동으로 사용됩니다."}</div>
+                  ) : (
+                    <input value={identityNumber} onChange={(e) => setIdentityNumber(e.target.value)} autoComplete="off" placeholder="선택한 신분확인번호 입력" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold" />
+                  )}
                 </div>
               </div>
             </div>
@@ -495,6 +506,9 @@ export default function TeacherApplicationDocumentsPage() {
               <DocumentSignature dataUrl={signatureForDocument} />
             </div>
             <div className="absolute left-[43mm] top-[177mm] w-[51mm] border-b border-black" />
+            {policeStationForDocument && (
+              <div className="absolute left-[43mm] top-[171.5mm] w-[51mm] text-center font-sans text-[9.5pt] font-semibold">{policeStationForDocument}</div>
+            )}
             <div className="absolute left-[94mm] top-[171.5mm] text-[11pt] font-bold">경찰서장</div>
             <div className="absolute left-[123mm] top-[173mm] text-[8pt]">귀하</div>
             <div className="absolute left-[20mm] right-[20mm] top-[181.5mm] border-t border-black" />
@@ -534,7 +548,7 @@ export default function TeacherApplicationDocumentsPage() {
               </table>
 
               <p className="absolute left-0 right-0 top-[89mm] pl-[3mm] text-[8pt] leading-[1.65]">※ 이용기관은 본인이 동의한 위 공동이용 행정정보를 확인하기 위해「개인정보 보호법」시행령 제19조에 따라 주민등록번호, 여권번호, 운전면허의 면허번호 또는 외국인등록번호가 포함된 행정정보를 처리할 수 있습니다. 이용기관이 요청하는 경우 기재하여 주십시오.(필요시 기재사항)</p>
-              <div className="absolute left-0 right-0 top-[116mm] text-center text-[8.5pt]">( {checkedBox(identityType === "resident")} 주민등록&nbsp;&nbsp;{checkedBox(identityType === "passport")} 여권&nbsp;&nbsp;{checkedBox(identityType === "foreign")} 외국인등록&nbsp;&nbsp;{checkedBox(identityType === "driver")} 운전면허 ) 번호 : <span className="font-sans font-semibold">{identityNumber}</span></div>
+              <div className="absolute left-0 right-0 top-[116mm] text-center text-[8.5pt]">( {checkedBox(identityType === "resident")} 주민등록&nbsp;&nbsp;{checkedBox(identityType === "passport")} 여권&nbsp;&nbsp;{checkedBox(identityType === "foreign")} 외국인등록&nbsp;&nbsp;{checkedBox(identityType === "driver")} 운전면허 ) 번호 : <span className="font-sans font-semibold">{identityNumberForDocument}</span></div>
 
               <div className="absolute left-0 right-0 top-[135mm] font-bold">4. 정보주체(본인) 동의사항</div>
               <p className="absolute left-0 right-0 top-[145mm] pl-[3mm] text-[8.2pt] leading-[1.65]">○ 본인은 위 사무의 처리를 위하여 「전자정부법」 제36조에 따른 행정정보 공동이용을 통해 이용기관의 업무처리담당자가 전자적으로 본인의 구비서류(공동이용 행정정보)를 확인하는 것에 동의합니다.</p>
