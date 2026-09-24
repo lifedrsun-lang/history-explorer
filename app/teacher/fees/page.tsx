@@ -567,29 +567,40 @@ export default function TeacherFeesPage() {
 
   const afterschoolContracts = contracts.filter((contract) => contract.type === "afterschool");
   const contractLectures = contracts.filter((contract) => contract.type === "contract");
-  const totalGross = contracts.reduce((sum, contract) => sum + getGross(contract), 0);
+  const scopeContracts =
+    paymentScope === "contract"
+      ? contractLectures
+      : paymentScope === "afterschool"
+        ? afterschoolContracts
+        : contracts;
+  const totalGross = scopeContracts.reduce((sum, contract) => sum + getGross(contract), 0);
   const summaryYear = new Date().getFullYear();
 
   const monthlyTotals = Array.from({ length: 12 }, () => 0);
-  afterschoolContracts.forEach((contract) => {
-    quarters.forEach((quarterItem) => {
-      [0, 1, 2].forEach((termIndex) => {
-        const month = afterschoolTermMonths[quarterItem.key][termIndex];
-        monthlyTotals[month - 1] += getTermTotal(contract, quarterItem.key, termIndex);
+  if (paymentScope !== "contract") {
+    afterschoolContracts.forEach((contract) => {
+      quarters.forEach((quarterItem) => {
+        [0, 1, 2].forEach((termIndex) => {
+          const month = afterschoolTermMonths[quarterItem.key][termIndex];
+          monthlyTotals[month - 1] += getTermTotal(contract, quarterItem.key, termIndex);
+        });
       });
     });
-  });
-  contractLectures.forEach((contract) => {
-    getContractMonthKeys(contract).forEach((monthKey) => {
-      if (!monthKey.startsWith(`${summaryYear}-`)) return;
-      const month = Number(monthKey.slice(5, 7));
-      if (month >= 1 && month <= 12) {
-        monthlyTotals[month - 1] += getContractMonthGross(contract, monthKey);
-      }
+  }
+  if (paymentScope !== "afterschool") {
+    contractLectures.forEach((contract) => {
+      getContractMonthKeys(contract).forEach((monthKey) => {
+        if (!monthKey.startsWith(`${summaryYear}-`)) return;
+        const month = Number(monthKey.slice(5, 7));
+        if (month >= 1 && month <= 12) {
+          monthlyTotals[month - 1] += getContractMonthGross(contract, monthKey);
+        }
+      });
     });
-  });
+  }
   const annualGross = monthlyTotals.reduce((sum, value) => sum + value, 0);
-  const unassignedGross = Math.max(0, totalGross - annualGross);
+  const unassignedGross =
+    paymentScope === "afterschool" ? 0 : Math.max(0, totalGross - annualGross);
 
   const getContractSettlementTotals = (contract: FeeContract) => {
     const units = getSettlementUnits(contract);
@@ -619,12 +630,26 @@ export default function TeacherFeesPage() {
     return { received, insurance, tax, statementGross, unpaid };
   };
 
-  const paymentContracts =
-    paymentScope === "contract"
-      ? contractLectures
-      : paymentScope === "afterschool"
-        ? afterschoolContracts
-        : contracts;
+  const paymentContracts = scopeContracts;
+  const visibleTabs: { key: FeeTab; label: string }[] =
+    paymentScope === "afterschool"
+      ? [
+          { key: "summary", label: "누적" },
+          { key: "afterschool", label: "방과후" },
+          { key: "payments", label: "입금관리" },
+        ]
+      : paymentScope === "contract"
+        ? [
+            { key: "summary", label: "누적" },
+            { key: "contract", label: "건별계약" },
+            { key: "payments", label: "입금관리" },
+          ]
+        : [
+            { key: "summary", label: "누적" },
+            { key: "afterschool", label: "방과후" },
+            { key: "contract", label: "건별계약" },
+            { key: "payments", label: "입금관리" },
+          ];
 
   const settlementTotals = paymentContracts.reduce(
     (totals, contract) => {
@@ -925,7 +950,13 @@ export default function TeacherFeesPage() {
         <div className="flex items-end justify-between gap-3">
           <div>
             <div className="text-xs font-black text-slate-500">{summaryYear}년 월별 발생액</div>
-            <div className="mt-1 text-sm font-bold text-slate-400">방과후 + 건별계약</div>
+            <div className="mt-1 text-sm font-bold text-slate-400">
+              {paymentScope === "afterschool"
+                ? "방과후 수강료"
+                : paymentScope === "contract"
+                  ? "건별계약 출강료"
+                  : "방과후 + 건별계약"}
+            </div>
           </div>
           <div className="text-right">
             <div className="text-[11px] font-black text-slate-400">연간 누계</div>
@@ -969,9 +1000,10 @@ export default function TeacherFeesPage() {
 
         {summaryDetailsOpen && (
           <div className="mt-4 space-y-6">
-            <div>
-              <div className="mb-3 flex items-center gap-2">
-                <span className="rounded-lg bg-emerald-100 px-2 py-1 text-xs font-black text-emerald-700">방과후</span>
+            {paymentScope !== "contract" && (
+              <div>
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="rounded-lg bg-emerald-100 px-2 py-1 text-xs font-black text-emerald-700">방과후</span>
                 <span className="text-xs font-bold text-slate-400">학교별 분기·텀 누적</span>
               </div>
               <div className="space-y-3">
@@ -1015,12 +1047,14 @@ export default function TeacherFeesPage() {
                     </div>
                   </div>
                 ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div>
-              <div className="mb-3 flex items-center gap-2">
-                <span className="rounded-lg bg-blue-100 px-2 py-1 text-xs font-black text-blue-700">건별계약</span>
+            {paymentScope !== "afterschool" && (
+              <div>
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="rounded-lg bg-blue-100 px-2 py-1 text-xs font-black text-blue-700">건별계약</span>
                 <span className="text-xs font-bold text-slate-400">학교별 월 누적</span>
               </div>
               <div className="space-y-3">
@@ -1140,8 +1174,9 @@ export default function TeacherFeesPage() {
                     </div>
                   ));
                 })()}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </section>
@@ -1576,9 +1611,19 @@ export default function TeacherFeesPage() {
         <div className="rounded-[28px] bg-white p-5 shadow-sm sm:p-7">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-2xl font-black text-slate-900">💰 수강료</div>
+              <div className="text-2xl font-black text-slate-900">
+                {paymentScope === "afterschool"
+                  ? "💰 방과후 수강료"
+                  : paymentScope === "contract"
+                    ? "💰 출강 수금"
+                    : "💰 수입 · 정산"}
+              </div>
               <div className="mt-1 text-sm font-bold text-slate-500">
-                방과후 · 건별계약 · 누적 · 입금관리를 한곳에서 관리합니다.
+                {paymentScope === "afterschool"
+                  ? "방과후 수강료 · 누적 · 입금내역을 관리합니다."
+                  : paymentScope === "contract"
+                    ? "건별계약 출강료 · 누적 · 입금내역을 관리합니다."
+                    : "방과후와 건별계약의 누적 · 입금내역을 한곳에서 관리합니다."}
               </div>
             </div>
             <Link
@@ -1590,15 +1635,10 @@ export default function TeacherFeesPage() {
           </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-4 gap-2 rounded-[28px] bg-white p-2 shadow-sm">
-          {(
-            [
-              { key: "summary", label: "누적" },
-              { key: "afterschool", label: "방과후" },
-              { key: "contract", label: "건별계약" },
-              { key: "payments", label: "입금관리" },
-            ] as { key: FeeTab; label: string }[]
-          ).map((item) => (
+        <div
+          className={`mt-3 grid ${visibleTabs.length === 3 ? "grid-cols-3" : "grid-cols-4"} gap-2 rounded-[28px] bg-white p-2 shadow-sm`}
+        >
+          {visibleTabs.map((item) => (
             <button
               key={item.key}
               type="button"
@@ -1615,13 +1655,21 @@ export default function TeacherFeesPage() {
         <section className="mt-3 rounded-[28px] bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-xs font-black text-emerald-700">전체 누적 발생액</div>
+              <div className="text-xs font-black text-emerald-700">
+                {paymentScope === "afterschool"
+                  ? "방과후 누적 발생액"
+                  : paymentScope === "contract"
+                    ? "건별계약 누적 발생액"
+                    : "전체 누적 발생액"}
+              </div>
               <div className="mt-1 text-3xl font-black text-slate-900">{formatWon(totalGross)}</div>
             </div>
             <button
               type="button"
               onClick={() => {
                 setError("");
+                if (paymentScope === "contract") setType("contract");
+                if (paymentScope === "afterschool") setType("afterschool");
                 setIsRegisterOpen(true);
               }}
               className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white"
@@ -1669,10 +1717,11 @@ export default function TeacherFeesPage() {
               </button>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setType("afterschool")}
+            {paymentScope === null && (
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setType("afterschool")
                 className={`rounded-2xl px-4 py-3 text-sm font-black ${
                   type === "afterschool"
                     ? "bg-emerald-600 text-white"
@@ -1690,9 +1739,10 @@ export default function TeacherFeesPage() {
                     : "bg-slate-100 text-slate-600"
                 }`}
               >
-                건별계약
-              </button>
-            </div>
+                  건별계약
+                </button>
+              </div>
+            )}
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <label className="text-xs font-black text-slate-600">
