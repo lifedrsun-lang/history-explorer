@@ -383,7 +383,7 @@ export default function TeacherFeesPage() {
     return (rate * weekCount) / 4;
   };
 
-  const saveStudentParticipation = async (
+  const saveStudentParticipation = (
     contract: FeeContract,
     student: FeeStudent,
     termIndex: number,
@@ -412,7 +412,7 @@ export default function TeacherFeesPage() {
       ...getWeekQuarterMap(latestContract, quarter),
       [student.id]: studentWeekTerms,
     };
-    await patchContract(latestContract.id, {
+    const updates: Partial<FeeContract> = {
       quarterParticipation: {
         ...(latestContract.quarterParticipation || {}),
         [quarter]: quarterMap,
@@ -421,17 +421,25 @@ export default function TeacherFeesPage() {
         ...(latestContract.quarterWeekParticipation || {}),
         [quarter]: weekQuarterMap,
       },
-    });
+    };
+
+    const nextContract = { ...latestContract, ...updates };
+    contractsRef.current = contractsRef.current.map((item) =>
+      item.id === nextContract.id ? nextContract : item
+    );
+    setContracts([...contractsRef.current]);
+
+    void patchContract(nextContract.id, updates);
   };
 
-  const toggleParticipation = async (
+  const toggleParticipation = (
     contract: FeeContract,
     student: FeeStudent,
     termIndex: number
   ) => {
     const latestContract = getLatestContract(contract);
     const checked = !getChecks(latestContract, student, quarter)[termIndex];
-    await saveStudentParticipation(
+    saveStudentParticipation(
       latestContract,
       student,
       termIndex,
@@ -440,7 +448,7 @@ export default function TeacherFeesPage() {
     );
   };
 
-  const toggleWeekParticipation = async (
+  const toggleWeekParticipation = (
     contract: FeeContract,
     student: FeeStudent,
     termIndex: number,
@@ -454,7 +462,7 @@ export default function TeacherFeesPage() {
       termIndex
     );
     weeks[weekIndex] = !weeks[weekIndex];
-    await saveStudentParticipation(
+    saveStudentParticipation(
       latestContract,
       student,
       termIndex,
