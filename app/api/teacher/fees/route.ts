@@ -188,7 +188,7 @@ const sanitizeSettlements = (value: unknown) => {
   > = {};
 
   Object.entries(value as Record<string, unknown>).forEach(([key, entry]) => {
-    const validKey = /^Q[1-4]-T[1-3]$/.test(key) || /^\d{4}-\d{2}$/.test(key);
+    const validKey = /^Q[1-4]-T[1-3](?:-[AB])?$/.test(key) || /^\d{4}-\d{2}$/.test(key);
     if (!validKey || !entry || typeof entry !== "object") return;
 
     const data = entry as Record<string, unknown>;
