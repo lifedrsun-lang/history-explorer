@@ -61,7 +61,7 @@ const sections: Record<string, ManagementSection> = {
         className: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-900",
       },
       {
-        href: "/teacher/fees?scope=contract&tab=payments",
+        href: "/teacher/fees?scope=afterschool&tab=payments",
         icon: "💰",
         title: "수강료 관리",
         description: "방과후 수강료와 수입 내역을 확인하고 관리",
@@ -97,7 +97,7 @@ const sections: Record<string, ManagementSection> = {
         className: "border-cyan-200 bg-cyan-50 text-cyan-900",
       },
       {
-        href: "/teacher/fees",
+        href: "/teacher/fees?scope=contract&tab=payments",
         icon: "💰",
         title: "건별계약 · 수금",
         description: "계약기간·차시별 강사료와 입금·급여명세 내역 관리",
