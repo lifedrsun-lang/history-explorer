@@ -155,6 +155,24 @@ const migrateGaebongMindmapLinks = (
   });
 };
 
+const migrateGaebongMoralMachineLink = (
+  slug: string,
+  lessons: ContractSchoolLesson[]
+) => {
+  if (slug !== "gaebong") return lessons;
+  const seedLink = getDefaultContractSchool(slug)?.lessons
+    .find((lesson) => lesson.lesson === 3)
+    ?.links.find((link) => link.id === "moral-machine-results-lab");
+  if (!seedLink) return lessons;
+
+  return lessons.map((lesson) =>
+    lesson.lesson === 3 &&
+    !lesson.links.some((link) => link.id === seedLink.id)
+      ? { ...lesson, links: [...lesson.links, seedLink] }
+      : lesson
+  );
+};
+
 const fromStoredSchool = (
   slug: string,
   data: StoredContractSchool
@@ -170,10 +188,14 @@ const fromStoredSchool = (
   const upgradedLessons = (Array.isArray(data.lessons) ? data.lessons : []).map(
     (lesson) => upgradeLegacyLessonLinks(lesson, classroomIds)
   );
-  const lessons =
+  const migratedLessons =
     storedSchemaVersion < CONTRACT_SCHOOL_SCHEMA_VERSION
       ? migrateGaebongMindmapLinks(slug, upgradedLessons)
       : upgradedLessons;
+  const lessons =
+    storedSchemaVersion < CONTRACT_SCHOOL_SCHEMA_VERSION
+      ? migrateGaebongMoralMachineLink(slug, migratedLessons)
+      : migratedLessons;
 
   return {
     schemaVersion: CONTRACT_SCHOOL_SCHEMA_VERSION,

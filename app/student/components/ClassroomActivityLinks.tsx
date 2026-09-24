@@ -24,6 +24,12 @@ const REFRESH_MS = 10000;
 const activityStateUrl = (token: string) =>
   `/api/classroom/${encodeURIComponent(token)}/activity-state`;
 
+const withClassroomContext = (href: string, classroomToken: string) => {
+  if (!href.includes("/activities/moral-machine")) return href;
+  const separator = href.includes("?") ? "&" : "?";
+  return `${href}${separator}classroomToken=${encodeURIComponent(classroomToken)}`;
+};
+
 export default function ClassroomActivityLinks({
   classroom,
   lesson,
@@ -176,7 +182,7 @@ export default function ClassroomActivityLinks({
           >
             {unlocked ? (
               <a
-                href={link.href}
+                href={withClassroomContext(link.href, classroom.directToken)}
                 target="_blank"
                 rel="noreferrer"
                 className={`min-w-0 flex-1 rounded-2xl px-4 py-3 text-center text-sm font-black text-white shadow-sm transition active:scale-[0.99] ${activeClass}`}

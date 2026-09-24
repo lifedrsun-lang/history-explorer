@@ -13,7 +13,7 @@ import {
 } from "@/app/student/data/classroomData";
 
 export const CONTRACT_SCHOOL_COLLECTION = "contract_school_configs";
-export const CONTRACT_SCHOOL_SCHEMA_VERSION = 4;
+export const CONTRACT_SCHOOL_SCHEMA_VERSION = 5;
 
 export type ContractSchoolClassroom = {
   id: string;

@@ -160,6 +160,13 @@ const sections: Record<string, ManagementSection> = {
         description: "학생에게 보이는 화면을 교사용 미리보기로 점검",
         className: "border-sky-200 bg-sky-50 text-sky-900",
       },
+      {
+        href: "/teacher/activity-lab",
+        icon: "🤖",
+        title: "활동 결과 연구소",
+        description: "반·학년 참여 현황, 결과 공개, 익명 집계와 초기화 관리",
+        className: "border-violet-200 bg-violet-50 text-violet-900",
+      },
     ],
   },
   materials: {

@@ -98,6 +98,7 @@ const MAPLE_SPORTS_DAY_URL =
 const TYPING_HERO_URL =
   "https://www.hellomaple.org/ko/play/74fe74f966d441e7bbaa073e5cb893f9";
 const WOORI_AI_AGENT_URL = "https://wooriai.use.go.kr/start/agent";
+const MORAL_MACHINE_LAB_URL = "/activities/moral-machine";
 const CONVENIENT_AI_WORLDCUP_URL =
   "https://practice0623.my.canva.site/hellomaple-ai";
 const HELLO_MAPLE_HELPFUL_AI_URL =
@@ -208,6 +209,13 @@ const makeLessons = (
         id: "hello-maple-helpful-ai",
         label: "헬로메이플 사람을 돕는 인공지능",
         href: HELLO_MAPLE_HELPFUL_AI_URL,
+        kind: "activity",
+        defaultUnlocked: true,
+      },
+      {
+        id: "moral-machine-results-lab",
+        label: "🤖 모럴머신 실험 및 결과 등록",
+        href: MORAL_MACHINE_LAB_URL,
         kind: "activity",
         defaultUnlocked: true,
       },

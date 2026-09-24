@@ -1,0 +1,7 @@
+.sprite {
+  width: 72px;
+  aspect-ratio: 1;
+  background-image: url("/activities/moral-machine/characters.webp");
+  background-repeat: no-repeat;
+  background-size: 500% 400%;
+}
