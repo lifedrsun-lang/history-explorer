@@ -130,8 +130,5 @@ export default function SchoolSelect({
             return <button key={school} onClick={() => onSelect(school)} className={cardClassName}>{cardBody}</button>;
           })}
         </div>
-        <div className="mt-6 flex justify-center"><Link href="/teacher" className="rounded-full border border-slate-200 bg-white/50 px-4 py-2 text-sm font-bold text-slate-500 transition hover:bg-white hover:text-slate-700">교사용 접속</Link></div>
-      </div>
-    </div>
-  );
+      </div>\n      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/80 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-4px_18px_rgba(15,23,42,0.10)] backdrop-blur">\n        <div className="mx-auto grid max-w-xl grid-cols-3 gap-2">\n          <a href="https://open.kakao.com/o/sZ5UIoLi" target="_blank" rel="noopener noreferrer" className="flex min-h-12 items-center justify-center rounded-2xl bg-[#FEE500] px-2 text-sm font-black text-slate-800">💬 카톡문의</a>\n          <a href="tel:01083762497" className="flex min-h-12 items-center justify-center rounded-2xl bg-sky-100 px-2 text-sm font-black text-sky-800">☎ 전화문의</a>\n          <Link href="/teacher" className="flex min-h-12 items-center justify-center rounded-2xl bg-slate-800 px-2 text-sm font-black text-white">🔐 화선 IN</Link>\n        </div>\n      </nav>\n    </div>\n  );
 }
