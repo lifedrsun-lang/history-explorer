@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { auth } from "@/lib/firebase";
 
@@ -157,6 +157,8 @@ export default function TeacherFeesPage() {
   const [authChecking, setAuthChecking] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [contracts, setContracts] = useState<FeeContract[]>([]);
+  const contractsRef = useRef<FeeContract[]>([]);
+  const patchQueueRef = useRef<Record<string, Promise<void>>>({});
   const [students, setStudents] = useState<FeeStudent[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -220,7 +222,9 @@ export default function TeacherFeesPage() {
     setError("");
     try {
       const data = await requestJson("/api/teacher/fees");
-      setContracts(Array.isArray(data?.contracts) ? data.contracts : []);
+      const nextContracts = Array.isArray(data?.contracts) ? data.contracts : [];
+      contractsRef.current = nextContracts;
+      setContracts(nextContracts);
       setStudents(Array.isArray(data?.students) ? data.students : []);
     } catch (loadError) {
       setError(
@@ -246,19 +250,37 @@ export default function TeacherFeesPage() {
   );
 
   const patchContract = async (id: string, updates: Partial<FeeContract>) => {
-    setContracts((current) =>
-      current.map((item) => (item.id === id ? { ...item, ...updates } : item))
+    const nextContracts = contractsRef.current.map((item) =>
+      item.id === id ? { ...item, ...updates } : item
     );
-    try {
-      await requestJson("/api/teacher/fees", {
-        method: "PATCH",
-        body: JSON.stringify({ id, ...updates }),
+    contractsRef.current = nextContracts;
+    setContracts(nextContracts);
+
+    const previous = patchQueueRef.current[id] || Promise.resolve();
+    const task = previous
+      .catch(() => undefined)
+      .then(async () => {
+        await requestJson("/api/teacher/fees", {
+          method: "PATCH",
+          body: JSON.stringify({ id, ...updates }),
+        });
       });
+    patchQueueRef.current[id] = task;
+
+    try {
+      await task;
     } catch (patchError) {
       setError(patchError instanceof Error ? patchError.message : "저장하지 못했습니다.");
       await loadData();
+    } finally {
+      if (patchQueueRef.current[id] === task) {
+        delete patchQueueRef.current[id];
+      }
     }
   };
+
+  const getLatestContract = (contract: FeeContract) =>
+    contractsRef.current.find((item) => item.id === contract.id) || contract;
 
   const hasHistoricalParticipation = (contract: FeeContract, studentId: string) => {
     const legacy = contract.participation?.[studentId];
@@ -368,13 +390,18 @@ export default function TeacherFeesPage() {
     termChecked: boolean,
     weeks: boolean[]
   ) => {
-    const checks = getChecks(contract, student, quarter);
+    const latestContract = getLatestContract(contract);
+    const checks = getChecks(latestContract, student, quarter);
     checks[termIndex] = termChecked;
     const quarterMap = {
-      ...getQuarterMap(contract, quarter),
+      ...getQuarterMap(latestContract, quarter),
       [student.id]: checks,
     };
-    const studentWeekTerms = getStudentWeekTerms(contract, student, quarter);
+    const studentWeekTerms = getStudentWeekTerms(
+      latestContract,
+      student,
+      quarter
+    );
     studentWeekTerms[termIndex] = [
       Boolean(weeks[0]),
       Boolean(weeks[1]),
@@ -382,16 +409,16 @@ export default function TeacherFeesPage() {
       Boolean(weeks[3]),
     ];
     const weekQuarterMap = {
-      ...getWeekQuarterMap(contract, quarter),
+      ...getWeekQuarterMap(latestContract, quarter),
       [student.id]: studentWeekTerms,
     };
-    await patchContract(contract.id, {
+    await patchContract(latestContract.id, {
       quarterParticipation: {
-        ...(contract.quarterParticipation || {}),
+        ...(latestContract.quarterParticipation || {}),
         [quarter]: quarterMap,
       },
       quarterWeekParticipation: {
-        ...(contract.quarterWeekParticipation || {}),
+        ...(latestContract.quarterWeekParticipation || {}),
         [quarter]: weekQuarterMap,
       },
     });
@@ -402,9 +429,10 @@ export default function TeacherFeesPage() {
     student: FeeStudent,
     termIndex: number
   ) => {
-    const checked = !getChecks(contract, student, quarter)[termIndex];
+    const latestContract = getLatestContract(contract);
+    const checked = !getChecks(latestContract, student, quarter)[termIndex];
     await saveStudentParticipation(
-      contract,
+      latestContract,
       student,
       termIndex,
       checked,
@@ -418,10 +446,16 @@ export default function TeacherFeesPage() {
     termIndex: number,
     weekIndex: number
   ) => {
-    const weeks = getWeekChecks(contract, student, quarter, termIndex);
+    const latestContract = getLatestContract(contract);
+    const weeks = getWeekChecks(
+      latestContract,
+      student,
+      quarter,
+      termIndex
+    );
     weeks[weekIndex] = !weeks[weekIndex];
     await saveStudentParticipation(
-      contract,
+      latestContract,
       student,
       termIndex,
       weeks.some(Boolean),
@@ -434,24 +468,29 @@ export default function TeacherFeesPage() {
     termIndex: number,
     checked: boolean
   ) => {
-    const quarterMap = { ...getQuarterMap(contract, quarter) };
-    const weekQuarterMap = { ...getWeekQuarterMap(contract, quarter) };
-    getBulkStudents(contract).forEach((student) => {
-      const checks = getChecks(contract, student, quarter);
+    const latestContract = getLatestContract(contract);
+    const quarterMap = { ...getQuarterMap(latestContract, quarter) };
+    const weekQuarterMap = { ...getWeekQuarterMap(latestContract, quarter) };
+    getBulkStudents(latestContract).forEach((student) => {
+      const checks = getChecks(latestContract, student, quarter);
       checks[termIndex] = checked;
       quarterMap[student.id] = checks;
 
-      const studentWeekTerms = getStudentWeekTerms(contract, student, quarter);
+      const studentWeekTerms = getStudentWeekTerms(
+        latestContract,
+        student,
+        quarter
+      );
       studentWeekTerms[termIndex] = [checked, checked, checked, checked];
       weekQuarterMap[student.id] = studentWeekTerms;
     });
-    await patchContract(contract.id, {
+    await patchContract(latestContract.id, {
       quarterParticipation: {
-        ...(contract.quarterParticipation || {}),
+        ...(latestContract.quarterParticipation || {}),
         [quarter]: quarterMap,
       },
       quarterWeekParticipation: {
-        ...(contract.quarterWeekParticipation || {}),
+        ...(latestContract.quarterWeekParticipation || {}),
         [quarter]: weekQuarterMap,
       },
     });
@@ -463,27 +502,37 @@ export default function TeacherFeesPage() {
     weekIndex: number,
     checked: boolean
   ) => {
-    const quarterMap = { ...getQuarterMap(contract, quarter) };
-    const weekQuarterMap = { ...getWeekQuarterMap(contract, quarter) };
-    getBulkStudents(contract).forEach((student) => {
-      const weeks = getWeekChecks(contract, student, quarter, termIndex);
+    const latestContract = getLatestContract(contract);
+    const quarterMap = { ...getQuarterMap(latestContract, quarter) };
+    const weekQuarterMap = { ...getWeekQuarterMap(latestContract, quarter) };
+    getBulkStudents(latestContract).forEach((student) => {
+      const weeks = getWeekChecks(
+        latestContract,
+        student,
+        quarter,
+        termIndex
+      );
       weeks[weekIndex] = checked;
 
-      const checks = getChecks(contract, student, quarter);
+      const checks = getChecks(latestContract, student, quarter);
       checks[termIndex] = weeks.some(Boolean);
       quarterMap[student.id] = checks;
 
-      const studentWeekTerms = getStudentWeekTerms(contract, student, quarter);
+      const studentWeekTerms = getStudentWeekTerms(
+        latestContract,
+        student,
+        quarter
+      );
       studentWeekTerms[termIndex] = weeks;
       weekQuarterMap[student.id] = studentWeekTerms;
     });
-    await patchContract(contract.id, {
+    await patchContract(latestContract.id, {
       quarterParticipation: {
-        ...(contract.quarterParticipation || {}),
+        ...(latestContract.quarterParticipation || {}),
         [quarter]: quarterMap,
       },
       quarterWeekParticipation: {
-        ...(contract.quarterWeekParticipation || {}),
+        ...(latestContract.quarterWeekParticipation || {}),
         [quarter]: weekQuarterMap,
       },
     });
