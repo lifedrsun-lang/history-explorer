@@ -30,6 +30,7 @@ type FeeContract = {
   monthLabels?: string[];
   participation?: Record<string, boolean[]>;
   quarterParticipation?: Partial<Record<QuarterKey, Record<string, boolean[]>>>;
+  quarterWeekParticipation?: Partial<Record<QuarterKey, Record<string, boolean[][]>>>;
   quarterStudentSnapshots?: Partial<Record<QuarterKey, FeeStudent[]>>;
   workSessions?: Record<string, Record<string, number>>;
   contractStartDate?: string;
@@ -314,22 +315,118 @@ export default function TeacherFeesPage() {
     return [false, false, false];
   };
 
+  const getWeekQuarterMap = (contract: FeeContract, quarterKey: QuarterKey) =>
+    contract.quarterWeekParticipation?.[quarterKey] || {};
+
+  const getWeekChecks = (
+    contract: FeeContract,
+    student: FeeStudent,
+    quarterKey: QuarterKey,
+    termIndex: number
+  ) => {
+    const stored = getWeekQuarterMap(contract, quarterKey)?.[student.id]?.[termIndex];
+    if (Array.isArray(stored)) {
+      return [
+        Boolean(stored[0]),
+        Boolean(stored[1]),
+        Boolean(stored[2]),
+        Boolean(stored[3]),
+      ];
+    }
+    const termChecked = getChecks(contract, student, quarterKey)[termIndex];
+    return [termChecked, termChecked, termChecked, termChecked];
+  };
+
+  const getStudentWeekTerms = (
+    contract: FeeContract,
+    student: FeeStudent,
+    quarterKey: QuarterKey
+  ) =>
+    [0, 1, 2].map((termIndex) =>
+      getWeekChecks(contract, student, quarterKey, termIndex)
+    );
+
+  const getStudentTermAmount = (
+    contract: FeeContract,
+    student: FeeStudent,
+    quarterKey: QuarterKey,
+    termIndex: number
+  ) => {
+    const weekCount = getWeekChecks(contract, student, quarterKey, termIndex).filter(Boolean).length;
+    if (weekCount === 0) return 0;
+    const rate =
+      student.teachingClass === "A반"
+        ? Number(contract.rateA || 0)
+        : Number(contract.rateB || 0);
+    return (rate * weekCount) / 4;
+  };
+
+  const saveStudentParticipation = async (
+    contract: FeeContract,
+    student: FeeStudent,
+    termIndex: number,
+    termChecked: boolean,
+    weeks: boolean[]
+  ) => {
+    const checks = getChecks(contract, student, quarter);
+    checks[termIndex] = termChecked;
+    const quarterMap = {
+      ...getQuarterMap(contract, quarter),
+      [student.id]: checks,
+    };
+    const studentWeekTerms = getStudentWeekTerms(contract, student, quarter);
+    studentWeekTerms[termIndex] = [
+      Boolean(weeks[0]),
+      Boolean(weeks[1]),
+      Boolean(weeks[2]),
+      Boolean(weeks[3]),
+    ];
+    const weekQuarterMap = {
+      ...getWeekQuarterMap(contract, quarter),
+      [student.id]: studentWeekTerms,
+    };
+    await patchContract(contract.id, {
+      quarterParticipation: {
+        ...(contract.quarterParticipation || {}),
+        [quarter]: quarterMap,
+      },
+      quarterWeekParticipation: {
+        ...(contract.quarterWeekParticipation || {}),
+        [quarter]: weekQuarterMap,
+      },
+    });
+  };
+
   const toggleParticipation = async (
     contract: FeeContract,
     student: FeeStudent,
     termIndex: number
   ) => {
-    const checks = getChecks(contract, student, quarter);
-    checks[termIndex] = !checks[termIndex];
-    const quarterMap = {
-      ...getQuarterMap(contract, quarter),
-      [student.id]: checks,
-    };
-    const quarterParticipation = {
-      ...(contract.quarterParticipation || {}),
-      [quarter]: quarterMap,
-    };
-    await patchContract(contract.id, { quarterParticipation });
+    const checked = !getChecks(contract, student, quarter)[termIndex];
+    await saveStudentParticipation(
+      contract,
+      student,
+      termIndex,
+      checked,
+      [checked, checked, checked, checked]
+    );
+  };
+
+  const toggleWeekParticipation = async (
+    contract: FeeContract,
+    student: FeeStudent,
+    termIndex: number,
+    weekIndex: number
+  ) => {
+    const weeks = getWeekChecks(contract, student, quarter, termIndex);
+    weeks[weekIndex] = !weeks[weekIndex];
+    await saveStudentParticipation(
+      contract,
+      student,
+      termIndex,
+      weeks.some(Boolean),
+      weeks
+    );
   };
 
   const setAllParticipation = async (
@@ -338,16 +435,58 @@ export default function TeacherFeesPage() {
     checked: boolean
   ) => {
     const quarterMap = { ...getQuarterMap(contract, quarter) };
+    const weekQuarterMap = { ...getWeekQuarterMap(contract, quarter) };
     getBulkStudents(contract).forEach((student) => {
       const checks = getChecks(contract, student, quarter);
       checks[termIndex] = checked;
       quarterMap[student.id] = checks;
+
+      const studentWeekTerms = getStudentWeekTerms(contract, student, quarter);
+      studentWeekTerms[termIndex] = [checked, checked, checked, checked];
+      weekQuarterMap[student.id] = studentWeekTerms;
     });
-    const quarterParticipation = {
-      ...(contract.quarterParticipation || {}),
-      [quarter]: quarterMap,
-    };
-    await patchContract(contract.id, { quarterParticipation });
+    await patchContract(contract.id, {
+      quarterParticipation: {
+        ...(contract.quarterParticipation || {}),
+        [quarter]: quarterMap,
+      },
+      quarterWeekParticipation: {
+        ...(contract.quarterWeekParticipation || {}),
+        [quarter]: weekQuarterMap,
+      },
+    });
+  };
+
+  const setAllWeekParticipation = async (
+    contract: FeeContract,
+    termIndex: number,
+    weekIndex: number,
+    checked: boolean
+  ) => {
+    const quarterMap = { ...getQuarterMap(contract, quarter) };
+    const weekQuarterMap = { ...getWeekQuarterMap(contract, quarter) };
+    getBulkStudents(contract).forEach((student) => {
+      const weeks = getWeekChecks(contract, student, quarter, termIndex);
+      weeks[weekIndex] = checked;
+
+      const checks = getChecks(contract, student, quarter);
+      checks[termIndex] = weeks.some(Boolean);
+      quarterMap[student.id] = checks;
+
+      const studentWeekTerms = getStudentWeekTerms(contract, student, quarter);
+      studentWeekTerms[termIndex] = weeks;
+      weekQuarterMap[student.id] = studentWeekTerms;
+    });
+    await patchContract(contract.id, {
+      quarterParticipation: {
+        ...(contract.quarterParticipation || {}),
+        [quarter]: quarterMap,
+      },
+      quarterWeekParticipation: {
+        ...(contract.quarterWeekParticipation || {}),
+        [quarter]: weekQuarterMap,
+      },
+    });
   };
 
   const isAllParticipationChecked = (contract: FeeContract, termIndex: number) => {
@@ -358,19 +497,32 @@ export default function TeacherFeesPage() {
     );
   };
 
+  const isAllWeekParticipationChecked = (
+    contract: FeeContract,
+    termIndex: number,
+    weekIndex: number
+  ) => {
+    const targets = getBulkStudents(contract);
+    return (
+      targets.length > 0 &&
+      targets.every(
+        (student) => getWeekChecks(contract, student, quarter, termIndex)[weekIndex]
+      )
+    );
+  };
+
   const getTermTotal = (
     contract: FeeContract,
     quarterKey: QuarterKey,
     termIndex: number
   ) =>
-    getMatchingStudents(contract, quarterKey).reduce((sum, student) => {
-      if (!getChecks(contract, student, quarterKey)[termIndex]) return sum;
-      const rate =
-        student.teachingClass === "A반"
-          ? Number(contract.rateA || 0)
-          : Number(contract.rateB || 0);
-      return sum + rate;
-    }, 0);
+    Math.round(
+      getMatchingStudents(contract, quarterKey).reduce(
+        (sum, student) =>
+          sum + getStudentTermAmount(contract, student, quarterKey, termIndex),
+        0
+      )
+    );
 
   const getQuarterTotal = (contract: FeeContract, quarterKey: QuarterKey) =>
     [0, 1, 2].reduce(
@@ -446,17 +598,22 @@ export default function TeacherFeesPage() {
             return (["A반", "B반"] as const)
               .map((teachingClass) => {
                 const key = `${quarterItem.key}-T${termIndex + 1}-${teachingClass === "A반" ? "A" : "B"}`;
-                const expectedAmount = getMatchingStudents(contract, quarterItem.key).reduce(
-                  (sum, student) => {
-                    if (student.teachingClass !== teachingClass) return sum;
-                    if (!getChecks(contract, student, quarterItem.key)[termIndex]) return sum;
-                    const rate =
-                      teachingClass === "A반"
-                        ? Number(contract.rateA || 0)
-                        : Number(contract.rateB || 0);
-                    return sum + rate;
-                  },
-                  0
+                const expectedAmount = Math.round(
+                  getMatchingStudents(contract, quarterItem.key).reduce(
+                    (sum, student) => {
+                      if (student.teachingClass !== teachingClass) return sum;
+                      return (
+                        sum +
+                        getStudentTermAmount(
+                          contract,
+                          student,
+                          quarterItem.key,
+                          termIndex
+                        )
+                      );
+                    },
+                    0
+                  )
                 );
                 return {
                   key,
@@ -1352,64 +1509,147 @@ export default function TeacherFeesPage() {
               </button>
 
               {isExpanded && (
-                <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200">
-                  <div className="grid grid-cols-[1fr_62px_62px_62px] bg-slate-50 px-3 py-2 text-center text-[11px] font-black text-slate-500">
-                    <div className="text-left">학생</div>
-                    {[0, 1, 2].map((termIndex) => {
-                      const allChecked = isAllParticipationChecked(contract, termIndex);
+                <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-200">
+                  <div className="min-w-[760px]">
+                    <div className="grid grid-cols-[160px_repeat(3,minmax(190px,1fr))] bg-slate-50 px-3 py-2 text-center text-[11px] font-black text-slate-500">
+                      <div className="text-left">학생</div>
+                      {[0, 1, 2].map((termIndex) => {
+                        const allChecked = isAllParticipationChecked(contract, termIndex);
+                        return (
+                          <div key={termIndex} className="px-1">
+                            <label
+                              className="flex cursor-pointer items-center justify-center gap-1.5"
+                              title={`${termIndex + 1}텀 전체 4주 체크/해제`}
+                            >
+                              <span>{termIndex + 1}텀</span>
+                              <input
+                                type="checkbox"
+                                checked={allChecked}
+                                onChange={(event) =>
+                                  void setAllParticipation(
+                                    contract,
+                                    termIndex,
+                                    event.target.checked
+                                  )
+                                }
+                                className="h-4 w-4 accent-emerald-600"
+                              />
+                              <span className="text-[9px]">전체</span>
+                            </label>
+                            <div className="mt-2 grid grid-cols-4 gap-1">
+                              {[0, 1, 2, 3].map((weekIndex) => {
+                                const weekChecked = isAllWeekParticipationChecked(
+                                  contract,
+                                  termIndex,
+                                  weekIndex
+                                );
+                                return (
+                                  <label
+                                    key={weekIndex}
+                                    className="flex cursor-pointer items-center justify-center gap-1 rounded-lg bg-white px-1 py-1"
+                                    title={`${termIndex + 1}텀 ${weekIndex + 1}주차 전체 체크/해제`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={weekChecked}
+                                      onChange={(event) =>
+                                        void setAllWeekParticipation(
+                                          contract,
+                                          termIndex,
+                                          weekIndex,
+                                          event.target.checked
+                                        )
+                                      }
+                                      className="h-3.5 w-3.5 accent-emerald-600"
+                                    />
+                                    <span className="text-[9px]">{weekIndex + 1}주</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {matchingStudents.map((student) => {
+                      const checks = getChecks(contract, student, quarter);
                       return (
-                        <label
-                          key={termIndex}
-                          className="flex cursor-pointer flex-col items-center gap-1"
-                          title={`${termIndex + 1}텀 수강료 참여 전체 체크/해제`}
+                        <div
+                          key={student.id}
+                          className="grid grid-cols-[160px_repeat(3,minmax(190px,1fr))] items-center border-t border-slate-100 px-3 py-3 text-center"
                         >
-                          <span>{termIndex + 1}텀</span>
-                          <input
-                            type="checkbox"
-                            checked={allChecked}
-                            onChange={(event) =>
-                              void setAllParticipation(contract, termIndex, event.target.checked)
-                            }
-                            className="h-4 w-4 accent-emerald-600"
-                          />
-                          <span className="text-[9px]">전체</span>
-                        </label>
+                          <div className="text-left">
+                            <div className="text-sm font-black text-slate-800">{student.name}</div>
+                            <div className="text-[11px] font-bold text-slate-400">
+                              {student.teachingClass}
+                              {student.enrollmentStatus !== "active"
+                                ? ` · ${student.enrollmentStatus === "paused" ? "쉬는중" : "종료"}`
+                                : ""}
+                            </div>
+                          </div>
+                          {[0, 1, 2].map((termIndex) => {
+                            const weeks = getWeekChecks(
+                              contract,
+                              student,
+                              quarter,
+                              termIndex
+                            );
+                            const weekCount = weeks.filter(Boolean).length;
+                            return (
+                              <div key={termIndex} className="px-1">
+                                <label className="flex items-center justify-center gap-1.5">
+                                  <input
+                                    type="checkbox"
+                                    checked={checks[termIndex]}
+                                    onChange={() =>
+                                      void toggleParticipation(
+                                        contract,
+                                        student,
+                                        termIndex
+                                      )
+                                    }
+                                    title="텀 전체 4주 체크/해제"
+                                    className="h-5 w-5 accent-emerald-600"
+                                  />
+                                  <span className="text-[10px] font-black text-slate-500">
+                                    {weekCount}/4주
+                                  </span>
+                                </label>
+                                <div className="mt-2 grid grid-cols-4 gap-1">
+                                  {weeks.map((weekChecked, weekIndex) => (
+                                    <label
+                                      key={weekIndex}
+                                      className={`flex cursor-pointer items-center justify-center gap-1 rounded-lg px-1 py-1 text-[9px] font-bold ${
+                                        weekChecked
+                                          ? "bg-emerald-50 text-emerald-700"
+                                          : "bg-slate-50 text-slate-400"
+                                      }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={weekChecked}
+                                        onChange={() =>
+                                          void toggleWeekParticipation(
+                                            contract,
+                                            student,
+                                            termIndex,
+                                            weekIndex
+                                          )
+                                        }
+                                        className="h-3.5 w-3.5 accent-emerald-600"
+                                      />
+                                      {weekIndex + 1}
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       );
                     })}
                   </div>
-
-                  {matchingStudents.map((student) => {
-                    const checks = getChecks(contract, student, quarter);
-                    return (
-                      <div
-                        key={student.id}
-                        className="grid grid-cols-[1fr_62px_62px_62px] items-center border-t border-slate-100 px-3 py-3 text-center"
-                      >
-                        <div className="text-left">
-                          <div className="text-sm font-black text-slate-800">{student.name}</div>
-                          <div className="text-[11px] font-bold text-slate-400">
-                            {student.teachingClass}
-                            {student.enrollmentStatus !== "active"
-                              ? ` · ${student.enrollmentStatus === "paused" ? "쉬는중" : "종료"}`
-                              : ""}
-                          </div>
-                        </div>
-                        {[0, 1, 2].map((termIndex) => (
-                          <label key={termIndex} className="flex justify-center">
-                            <input
-                              type="checkbox"
-                              checked={checks[termIndex]}
-                              onChange={() =>
-                                void toggleParticipation(contract, student, termIndex)
-                              }
-                              title="수강료 참여 여부"
-                              className="h-5 w-5 accent-emerald-600"
-                            />
-                          </label>
-                        ))}
-                      </div>
-                    );
-                  })}
                 </div>
               )}
             </div>
