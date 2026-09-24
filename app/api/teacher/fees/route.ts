@@ -34,6 +34,7 @@ const DEFAULT_AFTER_SCHOOL_CONTRACTS = [
     monthLabels: DEFAULT_TERMS,
     participation: {},
     quarterParticipation: {},
+    quarterWeekParticipation: {},
     settlements: {},
   },
   {
@@ -45,6 +46,7 @@ const DEFAULT_AFTER_SCHOOL_CONTRACTS = [
     monthLabels: DEFAULT_TERMS,
     participation: {},
     quarterParticipation: {},
+    quarterWeekParticipation: {},
     settlements: {},
   },
   {
@@ -56,6 +58,7 @@ const DEFAULT_AFTER_SCHOOL_CONTRACTS = [
     monthLabels: DEFAULT_TERMS,
     participation: {},
     quarterParticipation: {},
+    quarterWeekParticipation: {},
     settlements: {},
   },
 ] as const;
@@ -135,6 +138,43 @@ const sanitizeQuarterParticipation = (value: unknown) => {
             Boolean(checks[1]),
             Boolean(checks[2]),
           ];
+        }
+      );
+      result[quarterKey] = studentMap;
+    }
+  );
+
+  return result;
+};
+
+const sanitizeQuarterWeekParticipation = (value: unknown) => {
+  if (!value || typeof value !== "object") return {};
+  const result: Record<string, Record<string, boolean[][]>> = {};
+
+  Object.entries(value as Record<string, unknown>).forEach(
+    ([quarterKey, quarterValue]) => {
+      if (
+        !/^Q[1-4]$/.test(quarterKey) ||
+        !quarterValue ||
+        typeof quarterValue !== "object"
+      ) {
+        return;
+      }
+
+      const studentMap: Record<string, boolean[][]> = {};
+      Object.entries(quarterValue as Record<string, unknown>).forEach(
+        ([studentId, terms]) => {
+          if (!Array.isArray(terms)) return;
+          studentMap[studentId] = [0, 1, 2].map((termIndex) => {
+            const weeks = terms[termIndex];
+            if (!Array.isArray(weeks)) return [false, false, false, false];
+            return [
+              Boolean(weeks[0]),
+              Boolean(weeks[1]),
+              Boolean(weeks[2]),
+              Boolean(weeks[3]),
+            ];
+          });
         }
       );
       result[quarterKey] = studentMap;
@@ -353,6 +393,7 @@ export async function POST(request: Request) {
         : DEFAULT_TERMS;
       payload.participation = {};
       payload.quarterParticipation = {};
+      payload.quarterWeekParticipation = {};
     } else {
       const contractStartDate = normalizeDate(body?.contractStartDate);
       const contractEndDate = normalizeDate(body?.contractEndDate);
@@ -433,6 +474,14 @@ export async function PATCH(request: Request) {
     ) {
       updates.quarterParticipation = sanitizeQuarterParticipation(
         body.quarterParticipation
+      );
+    }
+    if (
+      body?.quarterWeekParticipation &&
+      typeof body.quarterWeekParticipation === "object"
+    ) {
+      updates.quarterWeekParticipation = sanitizeQuarterWeekParticipation(
+        body.quarterWeekParticipation
       );
     }
     if (body?.workSessions && typeof body.workSessions === "object") {
