@@ -356,11 +356,7 @@ export default function TeacherApplicationDocumentsPage() {
     }
 
     const originalTitle = document.title;
-    const selectedTitles = [
-      includeCrimeConsent ? "성범죄·아동학대 전력 조회 동의서" : "",
-      includeAdminConsent ? "행정정보 공동이용 사전동의서" : "",
-    ].filter(Boolean);
-    document.title = `${schoolName}_${selectedTitles.join("_")}_${documentDate}`
+    document.title = `헬로우메이플강사 ${name.trim()}_${schoolName.trim()}_${documentDate}`
       .replace(/[\\/:*?"<>|]/g, "-")
       .replace(/\s+/g, " ")
       .trim();
@@ -505,9 +501,10 @@ export default function TeacherApplicationDocumentsPage() {
               <span className="w-[29mm] font-sans font-semibold">{name}</span>
               <DocumentSignature dataUrl={signatureForDocument} />
             </div>
-            <div className="absolute left-[43mm] top-[177mm] w-[51mm] border-b border-black" />
-            {policeStationForDocument && (
-              <div className="absolute left-[43mm] top-[171.5mm] w-[51mm] text-center font-sans text-[9.5pt] font-semibold">{policeStationForDocument}</div>
+            {policeStationForDocument ? (
+              <div className="absolute left-[64mm] top-[171.5mm] w-[30mm] pr-[1.5mm] text-right font-sans text-[9.5pt] font-semibold">{policeStationForDocument}</div>
+            ) : (
+              <div className="absolute left-[64mm] top-[177mm] w-[30mm] border-b border-black" />
             )}
             <div className="absolute left-[94mm] top-[171.5mm] text-[11pt] font-bold">경찰서장</div>
             <div className="absolute left-[123mm] top-[173mm] text-[8pt]">귀하</div>
