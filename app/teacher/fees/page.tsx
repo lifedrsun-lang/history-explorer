@@ -514,19 +514,51 @@ export default function TeacherFeesPage() {
     const tax = Number(entry.taxAmount || 0);
     const hasReceived = received > 0 || Boolean(entry.receivedDate);
     const hasStatement = statementGross > 0 || insurance > 0 || tax > 0;
-    const basis = statementGross > 0 ? statementGross : expectedAmount;
-    const difference = basis - received - insurance - tax;
 
     if (!hasReceived && !hasStatement) {
-      return { label: "미수령", difference: expectedAmount, tone: "amber" as const };
+      return {
+        label: "미수령",
+        difference: expectedAmount,
+        tone: "amber" as const,
+        detail: "",
+      };
     }
-    if (hasReceived && !hasStatement) {
-      return { label: "명세서 대기", difference, tone: "blue" as const };
+
+    if (hasReceived && statementGross <= 0) {
+      return {
+        label: "명세서 대기",
+        difference: expectedAmount - received - insurance - tax,
+        tone: "blue" as const,
+        detail: "",
+      };
     }
-    if (Math.abs(difference) < 1) {
-      return { label: "명세확정", difference: 0, tone: "emerald" as const };
+
+    const grossDifference = statementGross - expectedAmount;
+    if (Math.abs(grossDifference) >= 1) {
+      return {
+        label: "수당금액 불일치",
+        difference: grossDifference,
+        tone: "rose" as const,
+        detail: `예상 발생액과 수당금액 차이 ${formatWon(Math.abs(grossDifference))}`,
+      };
     }
-    return { label: "명세확인 필요", difference, tone: "rose" as const };
+
+    const netDifference = statementGross - insurance - tax - received;
+    if (Math.abs(netDifference) >= 1) {
+      return {
+        label: "공제·입금액 확인 필요",
+        difference: netDifference,
+        tone: "rose" as const,
+        detail: `수당금액 - 보험료 - 세금과 실제 받은 금액 차이 ${formatWon(Math.abs(netDifference))}`,
+      };
+    }
+
+    return {
+      label: "명세확정",
+      difference: 0,
+      tone: "emerald" as const,
+      detail: "",
+    };
   };
 
   const afterschoolContracts = contracts.filter((contract) => contract.type === "afterschool");
@@ -843,9 +875,7 @@ export default function TeacherFeesPage() {
                 {state.label === "명세서 대기" && (
                   <span> · 임시 차액 {formatWon(state.difference)}</span>
                 )}
-                {state.label === "명세확인 필요" && (
-                  <span> · 확인 차액 {formatWon(state.difference)}</span>
-                )}
+                {state.detail && <span> · {state.detail}</span>}
               </div>
             </div>
           );
