@@ -488,11 +488,11 @@ export default function TeacherApplicationDocumentsPage() {
               <div className="absolute left-[16mm] right-0 top-[34mm] border-t border-black" />
               <div className="absolute left-0 top-[20mm] w-[16mm] text-center font-bold">대상자</div>
               <div className="absolute left-[18mm] top-[5mm]">성&nbsp;&nbsp;명(외국인의 경우 영문명)</div>
-              <div className="absolute right-[3mm] top-[5mm] font-sans text-[9.5pt] font-semibold">{name}</div>
+              <div className="absolute left-[102mm] right-[3mm] top-[5mm] whitespace-nowrap text-left font-sans text-[9.5pt] font-semibold">{name}</div>
               <div className="absolute left-[18mm] top-[21.5mm]">주민등록번호(외국인의 경우 외국인등록번호/국적)</div>
-              <div className="absolute right-[3mm] top-[21.5mm] font-sans text-[9.5pt] font-semibold">{residentNumber}</div>
+              <div className="absolute left-[102mm] right-[3mm] top-[21.5mm] whitespace-nowrap text-left font-sans text-[9.5pt] font-semibold">{residentNumber}</div>
               <div className="absolute left-[18mm] top-[38.5mm]">연락처(휴대전화 등)</div>
-              <div className="absolute right-[3mm] top-[38.5mm] font-sans text-[9.5pt] font-semibold">{phone}</div>
+              <div className="absolute left-[102mm] right-[3mm] top-[38.5mm] whitespace-nowrap text-left font-sans text-[9.5pt] font-semibold">{phone}</div>
             </div>
 
             <p className="absolute left-[22mm] right-[20mm] top-[109mm] text-justify text-[8.3pt] leading-[1.75]">
