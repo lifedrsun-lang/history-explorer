@@ -424,19 +424,49 @@ export default function TeacherFeesPage() {
 
   const getSettlementUnits = (contract: FeeContract): SettlementUnit[] => {
     if (contract.type === "afterschool") {
+      const splitByClass = normalizeSchoolName(contract.schoolName) === "하늘빛초";
+
       return quarters.flatMap((quarterItem) =>
-        [0, 1, 2]
-          .map((termIndex) => {
-            const key = `${quarterItem.key}-T${termIndex + 1}`;
-            return {
+        [0, 1, 2].flatMap((termIndex) => {
+          if (splitByClass) {
+            return (["A반", "B반"] as const)
+              .map((teachingClass) => {
+                const key = `${quarterItem.key}-T${termIndex + 1}-${teachingClass === "A반" ? "A" : "B"}`;
+                const expectedAmount = getMatchingStudents(contract, quarterItem.key).reduce(
+                  (sum, student) => {
+                    if (student.teachingClass !== teachingClass) return sum;
+                    if (!getChecks(contract, student, quarterItem.key)[termIndex]) return sum;
+                    const rate =
+                      teachingClass === "A반"
+                        ? Number(contract.rateA || 0)
+                        : Number(contract.rateB || 0);
+                    return sum + rate;
+                  },
+                  0
+                );
+                return {
+                  key,
+                  label: `${quarterItem.label} ${defaultTerms[termIndex]} · ${teachingClass}`,
+                  expectedAmount,
+                };
+              })
+              .filter(
+                (unit) =>
+                  unit.expectedAmount > 0 || Boolean(contract.settlements?.[unit.key])
+              );
+          }
+
+          const key = `${quarterItem.key}-T${termIndex + 1}`;
+          return [
+            {
               key,
               label: `${quarterItem.label} ${defaultTerms[termIndex]}`,
               expectedAmount: getTermTotal(contract, quarterItem.key, termIndex),
-            };
-          })
-          .filter(
+            },
+          ].filter(
             (unit) => unit.expectedAmount > 0 || Boolean(contract.settlements?.[unit.key])
-          )
+          );
+        })
       );
     }
 
