@@ -6,8 +6,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import {
   getAllContractSchools,
-  getContractClassroomByToken,
-  getContractSchoolForClassroom,
+  getContractSchoolAndClassroomByToken,
 } from "@/lib/contractSchoolsServer";
 import {
   getClassroomAccount,
@@ -124,18 +123,19 @@ export const resolveClassActivityContext = async (
   const classroomToken = String(classroomTokenValue || "").trim();
   if (!getClassActivityDefinition(activityId) || !classroomToken) return null;
 
-  const classroom = await getContractClassroomByToken(classroomToken, options);
-  if (!classroom) return null;
-  const resolved = await getContractSchoolForClassroom(
-    classroom.schoolName,
-    classroom.grade,
-    classroom.classNumber,
-    { includeUnpublished: options.includeUnpublished }
+  const resolved = await getContractSchoolAndClassroomByToken(
+    classroomToken,
+    options
   );
   if (!resolved) return null;
+  const classroom = resolved.classroom;
 
   const rosterSchool =
-    getSupportedClassroomSchoolName(classroom) ||
+    getSupportedClassroomSchoolName({
+      school: resolved.school.schoolName,
+      grade: classroom.grade,
+      classNumber: classroom.classNumber,
+    }) ||
     normalizeSchoolName(resolved.school.schoolName);
 
   return {

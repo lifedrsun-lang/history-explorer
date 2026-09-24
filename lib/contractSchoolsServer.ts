@@ -735,7 +735,7 @@ export const getContractSchoolForClassroom = async (
   return null;
 };
 
-export const getContractClassroomByToken = async (
+export const getContractSchoolAndClassroomByToken = async (
   tokenValue: unknown,
   options: { includeUnpublished?: boolean } = {}
 ) => {
@@ -759,7 +759,7 @@ export const getContractClassroomByToken = async (
       classroom &&
       (options.includeUnpublished === true || school.published)
     ) {
-      return toSchoolClassroom(school, classroom);
+      return { school, classroom };
     }
     return null;
   }
@@ -771,11 +771,19 @@ export const getContractClassroomByToken = async (
     );
     if (classroom) {
       const storedOverride = await getStoredSchoolSnapshot(school.slug);
-      if (!storedOverride.exists) return toSchoolClassroom(school, classroom);
+      if (!storedOverride.exists) return { school, classroom };
     }
   }
 
   return null;
+};
+
+export const getContractClassroomByToken = async (
+  tokenValue: unknown,
+  options: { includeUnpublished?: boolean } = {}
+) => {
+  const resolved = await getContractSchoolAndClassroomByToken(tokenValue, options);
+  return resolved ? toSchoolClassroom(resolved.school, resolved.classroom) : null;
 };
 
 export const getManagedContractClassroomByToken = async (tokenValue: unknown) => {
