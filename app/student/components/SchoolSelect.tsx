@@ -59,9 +59,9 @@ export default function SchoolSelect({
     );
 
   return (
-    <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 text-slate-800 px-3 py-6 sm:px-4 sm:py-8">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 text-slate-800 px-3 pt-6 pb-28 sm:px-4 sm:pt-8 sm:pb-28">
       <div className="max-w-xl mx-auto">
-        <div className="text-2xl sm:text-3xl font-bold mb-5 sm:mb-6 text-center text-slate-800">🏫 학교/수업 장소 선택</div>
+        <div className="mb-5 text-center sm:mb-6">\n          <div className="text-2xl font-black text-slate-800 sm:text-3xl">오늘 수업할 곳을 선택해 주세요 👋</div>\n          <div className="mt-2 text-sm font-bold text-slate-500">학교 · 수업장소</div>\n        </div>
         <div className="grid grid-cols-2 gap-3 rounded-[32px] border border-white/80 bg-white/80 p-3 sm:p-4 shadow-sm">
           <Link
             href="/student/book"
