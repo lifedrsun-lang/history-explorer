@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -152,6 +153,9 @@ const isDateWithinContract = (contract: FeeContract, dateKey: string) => {
 };
 
 export default function TeacherFeesPage() {
+  const searchParams = useSearchParams();
+  const contractOnly = searchParams.get("scope") === "contract";
+  const requestedTab = searchParams.get("tab");
   const [authChecking, setAuthChecking] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [contracts, setContracts] = useState<FeeContract[]>([]);
@@ -160,7 +164,7 @@ export default function TeacherFeesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
-  const [tab, setTab] = useState<FeeTab>("summary");
+  const [tab, setTab] = useState<FeeTab>(requestedTab === "payments" ? "payments" : "summary");
   const [quarter, setQuarter] = useState<QuarterKey>("Q3");
   const [expandedContractId, setExpandedContractId] = useState("");
   const [contractMonth, setContractMonth] = useState(currentMonthKey());
@@ -615,7 +619,9 @@ export default function TeacherFeesPage() {
     return { received, insurance, tax, statementGross, unpaid };
   };
 
-  const settlementTotals = contracts.reduce(
+  const paymentContracts = contractOnly ? contractLectures : contracts;
+
+  const settlementTotals = paymentContracts.reduce(
     (totals, contract) => {
       const current = getContractSettlementTotals(contract);
       totals.received += current.received;
@@ -1141,8 +1147,8 @@ export default function TeacherFeesPage() {
     <>
       <section className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div className="rounded-3xl bg-white p-4 shadow-sm">
-          <div className="text-xs font-black text-slate-500">총 발생 수강료</div>
-          <div className="mt-1 text-xl font-black text-slate-900">{formatWon(totalGross)}</div>
+          <div className="text-xs font-black text-slate-500">{contractOnly ? "총 발생 출강료" : "총 발생 수강료"}</div>
+          <div className="mt-1 text-xl font-black text-slate-900">{formatWon(paymentContracts.reduce((sum, contract) => sum + getGross(contract), 0))}</div>
         </div>
         <div className="rounded-3xl bg-white p-4 shadow-sm">
           <div className="text-xs font-black text-slate-500">실제 수령 누적</div>
@@ -1172,7 +1178,7 @@ export default function TeacherFeesPage() {
       </section>
 
       <section className="mt-3 space-y-3">
-        {contracts.map((contract) => (
+        {paymentContracts.map((contract) => (
           <div key={contract.id} className="rounded-[28px] bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
