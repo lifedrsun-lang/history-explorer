@@ -154,7 +154,7 @@ const isDateWithinContract = (contract: FeeContract, dateKey: string) => {
 
 export default function TeacherFeesPage() {
   const searchParams = useSearchParams();
-  const contractOnly = searchParams.get("scope") === "contract";
+  const paymentScope = searchParams.get("scope");
   const requestedTab = searchParams.get("tab");
   const [authChecking, setAuthChecking] = useState(true);
   const [user, setUser] = useState<User | null>(null);
@@ -619,7 +619,12 @@ export default function TeacherFeesPage() {
     return { received, insurance, tax, statementGross, unpaid };
   };
 
-  const paymentContracts = contractOnly ? contractLectures : contracts;
+  const paymentContracts =
+    paymentScope === "contract"
+      ? contractLectures
+      : paymentScope === "afterschool"
+        ? afterschoolContracts
+        : contracts;
 
   const settlementTotals = paymentContracts.reduce(
     (totals, contract) => {
@@ -1147,7 +1152,11 @@ export default function TeacherFeesPage() {
     <>
       <section className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div className="rounded-3xl bg-white p-4 shadow-sm">
-          <div className="text-xs font-black text-slate-500">{contractOnly ? "총 발생 출강료" : "총 발생 수강료"}</div>
+          <div className="text-xs font-black text-slate-500">{paymentScope === "contract"
+            ? "총 발생 출강료"
+            : paymentScope === "afterschool"
+              ? "총 발생 방과후 수강료"
+              : "총 발생 수강료"}</div>
           <div className="mt-1 text-xl font-black text-slate-900">{formatWon(paymentContracts.reduce((sum, contract) => sum + getGross(contract), 0))}</div>
         </div>
         <div className="rounded-3xl bg-white p-4 shadow-sm">
