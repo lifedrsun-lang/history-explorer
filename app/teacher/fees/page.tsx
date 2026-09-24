@@ -64,6 +64,12 @@ type SettlementUnit = {
 
 const formatWon = (value: number) =>
   `${Math.round(value).toLocaleString("ko-KR")}원`;
+
+const formatNumberInput = (value: unknown) => {
+  const digits = String(value ?? "").replace(/[^0-9]/g, "");
+  if (!digits) return "";
+  return Number(digits).toLocaleString("ko-KR");
+};
 const defaultTerms = ["1텀", "2텀", "3텀"];
 const quarters: { key: QuarterKey; label: string }[] = [
   { key: "Q1", label: "1분기" },
@@ -744,7 +750,10 @@ export default function TeacherFeesPage() {
                   <span className="lg:hidden">받은 금액</span>
                   <input
                     inputMode="numeric"
-                    defaultValue={Number(entry.receivedAmount || 0) || ""}
+                    defaultValue={formatNumberInput(entry.receivedAmount)}
+                    onChange={(event) => {
+                      event.target.value = formatNumberInput(event.target.value);
+                    }}
                     onBlur={(event) =>
                       void updateSettlement(
                         contract,
@@ -772,7 +781,10 @@ export default function TeacherFeesPage() {
                   <span className="lg:hidden">수당금액</span>
                   <input
                     inputMode="numeric"
-                    defaultValue={Number(entry.grossAmount || 0) || ""}
+                    defaultValue={formatNumberInput(entry.grossAmount)}
+                    onChange={(event) => {
+                      event.target.value = formatNumberInput(event.target.value);
+                    }}
                     onBlur={(event) =>
                       void updateSettlement(
                         contract,
@@ -789,7 +801,10 @@ export default function TeacherFeesPage() {
                   <span className="lg:hidden">보험료</span>
                   <input
                     inputMode="numeric"
-                    defaultValue={Number(entry.insuranceFee || 0) || ""}
+                    defaultValue={formatNumberInput(entry.insuranceFee)}
+                    onChange={(event) => {
+                      event.target.value = formatNumberInput(event.target.value);
+                    }}
                     onBlur={(event) =>
                       void updateSettlement(
                         contract,
@@ -806,7 +821,10 @@ export default function TeacherFeesPage() {
                   <span className="lg:hidden">세금</span>
                   <input
                     inputMode="numeric"
-                    defaultValue={Number(entry.taxAmount || 0) || ""}
+                    defaultValue={formatNumberInput(entry.taxAmount)}
+                    onChange={(event) => {
+                      event.target.value = formatNumberInput(event.target.value);
+                    }}
                     onBlur={(event) =>
                       void updateSettlement(
                         contract,
