@@ -131,10 +131,16 @@ export default function SchoolSelect({
           <div className="text-2xl font-black text-slate-800 sm:text-3xl">🧭 탐험대원, 입장하세요!</div>
         </div>
         <div className="grid grid-cols-2 gap-3 rounded-[32px] border border-white/80 bg-white/80 p-3 sm:p-4 shadow-sm">
-          {schoolCards.filter(({ status }) => status === "active").map(renderSchoolCard)}
+          {schoolCards
+            .filter(({ status, school }) => status === "active" && !normalizeSchoolText(school).includes("문화센터"))
+            .map(renderSchoolCard)}
           {sunLabCard}
+          {schoolCards
+            .filter(({ status, school }) => status === "active" && normalizeSchoolText(school).includes("문화센터"))
+            .map(renderSchoolCard)}
           {schoolCards.filter(({ status }) => status === "paused").map(renderSchoolCard)}
-          {schoolCards.filter(({ status }) => status === "completed").map(renderSchoolCard)}        </div>
+          {schoolCards.filter(({ status }) => status === "completed").map(renderSchoolCard)}
+        </div>
       </div>
       <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/80 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-4px_18px_rgba(15,23,42,0.10)] backdrop-blur">
         <div className="mx-auto grid max-w-xl grid-cols-3 gap-2">
