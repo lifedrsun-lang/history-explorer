@@ -356,7 +356,7 @@ export default function TeacherApplicationDocumentsPage() {
     }
 
     const originalTitle = document.title;
-    document.title = `헬로우메이플강사 ${name.trim()}_${schoolName.trim()}_${documentDate}`
+    document.title = `헬로메이플강사 ${name.trim()}_${schoolName.trim()}_${documentDate}`
       .replace(/[\\/:*?"<>|]/g, "-")
       .replace(/\s+/g, " ")
       .trim();
