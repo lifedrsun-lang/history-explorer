@@ -2,6 +2,7 @@ import "server-only";
 
 import { createHash, createHmac, randomBytes } from "crypto";
 import { FieldValue } from "firebase-admin/firestore";
+import { unstable_cache } from "next/cache";
 
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import {
@@ -114,7 +115,7 @@ const participantHash = (context: ClassActivityContext, accountId: string) =>
     )
     .digest("hex");
 
-export const resolveClassActivityContext = async (
+const resolveClassActivityContextUncached = async (
   activityIdValue: unknown,
   classroomTokenValue: unknown,
   options: { includeUnpublished?: boolean } = {}
@@ -150,14 +151,68 @@ export const resolveClassActivityContext = async (
   };
 };
 
-export const getActivityRosterNumbers = async (context: ClassActivityContext) => {
-  const roster = await getClassroomAccountRoster({
-    school: context.rosterSchool,
-    grade: context.grade,
-    classNumber: context.classNumber,
-  });
-  return roster.map((account) => account.classNumber);
+export const resolveClassActivityContext = async (
+  activityIdValue: unknown,
+  classroomTokenValue: unknown,
+  options: { includeUnpublished?: boolean } = {}
+) => {
+  const activityId = String(activityIdValue || "").trim();
+  const classroomToken = String(classroomTokenValue || "").trim();
+  return unstable_cache(
+    () =>
+      resolveClassActivityContextUncached(activityId, classroomToken, options),
+    [
+      "class-activity-context",
+      activityId,
+      classroomToken,
+      options.includeUnpublished ? "include-unpublished" : "published",
+    ],
+    { revalidate: 300 }
+  )();
 };
+
+export const getActivityRosterNumbers = async (context: ClassActivityContext) => {
+  return unstable_cache(
+    async () => {
+      const roster = await getClassroomAccountRoster({
+        school: context.rosterSchool,
+        grade: context.grade,
+        classNumber: context.classNumber,
+      });
+      return roster.map((account) => account.classNumber);
+    },
+    [
+      "class-activity-roster-numbers",
+      context.rosterSchool,
+      String(context.grade),
+      String(context.classNumber),
+    ],
+    { revalidate: 300 }
+  )();
+};
+
+const getActivityRosterCount = async (
+  school: string,
+  grade: number,
+  classNumber: number
+) =>
+  unstable_cache(
+    async () => {
+      const roster = await getClassroomAccountRoster({
+        school,
+        grade,
+        classNumber,
+      });
+      return roster.length;
+    },
+    [
+      "class-activity-roster-count",
+      school,
+      String(grade),
+      String(classNumber),
+    ],
+    { revalidate: 300 }
+  )();
 
 export const createParticipantSession = async (
   context: ClassActivityContext,
@@ -340,18 +395,17 @@ export const getActivityResults = async (
     )
     .map((item) => item.classNumber);
 
-  const rosters = await Promise.all(
+  const rosterCounts = await Promise.all(
     classNumbers.map((item) =>
-      getClassroomAccountRoster({
-        school:
-          getSupportedClassroomSchoolName({
-            school: school.schoolName,
-            grade,
-            classNumber: item,
-          }) || normalizeSchoolName(school.schoolName),
+      getActivityRosterCount(
+        getSupportedClassroomSchoolName({
+          school: school.schoolName,
+          grade,
+          classNumber: item,
+        }) || normalizeSchoolName(school.schoolName),
         grade,
-        classNumber: item,
-      })
+        item
+      )
     )
   );
   const submissions = snapshot.docs
@@ -371,7 +425,7 @@ export const getActivityResults = async (
 
   return aggregateActivitySubmissions(
     submissions,
-    rosters.reduce((total, roster) => total + roster.length, 0)
+    rosterCounts.reduce((total, count) => total + count, 0)
   );
 };
 
@@ -403,11 +457,11 @@ export const getActivityAdminDashboard = async (activityId: string) => {
             grade,
             classNumber: classroom.classNumber,
           }) || normalizeSchoolName(school.schoolName);
-        const roster = await getClassroomAccountRoster({
-          school: rosterSchool,
+        const rosterTotal = await getActivityRosterCount(
+          rosterSchool,
           grade,
-          classNumber: classroom.classNumber,
-        });
+          classroom.classNumber
+        );
         rows.push({
           schoolSlug: school.slug,
           schoolName: school.displayName,
@@ -419,7 +473,7 @@ export const getActivityAdminDashboard = async (activityId: string) => {
               item.grade === grade &&
               item.classNumber === classroom.classNumber
           ).length,
-          rosterTotal: roster.length,
+          rosterTotal,
           resultsVisible: visibility.get(`${school.slug}:${grade}`) ?? true,
         });
       }
