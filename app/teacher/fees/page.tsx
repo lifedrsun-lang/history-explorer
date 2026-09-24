@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -153,9 +152,7 @@ const isDateWithinContract = (contract: FeeContract, dateKey: string) => {
 };
 
 export default function TeacherFeesPage() {
-  const searchParams = useSearchParams();
-  const paymentScope = searchParams.get("scope");
-  const requestedTab = searchParams.get("tab");
+  const [paymentScope, setPaymentScope] = useState<"afterschool" | "contract" | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [contracts, setContracts] = useState<FeeContract[]>([]);
@@ -164,7 +161,7 @@ export default function TeacherFeesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
-  const [tab, setTab] = useState<FeeTab>(requestedTab === "payments" ? "payments" : "summary");
+  const [tab, setTab] = useState<FeeTab>("summary");
   const [quarter, setQuarter] = useState<QuarterKey>("Q3");
   const [expandedContractId, setExpandedContractId] = useState("");
   const [contractMonth, setContractMonth] = useState(currentMonthKey());
@@ -179,6 +176,13 @@ export default function TeacherFeesPage() {
   const [sessionCount, setSessionCount] = useState("");
   const [contractStartDate, setContractStartDate] = useState("");
   const [contractEndDate, setContractEndDate] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const scope = params.get("scope");
+    setPaymentScope(scope === "afterschool" || scope === "contract" ? scope : null);
+    if (params.get("tab") === "payments") setTab("payments");
+  }, []);
 
   useEffect(
     () =>
@@ -1674,7 +1678,11 @@ export default function TeacherFeesPage() {
               }}
               className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white"
             >
-              + 수강료 등록
+              {paymentScope === "contract"
+                ? "+ 출강료 등록"
+                : paymentScope === "afterschool"
+                  ? "+ 수강료 등록"
+                  : "+ 수입 항목 등록"}
             </button>
           </div>
           {error && !isRegisterOpen && (
@@ -1703,7 +1711,13 @@ export default function TeacherFeesPage() {
         <div className="fixed inset-0 z-[200] flex items-end justify-center bg-slate-950/45 p-3 sm:items-center">
           <div className="max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-[28px] bg-white p-5 shadow-2xl">
             <div className="flex items-center justify-between">
-              <div className="text-xl font-black text-slate-900">새 수강료 등록</div>
+              <div className="text-xl font-black text-slate-900">
+                {paymentScope === "contract"
+                  ? "새 출강료 등록"
+                  : paymentScope === "afterschool"
+                    ? "새 방과후 수강료 등록"
+                    : "새 수입 항목 등록"}
+              </div>
               <button
                 type="button"
                 onClick={() => {
@@ -1721,8 +1735,8 @@ export default function TeacherFeesPage() {
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setType("afterschool")
-                className={`rounded-2xl px-4 py-3 text-sm font-black ${
+                  onClick={() => setType("afterschool")}
+                  className={`rounded-2xl px-4 py-3 text-sm font-black ${
                   type === "afterschool"
                     ? "bg-emerald-600 text-white"
                     : "bg-slate-100 text-slate-600"
