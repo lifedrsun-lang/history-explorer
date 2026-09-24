@@ -75,12 +75,68 @@ const getTeachingClass = (student: FirebaseFirestore.DocumentData) => {
   return "";
 };
 
+const normalizeWeekChecks = (value: unknown) => {
+  const weeks = Array.isArray(value) ? value : [];
+  return [
+    Boolean(weeks[0]),
+    Boolean(weeks[1]),
+    Boolean(weeks[2]),
+    Boolean(weeks[3]),
+  ];
+};
+
+const deserializeQuarterWeekParticipation = (value: unknown) => {
+  if (!value || typeof value !== "object") return {};
+  const result: Record<string, Record<string, boolean[][]>> = {};
+
+  Object.entries(value as Record<string, unknown>).forEach(
+    ([quarterKey, quarterValue]) => {
+      if (
+        !/^Q[1-4]$/.test(quarterKey) ||
+        !quarterValue ||
+        typeof quarterValue !== "object"
+      ) {
+        return;
+      }
+
+      const studentMap: Record<string, boolean[][]> = {};
+      Object.entries(quarterValue as Record<string, unknown>).forEach(
+        ([studentId, terms]) => {
+          const termSource =
+            terms && typeof terms === "object"
+              ? (terms as Record<string, unknown>)
+              : {};
+
+          studentMap[studentId] = [0, 1, 2].map((termIndex) => {
+            if (Array.isArray(terms)) {
+              return normalizeWeekChecks(terms[termIndex]);
+            }
+            return normalizeWeekChecks(
+              termSource[`T${termIndex + 1}`] ??
+                termSource[String(termIndex)]
+            );
+          });
+        }
+      );
+      result[quarterKey] = studentMap;
+    }
+  );
+
+  return result;
+};
+
 const serializeContract = (
   docItem: FirebaseFirestore.QueryDocumentSnapshot | FirebaseFirestore.DocumentSnapshot
-) => ({
-  id: docItem.id,
-  ...docItem.data(),
-});
+) => {
+  const data = docItem.data() || {};
+  return {
+    id: docItem.id,
+    ...data,
+    quarterWeekParticipation: deserializeQuarterWeekParticipation(
+      data.quarterWeekParticipation
+    ),
+  };
+};
 
 const hasCheckedParticipation = (contracts: any[], studentId: string) =>
   contracts.some((contract) => {
@@ -149,7 +205,10 @@ const sanitizeQuarterParticipation = (value: unknown) => {
 
 const sanitizeQuarterWeekParticipation = (value: unknown) => {
   if (!value || typeof value !== "object") return {};
-  const result: Record<string, Record<string, boolean[][]>> = {};
+  const result: Record<
+    string,
+    Record<string, Record<string, boolean[]>>
+  > = {};
 
   Object.entries(value as Record<string, unknown>).forEach(
     ([quarterKey, quarterValue]) => {
@@ -161,20 +220,23 @@ const sanitizeQuarterWeekParticipation = (value: unknown) => {
         return;
       }
 
-      const studentMap: Record<string, boolean[][]> = {};
+      const studentMap: Record<string, Record<string, boolean[]>> = {};
       Object.entries(quarterValue as Record<string, unknown>).forEach(
         ([studentId, terms]) => {
-          if (!Array.isArray(terms)) return;
-          studentMap[studentId] = [0, 1, 2].map((termIndex) => {
-            const weeks = terms[termIndex];
-            if (!Array.isArray(weeks)) return [false, false, false, false];
-            return [
-              Boolean(weeks[0]),
-              Boolean(weeks[1]),
-              Boolean(weeks[2]),
-              Boolean(weeks[3]),
-            ];
+          if (!terms || typeof terms !== "object") return;
+
+          const termSource = terms as Record<string, unknown>;
+          const safeTerms: Record<string, boolean[]> = {};
+
+          [0, 1, 2].forEach((termIndex) => {
+            const weeks = Array.isArray(terms)
+              ? terms[termIndex]
+              : termSource[`T${termIndex + 1}`] ??
+                termSource[String(termIndex)];
+            safeTerms[`T${termIndex + 1}`] = normalizeWeekChecks(weeks);
           });
+
+          studentMap[studentId] = safeTerms;
         }
       );
       result[quarterKey] = studentMap;
