@@ -1516,7 +1516,12 @@ export default function TeacherFeesPage() {
                       {[0, 1, 2].map((termIndex) => {
                         const allChecked = isAllParticipationChecked(contract, termIndex);
                         return (
-                          <div key={termIndex} className="px-1">
+                          <div
+                            key={termIndex}
+                            className={`px-3 ${
+                              termIndex > 0 ? "border-l-2 border-slate-200" : ""
+                            }`}
+                          >
                             <label
                               className="flex cursor-pointer items-center justify-center gap-1.5"
                               title={`${termIndex + 1}텀 전체 4주 체크/해제`}
@@ -1597,7 +1602,12 @@ export default function TeacherFeesPage() {
                             );
                             const weekCount = weeks.filter(Boolean).length;
                             return (
-                              <div key={termIndex} className="px-1">
+                              <div
+                                key={termIndex}
+                                className={`px-3 ${
+                                  termIndex > 0 ? "border-l-2 border-slate-200" : ""
+                                }`}
+                              >
                                 <label className="flex items-center justify-center gap-1.5">
                                   <input
                                     type="checkbox"
