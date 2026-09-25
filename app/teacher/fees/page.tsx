@@ -5,6 +5,7 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { auth } from "@/lib/firebase";
+import { isStudentEnrolledInQuarter } from "@/lib/studentRoster";
 
 type FeeType = "afterschool" | "contract";
 type FeeTab = "summary" | "afterschool" | "contract" | "payments";
@@ -31,7 +32,6 @@ type FeeContract = {
   participation?: Record<string, boolean[]>;
   quarterParticipation?: Partial<Record<QuarterKey, Record<string, boolean[]>>>;
   quarterWeekParticipation?: Partial<Record<QuarterKey, Record<string, boolean[][]>>>;
-  quarterStudentSnapshots?: Partial<Record<QuarterKey, FeeStudent[]>>;
   workSessions?: Record<string, Record<string, number>>;
   contractStartDate?: string;
   contractEndDate?: string;
@@ -49,6 +49,7 @@ type FeeStudent = {
   grade: string;
   teachingClass: "A반" | "B반" | "";
   enrollmentStatus: "active" | "paused" | "ended";
+  enrollmentTerms: string[];
 };
 
 type CalendarDay = {
@@ -281,33 +282,16 @@ export default function TeacherFeesPage() {
 
   const getLatestContract = (contract: FeeContract) =>
     contractsRef.current.find((item) => item.id === contract.id) || contract;
-
-  const hasHistoricalParticipation = (contract: FeeContract, studentId: string) => {
-    const legacy = contract.participation?.[studentId];
-    if (Array.isArray(legacy) && legacy.some(Boolean)) return true;
-    return quarters.some(({ key }) => {
-      const checks = contract.quarterParticipation?.[key]?.[studentId];
-      return Array.isArray(checks) && checks.some(Boolean);
-    });
-  };
-
   const getMatchingStudents = (
     contract: FeeContract,
     quarterKey: QuarterKey = quarter
-  ) => {
-    const quarterRoster = contract.quarterStudentSnapshots?.[quarterKey] || [];
-    const rosterIds = new Set(quarterRoster.map((student) => student.id));
-
-    return students.filter(
+  ) =>
+    students.filter(
       (student) =>
         isSameSchool(student.school, contract.schoolName) &&
         Boolean(student.teachingClass) &&
-        (rosterIds.size > 0
-          ? rosterIds.has(student.id)
-          : student.enrollmentStatus !== "ended" ||
-            hasHistoricalParticipation(contract, student.id))
+        isStudentEnrolledInQuarter(student, quarterKey)
     );
-  };
 
   const getBulkStudents = (
     contract: FeeContract,
@@ -330,11 +314,8 @@ export default function TeacherFeesPage() {
     if (Array.isArray(stored)) {
       return [Boolean(stored[0]), Boolean(stored[1]), Boolean(stored[2])];
     }
-    if (quarterKey === "Q3" && !contract.quarterParticipation?.Q3) {
-      const defaultValue = student.enrollmentStatus === "active";
-      return [defaultValue, defaultValue, defaultValue];
-    }
-    return [false, false, false];
+    const defaultValue = isStudentEnrolledInQuarter(student, quarterKey);
+    return [defaultValue, defaultValue, defaultValue];
   };
 
   const getWeekQuarterMap = (contract: FeeContract, quarterKey: QuarterKey) =>
@@ -1514,7 +1495,7 @@ export default function TeacherFeesPage() {
                   <div className="mt-1 text-xl font-black text-slate-900">{contract.schoolName}</div>
                   <div className="text-sm font-bold text-slate-500">{contract.title || ""}</div>
                   <div className="mt-1 text-[11px] font-bold text-slate-400">
-                    분기 확정명단 {matchingStudents.length}명
+                    수강생 원본의 분기 체크 기준 {matchingStudents.length}명
                   </div>
                 </div>
                 <button
@@ -1551,7 +1532,7 @@ export default function TeacherFeesPage() {
               </div>
 
               <div className="mt-3 rounded-xl bg-indigo-50 px-3 py-2 text-[11px] font-bold text-indigo-700">
-                교재 관리와 같은 분기 확정명단을 사용합니다. 아래 체크는 수강료 참여 여부만 관리합니다.
+                수강생 관리의 분기 체크로 명단을 불러옵니다. 아래 체크는 수강료 참여 텀만 관리합니다.
               </div>
               <div className="mt-2 rounded-xl bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500">
                 입금·급여명세서 입력은 입금관리 탭에서 1텀·2텀·3텀 단위로 관리합니다.
