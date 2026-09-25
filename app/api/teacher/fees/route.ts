@@ -6,7 +6,14 @@ import {
   verifyTeacherRequest,
 } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
-import { getEnrollmentStatus } from "@/lib/studentEnrollment";
+import {
+  AFTER_SCHOOL_ACADEMIC_YEAR,
+  isSameSchool,
+  isStudentEnrolledInQuarter,
+  toStudentRosterRecord,
+  type QuarterKey,
+  type StudentRosterRecord,
+} from "@/lib/studentRoster";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,18 +69,6 @@ const DEFAULT_AFTER_SCHOOL_CONTRACTS = [
     settlements: {},
   },
 ] as const;
-
-const getGradeNumber = (value: unknown) => {
-  const match = normalize(value).match(/\d+/);
-  return match ? Number(match[0]) : 0;
-};
-
-const getTeachingClass = (student: FirebaseFirestore.DocumentData) => {
-  const grade = getGradeNumber(student?.grade);
-  if (grade >= 1 && grade <= 2) return "A반";
-  if (grade >= 3 && grade <= 6) return "B반";
-  return "";
-};
 
 const normalizeWeekChecks = (value: unknown) => {
   const weeks = Array.isArray(value) ? value : [];
@@ -138,40 +133,11 @@ const serializeContract = (
   };
 };
 
-const hasCheckedParticipation = (contracts: any[], studentId: string) =>
-  contracts.some((contract) => {
-    const legacyChecks = contract?.participation?.[studentId];
-    if (
-      Array.isArray(legacyChecks) &&
-      legacyChecks.slice(0, 3).some((value: unknown) => Boolean(value))
-    ) {
-      return true;
-    }
-
-    const quarterParticipation = contract?.quarterParticipation;
-    if (!quarterParticipation || typeof quarterParticipation !== "object") {
-      return false;
-    }
-
-    return Object.values(quarterParticipation).some((quarterValue: any) => {
-      const checks = quarterValue?.[studentId];
-      return (
-        Array.isArray(checks) &&
-        checks.slice(0, 3).some((value: unknown) => Boolean(value))
-      );
-    });
-  });
-
-const hasRosterSnapshot = (contracts: any[], studentId: string) =>
-  contracts.some((contract) =>
-    Object.values(contract?.quarterStudentSnapshots || {}).some(
-      (quarterValue: any) =>
-        Array.isArray(quarterValue) &&
-        quarterValue.some((student: any) => normalize(student?.id) === studentId)
-    )
-  );
-
-const sanitizeQuarterParticipation = (value: unknown) => {
+const sanitizeQuarterParticipation = (
+  value: unknown,
+  students: StudentRosterRecord[],
+  schoolName: string
+) => {
   if (!value || typeof value !== "object") return {};
   const result: Record<string, Record<string, boolean[]>> = {};
 
@@ -185,10 +151,18 @@ const sanitizeQuarterParticipation = (value: unknown) => {
         return;
       }
 
+      const quarter = quarterKey as QuarterKey;
+      const allowedStudentIds = new Set(
+        students
+          .filter((student) => isSameSchool(student.school, schoolName))
+          .filter((student) => isStudentEnrolledInQuarter(student, quarter))
+          .map((student) => student.id)
+      );
+
       const studentMap: Record<string, boolean[]> = {};
       Object.entries(quarterValue as Record<string, unknown>).forEach(
         ([studentId, checks]) => {
-          if (!Array.isArray(checks)) return;
+          if (!allowedStudentIds.has(studentId) || !Array.isArray(checks)) return;
           studentMap[studentId] = [
             Boolean(checks[0]),
             Boolean(checks[1]),
@@ -203,7 +177,11 @@ const sanitizeQuarterParticipation = (value: unknown) => {
   return result;
 };
 
-const sanitizeQuarterWeekParticipation = (value: unknown) => {
+const sanitizeQuarterWeekParticipation = (
+  value: unknown,
+  students: StudentRosterRecord[],
+  schoolName: string
+) => {
   if (!value || typeof value !== "object") return {};
   const result: Record<
     string,
@@ -220,10 +198,23 @@ const sanitizeQuarterWeekParticipation = (value: unknown) => {
         return;
       }
 
+      const quarter = quarterKey as QuarterKey;
+      const allowedStudentIds = new Set(
+        students
+          .filter((student) => isSameSchool(student.school, schoolName))
+          .filter((student) => isStudentEnrolledInQuarter(student, quarter))
+          .map((student) => student.id)
+      );
       const studentMap: Record<string, Record<string, boolean[]>> = {};
       Object.entries(quarterValue as Record<string, unknown>).forEach(
         ([studentId, terms]) => {
-          if (!terms || typeof terms !== "object") return;
+          if (
+            !allowedStudentIds.has(studentId) ||
+            !terms ||
+            typeof terms !== "object"
+          ) {
+            return;
+          }
 
           const termSource = terms as Record<string, unknown>;
           const safeTerms: Record<string, boolean[]> = {};
@@ -351,52 +342,15 @@ export async function GET(request: Request) {
         normalize(a.schoolName).localeCompare(normalize(b.schoolName), "ko-KR")
       );
 
-    const currentStudents = studentSnapshot.docs.map((docItem) => {
-      const data = docItem.data();
-      return {
-        id: docItem.id,
-        name: normalize(data?.name),
-        school: normalize(data?.school),
-        grade: normalize(data?.grade),
-        teachingClass: getTeachingClass(data),
-        enrollmentStatus: getEnrollmentStatus(data),
-      };
-    });
-
-    const snapshotStudents = contracts.flatMap((contract: any) =>
-      Object.values(contract.quarterStudentSnapshots || {}).flatMap(
-        (quarterValue: any) =>
-          (Array.isArray(quarterValue) ? quarterValue : []).map(
-            (student: any) => ({
-              id: normalize(student?.id),
-              name: normalize(student?.name),
-              school:
-                normalize(student?.school) || normalize(contract.schoolName),
-              grade: normalize(student?.grade),
-              teachingClass: getTeachingClass(student),
-              enrollmentStatus:
-                normalize(student?.enrollmentStatus) || "ended",
-            })
-          )
+    const students = studentSnapshot.docs
+      .map((docItem) =>
+        toStudentRosterRecord(docItem.id, docItem.data() as Record<string, any>)
       )
-    );
-
-    const studentById = new Map<string, any>();
-    snapshotStudents.forEach((student: any) => {
-      if (student.id) studentById.set(student.id, student);
-    });
-    currentStudents.forEach((student) => {
-      if (student.id) studentById.set(student.id, student);
-    });
-
-    const students = Array.from(studentById.values())
       .filter(
         (student) =>
           student.name &&
           student.school &&
-          student.teachingClass &&
-          (hasRosterSnapshot(contracts, student.id) ||
-            hasCheckedParticipation(contracts, student.id))
+          student.teachingClass
       )
       .sort((a, b) => {
         if (a.school !== b.school) {
@@ -408,7 +362,11 @@ export async function GET(request: Request) {
         return a.name.localeCompare(b.name, "ko-KR");
       });
 
-    return Response.json({ contracts, students });
+    return Response.json({
+      academicYear: AFTER_SCHOOL_ACADEMIC_YEAR,
+      contracts,
+      students,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "teacher_auth_required") {
@@ -530,12 +488,27 @@ export async function PATCH(request: Request) {
     if (body?.participation && typeof body.participation === "object") {
       updates.participation = body.participation;
     }
+    let rosterStudents: StudentRosterRecord[] | null = null;
+    const getRosterStudents = async () => {
+      if (rosterStudents) return rosterStudents;
+      const studentSnapshot = await db.collection("students").get();
+      rosterStudents = studentSnapshot.docs.map((docItem) =>
+        toStudentRosterRecord(
+          docItem.id,
+          docItem.data() as Record<string, any>
+        )
+      );
+      return rosterStudents;
+    };
+
     if (
       body?.quarterParticipation &&
       typeof body.quarterParticipation === "object"
     ) {
       updates.quarterParticipation = sanitizeQuarterParticipation(
-        body.quarterParticipation
+        body.quarterParticipation,
+        await getRosterStudents(),
+        normalize(existing.schoolName)
       );
     }
     if (
@@ -543,7 +516,9 @@ export async function PATCH(request: Request) {
       typeof body.quarterWeekParticipation === "object"
     ) {
       updates.quarterWeekParticipation = sanitizeQuarterWeekParticipation(
-        body.quarterWeekParticipation
+        body.quarterWeekParticipation,
+        await getRosterStudents(),
+        normalize(existing.schoolName)
       );
     }
     if (body?.workSessions && typeof body.workSessions === "object") {

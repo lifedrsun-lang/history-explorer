@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       .limit(10)
       .get();
 
-    const matches = snapshot.docs
+    const candidates = snapshot.docs
       .map(
         (item): StudentRecord => ({
           id: item.id,
@@ -71,10 +71,31 @@ export async function POST(request: Request) {
         })
       )
       .filter((student) => isActiveStudent(student))
-      .filter((student) => student.sunLabMember === true)
-      .filter(
-        (student) => normalizeBirthDate(student.birthDate) === birthDate
-      );
+      .filter((student) => student.sunLabMember === true);
+    const candidatesWithProfiles = await Promise.all(
+      candidates.map(async (student) => {
+        const profileSnapshot = await db
+          .collection("sun_lab_members")
+          .doc(student.id)
+          .get();
+        if (!profileSnapshot.exists) return student;
+
+        const profile = profileSnapshot.data() || {};
+        return {
+          ...student,
+          birthDate: profile.birthDate,
+          sunLabAllAccess: profile.allAccess === true,
+          sunLabPermissions: Array.isArray(profile.permissions)
+            ? profile.permissions
+            : [],
+          helloMapleId: profile.helloMapleId,
+          helloMaplePassword: profile.helloMaplePassword,
+        } as StudentRecord;
+      })
+    );
+    const matches = candidatesWithProfiles.filter(
+      (student) => normalizeBirthDate(student.birthDate) === birthDate
+    );
 
     if (matches.length === 0) {
       return jsonPrivate(

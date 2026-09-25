@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { auth } from "@/lib/firebase";
+import { isStudentEnrolledInQuarter } from "@/lib/studentRoster";
 
 type Quarter = "Q1" | "Q2" | "Q3" | "Q4";
 type Student = {
@@ -14,6 +15,7 @@ type Student = {
   grade: string;
   schoolClass: string;
   enrollmentStatus: string;
+  enrollmentTerms: string[];
   phone: string;
 };
 type School = {
@@ -22,14 +24,13 @@ type School = {
   title: string;
   rule: string;
   quarterParticipation: Partial<Record<Quarter, Record<string, boolean[]>>>;
-  quarterStudentSnapshots?: Partial<Record<Quarter, Student[]>>;
   students: Student[];
 };
 type SavedRecord = {
   contractId?: string;
   quarter?: string;
   receipts?: Record<string, boolean[]>;
-  studentSnapshots?: Student[];
+  studentIds?: string[];
 };
 
 const quarters: { key: Quarter; label: string }[] = [
@@ -64,7 +65,7 @@ export default function TextbookReceiptsPage() {
   const [records, setRecords] = useState<SavedRecord[]>([]);
   const [schoolId, setSchoolId] = useState("");
   const [quarter, setQuarter] = useState<Quarter>("Q1");
-  const [studentSnapshots, setStudentSnapshots] = useState<Student[]>([]);
+  const [rosterStudents, setRosterStudents] = useState<Student[]>([]);
   const [receipts, setReceipts] = useState<Record<string, boolean[]>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -139,28 +140,18 @@ export default function TextbookReceiptsPage() {
 
   const sourceStudents = useMemo(() => {
     if (!scopedSchool) return [];
-    const seeded = scopedSchool.quarterStudentSnapshots?.[quarter];
-    if (Array.isArray(seeded) && seeded.length > 0) return seeded;
-    if (Array.isArray(selectedRecord?.studentSnapshots) && selectedRecord.studentSnapshots.length > 0) {
-      return selectedRecord.studentSnapshots;
-    }
-
-    const feeMap = scopedSchool.quarterParticipation?.[quarter] || {};
-    return scopedSchool.students.filter((student) => {
-      const fee = feeMap[student.id] || [];
-      const savedReceipt = selectedRecord?.receipts?.[student.id] || [];
-      return fee.some(Boolean) || savedReceipt.some(Boolean);
-    });
-  }, [quarter, scopedSchool, selectedRecord]);
+    return scopedSchool.students.filter((student) =>
+      isStudentEnrolledInQuarter(student, quarter)
+    );
+  }, [quarter, scopedSchool]);
 
   useEffect(() => {
     if (!scopedSchool) {
-      setStudentSnapshots([]);
+      setRosterStudents([]);
       setReceipts({});
       return;
     }
 
-    const feeMap = scopedSchool.quarterParticipation?.[quarter] || {};
     const savedReceipts = selectedRecord?.receipts || {};
     const nextReceipts: Record<string, boolean[]> = {};
     const nextStudents = sourceStudents.map((student) => ({ ...student, phone: student.phone || "" }));
@@ -171,21 +162,17 @@ export default function TextbookReceiptsPage() {
         return;
       }
 
-      const feeChecks = normalizeChecks(feeMap[student.id]);
-      nextReceipts[student.id] =
-        scopedSchool.rule === "all_after_enrollment" && (feeChecks.some(Boolean) || sourceStudents.length > 0)
-          ? [true, true, true]
-          : feeChecks;
+      nextReceipts[student.id] = [true, true, true];
     });
 
-    setStudentSnapshots(nextStudents);
+    setRosterStudents(nextStudents);
     setReceipts(nextReceipts);
   }, [quarter, scopedSchool, selectedRecord, sourceStudents]);
 
   const totals = [0, 1, 2].map(
-    (term) => studentSnapshots.filter((student) => Boolean(receipts[student.id]?.[term])).length
+    (term) => rosterStudents.filter((student) => Boolean(receipts[student.id]?.[term])).length
   );
-  const uniqueCount = studentSnapshots.filter((student) => (receipts[student.id] || []).some(Boolean)).length;
+  const uniqueCount = rosterStudents.filter((student) => (receipts[student.id] || []).some(Boolean)).length;
 
   const toggle = (studentId: string, term: number) => setReceipts((current) => {
     const checks = [...(current[studentId] || [false, false, false])];
@@ -193,7 +180,7 @@ export default function TextbookReceiptsPage() {
     return { ...current, [studentId]: checks };
   });
 
-  const updatePhone = (studentId: string, phone: string) => setStudentSnapshots((current) =>
+  const updatePhone = (studentId: string, phone: string) => setRosterStudents((current) =>
     current.map((student) => student.id === studentId ? { ...student, phone } : student)
   );
 
@@ -210,11 +197,13 @@ export default function TextbookReceiptsPage() {
           schoolName: scopedSchool.schoolName,
           quarter,
           receipts,
-          studentSnapshots,
+          studentPhones: Object.fromEntries(
+            rosterStudents.map((student) => [student.id, student.phone])
+          ),
         }),
       });
       setNotice(
-        `${scopedSchool.schoolName} ${quarters.find((item) => item.key === quarter)?.label} 확정명단 ${studentSnapshots.length}명과 교재 수령기록을 저장했습니다.`
+        `${scopedSchool.schoolName} ${quarters.find((item) => item.key === quarter)?.label} 학생 ${rosterStudents.length}명의 교재 수령기록을 저장했습니다.`
       );
       await load();
     } catch (saveError) {
@@ -238,7 +227,7 @@ export default function TextbookReceiptsPage() {
           <div className="text-xs font-black text-indigo-600">교재 수령인원 확인</div>
           <h1 className="mt-1 text-2xl font-black text-slate-900">학교별 · 분기별 교재 수령 명단</h1>
           <p className="mt-2 text-sm font-bold text-slate-500">
-            분기 확정명단은 수강료 관리와 함께 사용하고, 여기서는 텀별 교재 수령 여부를 따로 관리합니다.
+            수강생 관리의 분기 체크로 명단을 불러오고, 여기서는 텀별 교재 수령 여부만 따로 관리합니다.
           </p>
           <div className={`mt-5 grid gap-3 ${requestedSchool ? "" : "sm:grid-cols-2"}`}>
             {!requestedSchool && (
@@ -289,9 +278,9 @@ export default function TextbookReceiptsPage() {
               </div>
               {loading ? (
                 <div className="p-8 text-center text-sm font-bold text-slate-400">불러오는 중...</div>
-              ) : studentSnapshots.length === 0 ? (
-                <div className="p-8 text-center text-sm font-bold text-slate-400">이 분기 확정 명단이 없습니다.</div>
-              ) : studentSnapshots.map((student) => (
+              ) : rosterStudents.length === 0 ? (
+                <div className="p-8 text-center text-sm font-bold text-slate-400">수강생 관리에서 이 분기로 체크된 학생이 없습니다.</div>
+              ) : rosterStudents.map((student) => (
                 <div
                   key={student.id}
                   className="grid grid-cols-[120px_100px_1fr_170px_80px_80px_80px] items-center border-t border-slate-100 px-4 py-3 text-center"
@@ -329,8 +318,8 @@ export default function TextbookReceiptsPage() {
           <div className="border-t border-slate-200 bg-slate-50 p-5">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
               <div className="rounded-2xl bg-white p-3 text-center">
-                <div className="text-[11px] font-black text-slate-400">확정 명단</div>
-                <div className="mt-1 text-xl font-black">{studentSnapshots.length}명</div>
+                <div className="text-[11px] font-black text-slate-400">분기 수강생</div>
+                <div className="mt-1 text-xl font-black">{rosterStudents.length}명</div>
               </div>
               <div className="rounded-2xl bg-white p-3 text-center">
                 <div className="text-[11px] font-black text-slate-400">수령 학생</div>
@@ -349,7 +338,7 @@ export default function TextbookReceiptsPage() {
               disabled={!scopedSchool || saving}
               className="mt-4 w-full rounded-2xl bg-indigo-600 py-3 text-sm font-black text-white disabled:opacity-50"
             >
-              {saving ? "저장 중..." : "이 분기 수령인원 확정 저장"}
+              {saving ? "저장 중..." : "이 분기 교재 수령기록 저장"}
             </button>
           </div>
         </section>

@@ -17,7 +17,7 @@ export const STUDENT_PROGRAM_OPTIONS: Array<{
 }> = [
   {
     value: "sun_lab",
-    label: "SUN LAB 회원",
+    label: "SUN LAB 단독수업",
   },
   {
     value: "byeolkkum_history",

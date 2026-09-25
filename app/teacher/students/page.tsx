@@ -30,24 +30,20 @@ import {
   getStudentProgramValue,
 } from "@/lib/programs";
 import {
-  SUN_LAB_PERMISSION_OPTIONS,
-  isValidBirthDate,
-  normalizeBirthDate,
-  type SunLabPermission,
-} from "@/lib/sunLabMember";
-import {
   formatEnrollmentTerm,
   getEnrollmentStatus,
   getEnrollmentTerms,
   makeEnrollmentTerm,
+  type EnrollmentStatus,
 } from "@/lib/studentEnrollment";
+import { AFTER_SCHOOL_ACADEMIC_YEAR } from "@/lib/studentRoster";
 import StudentCard from "../components/StudentCard";
 import StudentEditModal from "../components/StudentEditModal";
 import { normalizeSchoolText } from "@/app/student/data/schoolInfo";
 
 const CLASS_OPTIONS = ["전체", "A반", "B반"] as const;
 const BULK_CLASS_OPTIONS = ["A반", "B반"] as const;
-type StudentStatusView = "active" | "paused";
+type StudentStatusView = EnrollmentStatus;
 type CoinSource = "quiz" | "homework" | "bonus" | "making";
 type AttendanceStatus = "출석" | "결석(병가)" | "결석(체험학습)" | "지각";
 
@@ -64,7 +60,7 @@ const getTeachingClass = (student: any) => {
 };
 
 const getSimpleStatus = (student: any): StudentStatusView => {
-  return getEnrollmentStatus(student) === "active" ? "active" : "paused";
+  return getEnrollmentStatus(student);
 };
 
 export default function TeacherStudentsPage() {
@@ -80,6 +76,7 @@ export default function TeacherStudentsPage() {
   const [selectedClass, setSelectedClass] = useState<(typeof CLASS_OPTIONS)[number]>("전체");
   const [searchTerm, setSearchTerm] = useState("");
   const [termYear, setTermYear] = useState(new Date().getFullYear());
+  const [bulkEnrollmentQuarter, setBulkEnrollmentQuarter] = useState(3);
   const [toastMessage, setToastMessage] = useState("");
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -100,11 +97,9 @@ export default function TeacherStudentsPage() {
   const [newName, setNewName] = useState("");
   const [newProgram, setNewProgram] = useState<StudentProgram>(DEFAULT_STUDENT_PROGRAM);
   const [newStage, setNewStage] = useState(DEFAULT_STAGE_ID);
-  const [newBirthDate, setNewBirthDate] = useState("");
-  const [newSunLabAllAccess, setNewSunLabAllAccess] = useState(false);
-  const [newSunLabPermissions, setNewSunLabPermissions] = useState<SunLabPermission[]>([]);
-  const [newHelloMapleId, setNewHelloMapleId] = useState("");
-  const [newHelloMaplePassword, setNewHelloMaplePassword] = useState("");
+  const [newStatus, setNewStatus] = useState<EnrollmentStatus>("active");
+  const [newEnrollmentTerms, setNewEnrollmentTerms] = useState<string[]>([]);
+  const [newSunLabMember, setNewSunLabMember] = useState(false);
 
   const loadStudents = async () => {
     setLoading(true);
@@ -133,7 +128,9 @@ export default function TeacherStudentsPage() {
       const searchParams = new URLSearchParams(window.location.search);
       const status = searchParams.get("status");
       const school = searchParams.get("school");
-      setSelectedStatus(status === "paused" ? "paused" : "active");
+      setSelectedStatus(
+        status === "paused" || status === "ended" ? status : "active"
+      );
       if (school) setSelectedSchool(school);
     }, 0);
 
@@ -324,7 +321,7 @@ export default function TeacherStudentsPage() {
     await loadStudents();
   };
 
-  const changeStatus = async (student: any, status: StudentStatusView) => {
+  const changeStatus = async (student: any, status: EnrollmentStatus) => {
     setSavingId(student.id);
     setError("");
     try {
@@ -372,11 +369,45 @@ export default function TeacherStudentsPage() {
     }
   };
 
-  const toggleNewSunLabPermission = (permission: SunLabPermission) => {
-    setNewSunLabPermissions((current) =>
-      current.includes(permission)
-        ? current.filter((item) => item !== permission)
-        : [...current, permission]
+  const unassignedStudents = students.filter(
+    (student) => getEnrollmentTerms(student).length === 0
+  );
+
+  const applyQuarterToUnassigned = async () => {
+    if (unassignedStudents.length === 0) {
+      showToast("분기 미지정 학생이 없습니다");
+      return;
+    }
+    const term = makeEnrollmentTerm(termYear, bulkEnrollmentQuarter);
+    if (
+      !confirm(
+        `분기 미지정 학생 ${unassignedStudents.length}명에게 ${termYear}년 ${bulkEnrollmentQuarter}분기를 적용할까요?`
+      )
+    ) {
+      return;
+    }
+    setLoading(true);
+    try {
+      await Promise.all(
+        unassignedStudents.map((student) =>
+          updateDoc(getStudentRef(student), { enrollmentTerms: [term] })
+        )
+      );
+      showToast(`${unassignedStudents.length}명 분기 적용 완료`);
+      await loadStudents();
+    } catch {
+      setError("분기 일괄 적용에 실패했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleNewQuarter = (quarter: number) => {
+    const term = makeEnrollmentTerm(AFTER_SCHOOL_ACADEMIC_YEAR, quarter);
+    setNewEnrollmentTerms((current) =>
+      current.includes(term)
+        ? current.filter((item) => item !== term)
+        : [...current, term].sort((a, b) => a.localeCompare(b))
     );
   };
 
@@ -388,32 +419,18 @@ export default function TeacherStudentsPage() {
     setNewName("");
     setNewProgram(DEFAULT_STUDENT_PROGRAM);
     setNewStage(DEFAULT_STAGE_ID);
-    setNewBirthDate("");
-    setNewSunLabAllAccess(false);
-    setNewSunLabPermissions([]);
-    setNewHelloMapleId("");
-    setNewHelloMaplePassword("");
+    setNewStatus("active");
+    setNewEnrollmentTerms([]);
+    setNewSunLabMember(false);
   };
 
   const saveStudent = async () => {
-    const isSunLabMember = newProgram === "sun_lab";
-    const birthDate = normalizeBirthDate(newBirthDate);
-    const helloMapleId = newHelloMapleId.trim();
-    const helloMaplePassword = newHelloMaplePassword.trim();
+    const isSunLabOnly = newProgram === "sun_lab";
+    const isSunLabMember = newSunLabMember || isSunLabOnly;
 
-    if (isSunLabMember) {
+    if (isSunLabOnly) {
       if (!newName.trim()) {
         alert("이름을 입력해주세요.");
-        return;
-      }
-
-      if (!isValidBirthDate(birthDate)) {
-        alert("생년월일 8자리를 입력해주세요. 예: 20180713");
-        return;
-      }
-
-      if ((helloMapleId && !helloMaplePassword) || (!helloMapleId && helloMaplePassword)) {
-        alert("헬로메이플 아이디와 비밀번호를 모두 입력해주세요.");
         return;
       }
     } else if (!newName || !newGrade || !newClass || !newNumber) {
@@ -424,7 +441,7 @@ export default function TeacherStudentsPage() {
     const password = newNumber ? String(newNumber).padStart(2, "0") : "";
 
     await addDoc(collection(db, "students"), {
-      school: newSchool || (isSunLabMember ? "SUN LAB" : "미지정"),
+      school: newSchool || (isSunLabOnly ? "SUN LAB" : "미지정"),
       grade: newGrade,
       class: newClass,
       studentNumber: newNumber,
@@ -434,28 +451,22 @@ export default function TeacherStudentsPage() {
       silver: 0,
       totalBronze: 0,
       totalSilver: 0,
-      stage: isSunLabMember ? DEFAULT_STAGE_ID : newStage,
+      stage: isSunLabOnly ? DEFAULT_STAGE_ID : newStage,
       program: newProgram,
-      isActive: true,
-      enrollmentStatus: "active",
-      enrollmentTerms: [],
+      isActive: newStatus === "active",
+      enrollmentStatus: newStatus,
+      enrollmentTerms: newEnrollmentTerms,
       coinHistory: [],
       attendanceHistory: [],
       materialHistory: [],
       sunLabMember: isSunLabMember,
-      sunLabAllAccess: isSunLabMember && newSunLabAllAccess,
-      sunLabPermissions: isSunLabMember ? newSunLabPermissions : [],
-      birthDate: isSunLabMember ? birthDate : "",
-      helloMapleBirthMd: isSunLabMember && birthDate ? birthDate.slice(4) : "",
-      helloMapleId: isSunLabMember ? helloMapleId : "",
-      helloMaplePassword: isSunLabMember ? helloMaplePassword : "",
     });
 
     resetNewStudentForm();
     setIsStudentModalOpen(false);
     showToast(
       isSunLabMember
-        ? "SUN LAB 회원 등록 완료"
+        ? "수강생 등록 완료 · SUN LAB 회원정보는 회원관리에서 연결해 주세요"
         : `학생 등록 완료 · 비밀번호 ${password}`
     );
     await loadStudents();
@@ -622,7 +633,13 @@ export default function TeacherStudentsPage() {
     );
   }
 
-  const isNewSunLabMember = newProgram === "sun_lab";
+  const isNewSunLabMember = newSunLabMember || newProgram === "sun_lab";
+  const selectedStatusLabel =
+    selectedStatus === "active"
+      ? "수강중인 친구"
+      : selectedStatus === "paused"
+        ? "쉬는중인 친구"
+        : "종료한 친구";
 
   return (
     <div className="min-h-[100dvh] bg-[#f5f7fb] p-3 sm:p-5">
@@ -638,16 +655,40 @@ export default function TeacherStudentsPage() {
             <div>
               <div className="text-sm font-black text-sky-600">👧 수강생 관리</div>
               <h1 className="mt-1 text-3xl font-black text-slate-900">
-                {selectedStatus === "active" ? "수강중인 친구" : "쉬는중인 친구"}
+                {selectedStatusLabel}
               </h1>
               <p className="mt-2 text-sm font-bold text-slate-500">
                 {selectedStatus === "active"
                   ? "진도·코인·교재·학생수정까지 이 화면에서 바로 관리합니다."
-                  : "쉬는 친구를 검색하고 수강이력 확인 또는 수강 재개를 할 수 있습니다."}
+                  : "상태와 수강 분기 이력을 확인하고 수정할 수 있습니다."}
               </p>
             </div>
-            <Link href="/teacher" className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-700">← 교사용 홈</Link>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/teacher/student-data-integrity" className="rounded-xl bg-blue-50 px-4 py-2 text-sm font-black text-blue-700">데이터 연결 점검</Link>
+              <Link href="/teacher" className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-700">← 교사용 홈</Link>
+            </div>
           </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-2 rounded-3xl bg-white p-3 shadow-md">
+          {([
+            ["active", "🟢 수강중"],
+            ["paused", "🟡 쉬는중"],
+            ["ended", "⚫ 종료"],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setSelectedStatus(value)}
+              className={`rounded-2xl px-2 py-3 text-sm font-black ${
+                selectedStatus === value
+                  ? "bg-slate-800 text-white"
+                  : "bg-slate-100 text-slate-600"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         <div className="mt-4 grid grid-cols-3 gap-3 text-center">
@@ -704,6 +745,17 @@ export default function TeacherStudentsPage() {
               <button onClick={loadStudents} disabled={loading} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 disabled:opacity-50">{loading ? "불러오는 중" : "↻ 새로고침"}</button>
             </div>
           </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl bg-blue-50 px-3 py-3">
+            <span className="text-xs font-black text-blue-800">
+              분기 미지정 {unassignedStudents.length}명
+            </span>
+            <select value={bulkEnrollmentQuarter} onChange={(e) => setBulkEnrollmentQuarter(Number(e.target.value))} className="rounded-xl border border-blue-200 bg-white px-2 py-1.5 text-xs font-black text-blue-800">
+              {[1, 2, 3, 4].map((quarter) => <option key={quarter} value={quarter}>{termYear}년 {quarter}분기</option>)}
+            </select>
+            <button type="button" onClick={() => void applyQuarterToUnassigned()} disabled={loading || unassignedStudents.length === 0} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white disabled:opacity-40">
+              미지정 학생 일괄 적용
+            </button>
+          </div>
           {error && <div className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{error}</div>}
         </div>
 
@@ -741,7 +793,9 @@ export default function TeacherStudentsPage() {
                       <div className="mt-1 text-sm font-bold text-slate-500">{student.school || "미지정"} · {getStudentProgramLabel(student.program)} · {getTeachingClass(student)}</div>
                       <div className="mt-0.5 text-xs font-bold text-slate-400">{student.grade}학년 {student.class}반 {student.studentNumber}번</div>
                     </div>
-                    <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-black text-amber-700">🟡 쉬는중</span>
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-black ${selectedStatus === "ended" ? "bg-slate-200 text-slate-700" : "bg-amber-100 text-amber-700"}`}>
+                      {selectedStatus === "ended" ? "⚫ 종료" : "🟡 쉬는중"}
+                    </span>
                   </div>
 
                   <div className="mt-4 rounded-2xl bg-slate-50 p-3">
@@ -766,7 +820,10 @@ export default function TeacherStudentsPage() {
                     </div>
                   </div>
 
-                  <button disabled={isSaving} onClick={() => changeStatus(student, "active")} className="mt-3 w-full rounded-xl bg-emerald-500 px-3 py-2 text-sm font-black text-white disabled:opacity-50">▶ 수강 재개</button>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button disabled={isSaving} onClick={() => changeStatus(student, "active")} className="rounded-xl bg-emerald-500 px-3 py-2 text-sm font-black text-white disabled:opacity-50">▶ 수강 재개</button>
+                    <button disabled={isSaving} onClick={() => setEditingStudent(student)} className="rounded-xl bg-blue-500 px-3 py-2 text-sm font-black text-white disabled:opacity-50">✏️ 정보 수정</button>
+                  </div>
                 </div>
               );
             })}
@@ -887,13 +944,7 @@ export default function TeacherStudentsPage() {
                     onChange={(e) => {
                       const nextProgram = e.target.value as StudentProgram;
                       setNewProgram(nextProgram);
-                      if (nextProgram !== "sun_lab") {
-                        setNewBirthDate("");
-                        setNewSunLabAllAccess(false);
-                        setNewSunLabPermissions([]);
-                        setNewHelloMapleId("");
-                        setNewHelloMaplePassword("");
-                      }
+                      if (nextProgram === "sun_lab") setNewSunLabMember(true);
                     }}
                     className="rounded-xl border px-3 py-2"
                   >
@@ -903,93 +954,60 @@ export default function TeacherStudentsPage() {
                   </select>
                 </label>
 
-                <input value={newSchool} onChange={(e) => setNewSchool(e.target.value)} placeholder={isNewSunLabMember ? "학교 (선택)" : "학교"} className="rounded-xl border px-3 py-2" />
+                <input value={newSchool} onChange={(e) => setNewSchool(e.target.value)} placeholder={newProgram === "sun_lab" ? "학교 (선택)" : "학교"} className="rounded-xl border px-3 py-2" />
                 <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="이름" className="rounded-xl border px-3 py-2" />
-                <input value={newGrade} onChange={(e) => setNewGrade(e.target.value)} placeholder={isNewSunLabMember ? "학년 (선택)" : "학년"} className="rounded-xl border px-3 py-2" />
-                <input value={newClass} onChange={(e) => setNewClass(e.target.value)} placeholder={isNewSunLabMember ? "실제 학교 반 (선택)" : "실제 학교 반"} className="rounded-xl border px-3 py-2" />
-                <input value={newNumber} onChange={(e) => setNewNumber(e.target.value)} placeholder={isNewSunLabMember ? "번호 (선택)" : "번호"} className="rounded-xl border px-3 py-2" />
+                <input value={newGrade} onChange={(e) => setNewGrade(e.target.value)} placeholder={newProgram === "sun_lab" ? "학년 (선택)" : "학년"} className="rounded-xl border px-3 py-2" />
+                <input value={newClass} onChange={(e) => setNewClass(e.target.value)} placeholder={newProgram === "sun_lab" ? "실제 학교 반 (선택)" : "실제 학교 반"} className="rounded-xl border px-3 py-2" />
+                <input value={newNumber} onChange={(e) => setNewNumber(e.target.value)} placeholder={newProgram === "sun_lab" ? "번호 (선택)" : "번호"} className="rounded-xl border px-3 py-2" />
 
-                {!isNewSunLabMember && (
+                {newProgram !== "sun_lab" && (
                   <select value={newStage} onChange={(e) => setNewStage(e.target.value)} className="rounded-xl border px-3 py-2 md:col-span-2">
                     {STAGE_DATA.map((stage) => <option key={stage.id} value={stage.id}>{stage.label} {stage.title}</option>)}
                   </select>
                 )}
               </div>
 
-              {isNewSunLabMember && (
-                <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50/70 p-4">
-                  <div className="font-black text-sky-800">🌞 SUN LAB 회원 정보</div>
-                  <div className="mt-1 text-xs font-bold text-slate-500">
-                    이름과 생년월일로 SUN LAB에 입장하며, 허용된 메뉴만 표시됩니다.
-                  </div>
-
-                  <label className="mt-3 grid gap-1.5 text-sm font-black text-slate-600">
-                    생년월일 8자리
-                    <input
-                      value={newBirthDate}
-                      onChange={(e) => setNewBirthDate(e.target.value.replace(/\D/g, "").slice(0, 8))}
-                      inputMode="numeric"
-                      maxLength={8}
-                      autoComplete="off"
-                      placeholder="예: 20180713"
-                      className="rounded-xl border border-sky-100 bg-white px-3 py-2"
-                    />
-                  </label>
-
-                  <label className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-black text-amber-800">
-                    <input
-                      type="checkbox"
-                      checked={newSunLabAllAccess}
-                      onChange={(e) => setNewSunLabAllAccess(e.target.checked)}
-                      className="mt-0.5 h-4 w-4"
-                    />
-                    <span>
-                      전체권한
-                      <span className="mt-0.5 block text-[11px] font-bold text-amber-600">모든 SUN LAB 메뉴를 표시합니다.</span>
-                    </span>
-                  </label>
-
-                  <div className="mt-3">
-                    <div className="text-xs font-black text-slate-600">개별 이용권한</div>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      {SUN_LAB_PERMISSION_OPTIONS.map((option) => (
-                        <label key={option.value} className="flex items-center gap-2 rounded-xl border border-sky-100 bg-white px-3 py-2 text-xs font-black text-slate-700">
-                          <input
-                            type="checkbox"
-                            checked={newSunLabPermissions.includes(option.value)}
-                            onChange={() => toggleNewSunLabPermission(option.value)}
-                            className="h-4 w-4"
-                          />
-                          <span>{option.emoji} {option.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3">
-                    <div className="text-sm font-black text-emerald-700">🍁 헬로메이플 계정 · 선택</div>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                      <input
-                        value={newHelloMapleId}
-                        onChange={(e) => setNewHelloMapleId(e.target.value)}
-                        autoComplete="off"
-                        placeholder="헬로메이플 아이디"
-                        className="rounded-xl border border-emerald-100 bg-white px-3 py-2"
-                      />
-                      <input
-                        value={newHelloMaplePassword}
-                        onChange={(e) => setNewHelloMaplePassword(e.target.value)}
-                        autoComplete="off"
-                        placeholder="헬로메이플 비밀번호"
-                        className="rounded-xl border border-emerald-100 bg-white px-3 py-2"
-                      />
-                    </div>
-                  </div>
+              <div className="mt-4 rounded-2xl border border-slate-200 p-4">
+                <div className="text-sm font-black text-slate-700">현재 상태</div>
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {([
+                    ["active", "🟢 수강중"],
+                    ["paused", "🟡 쉬는중"],
+                    ["ended", "⚫ 종료"],
+                  ] as const).map(([value, label]) => (
+                    <button key={value} type="button" onClick={() => setNewStatus(value)} className={`rounded-xl px-2 py-2 text-xs font-black ${newStatus === value ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600"}`}>
+                      {label}
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50/60 p-4">
+                <div className="text-sm font-black text-blue-800">26년 수강 분기</div>
+                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {[1, 2, 3, 4].map((quarter) => {
+                    const term = makeEnrollmentTerm(AFTER_SCHOOL_ACADEMIC_YEAR, quarter);
+                    const checked = newEnrollmentTerms.includes(term);
+                    return (
+                      <label key={quarter} className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-black ${checked ? "border-blue-400 bg-blue-100 text-blue-800" : "border-blue-100 bg-white text-slate-600"}`}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleNewQuarter(quarter)} className="h-4 w-4 accent-blue-600" />
+                        {quarter}분기
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <label className="mt-4 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <input type="checkbox" checked={isNewSunLabMember} disabled={newProgram === "sun_lab"} onChange={(e) => setNewSunLabMember(e.target.checked)} className="mt-0.5 h-5 w-5 accent-emerald-600" />
+                <span>
+                  <span className="block text-sm font-black text-emerald-800">SUN LAB 회원</span>
+                  <span className="mt-1 block text-[11px] font-bold leading-5 text-slate-500">회원으로 체크한 뒤 로그인·헬로메이플 정보는 SUN LAB 회원관리에서 입력합니다.</span>
+                </span>
+              </label>
 
               <button onClick={saveStudent} className="mt-4 w-full rounded-xl bg-yellow-500 px-4 py-3 font-black text-white">
-                {isNewSunLabMember ? "SUN LAB 회원 등록" : "등록"}
+                등록
               </button>
             </div>
           </div>
