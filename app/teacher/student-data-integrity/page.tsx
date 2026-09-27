@@ -22,6 +22,22 @@ type Audit = {
   legacySunLabFlags: NamedStudent[];
   duplicateStudents: NamedStudent[][];
 };
+type Q2RelinkPlan = {
+  ready: boolean;
+  changedMappingCount: number;
+  changedDocumentCount: number;
+  digest: string;
+  violations: string[];
+  mappings: Array<{
+    legacyId: string;
+    studentId: string;
+    currentName: string;
+    legacyOccurrences: number;
+    targetOccurrences: number;
+    locations: string[];
+    status: "will_relink" | "already_linked" | "invalid";
+  }>;
+};
 
 export default function StudentDataIntegrityPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -29,6 +45,8 @@ export default function StudentDataIntegrityPage() {
   const [audit, setAudit] = useState<Audit | null>(null);
   const [loading, setLoading] = useState(false);
   const [repairing, setRepairing] = useState(false);
+  const [q2Relinking, setQ2Relinking] = useState(false);
+  const [q2RelinkPlan, setQ2RelinkPlan] = useState<Q2RelinkPlan | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -114,6 +132,66 @@ export default function StudentDataIntegrityPage() {
     }
   };
 
+  const dryRunQ2OrphanLinks = async () => {
+    setQ2Relinking(true);
+    setError("");
+    setNotice("");
+    try {
+      const data = await requestJson({
+        method: "POST",
+        body: JSON.stringify({ action: "dry-run-q2-orphan-links" }),
+      });
+      setQ2RelinkPlan(data.plan || null);
+      setNotice(
+        `dry-run 완료 · 연결 대상 ${data.plan?.changedMappingCount || 0}건 · 변경 문서 ${data.plan?.changedDocumentCount || 0}건`
+      );
+    } catch (dryRunError) {
+      setError(
+        dryRunError instanceof Error
+          ? dryRunError.message
+          : "Q2 고아 참조 dry-run에 실패했습니다."
+      );
+    } finally {
+      setQ2Relinking(false);
+    }
+  };
+
+  const applyQ2OrphanLinks = async () => {
+    if (!q2RelinkPlan?.ready || !q2RelinkPlan.digest) return;
+    if (
+      !confirm(
+        "dry-run으로 검증된 Q2 고아 참조 3건만 현재 studentId로 연결합니다. 학생 원본·분기·체크값은 변경하지 않습니다. 진행할까요?"
+      )
+    ) {
+      return;
+    }
+    setQ2Relinking(true);
+    setError("");
+    try {
+      const data = await requestJson({
+        method: "POST",
+        body: JSON.stringify({
+          action: "apply-q2-orphan-links",
+          confirm: "relink-exact-q2-orphans",
+          dryRunDigest: q2RelinkPlan.digest,
+        }),
+      });
+      setNotice(
+        `Q2 참조 연결 완료 · ${data.applied?.changedMappingCount || 0}건 · 고아 참조 ${data.after?.orphanReferences?.length || 0}건`
+      );
+      setQ2RelinkPlan(null);
+      await loadAudit();
+    } catch (applyError) {
+      setError(
+        applyError instanceof Error
+          ? applyError.message
+          : "Q2 고아 참조 연결에 실패했습니다."
+      );
+    } finally {
+      setQ2Relinking(false);
+    }
+  };
+
   if (authChecking) {
     return <main className="min-h-screen bg-slate-50 p-6 font-bold">로그인 확인 중...</main>;
   }
@@ -147,6 +225,33 @@ export default function StudentDataIntegrityPage() {
           </div>
           {error && <div className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700">{error}</div>}
           {notice && <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700">{notice}</div>}
+        </section>
+
+        <section className="mt-4 rounded-3xl border-2 border-amber-200 bg-amber-50 p-5 shadow-sm">
+          <div className="font-black text-amber-900">일회성 새솔초 Q2 고아 참조 연결</div>
+          <p className="mt-1 text-xs font-bold text-amber-800">
+            지정된 3건만 dry-run 검증 후 연결합니다. 학생 원본·분기·수강료 및 교재 체크값은 변경하지 않습니다.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" onClick={() => void dryRunQ2OrphanLinks()} disabled={q2Relinking} className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50">
+              {q2Relinking ? "확인 중..." : "Q2 연결 dry-run"}
+            </button>
+            <button type="button" onClick={() => void applyQ2OrphanLinks()} disabled={q2Relinking || !q2RelinkPlan?.ready || q2RelinkPlan.changedMappingCount !== 3} className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50">
+              검증된 3건 연결 실행
+            </button>
+          </div>
+          {q2RelinkPlan && (
+            <div className="mt-3 space-y-2 text-xs font-bold text-slate-700">
+              {q2RelinkPlan.mappings.map((mapping) => (
+                <div key={mapping.legacyId} className="rounded-xl bg-white px-3 py-2">
+                  {mapping.legacyId} → {mapping.studentId} ({mapping.currentName}) · 참조 {mapping.legacyOccurrences}곳 · {mapping.status}
+                </div>
+              ))}
+              {q2RelinkPlan.violations.map((violation) => (
+                <div key={violation} className="rounded-xl bg-rose-100 px-3 py-2 text-rose-700">{violation}</div>
+              ))}
+            </div>
+          )}
         </section>
 
         {audit && (
@@ -189,4 +294,3 @@ function IssueCard({ title, items }: { title: string; items: string[] }) {
     </div>
   );
 }
-
