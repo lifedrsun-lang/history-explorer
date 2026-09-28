@@ -28,6 +28,7 @@ import {
   StudentProgram,
   getStudentProgramLabel,
   getStudentProgramValue,
+  isQuarterManagedProgram,
 } from "@/lib/programs";
 import {
   formatEnrollmentTerm,
@@ -352,6 +353,7 @@ export default function TeacherStudentsPage() {
   };
 
   const toggleTerm = async (student: any, quarter: number) => {
+    if (!isQuarterManagedProgram(student?.program)) return;
     const term = makeEnrollmentTerm(termYear, quarter);
     const current = getEnrollmentTerms(student);
     const next = current.includes(term)
@@ -370,7 +372,9 @@ export default function TeacherStudentsPage() {
   };
 
   const unassignedStudents = students.filter(
-    (student) => getEnrollmentTerms(student).length === 0
+    (student) =>
+      isQuarterManagedProgram(student?.program) &&
+      getEnrollmentTerms(student).length === 0
   );
 
   const applyQuarterToUnassigned = async () => {
@@ -785,6 +789,7 @@ export default function TeacherStudentsPage() {
             {visibleStudents.map((student) => {
               const terms = getEnrollmentTerms(student);
               const isSaving = savingId === student.id;
+              const quarterManaged = isQuarterManagedProgram(student?.program);
               return (
                 <div key={student.id} className="rounded-3xl bg-white p-4 shadow-md">
                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -798,27 +803,33 @@ export default function TeacherStudentsPage() {
                     </span>
                   </div>
 
-                  <div className="mt-4 rounded-2xl bg-slate-50 p-3">
-                    <div className="text-xs font-black text-slate-500">수강이력</div>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {terms.length === 0 ? (
-                        <span className="text-xs font-bold text-slate-400">아직 입력된 분기 이력이 없습니다.</span>
-                      ) : (
-                        terms.map((term) => <span key={term} className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-black text-blue-700">{formatEnrollmentTerm(term)}</span>)
-                      )}
+                  {quarterManaged ? (
+                    <div className="mt-4 rounded-2xl bg-slate-50 p-3">
+                      <div className="text-xs font-black text-slate-500">수강이력</div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {terms.length === 0 ? (
+                          <span className="text-xs font-bold text-slate-400">아직 입력된 분기 이력이 없습니다.</span>
+                        ) : (
+                          terms.map((term) => <span key={term} className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-black text-blue-700">{formatEnrollmentTerm(term)}</span>)
+                        )}
+                      </div>
+                      <div className="mt-3 grid grid-cols-4 gap-1.5 border-t border-slate-200 pt-3">
+                        {[1, 2, 3, 4].map((quarter) => {
+                          const term = makeEnrollmentTerm(termYear, quarter);
+                          const selected = terms.includes(term);
+                          return (
+                            <button key={quarter} disabled={isSaving} onClick={() => toggleTerm(student, quarter)} className={`rounded-xl px-2 py-2 text-xs font-black ${selected ? "bg-blue-500 text-white" : "bg-white text-slate-500 ring-1 ring-slate-200"}`}>
+                              {quarter}분기 {selected ? "✓" : ""}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <div className="mt-3 grid grid-cols-4 gap-1.5 border-t border-slate-200 pt-3">
-                      {[1, 2, 3, 4].map((quarter) => {
-                        const term = makeEnrollmentTerm(termYear, quarter);
-                        const selected = terms.includes(term);
-                        return (
-                          <button key={quarter} disabled={isSaving} onClick={() => toggleTerm(student, quarter)} className={`rounded-xl px-2 py-2 text-xs font-black ${selected ? "bg-blue-500 text-white" : "bg-white text-slate-500 ring-1 ring-slate-200"}`}>
-                            {quarter}분기 {selected ? "✓" : ""}
-                          </button>
-                        );
-                      })}
+                  ) : (
+                    <div className="mt-4 rounded-2xl bg-violet-50 p-3 text-xs font-bold text-violet-700">
+                      SUN LAB 단독수업 · 월별 관리 대상
                     </div>
-                  </div>
+                  )}
 
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <button disabled={isSaving} onClick={() => changeStatus(student, "active")} className="rounded-xl bg-emerald-500 px-3 py-2 text-sm font-black text-white disabled:opacity-50">▶ 수강 재개</button>
@@ -944,7 +955,10 @@ export default function TeacherStudentsPage() {
                     onChange={(e) => {
                       const nextProgram = e.target.value as StudentProgram;
                       setNewProgram(nextProgram);
-                      if (nextProgram === "sun_lab") setNewSunLabMember(true);
+                      if (nextProgram === "sun_lab") {
+                        setNewSunLabMember(true);
+                        setNewEnrollmentTerms([]);
+                      }
                     }}
                     className="rounded-xl border px-3 py-2"
                   >
@@ -982,21 +996,27 @@ export default function TeacherStudentsPage() {
                 </div>
               </div>
 
-              <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50/60 p-4">
-                <div className="text-sm font-black text-blue-800">26년 수강 분기</div>
-                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {[1, 2, 3, 4].map((quarter) => {
-                    const term = makeEnrollmentTerm(AFTER_SCHOOL_ACADEMIC_YEAR, quarter);
-                    const checked = newEnrollmentTerms.includes(term);
-                    return (
-                      <label key={quarter} className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-black ${checked ? "border-blue-400 bg-blue-100 text-blue-800" : "border-blue-100 bg-white text-slate-600"}`}>
-                        <input type="checkbox" checked={checked} onChange={() => toggleNewQuarter(quarter)} className="h-4 w-4 accent-blue-600" />
-                        {quarter}분기
-                      </label>
-                    );
-                  })}
+              {isQuarterManagedProgram(newProgram) ? (
+                <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50/60 p-4">
+                  <div className="text-sm font-black text-blue-800">26년 수강 분기</div>
+                  <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {[1, 2, 3, 4].map((quarter) => {
+                      const term = makeEnrollmentTerm(AFTER_SCHOOL_ACADEMIC_YEAR, quarter);
+                      const checked = newEnrollmentTerms.includes(term);
+                      return (
+                        <label key={quarter} className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-black ${checked ? "border-blue-400 bg-blue-100 text-blue-800" : "border-blue-100 bg-white text-slate-600"}`}>
+                          <input type="checkbox" checked={checked} onChange={() => toggleNewQuarter(quarter)} className="h-4 w-4 accent-blue-600" />
+                          {quarter}분기
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 p-4 text-sm font-bold text-violet-700">
+                  SUN LAB 단독수업은 월별 관리 대상이므로 수강 분기를 입력하지 않습니다.
+                </div>
+              )}
 
               <label className="mt-4 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                 <input type="checkbox" checked={isNewSunLabMember} disabled={newProgram === "sun_lab"} onChange={(e) => setNewSunLabMember(e.target.checked)} className="mt-0.5 h-5 w-5 accent-emerald-600" />

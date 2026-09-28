@@ -82,3 +82,6 @@ export const getStudentProgramLabel = (
 
   return option?.label || "별꼼역사";
 };
+
+export const isQuarterManagedProgram = (value: unknown) =>
+  getStudentProgramValue(value) !== "sun_lab";
