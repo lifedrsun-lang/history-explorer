@@ -243,13 +243,29 @@ const formatPeriod = (startDate?: string, endDate?: string) => {
   return `${startDate.replaceAll("-", ".")} ~ ${endDate.replaceAll("-", ".")}`;
 };
 
-const getTodayKorean = () =>
-  new Intl.DateTimeFormat("ko-KR", {
+const formatKoreanDate = (value: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul",
     year: "numeric",
     month: "long",
     day: "numeric",
-  }).format(new Date());
+  }).format(date);
+};
+
+const getTodayKorean = () => formatKoreanDate(new Date().toISOString());
+
+const getConfirmationDate = (confirmation?: Confirmation) => {
+  const signedDate = formatKoreanDate(confirmation?.schoolSignedAt || "");
+  if (signedDate) return signedDate;
+
+  // 서명이 저장된 문서인데 서명 시각이 없다면 오늘 날짜로 덮어쓰지 않는다.
+  if (confirmation?.schoolSignatureDataUrl) return "";
+
+  return getTodayKorean();
+};
 
 const getStatusLabel = (
   confirmation: Confirmation | undefined,
@@ -1003,7 +1019,7 @@ export default function AtcConfirmationsPage() {
           <div className="atc-attendance-note mt-3">※ 출석부 월별 해당차수에 해당하는 날짜를 기입.</div>
           <div className="atc-footer-block">
             <div className="atc-footer-statement mt-7 text-center">본인은 위 사항을 확인하며 참여하였음을 서명으로 증명합니다.</div>
-            <div className="atc-footer-date mt-5">{getTodayKorean()}</div>
+            <div className="atc-footer-date mt-5">{getConfirmationDate(selectedConfirmation)}</div>
             <div className="atc-footer-signature mt-6 flex items-center gap-3">
               <span>에듀케이터 성명</span>
               <span className="atc-educator-name min-w-20 border-b border-slate-500 pb-1 text-center">{profile.name}</span>
