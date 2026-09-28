@@ -11,7 +11,10 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import {
+  browserLocalPersistence,
+  browserSessionPersistence,
   onAuthStateChanged,
+  setPersistence,
   signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
@@ -60,6 +63,7 @@ export default function TeacherPage() {
   const [teacherPassword, setTeacherPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginSubmitting, setLoginSubmitting] = useState(false);
+  const [rememberLogin, setRememberLogin] = useState(false);
 
   const [students, setStudents] = useState<any[]>([]);
 
@@ -333,6 +337,12 @@ export default function TeacherPage() {
     setLoginError("");
 
     try {
+      await setPersistence(
+        auth,
+        rememberLogin
+          ? browserLocalPersistence
+          : browserSessionPersistence
+      );
       await signInWithEmailAndPassword(
         auth,
         email,
@@ -1045,8 +1055,10 @@ export default function TeacherPage() {
         password={teacherPassword}
         errorMessage={loginError}
         isSubmitting={loginSubmitting}
+        rememberLogin={rememberLogin}
         setEmail={setTeacherEmail}
         setPassword={setTeacherPassword}
+        setRememberLogin={setRememberLogin}
         onLogin={handleLogin}
       />
     );

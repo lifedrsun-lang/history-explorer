@@ -5,8 +5,10 @@ type Props = {
   password: string;
   errorMessage: string;
   isSubmitting: boolean;
+  rememberLogin: boolean;
   setEmail: (value: string) => void;
   setPassword: (value: string) => void;
+  setRememberLogin: (value: boolean) => void;
   onLogin: () => void;
 };
 
@@ -15,8 +17,10 @@ export default function TeacherLogin({
   password,
   errorMessage,
   isSubmitting,
+  rememberLogin,
   setEmail,
   setPassword,
+  setRememberLogin,
   onLogin,
 }: Props) {
   return (
@@ -49,6 +53,16 @@ export default function TeacherLogin({
           autoComplete="current-password"
           className="w-full border rounded-2xl px-4 py-3 mb-4 outline-none"
         />
+
+        <label className="mb-4 flex cursor-pointer items-center gap-2 text-sm font-bold text-slate-600">
+          <input
+            type="checkbox"
+            checked={rememberLogin}
+            onChange={(event) => setRememberLogin(event.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 accent-yellow-500"
+          />
+          <span>이 기기에서 로그인 유지</span>
+        </label>
 
         {errorMessage && (
           <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
