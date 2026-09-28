@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { auth } from "@/lib/firebase";
 import { TEACHER_DASHBOARD_SUMMARY_REFRESH_EVENT } from "@/lib/teacherDashboard";
+import { clearTeacherRememberLogin } from "@/lib/teacherSession";
 
 const managementSections = [
   {
@@ -84,6 +85,11 @@ export default function TeacherDashboardGate() {
   const [authorized, setAuthorized] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [summary, setSummary] = useState<DashboardSummary>(EMPTY_SUMMARY);
+
+  const handleLogout = async () => {
+    clearTeacherRememberLogin();
+    await signOut(auth);
+  };
 
   const loadSummary = useCallback(async (currentUser: User) => {
     try {
@@ -233,7 +239,7 @@ export default function TeacherDashboardGate() {
               </Link>
               <button
                 type="button"
-                onClick={() => signOut(auth)}
+                onClick={() => void handleLogout()}
                 className="rounded-2xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600 sm:px-4 sm:text-sm"
               >
                 로그아웃

@@ -4,11 +4,11 @@ import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { ReactNode, useEffect, useState } from "react";
 
 import { auth } from "@/lib/firebase";
-
-const TEACHER_SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
-const TEACHER_SESSION_RESET_CUTOFF_MS = Date.parse(
-  "2026-09-08T17:07:00+09:00"
-);
+import {
+  clearTeacherRememberLogin,
+  getTeacherSessionPolicy,
+  isTeacherRememberLoginEnabled,
+} from "@/lib/teacherSession";
 
 function getLastSignInAt(user: User) {
   const value = user.metadata.lastSignInTime;
@@ -42,6 +42,8 @@ export default function TeacherSessionBoundary({
       clearExpiryTimer();
 
       if (!currentUser) {
+        clearTeacherRememberLogin();
+
         if (active) {
           setSessionChecked(true);
         }
@@ -49,18 +51,18 @@ export default function TeacherSessionBoundary({
       }
 
       const signedInAt = getLastSignInAt(currentUser);
-      const now = Date.now();
-      const sessionAge = now - signedInAt;
-      const isInvalidTimestamp = !Number.isFinite(signedInAt);
-      const isPreResetSession = signedInAt < TEACHER_SESSION_RESET_CUTOFF_MS;
-      const isExpired =
-        sessionAge < 0 || sessionAge >= TEACHER_SESSION_MAX_AGE_MS;
+      const policy = getTeacherSessionPolicy({
+        rememberLogin: isTeacherRememberLoginEnabled(),
+        signedInAt,
+        now: Date.now(),
+      });
 
-      if (isInvalidTimestamp || isPreResetSession || isExpired) {
+      if (policy.kind === "expired") {
         if (active) {
           setSessionChecked(false);
         }
 
+        clearTeacherRememberLogin();
         void signOut(auth).finally(() => {
           if (active) {
             setSessionChecked(true);
@@ -69,11 +71,12 @@ export default function TeacherSessionBoundary({
         return;
       }
 
-      const remainingMs = TEACHER_SESSION_MAX_AGE_MS - sessionAge;
-
-      expiryTimer = setTimeout(() => {
-        void signOut(auth);
-      }, remainingMs);
+      if (policy.kind === "session") {
+        expiryTimer = setTimeout(() => {
+          clearTeacherRememberLogin();
+          void signOut(auth);
+        }, policy.remainingMs);
+      }
 
       if (active) {
         setSessionChecked(true);

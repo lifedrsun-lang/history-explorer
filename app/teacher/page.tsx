@@ -39,6 +39,10 @@ import {
   getStudentProgramValue,
   getStudentProgramLabel,
 } from "@/lib/programs";
+import {
+  clearTeacherRememberLogin,
+  setTeacherRememberLogin,
+} from "@/lib/teacherSession";
 
 import TeacherLogin from "./components/TeacherLogin";
 import StudentCard from "./components/StudentCard";
@@ -337,6 +341,7 @@ export default function TeacherPage() {
     setLoginError("");
 
     try {
+      setTeacherRememberLogin(rememberLogin);
       await setPersistence(
         auth,
         rememberLogin
@@ -350,6 +355,7 @@ export default function TeacherPage() {
       );
       setTeacherPassword("");
     } catch (error: unknown) {
+      clearTeacherRememberLogin();
       const code =
         typeof error === "object" &&
         error !== null &&
@@ -376,6 +382,7 @@ export default function TeacherPage() {
   };
 
   const handleLogout = async () => {
+    clearTeacherRememberLogin();
     await signOut(auth);
   };
 
