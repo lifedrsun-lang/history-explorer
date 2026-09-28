@@ -7,6 +7,7 @@ import { db } from "@/lib/firebase";
 import {
   STUDENT_PROGRAM_OPTIONS,
   getStudentProgramValue,
+  isQuarterManagedProgram,
 } from "@/lib/programs";
 import {
   ENROLLMENT_STATUS_OPTIONS,
@@ -34,6 +35,9 @@ export default function StudentEditModal({
   const [enrollmentTerms, setEnrollmentTerms] = useState<string[]>(() =>
     getEnrollmentTerms(student)
   );
+  const [program, setProgram] = useState(() =>
+    getStudentProgramValue(student?.program)
+  );
   const [sunLabMember, setSunLabMember] = useState(
     student?.sunLabMember === true
   );
@@ -59,7 +63,7 @@ export default function StudentEditModal({
         studentNumber,
         password: studentNumber.padStart(2, "0"),
         name: String(formData.get("name") || "").trim(),
-        program: getStudentProgramValue(formData.get("program")),
+        program,
         enrollmentStatus: status,
         isActive: status === "active",
         enrollmentTerms,
@@ -123,7 +127,10 @@ export default function StudentEditModal({
             수강 프로그램
             <select
               name="program"
-              defaultValue={getStudentProgramValue(student?.program)}
+              value={program}
+              onChange={(event) =>
+                setProgram(getStudentProgramValue(event.target.value))
+              }
               className="w-full rounded-xl border px-4 py-3 text-sm"
             >
               {STUDENT_PROGRAM_OPTIONS.map((option) => (
@@ -156,41 +163,47 @@ export default function StudentEditModal({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4">
-            <div className="text-xs font-black text-blue-800">
-              {String(AFTER_SCHOOL_ACADEMIC_YEAR).slice(2)}년 수강 분기
+          {isQuarterManagedProgram(program) ? (
+            <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4">
+              <div className="text-xs font-black text-blue-800">
+                {String(AFTER_SCHOOL_ACADEMIC_YEAR).slice(2)}년 수강 분기
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {[1, 2, 3, 4].map((quarter) => {
+                  const term = makeEnrollmentTerm(
+                    AFTER_SCHOOL_ACADEMIC_YEAR,
+                    quarter
+                  );
+                  const checked = enrollmentTerms.includes(term);
+                  return (
+                    <label
+                      key={quarter}
+                      className={`flex items-center gap-2 rounded-xl border px-3 py-3 text-sm font-black ${
+                        checked
+                          ? "border-blue-400 bg-blue-100 text-blue-800"
+                          : "border-blue-100 bg-white text-slate-600"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleQuarter(quarter)}
+                        className="h-4 w-4 accent-blue-600"
+                      />
+                      {quarter}분기
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="mt-2 text-[11px] font-bold text-blue-600">
+                상태를 바꾸지 않아도 분기 이력을 수정할 수 있습니다.
+              </div>
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              {[1, 2, 3, 4].map((quarter) => {
-                const term = makeEnrollmentTerm(
-                  AFTER_SCHOOL_ACADEMIC_YEAR,
-                  quarter
-                );
-                const checked = enrollmentTerms.includes(term);
-                return (
-                  <label
-                    key={quarter}
-                    className={`flex items-center gap-2 rounded-xl border px-3 py-3 text-sm font-black ${
-                      checked
-                        ? "border-blue-400 bg-blue-100 text-blue-800"
-                        : "border-blue-100 bg-white text-slate-600"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleQuarter(quarter)}
-                      className="h-4 w-4 accent-blue-600"
-                    />
-                    {quarter}분기
-                  </label>
-                );
-              })}
+          ) : (
+            <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4 text-xs font-bold text-violet-700">
+              SUN LAB 단독수업은 월별 관리 대상이므로 수강 분기를 입력하지 않습니다.
             </div>
-            <div className="mt-2 text-[11px] font-bold text-blue-600">
-              상태를 바꾸지 않아도 분기 이력을 수정할 수 있습니다.
-            </div>
-          </div>
+          )}
 
           <label className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
             <input
