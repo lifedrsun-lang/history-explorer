@@ -1088,6 +1088,13 @@ export default function TeacherPage() {
           📽️ 수업자료 관리
         </Link>
 
+        <Link
+          href="/teacher/activity-lab"
+          className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-bold text-violet-700 shadow-sm"
+        >
+          🤖 활동 결과 연구소
+        </Link>
+
         <button
           onClick={handleLogout}
           className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 shadow-sm"
