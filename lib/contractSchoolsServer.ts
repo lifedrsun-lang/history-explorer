@@ -356,15 +356,31 @@ const normalizeLink = (
   const label = normalizeLimitedText(source.label, "link_label", 120);
   const href = normalizeLimitedText(source.href, "link_url", 2_000);
 
-  let url: URL;
-  try {
-    url = new URL(href);
-  } catch {
-    throw new Error("invalid_link_url");
-  }
+  let normalizedHref = href;
 
-  if (!['http:', 'https:'].includes(url.protocol)) {
-    throw new Error("invalid_link_url");
+  if (href.startsWith("/") && !href.startsWith("//")) {
+    try {
+      const internalUrl = new URL(href, "https://sunlab.local");
+      if (internalUrl.origin !== "https://sunlab.local") {
+        throw new Error("invalid_link_url");
+      }
+      normalizedHref = `${internalUrl.pathname}${internalUrl.search}${internalUrl.hash}`;
+    } catch {
+      throw new Error("invalid_link_url");
+    }
+  } else {
+    let url: URL;
+    try {
+      url = new URL(href);
+    } catch {
+      throw new Error("invalid_link_url");
+    }
+
+    if (!["http:", "https:"].includes(url.protocol)) {
+      throw new Error("invalid_link_url");
+    }
+
+    normalizedHref = url.toString();
   }
 
   const existing = existingLinks.get(id);
@@ -390,7 +406,7 @@ const normalizeLink = (
   return {
     id,
     label,
-    href: url.toString(),
+    href: normalizedHref,
     kind: source.kind === "review" ? "review" : "activity",
     defaultUnlocked:
       typeof source.defaultUnlocked === "boolean"
