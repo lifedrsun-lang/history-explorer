@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import AfterSchoolAlerts from "./AfterSchoolAlerts";
 import AfterSchoolSchoolCards from "./AfterSchoolSchoolCards";
 
 type ManagementItem = {
@@ -286,15 +287,18 @@ export default async function TeacherManagementSectionPage({
         </section>
 
         {section === "after-school" && (
-          <section className="mt-4">
+          <>
+            <AfterSchoolAlerts />
+            <section className="mt-4">
             <div className="mb-3 px-1">
               <h2 className="text-lg font-black text-slate-900 sm:text-xl">학교 선택</h2>
               <p className="mt-1 text-xs font-bold text-slate-500 sm:text-sm">
                 학교를 먼저 선택하면 수강생 관리와 코인 지급으로 이동할 수 있어요.
               </p>
             </div>
-            <AfterSchoolSchoolCards />
-          </section>
+              <AfterSchoolSchoolCards />
+            </section>
+          </>
         )}
 
         {config.items.length > 0 ? (
