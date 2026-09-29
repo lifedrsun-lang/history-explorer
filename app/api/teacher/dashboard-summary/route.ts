@@ -1,5 +1,6 @@
 import {
   ASSIGNMENT_SUBMISSIONS_COLLECTION,
+  ASSIGNMENTS_COLLECTION,
   isAssignmentSubmissionAwaitingReview,
 } from "@/lib/assignments";
 import { verifyTeacherRequest, handleRouteError, jsonError } from "@/lib/assignmentServer";
@@ -56,7 +57,7 @@ export async function GET(request: Request) {
     const activeAssignmentIds = new Set(
       (
         await db
-          .collection("assignments")
+          .collection(ASSIGNMENTS_COLLECTION)
           .where("isActive", "==", true)
           .get()
       ).docs.map((docItem) => docItem.id)
