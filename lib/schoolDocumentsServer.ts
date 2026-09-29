@@ -5,9 +5,9 @@ import { FieldValue } from "firebase-admin/firestore";
 
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import {
-  getAllContractSchools,
-  getContractSchool,
-} from "@/lib/contractSchoolsServer";
+  getAllSchoolDocumentSchools,
+  getSchoolDocumentSchool,
+} from "@/lib/schoolDocumentSchoolsServer";
 import {
   SCHOOL_DOCUMENT_DEFINITIONS,
   SCHOOL_DOCUMENT_RECORD_COLLECTION,
@@ -82,7 +82,7 @@ export const resolveContractSchoolSlugForName = async (schoolName: string) => {
   const schoolKey = normalizeSchoolDocumentKey(schoolName);
   if (!schoolKey) return "";
 
-  const schools = await getAllContractSchools();
+  const schools = await getAllSchoolDocumentSchools();
   const match = schools.find(
     (school) =>
       isSameSchoolDocument(school.schoolName, schoolKey) ||
@@ -95,9 +95,7 @@ export const getSchoolDocuments = async (
   teacherUid: string,
   schoolSlug: string
 ) => {
-  const school = await getContractSchool(schoolSlug, {
-    includeUnpublished: true,
-  });
+  const school = await getSchoolDocumentSchool(schoolSlug);
   if (!school) throw new Error("school_not_found");
 
   const { db } = getFirebaseAdmin();
@@ -208,9 +206,7 @@ export const recordApplicationDocuments = async (
     throw new Error("invalid_document_record");
   }
 
-  const school = await getContractSchool(schoolSlug, {
-    includeUnpublished: true,
-  });
+  const school = await getSchoolDocumentSchool(schoolSlug);
   if (!school) throw new Error("school_not_found");
 
   const { db } = getFirebaseAdmin();

@@ -11,6 +11,10 @@ import {
   type AfterSchoolStatus,
   type AfterSchoolStatusMap,
 } from "@/lib/afterSchool";
+import {
+  SCHOOL_DOCUMENT_STATUS_LABELS,
+  type SchoolDocumentSettings,
+} from "@/lib/schoolDocumentManagement";
 
 const SCHOOL_CARD_STYLES = [
   "border-sky-200 bg-sky-50 text-sky-950",
@@ -40,6 +44,9 @@ export default function AfterSchoolSchoolCards() {
   const [savingKey, setSavingKey] = useState("");
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [documentSettings, setDocumentSettings] = useState<
+    Record<string, SchoolDocumentSettings>
+  >({});
 
   const loadStatuses = useCallback(async (currentUser: User) => {
     setLoading(true);
@@ -47,20 +54,38 @@ export default function AfterSchoolSchoolCards() {
 
     try {
       const token = await currentUser.getIdToken();
-      const response = await fetch("/api/teacher/after-school-status", {
-        cache: "no-store",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const payload = (await response.json().catch(() => ({}))) as {
+      const [response, documentResponse] = await Promise.all([
+        fetch("/api/teacher/after-school-status", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch("/api/teacher/school-document-settings", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+      const [payload, documentPayload] = await Promise.all([
+        response.json().catch(() => ({})) as Promise<{
         statuses?: AfterSchoolStatusMap;
         error?: string;
-      };
+        }>,
+        documentResponse.json().catch(() => ({})) as Promise<{
+          settings?: SchoolDocumentSettings[];
+        }>,
+      ]);
 
       if (!response.ok || !payload.statuses) {
         throw new Error(payload.error || "load_failed");
       }
 
       setStatuses({ ...DEFAULT_STATUSES, ...payload.statuses });
+      if (documentResponse.ok && Array.isArray(documentPayload.settings)) {
+        setDocumentSettings(
+          Object.fromEntries(
+            documentPayload.settings.map((item) => [item.schoolSlug, item])
+          )
+        );
+      }
     } catch {
       setErrorMessage("방과후 상태를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
@@ -126,6 +151,7 @@ export default function AfterSchoolSchoolCards() {
       <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
         {AFTER_SCHOOL_SCHOOLS.map((school, index) => {
           const currentStatus = statuses[school.slug] || school.status;
+          const documents = documentSettings[school.slug];
 
           return (
             <article
@@ -146,6 +172,36 @@ export default function AfterSchoolSchoolCards() {
                 <div className="mt-1 text-xs font-bold opacity-65">
                   {school.location}
                 </div>
+                {documents && (
+                  <div className="mt-4 space-y-1 border-t border-current/10 pt-3 text-xs font-bold">
+                    {(documents.contactName || documents.contactPhone) && (
+                      <div>
+                        {[documents.contactName, documents.contactPhone]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </div>
+                    )}
+                    {documents.contactEmail && <div>{documents.contactEmail}</div>}
+                    <div className="flex flex-wrap gap-1.5 pt-1 text-[11px] font-black">
+                      <span className="rounded-full bg-white/80 px-2 py-1">
+                        {documents.processingMethod === "direct"
+                          ? "🔑 직접 발급"
+                          : "🏫 학교 처리"}
+                      </span>
+                      {documents.submissionChannel && (
+                        <span className="rounded-full bg-white/80 px-2 py-1">
+                          {documents.submissionChannel === "email"
+                            ? "📧 이메일"
+                            : "💬 카카오톡"}
+                        </span>
+                      )}
+                      <span className="rounded-full bg-white/80 px-2 py-1">
+                        {documents.latestStatus === "submitted" ? "✅ " : ""}
+                        {SCHOOL_DOCUMENT_STATUS_LABELS[documents.latestStatus]}
+                      </span>
+                    </div>
+                  </div>
+                )}
                 <div className="mt-5 text-sm font-black">학교 관리 열기 →</div>
               </Link>
 

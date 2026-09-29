@@ -63,6 +63,10 @@ const getErrorMessage = (code?: string) => {
     duplicate_classroom: "같은 학년·반을 두 번 등록할 수 없어요.",
     duplicate_lesson: "같은 차시 번호를 두 번 등록할 수 없어요.",
     school_setup_incomplete: "학생페이지에 노출하려면 반과 차시를 먼저 등록해 주세요.",
+    default_school_locked: "기본 학교 카드는 삭제할 수 없어요.",
+    school_delete_forbidden: "직접 만든 학교 카드만 삭제할 수 있어요.",
+    school_delete_requires_empty_unpublished:
+      "학생페이지 미노출·반 없음·차시 없음 상태에서만 삭제할 수 있어요.",
   };
   return messages[code || ""] || "저장하지 못했어요. 입력 내용을 확인해 주세요.";
 };
@@ -204,6 +208,42 @@ export default function ContractSchoolsPage() {
     );
     setSelectedSchool(school);
     void loadActivityStates(school);
+  };
+
+  const deleteSchool = async (school: ContractSchoolConfig) => {
+    if (saving) return;
+    setSaving(true);
+    setMessage("");
+    setErrorMessage("");
+    try {
+      const token = await getTeacherToken();
+      const response = await fetch(
+        `/api/teacher/contract-schools/${encodeURIComponent(school.slug)}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const payload = (await response.json().catch(() => ({}))) as {
+        deleted?: { slug?: string };
+        error?: string;
+      };
+      if (!response.ok || payload.deleted?.slug !== school.slug) {
+        throw new Error(payload.error || "delete_failed");
+      }
+      setSchools((current) =>
+        current.filter((item) => item.slug !== school.slug)
+      );
+      setSelectedSchool(null);
+      setSelectedSlug("");
+      setMessage(`${school.displayName} 건별 카드를 삭제했어요.`);
+    } catch (error) {
+      setErrorMessage(
+        getErrorMessage(error instanceof Error ? error.message : "")
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   const saveSchool = async (
@@ -731,6 +771,19 @@ export default function ContractSchoolsPage() {
                 </div>
               </div>
               <button type="button" disabled={saving} onClick={() => void saveSchool(selectedSchool)} className="mt-4 w-full rounded-2xl bg-slate-900 py-3 text-sm font-black text-white disabled:opacity-50">{saving ? "저장 중" : "학교 기본 설정 저장"}</button>
+              {selectedSchool.source === "managed" &&
+                !selectedSchool.published &&
+                selectedSchool.classrooms.length === 0 &&
+                selectedSchool.lessons.length === 0 && (
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => void deleteSchool(selectedSchool)}
+                    className="mt-2 w-full rounded-2xl bg-rose-50 py-3 text-sm font-black text-rose-600 disabled:opacity-50"
+                  >
+                    이 빈 건별 학교 카드 삭제
+                  </button>
+                )}
             </div>
 
             <SchoolDocumentsPanel school={selectedSchool} user={user} />

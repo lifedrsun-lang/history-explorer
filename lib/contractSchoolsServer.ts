@@ -28,6 +28,7 @@ import {
   type ContractSchoolLesson,
 } from "@/lib/contractSchools";
 import { getSchoolPassword, normalizeSchoolText } from "@/app/student/data/schoolInfo";
+import { getAfterSchoolSchool } from "@/lib/afterSchool";
 
 type StoredContractSchool = Omit<
   ContractSchoolConfig,
@@ -534,7 +535,7 @@ export const createContractSchool = async (
 ) => {
   const slug = normalizeContractSchoolSlug(slugValue);
 
-  if (getDefaultContractSchool(slug)) {
+  if (getDefaultContractSchool(slug) || getAfterSchoolSchool(slug)) {
     throw new Error("school_slug_exists");
   }
 
@@ -585,6 +586,35 @@ export const createContractSchool = async (
   await ref.create({ ...stored, createdBy: teacherUid, updatedBy: teacherUid });
   const created = await ref.get();
   return fromStoredSchool(slug, created.data() as StoredContractSchool);
+};
+
+export const deleteEmptyManagedContractSchool = async (
+  slugValue: unknown,
+  teacherUid: string
+) => {
+  const slug = normalizeContractSchoolSlug(slugValue);
+  if (getDefaultContractSchool(slug)) throw new Error("default_school_locked");
+
+  const snapshot = await getStoredSchoolSnapshot(slug);
+  if (!snapshot.exists) throw new Error("school_not_found");
+
+  const data = snapshot.data() as StoredContractSchool & {
+    createdBy?: unknown;
+  };
+  const school = fromStoredSchool(slug, data);
+  if (String(data.createdBy || "") !== teacherUid) {
+    throw new Error("school_delete_forbidden");
+  }
+  if (
+    school.published ||
+    school.classrooms.length > 0 ||
+    school.lessons.length > 0
+  ) {
+    throw new Error("school_delete_requires_empty_unpublished");
+  }
+
+  await snapshot.ref.delete();
+  return { slug };
 };
 
 export const updateContractSchool = async (

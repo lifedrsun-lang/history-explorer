@@ -4,8 +4,8 @@ import type { User } from "firebase/auth";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { ContractSchoolConfig } from "@/lib/contractSchools";
 import type { SchoolDocumentListItem } from "@/lib/schoolDocuments";
+import type { SchoolDocumentSchool } from "@/lib/schoolDocumentSchools";
 import {
   SCHOOL_DOCUMENT_STATUS_LABELS,
   type SchoolDocumentSettings,
@@ -13,7 +13,7 @@ import {
 } from "@/lib/schoolDocumentManagement";
 
 type SchoolDocumentsPanelProps = {
-  school: ContractSchoolConfig;
+  school: SchoolDocumentSchool;
   user: User;
   onSettingsChange?: (settings: SchoolDocumentSettings) => void;
 };

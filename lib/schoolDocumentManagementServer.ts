@@ -5,9 +5,9 @@ import { FieldValue } from "firebase-admin/firestore";
 
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import {
-  getAllContractSchools,
-  getContractSchool,
-} from "@/lib/contractSchoolsServer";
+  getAllSchoolDocumentSchools,
+  getSchoolDocumentSchool,
+} from "@/lib/schoolDocumentSchoolsServer";
 import {
   SCHOOL_DOCUMENT_SETTINGS_COLLECTION,
   SCHOOL_DOCUMENT_SUBMISSION_CHANNELS,
@@ -110,7 +110,7 @@ const serializeSettings = (
 };
 
 export async function getAllSchoolDocumentSettings(teacherUid: string) {
-  const schools = await getAllContractSchools();
+  const schools = await getAllSchoolDocumentSchools();
   const { db } = getFirebaseAdmin();
   const snapshot = await db
     .collection(SCHOOL_DOCUMENT_SETTINGS_COLLECTION)
@@ -131,9 +131,7 @@ export async function getSchoolDocumentSettings(
   teacherUid: string,
   schoolSlug: string
 ) {
-  const school = await getContractSchool(schoolSlug, {
-    includeUnpublished: true,
-  });
+  const school = await getSchoolDocumentSchool(schoolSlug);
   if (!school) throw new Error("school_not_found");
   const snapshot = await settingsRef(teacherUid, school.slug).get();
   return serializeSettings(
@@ -149,9 +147,7 @@ export async function updateSchoolDocumentSettings(
   schoolSlug: string,
   draft: Record<string, unknown>
 ) {
-  const school = await getContractSchool(schoolSlug, {
-    includeUnpublished: true,
-  });
+  const school = await getSchoolDocumentSchool(schoolSlug);
   if (!school) throw new Error("school_not_found");
 
   const contactName = text(draft.contactName, 120);

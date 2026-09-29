@@ -5,6 +5,7 @@ import {
   AFTER_SCHOOL_SCHOOLS,
   getAfterSchoolSchool,
 } from "@/lib/afterSchool";
+import AfterSchoolDocumentsPanel from "./AfterSchoolDocumentsPanel";
 
 export function generateStaticParams() {
   return AFTER_SCHOOL_SCHOOLS.map((school) => ({ school: school.slug }));
@@ -80,6 +81,16 @@ export default async function AfterSchoolSchoolPage({
             <div className="mt-6 text-sm font-black">교재 수령 현황 열기 →</div>
           </Link>
         </section>
+
+        <div className="mt-4">
+          <AfterSchoolDocumentsPanel
+            school={{
+              slug: school.slug,
+              schoolName: school.name,
+              displayName: school.displayName,
+            }}
+          />
+        </div>
       </div>
     </main>
   );

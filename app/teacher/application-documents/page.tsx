@@ -11,9 +11,9 @@ import {
 } from "react";
 
 import { auth } from "@/lib/firebase";
-import type { ContractSchoolConfig } from "@/lib/contractSchools";
 import type { SchoolDocumentKind } from "@/lib/schoolDocuments";
 import type { SchoolDocumentSettings } from "@/lib/schoolDocumentManagement";
+import type { SchoolDocumentSchool } from "@/lib/schoolDocumentSchools";
 import { trimSignatureCanvas } from "@/lib/signatureCanvas";
 
 type Profile = {
@@ -26,10 +26,7 @@ type Profile = {
 type IdentityType = "resident" | "passport" | "foreign" | "driver";
 type GmailStatus = { configured: boolean; connected: boolean; email: string };
 
-type SchoolOption = Pick<
-  ContractSchoolConfig,
-  "slug" | "schoolName" | "displayName"
->;
+type SchoolOption = SchoolDocumentSchool;
 
 const EMPTY_PROFILE: Profile = {
   name: "",
@@ -196,25 +193,26 @@ export default function TeacherApplicationDocumentsPage() {
     const loadPageData = async () => {
       setLoading(true);
       try {
-        const [data, schoolData, settingData, gmailData] = await Promise.all([
+        const [data, settingData, gmailData] = await Promise.all([
           requestJson("/api/teacher/application-documents/profile"),
-          requestJson("/api/teacher/contract-schools"),
           requestJson("/api/teacher/school-document-settings"),
           requestJson("/api/teacher/atc-confirmations/gmail-status"),
         ]);
         if (cancelled) return;
         const profile = (data?.profile || EMPTY_PROFILE) as Profile;
-        const nextSchools = Array.isArray(schoolData?.schools)
-          ? (schoolData.schools as SchoolOption[])
+        const nextSettings = Array.isArray(settingData?.settings)
+          ? (settingData.settings as SchoolDocumentSettings[])
           : [];
+        const nextSchools: SchoolOption[] = nextSettings.map((item) => ({
+          slug: item.schoolSlug,
+          schoolName: item.schoolName,
+          displayName: item.displayName,
+        }));
         setName(profile.name || "");
         setPhone(profile.phone || "");
         setBirthDate(profile.birthDate || "");
         setSignatureDataUrl(profile.signatureDataUrl || null);
         setSchools(nextSchools);
-        const nextSettings = Array.isArray(settingData?.settings)
-          ? (settingData.settings as SchoolDocumentSettings[])
-          : [];
         setSchoolSettings(
           Object.fromEntries(nextSettings.map((item) => [item.schoolSlug, item]))
         );
