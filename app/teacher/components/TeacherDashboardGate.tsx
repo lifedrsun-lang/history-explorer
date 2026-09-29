@@ -46,11 +46,11 @@ const managementSections = [
 
 const supportingSections = [
   {
-    key: "materials",
-    href: "/teacher/manage/materials",
-    icon: "📂",
-    title: "자료 관리",
-    description: "수업자료·자료실 콘텐츠 관리",
+    key: "class-materials",
+    href: "/teacher/presentations",
+    icon: "📽️",
+    title: "수업자료",
+    description: "PPT·수업자료 링크를 등록하고 수업용 자료를 관리",
     className: "border-violet-200 bg-violet-50 text-violet-900",
   },
   {
@@ -58,17 +58,10 @@ const supportingSections = [
     href: "/teacher/manage/operations",
     icon: "⚙️",
     title: "일정 · 운영",
-    description: "교사일정·수입·정산·공통 운영 관리",
+    description: "교사일정·자료실·수입·정산 관리",
     className: "border-rose-200 bg-rose-50 text-rose-900",
   },
-  {
-    key: "activity-lab",
-    href: "/teacher/activity-lab",
-    icon: "🤖",
-    title: "활동 결과 연구소",
-    description: "모럴머신 참여 현황과 반별·학년별 결과 관리",
-    className: "border-indigo-200 bg-indigo-50 text-indigo-900",
-  },
+
 ] as const;
 
 type ManagementSection =
@@ -171,10 +164,6 @@ export default function TeacherDashboardGate() {
         summary.pendingCoinExchangeCount +
         summary.recentReviewCompletionCount
       );
-    }
-
-    if (key === "materials") {
-      return summary.recentReviewCompletionCount;
     }
 
     return 0;
