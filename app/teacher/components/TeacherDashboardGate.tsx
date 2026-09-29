@@ -50,7 +50,7 @@ const supportingSections = [
     href: "/teacher/manage/materials",
     icon: "📂",
     title: "자료 관리",
-    description: "수업자료·자료실·복습문제 콘텐츠 관리",
+    description: "수업자료·자료실 콘텐츠 관리",
     className: "border-violet-200 bg-violet-50 text-violet-900",
   },
   {
