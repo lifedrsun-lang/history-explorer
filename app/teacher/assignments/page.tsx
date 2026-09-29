@@ -703,8 +703,15 @@ export default function TeacherAssignmentsPage() {
                         onClick={() => setSelectedAssignmentId(assignment.id)}
                         className="block w-full text-left"
                       >
-                        <div className="text-lg font-black text-slate-800">
-                          {assignment.title}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="text-lg font-black text-slate-800">
+                            {assignment.title}
+                          </div>
+                          {Number(assignment.pendingReviewCount || 0) > 0 && (
+                            <span className="shrink-0 rounded-full bg-red-500 px-2.5 py-1 text-xs font-black text-white">
+                              검토 {assignment.pendingReviewCount}건
+                            </span>
+                          )}
                         </div>
                         <div className="mt-2 text-sm font-bold text-slate-500">
                           {getStudentProgramLabel(assignment.program)} /{" "}
