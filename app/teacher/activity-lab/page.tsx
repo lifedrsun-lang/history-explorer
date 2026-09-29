@@ -50,6 +50,85 @@ const TeacherVotes = ({ title, counts }: { title: string; counts: Record<string,
   );
 };
 
+
+const TeacherScaleVotes = ({
+  title,
+  values,
+  lowLabel,
+  highLabel,
+  lowIcon,
+  highIcon,
+  stepLabels,
+}: {
+  title: string;
+  values: number[];
+  lowLabel: string;
+  highLabel: string;
+  lowIcon: string;
+  highIcon: string;
+  stepLabels: string[];
+}) => {
+  const max = Math.max(1, ...values);
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-4">
+      <h3 className="text-lg font-black text-slate-900">{title}</h3>
+      <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(120px,0.8fr)_minmax(0,3fr)_minmax(120px,0.8fr)] sm:items-stretch">
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-cyan-200 bg-cyan-50 p-3 text-center">
+          <span className="text-4xl" aria-hidden="true">{lowIcon}</span>
+          <span className="mt-2 text-sm font-black text-cyan-900">{lowLabel}</span>
+        </div>
+
+        <div className="grid grid-cols-5 gap-2" aria-label={`${title} 단계별 인원`}>
+          {values.map((count, index) => {
+            const useBar = count > 10;
+            return (
+              <div
+                key={index}
+                className="flex min-w-0 flex-col rounded-2xl border-2 border-slate-200 bg-slate-50 p-2 text-center"
+              >
+                <div className="text-lg font-black text-violet-700">{count}명</div>
+                <div className="my-2 flex min-h-14 flex-1 items-center justify-center">
+                  {useBar ? (
+                    <div className="h-4 w-full overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-500"
+                        style={{ width: `${(count / max) * 100}%` }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap justify-center gap-1" aria-hidden="true">
+                      {Array.from({ length: count }, (_, stickerIndex) => (
+                        <span
+                          key={stickerIndex}
+                          className="h-3 w-3 rounded-full border-2 border-white bg-violet-500 shadow-sm"
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="text-xl font-black text-slate-900">{index + 1}</div>
+                <div className="mt-1 hidden text-[11px] font-bold leading-tight text-slate-600 md:block">
+                  {stepLabels[index]}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-violet-200 bg-violet-50 p-3 text-center">
+          <span className="text-4xl" aria-hidden="true">{highIcon}</span>
+          <span className="mt-2 text-sm font-black text-violet-900">{highLabel}</span>
+        </div>
+      </div>
+      <div className="mt-3 flex justify-between gap-3 text-xs font-black text-slate-500 sm:hidden">
+        <span>1 · {lowLabel}</span>
+        <span className="text-right">5 · {highLabel}</span>
+      </div>
+    </section>
+  );
+};
+
 export default function ActivityLabPage() {
   const [user, setUser] = useState<User | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
@@ -180,7 +259,7 @@ export default function ActivityLabPage() {
             <button type="button" onClick={() => setScope("class")} className={`rounded-xl p-3 font-black ${scope === "class" ? "bg-white text-violet-700 shadow" : "text-slate-600"}`}>{selected.grade}학년 {selected.classNumber}반</button>
             <button type="button" onClick={() => setScope("grade")} className={`rounded-xl p-3 font-black ${scope === "grade" ? "bg-white text-violet-700 shadow" : "text-slate-600"}`}>{selected.grade}학년 전체</button>
           </div>
-          {aggregate && <div className="mt-5 grid gap-4"><div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-center text-xl font-black text-emerald-900">현재 {aggregate.participants} / {aggregate.rosterTotal}명 참여</div><div className="grid gap-4 lg:grid-cols-2"><TeacherVotes title="가장 많이 살린 캐릭터" counts={aggregate.mostSaved} /><TeacherVotes title="가장 많이 희생된 캐릭터" counts={aggregate.mostSacrificed} /></div><section className="rounded-2xl border border-slate-200 bg-white p-4"><h3 className="font-black">5단계 결과</h3><div className="mt-3 grid gap-2 sm:grid-cols-2"><div className="rounded-xl bg-cyan-50 p-3 font-bold">희생자 수의 중요도: {aggregate.savingMoreLives.join(" · ")}</div><div className="rounded-xl bg-violet-50 p-3 font-bold">승객 보호 선호도: {aggregate.protectingPassengers.join(" · ")}</div></div></section></div>}
+          {aggregate && <div className="mt-5 grid gap-4"><div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-center text-xl font-black text-emerald-900">현재 {aggregate.participants} / {aggregate.rosterTotal}명 참여</div><div className="grid gap-4 lg:grid-cols-2"><TeacherVotes title="가장 많이 살린 캐릭터" counts={aggregate.mostSaved} /><TeacherVotes title="가장 많이 희생된 캐릭터" counts={aggregate.mostSacrificed} /></div><div className="grid gap-4"><TeacherScaleVotes title="희생자 수의 중요도" values={aggregate.savingMoreLives} lowLabel="사람 수가 중요하지 않았어요" highLabel="더 많은 사람을 살리는 것이 중요했어요" lowIcon="🧍" highIcon="🧍🧍🧍" stepLabels={["거의 중요하지 않음", "조금 중요", "보통", "중요", "매우 중요"]} /><TeacherScaleVotes title="승객 보호 선호도" values={aggregate.protectingPassengers} lowLabel="보행자를 더 보호했어요" highLabel="승객을 더 보호했어요" lowIcon="🚶" highIcon="🚗" stepLabels={["보행자를 많이 보호", "보행자 쪽", "비슷함", "승객 쪽", "승객을 많이 보호"]} /></div></div>}
           <div className="mt-5 flex justify-end"><button type="button" disabled={busy} onClick={() => void reset()} className="rounded-xl border-2 border-rose-200 bg-rose-50 px-5 py-3 font-black text-rose-700 disabled:opacity-50">선택 범위 결과 초기화</button></div>
         </>}
         {message && <div role="status" className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 font-black text-amber-900">{message}</div>}
