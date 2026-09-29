@@ -52,13 +52,12 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     password: "2612",
     loginCard: { title: "화성 새솔초", location: "5F 음악실" },
     notice: {
-      title: "2분기 수업 안내",
+      title: "3분기 수업 안내",
       location: "5F 음악실",
-      period: "6/1~8/28",
-      breakNotice: "7/27~7/31 휴강",
+      period: "9/7~12/4 (보강주 포함)",
       classTimes: [
-        { label: "A반", semester: "13:50~15:00", vacation: "09:20~11:30" },
-        { label: "B반", semester: "15:10~16:20", vacation: "10:40~11:50" },
+        { label: "A반", semester: "13:50~15:00" },
+        { label: "B반", semester: "15:10~16:20" },
       ],
     },
   },
