@@ -61,6 +61,14 @@ const supportingSections = [
     description: "교사일정·수입·정산·공통 운영 관리",
     className: "border-rose-200 bg-rose-50 text-rose-900",
   },
+  {
+    key: "activity-lab",
+    href: "/teacher/activity-lab",
+    icon: "🤖",
+    title: "활동 결과 연구소",
+    description: "모럴머신 참여 현황과 반별·학년별 결과 관리",
+    className: "border-indigo-200 bg-indigo-50 text-indigo-900",
+  },
 ] as const;
 
 type ManagementSection =
