@@ -1,6 +1,7 @@
 import {
   ASSIGNMENT_SUBMISSIONS_COLLECTION,
   ASSIGNMENTS_COLLECTION,
+  isAssignmentSubmissionAwaitingReview,
 } from "@/lib/assignments";
 import {
   createAssignmentPayload,
@@ -45,9 +46,11 @@ export async function GET(request: Request) {
       db.collection(ASSIGNMENT_SUBMISSIONS_COLLECTION).get(),
     ]);
     const submissionCounts = new Map<string, number>();
+    const pendingReviewCounts = new Map<string, number>();
 
     submissionSnapshot.docs.forEach((docItem) => {
-      const assignmentId = String(docItem.data()?.assignmentId || "");
+      const data = docItem.data();
+      const assignmentId = String(data?.assignmentId || "");
 
       if (!assignmentId) {
         return;
@@ -57,6 +60,13 @@ export async function GET(request: Request) {
         assignmentId,
         (submissionCounts.get(assignmentId) || 0) + 1
       );
+
+      if (isAssignmentSubmissionAwaitingReview(data?.status)) {
+        pendingReviewCounts.set(
+          assignmentId,
+          (pendingReviewCounts.get(assignmentId) || 0) + 1
+        );
+      }
     });
 
     const assignments = assignmentSnapshot.docs.map((docItem) => {
@@ -66,6 +76,7 @@ export async function GET(request: Request) {
         ...assignment,
         targetCount: assignment.targetStudentKeys.length,
         submittedCount: submissionCounts.get(assignment.id) || 0,
+        pendingReviewCount: pendingReviewCounts.get(assignment.id) || 0,
       };
     });
 
