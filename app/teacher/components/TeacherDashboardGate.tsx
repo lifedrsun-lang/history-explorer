@@ -31,7 +31,7 @@ const managementSections = [
     href: "/teacher/manage/teaching",
     icon: "🚗",
     title: "출강 관리",
-    description: "출강일정·건별계약·참여확인서·제출서류 관리",
+    description: "출강일정·건별계약·참여확인서·수업 운영 관리",
     className: "border-cyan-200 bg-cyan-50 text-cyan-900",
   },
   {
@@ -53,6 +53,14 @@ const managementSections = [
 ] as const;
 
 const supportingSections = [
+  {
+    key: "application-documents",
+    href: "/teacher/application-documents",
+    icon: "📄",
+    title: "지원 · 제출서류",
+    description: "방과후·출강·돌봄/늘봄 공통 학교 제출서류 관리",
+    className: "border-indigo-200 bg-indigo-50 text-indigo-900",
+  },
   {
     key: "operations",
     href: "/teacher/manage/operations",
