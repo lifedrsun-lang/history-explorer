@@ -68,6 +68,7 @@ export type AssignmentSummary = {
   archivedAt?: string | null;
   archivedBy?: string | null;
   submittedCount?: number;
+  pendingReviewCount?: number;
   targetCount?: number;
   currentSubmission?: AssignmentSubmissionSummary | null;
 };
