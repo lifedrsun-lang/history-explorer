@@ -66,8 +66,9 @@ type Confirmation = {
 };
 
 type MailSettings = { to: string; bcc: string; subjectTemplate: string; bodyTemplate: string };
+type GmailStatus = { configured: boolean; connected: boolean; email: string };
 type MailPreview = {
-  info: { to: string; bcc: string; subject: string; body: string; filename: string; sentAt: string };
+  info: { from: string; to: string; bcc: string; subject: string; body: string; filename: string; sentAt: string };
   fingerprint: string;
   pdfUrl: string;
   confirmationId: string;
@@ -274,6 +275,7 @@ export default function AtcConfirmationsPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [noticeMessage, setNoticeMessage] = useState("");
   const [mailSettings, setMailSettings] = useState<MailSettings | null>(null);
+  const [gmailStatus, setGmailStatus] = useState<GmailStatus | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [mailBusy, setMailBusy] = useState(false);
@@ -385,6 +387,30 @@ export default function AtcConfirmationsPage() {
       .then((data) => setMailSettings(data.settings))
       .catch((error) => setErrorMessage(error instanceof Error ? error.message : "메일 설정을 불러오지 못했습니다."));
   }, [requestJson, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    void requestJson("/api/teacher/atc-confirmations/gmail-status")
+      .then((data) => setGmailStatus(data as GmailStatus))
+      .catch((error) => setErrorMessage(error instanceof Error ? error.message : "Gmail 연결 상태를 확인하지 못했습니다."));
+  }, [requestJson, user]);
+
+  useEffect(() => {
+    const status = new URLSearchParams(window.location.search).get("atcGmail");
+    if (!status) return;
+    const messages: Record<string, string> = {
+      connected: "lifedr.sun@gmail.com 계정을 연결했습니다. 발송 전 PDF와 메일 내용을 확인해 주세요.",
+      cancelled: "Gmail 연결이 취소되었습니다.",
+      "wrong-account": "lifedr.sun@gmail.com 계정을 선택해야 합니다. 다시 연결해 주세요.",
+      error: "Gmail 연결에 실패했습니다. Google OAuth 설정과 계정을 확인해 주세요.",
+    };
+    window.history.replaceState(null, "", window.location.pathname + window.location.search.replace(/([?&])atcGmail=[^&]*&?/, "$1").replace(/[?&]$/, ""));
+    const timeout = window.setTimeout(() => {
+      if (status === "connected") setNoticeMessage(messages.connected);
+      else setErrorMessage(messages[status] || messages.error);
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, []);
 
   const schoolNames = useMemo(
     () =>
@@ -756,6 +782,18 @@ export default function AtcConfirmationsPage() {
     }
   };
 
+  const connectGmail = async () => {
+    setMailBusy(true);
+    setErrorMessage("");
+    try {
+      const data = await requestJson("/api/teacher/atc-confirmations/gmail-connect", { method: "POST" });
+      window.location.assign(data.authorizationUrl);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Gmail 연결을 시작하지 못했습니다.");
+      setMailBusy(false);
+    }
+  };
+
   const prepareMail = async () => {
     if (!selectedConfirmation) {
       setErrorMessage("참여확인서를 먼저 저장해 주세요.");
@@ -792,8 +830,8 @@ export default function AtcConfirmationsPage() {
 
   const sendMail = async () => {
     if (!mailPreview) return;
-    const confirmResend = Boolean(mailPreview.info.sentAt);
-    if (confirmResend) {
+    const confirmRepeat = Boolean(mailPreview.info.sentAt);
+    if (confirmRepeat) {
       const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(mailPreview.info.sentAt)).map((part) => [part.type, part.value]));
       const when = `${parts.year}.${parts.month}.${parts.day} ${parts.hour}:${parts.minute}`;
       if (!window.confirm(`이미 ${when}에 제출한 확인서입니다.\n다시 발송하시겠습니까?`)) return;
@@ -802,13 +840,16 @@ export default function AtcConfirmationsPage() {
     setErrorMessage("");
     try {
       await requestJson("/api/teacher/atc-confirmations/mail-send", {
-        method: "POST", body: JSON.stringify({ confirmationId: mailPreview.confirmationId, fingerprint: mailPreview.fingerprint, confirmResend }),
+        method: "POST", body: JSON.stringify({ confirmationId: mailPreview.confirmationId, fingerprint: mailPreview.fingerprint, confirmRepeat }),
       });
       closeMailPreview();
       await loadMonth();
-      setNoticeMessage("메일 서비스가 발송을 접수했습니다. 참여확인서를 제출완료로 기록했습니다.");
+      setNoticeMessage("Gmail API가 발송을 확인했습니다. 참여확인서를 제출완료로 기록했습니다.");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "메일 발송에 실패했습니다. 제출완료 처리되지 않았습니다.");
+      const message = error instanceof Error ? error.message : "메일 발송에 실패했습니다. 참여확인서는 제출완료 처리되지 않았습니다.";
+      closeMailPreview();
+      await loadMonth();
+      setErrorMessage(message);
     } finally {
       setMailBusy(false);
     }
@@ -888,6 +929,11 @@ export default function AtcConfirmationsPage() {
         {noticeMessage && <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{noticeMessage}</div>}
 
         <div className="mb-4 rounded-2xl bg-white p-4 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-black">Gmail 발신 계정: lifedr.sun@gmail.com</span>
+            <span className="text-slate-600">{gmailStatus?.connected ? "연결됨" : gmailStatus?.configured === false ? "서버 설정 필요" : "연결 필요"}</span>
+            <button type="button" onClick={() => void connectGmail()} disabled={mailBusy || !gmailStatus?.configured} className="rounded-xl border border-blue-300 px-3 py-1.5 font-bold text-blue-700 disabled:opacity-50">Gmail 계정 {gmailStatus?.connected ? "다시 연결" : "연결"}</button>
+          </div>
           <button type="button" onClick={() => setSettingsOpen((current) => !current)} className="text-sm font-black text-blue-700">ATC 메일 발송 설정 {settingsOpen ? "접기" : "수정"}</button>
           {settingsOpen && mailSettings && (
             <div className="mt-4 grid gap-3 text-sm">
@@ -1017,6 +1063,7 @@ export default function AtcConfirmationsPage() {
             <div className="max-h-[95vh] w-full max-w-2xl overflow-auto rounded-3xl bg-white p-5 shadow-2xl">
               <h2 className="text-lg font-black">메일 발송 전 최종 확인</h2>
               <dl className="mt-4 grid grid-cols-[85px_1fr] gap-2 break-all text-sm">
+                <dt className="font-black">보내는 사람</dt><dd>{mailPreview.info.from}</dd>
                 <dt className="font-black">받는 사람</dt><dd>{mailPreview.info.to}</dd>
                 <dt className="font-black">숨은참조</dt><dd>{mailPreview.info.bcc}</dd>
                 <dt className="font-black">제목</dt><dd>{mailPreview.info.subject}</dd>
@@ -1027,8 +1074,9 @@ export default function AtcConfirmationsPage() {
               {mailPreview.info.sentAt && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-800">이미 발송된 확인서입니다. 재발송 시 한 번 더 확인합니다.</p>}
               <div className="mt-5 flex justify-end gap-2">
                 <button type="button" onClick={closeMailPreview} disabled={mailBusy} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-black disabled:opacity-50">취소</button>
-                <button type="button" onClick={() => void sendMail()} disabled={mailBusy} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50">{mailBusy ? "발송 중" : "메일 발송"}</button>
+                <button type="button" onClick={() => void sendMail()} disabled={mailBusy || !gmailStatus?.connected} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50">{mailBusy ? "발송 중" : "메일 발송"}</button>
               </div>
+              {!gmailStatus?.connected && <p className="mt-2 text-sm font-bold text-rose-700">Gmail 계정을 연결한 뒤 발송할 수 있습니다.</p>}
             </div>
           </div>
         )}

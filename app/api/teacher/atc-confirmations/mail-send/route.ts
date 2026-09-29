@@ -1,7 +1,7 @@
 import { renderAtcPdf } from "@/lib/atcPdfServer";
 import { randomUUID } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
-import { Resend } from "resend";
+import { getAtcGmailStatus, sendAtcGmail } from "@/lib/atcGmailServer";
 import { handleRouteError, jsonError, verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { getAtcMailDocument, getAtcMailSettings, makeAtcMailInfo, mailFingerprint } from "@/lib/atcMailData";
@@ -16,11 +16,9 @@ export async function POST(request: Request) {
     const doc = await getAtcMailDocument(teacher.uid, String(body.confirmationId || ""));
     const info = makeAtcMailInfo(doc, await getAtcMailSettings(teacher.uid));
     if (body.fingerprint !== mailFingerprint(info)) return jsonError("확인서 또는 메일 설정이 변경되었습니다. 다시 미리보기를 확인해 주세요.", 409);
-    if (info.sentAt && body.confirmResend !== true) return jsonError("이미 제출한 확인서입니다. 재발송 여부를 확인해 주세요.", 409);
-    const apiKey = process.env.RESEND_API_KEY;
-    const from = process.env.ATC_MAIL_FROM;
-    if (!apiKey || !from) return jsonError("메일 발송 설정이 완료되지 않았습니다. 제출완료 처리되지 않았습니다.", 503);
-
+    if (info.sentAt && body.confirmRepeat !== true) return jsonError("이미 제출한 확인서입니다. 재발송 여부를 확인해 주세요.", 409);
+    const gmail = await getAtcGmailStatus(teacher.uid);
+    if (!gmail.configured || !gmail.connected) return jsonError("lifedr.sun@gmail.com 계정을 먼저 연결해 주세요. 참여확인서는 제출완료 처리되지 않았습니다.", 503);
     const pdf = await renderAtcPdf(doc);
     const { db } = getFirebaseAdmin();
     const now = new Date().toISOString();
@@ -31,27 +29,26 @@ export async function POST(request: Request) {
       if (data.mailStatus === "sending" && Date.now() - Date.parse(data.mailAttemptStartedAt || "") < 180_000) {
         throw new Error("mail_in_progress");
       }
-      const retryRecentAttempt = ["sending", "failed"].includes(data.mailStatus) && data.mailAttemptId &&
-        Date.now() - Date.parse(data.mailAttemptStartedAt || "") < 86_400_000;
-      const id = retryRecentAttempt ? String(data.mailAttemptId) : randomUUID();
+      if (data.mailStatus === "unknown") throw new Error("mail_result_unknown");
+      const id = randomUUID();
       transaction.update(doc.ref, { mailStatus: "sending", mailAttemptId: id, mailAttemptStartedAt: now });
       return id;
     });
 
     let messageId = "";
     try {
-      const result = await new Resend(apiKey).emails.send({
-        from, to: info.to, bcc: info.bcc, subject: info.subject, text: info.body,
-        attachments: [{ filename: info.filename, content: pdf.toString("base64"), contentType: "application/pdf" }],
-      }, { idempotencyKey: `atc-${attemptId}` });
-      if (result.error || !result.data?.id) throw new Error(result.error?.message || "메일 서비스에서 발송을 확인하지 못했습니다.");
-      messageId = result.data.id;
+      messageId = await sendAtcGmail(teacher.uid, info, pdf);
     } catch (error) {
-      const failure = error instanceof Error ? error.message.slice(0, 300) : "메일 서비스 오류";
-      await doc.ref.update({ mailStatus: "failed", mailError: failure,
-        mailHistory: FieldValue.arrayUnion({ status: "failed", attemptedAt: new Date().toISOString(), to: info.to, bcc: info.bcc, subject: info.subject, filename: info.filename, attemptId, error: failure }),
+      const failure = error instanceof Error ? error.message : "atc_gmail_send_failed";
+      const unknown = failure === "atc_gmail_send_unconfirmed";
+      await doc.ref.update({ mailStatus: unknown ? "unknown" : "failed", mailError: failure,
+        mailHistory: FieldValue.arrayUnion({ status: unknown ? "unknown" : "failed", attemptedAt: new Date().toISOString(), from: info.from, to: info.to, bcc: info.bcc, subject: info.subject, filename: info.filename, attemptId, error: failure }),
       });
-      return jsonError("메일 발송에 실패했습니다. 제출완료 처리되지 않았습니다.", 502);
+      if (unknown) return jsonError("Gmail 발송 결과를 확인할 수 없습니다. 제출완료 처리되지 않았습니다. Gmail 보낸편지함을 확인한 뒤 재발송 여부를 결정해 주세요.", 502);
+      if (failure === "atc_gmail_not_configured" || failure === "atc_gmail_reconnect_required" || failure === "atc_gmail_token_failed") {
+        return jsonError("Gmail 계정 연결 또는 인증 설정을 확인해 주세요. 참여확인서는 제출완료 처리되지 않았습니다.", 503);
+      }
+      return jsonError("메일 발송에 실패했습니다. 참여확인서는 제출완료 처리되지 않았습니다.", 502);
     }
 
     const sentAt = new Date().toISOString();
@@ -59,11 +56,11 @@ export async function POST(request: Request) {
       await doc.ref.update({
         status: "submitted", submittedAt: doc.confirmation.submittedAt || sentAt,
         mailStatus: "sent", mailSentAt: sentAt, mailMessageId: messageId, mailError: "",
-        mailHistory: FieldValue.arrayUnion({ status: "sent", sentAt, to: info.to, bcc: info.bcc, subject: info.subject, filename: info.filename, attemptId, messageId }),
+        mailHistory: FieldValue.arrayUnion({ status: "sent", sentAt, from: info.from, to: info.to, bcc: info.bcc, subject: info.subject, filename: info.filename, attemptId, messageId }),
       });
     } catch (error) {
       console.error("ATC email accepted but Firestore update failed", error);
-      return jsonError("메일 서비스는 발송을 접수했지만 제출 기록 저장을 확인하지 못했습니다. 발송 이력을 확인해 주세요.", 500);
+      return jsonError("Gmail은 발송을 확인했지만 제출 기록 저장에 실패했습니다. 재발송하지 말고 보낸편지함을 확인해 주세요.", 500);
     }
     return Response.json({ sent: true, sentAt, messageId });
   } catch (error) {
@@ -72,6 +69,7 @@ export async function POST(request: Request) {
     if (message === "confirmation_not_found") return jsonError("저장된 확인서를 찾을 수 없습니다.", 404);
     if (message === "incomplete_confirmation") return jsonError("저장된 서명과 서명일, 출강일정을 확인해 주세요. 제출완료 처리되지 않았습니다.", 400);
     if (message === "confirmation_changed" || message === "mail_in_progress") return jsonError("확인서가 변경되었거나 발송 처리 중입니다. 새로고침 후 확인해 주세요.", 409);
+    if (message === "mail_result_unknown") return jsonError("이전 Gmail 발송 결과가 불명확합니다. 보낸편지함을 확인한 뒤 관리자에게 문의해 주세요. 중복 발송을 막기 위해 재발송을 중지했습니다.", 409);
     return handleRouteError(error);
   }
 }
