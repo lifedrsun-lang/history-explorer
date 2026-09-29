@@ -12,7 +12,7 @@ export type AtcEducatorRecord = {
 const name = (value: unknown) => typeof value === "string" ? value.trim().slice(0, 120) : "";
 
 export function resolveAtcEducatorName(record: AtcEducatorRecord | undefined, defaultName: string) {
-  return name(record?.confirmedEducatorName) || name(record?.educatorName) || name(defaultName);
+  return name(record?.confirmedEducatorName) || name(defaultName);
 }
 
 export function resolveAtcEducatorSignature(record: AtcEducatorRecord | undefined, defaultName: string, defaultSignature: string | null) {

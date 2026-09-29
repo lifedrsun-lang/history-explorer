@@ -73,6 +73,7 @@ let initial = await (await route.GET(new Request("https://sunlab.test/api/teache
 assert.equal(initial.defaultEducatorName, "이화선");
 assert.equal(initial.schoolDefaults[0].schoolVerifierName, "학교교사");
 assert.equal(educator.resolveAtcEducatorName(undefined, initial.defaultEducatorName), "이화선");
+assert.equal(educator.resolveAtcEducatorName({ educatorName: "이전기본값", confirmedEducatorName: "" }, "현재배정자"), "현재배정자");
 // 2–4: A different typed name and its new signature are stored together.
 const changed = { ...draft, educatorName: "김진우", educatorSignatureName: "김진우", educatorSignatureDataUrlSnapshot: sig("kim") };
 let saved = (await save(changed)).confirmation;
