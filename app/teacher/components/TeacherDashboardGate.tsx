@@ -189,11 +189,6 @@ export default function TeacherDashboardGate() {
         href={section.href}
         className={`group relative rounded-[24px] border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:rounded-[30px] sm:p-6 ${section.className}`}
       >
-        {alertCount > 0 && (
-          <div className="absolute right-3 top-3 flex min-h-7 min-w-7 items-center justify-center rounded-full bg-red-500 px-2 text-xs font-black text-white shadow-sm">
-            {alertCount}
-          </div>
-        )}
         <div className="text-3xl sm:text-4xl">{section.icon}</div>
         <div className="mt-2 text-base font-black leading-tight sm:mt-4 sm:text-2xl">
           {section.title}
