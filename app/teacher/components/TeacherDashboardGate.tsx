@@ -17,7 +17,8 @@ const managementSections = [
     title: "수업자료",
     description: "PPT·수업자료 링크를 등록하고 수업용 자료를 관리",
     className: "border-violet-200 bg-violet-50 text-violet-900",
-  },  {
+  },
+  {
     key: "after-school",
     href: "/teacher/manage/after-school",
     icon: "🏫",
@@ -52,7 +53,6 @@ const managementSections = [
 ] as const;
 
 const supportingSections = [
-
   {
     key: "operations",
     href: "/teacher/manage/operations",
@@ -61,7 +61,6 @@ const supportingSections = [
     description: "교사일정·자료실·수입·정산 관리",
     className: "border-rose-200 bg-rose-50 text-rose-900",
   },
-
 ] as const;
 
 type ManagementSection =
