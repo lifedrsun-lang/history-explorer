@@ -11,6 +11,13 @@ import { clearTeacherRememberLogin } from "@/lib/teacherSession";
 
 const managementSections = [
   {
+    key: "class-materials",
+    href: "/teacher/presentations",
+    icon: "📽️",
+    title: "수업자료",
+    description: "PPT·수업자료 링크를 등록하고 수업용 자료를 관리",
+    className: "border-violet-200 bg-violet-50 text-violet-900",
+  },  {
     key: "after-school",
     href: "/teacher/manage/after-school",
     icon: "🏫",
@@ -45,14 +52,7 @@ const managementSections = [
 ] as const;
 
 const supportingSections = [
-  {
-    key: "class-materials",
-    href: "/teacher/presentations",
-    icon: "📽️",
-    title: "수업자료",
-    description: "PPT·수업자료 링크를 등록하고 수업용 자료를 관리",
-    className: "border-violet-200 bg-violet-50 text-violet-900",
-  },
+
   {
     key: "operations",
     href: "/teacher/manage/operations",
