@@ -75,6 +75,7 @@ const serializeConfirmation = (
   return {
     id: docItem.id,
     ...data,
+    revision: docItem.updateTime?.toDate().toISOString() || "",
     createdAt: toIso(data.createdAt),
     updatedAt: toIso(data.updatedAt),
   };

@@ -1,6 +1,7 @@
 "use client";
 
-import Image from "next/image";
+import AtcPrintSheet from "./AtcPrintSheet";
+import { atcPrintCss } from "@/lib/atcPrintCss";
 import Link from "next/link";
 import { onAuthStateChanged, User } from "firebase/auth";
 import {
@@ -45,6 +46,7 @@ type ScheduleSnapshotItem = {
 
 type Confirmation = {
   id: string;
+  revision?: string;
   programName?: string;
   yearMonth: string;
   schoolName: string;
@@ -59,6 +61,16 @@ type Confirmation = {
   status?: string;
   submittedAt?: string;
   updatedAt?: string;
+  mailSentAt?: string;
+  mailStatus?: string;
+};
+
+type MailSettings = { to: string; bcc: string; subjectTemplate: string; bodyTemplate: string };
+type MailPreview = {
+  info: { to: string; bcc: string; subject: string; body: string; filename: string; sentAt: string };
+  fingerprint: string;
+  pdfUrl: string;
+  confirmationId: string;
 };
 
 type OperationPeriod = {
@@ -145,14 +157,6 @@ const isSameSchool = (left: string, right: string) => {
   return a === b || a.endsWith(b) || b.endsWith(a);
 };
 
-const getOfficialSchoolName = (value: string) => {
-  const schoolName = String(value || "").trim();
-  if (schoolName.endsWith("초") && !schoolName.endsWith("초등학교")) {
-    return `${schoolName.slice(0, -1)}초등학교`;
-  }
-  return schoolName;
-};
-
 const getSchoolNameFromSummary = (summary: string) => {
   const withoutOwnerPrefix = summary.replace(/^[^)]{1,30}\)\s*/, "").trim();
   const firstSegment = withoutOwnerPrefix.split("/")[0]?.trim() || "";
@@ -233,39 +237,8 @@ const aggregateRows = (items: ScheduleSnapshotItem[]): DailyRow[] => {
     });
 };
 
-const formatMonthDay = (date: string) => {
-  const [, month, day] = date.split("-").map(Number);
-  return month && day ? `${month}월 ${day}일` : date;
-};
-
-const formatPeriod = (startDate?: string, endDate?: string) => {
-  if (!startDate || !endDate) return "";
-  return `${startDate.replaceAll("-", ".")} ~ ${endDate.replaceAll("-", ".")}`;
-};
-
-const formatKoreanDate = (value: string) => {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(date);
-};
-
-const getTodayKorean = () => formatKoreanDate(new Date().toISOString());
-
-const getConfirmationDate = (confirmation?: Confirmation) => {
-  const signedDate = formatKoreanDate(confirmation?.schoolSignedAt || "");
-  if (signedDate) return signedDate;
-
-  // 서명이 저장된 문서인데 서명 시각이 없다면 오늘 날짜로 덮어쓰지 않는다.
-  if (confirmation?.schoolSignatureDataUrl) return "";
-
-  return getTodayKorean();
-};
+const formatPeriod = (startDate?: string, endDate?: string) =>
+  startDate && endDate ? `${startDate.replaceAll("-", ".")} ~ ${endDate.replaceAll("-", ".")}` : "";
 
 const getStatusLabel = (
   confirmation: Confirmation | undefined,
@@ -300,6 +273,11 @@ export default function AtcConfirmationsPage() {
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [noticeMessage, setNoticeMessage] = useState("");
+  const [mailSettings, setMailSettings] = useState<MailSettings | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [mailBusy, setMailBusy] = useState(false);
+  const [mailPreview, setMailPreview] = useState<MailPreview | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
   const requestedSchoolRef = useRef("");
@@ -400,6 +378,13 @@ export default function AtcConfirmationsPage() {
     if (!user) return;
     void loadMonth();
   }, [loadMonth, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    void requestJson("/api/teacher/atc-confirmations/mail-settings")
+      .then((data) => setMailSettings(data.settings))
+      .catch((error) => setErrorMessage(error instanceof Error ? error.message : "메일 설정을 불러오지 못했습니다."));
+  }, [requestJson, user]);
 
   const schoolNames = useMemo(
     () =>
@@ -506,14 +491,6 @@ export default function AtcConfirmationsPage() {
     return currentScheduleSnapshot;
   }, [currentScheduleSnapshot, scheduleChanged, selectedConfirmation]);
   const printRows = useMemo(() => aggregateRows(printSnapshot), [printSnapshot]);
-  const paddedPrintRows = useMemo(() => {
-    const minimumRows = 22;
-    const result: Array<DailyRow | null> = [...printRows];
-    while (result.length < minimumRows) result.push(null);
-    return result;
-  }, [printRows]);
-  const totalSessions = printRows.reduce((sum, row) => sum + row.sessions, 0);
-
   const resetCanvas = () => {
     const canvas = canvasRef.current;
     if (canvas) canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
@@ -756,6 +733,87 @@ export default function AtcConfirmationsPage() {
     }
   };
 
+  const closeMailPreview = () => {
+    if (mailPreview) URL.revokeObjectURL(mailPreview.pdfUrl);
+    setMailPreview(null);
+  };
+
+  const saveMailSettings = async () => {
+    if (!mailSettings) return;
+    setSettingsSaving(true);
+    setErrorMessage("");
+    try {
+      const data = await requestJson("/api/teacher/atc-confirmations/mail-settings", {
+        method: "PUT", body: JSON.stringify(mailSettings),
+      });
+      setMailSettings(data.settings);
+      setSettingsOpen(false);
+      setNoticeMessage("ATC 메일 발송 설정을 저장했습니다.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "메일 설정 저장에 실패했습니다.");
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const prepareMail = async () => {
+    if (!selectedConfirmation) {
+      setErrorMessage("참여확인서를 먼저 저장해 주세요.");
+      return;
+    }
+    if (scheduleChanged || schoolVerifierName.trim() !== (selectedConfirmation.schoolVerifierName || "") ||
+        schoolSignatureDataUrl !== (selectedConfirmation.schoolSignatureDataUrl || null) ||
+        profile.signatureDataUrl !== (selectedConfirmation.educatorSignatureDataUrlSnapshot || null) ||
+        selectedConfirmation.operationPeriodStart !== operationPeriodStart ||
+        selectedConfirmation.operationPeriodEnd !== operationPeriodEnd ||
+        getScheduleFingerprint(selectedConfirmation.scheduleSnapshot) !== getScheduleFingerprint(currentScheduleSnapshot)) {
+      setErrorMessage("현재 화면과 저장된 확인서 내용이 다릅니다. 변경 사항을 저장하고 서명 상태를 확인해 주세요.");
+      return;
+    }
+    if (!selectedConfirmation.schoolSignedAt) {
+      setErrorMessage("저장된 실제 서명일을 확인할 수 없습니다. 담당교사 서명을 확인해 주세요.");
+      return;
+    }
+    setMailBusy(true);
+    setErrorMessage("");
+    try {
+      const data = await requestJson("/api/teacher/atc-confirmations/mail-preview", {
+        method: "POST", body: JSON.stringify({ confirmationId: selectedConfirmation.id, revision: selectedConfirmation.revision }),
+      });
+      const bytes = Uint8Array.from(atob(data.pdfBase64), (character) => character.charCodeAt(0));
+      const pdfUrl = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      setMailPreview({ info: data.info, fingerprint: data.fingerprint, pdfUrl, confirmationId: selectedConfirmation.id });
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "PDF를 준비하지 못했습니다.");
+    } finally {
+      setMailBusy(false);
+    }
+  };
+
+  const sendMail = async () => {
+    if (!mailPreview) return;
+    const confirmResend = Boolean(mailPreview.info.sentAt);
+    if (confirmResend) {
+      const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(mailPreview.info.sentAt)).map((part) => [part.type, part.value]));
+      const when = `${parts.year}.${parts.month}.${parts.day} ${parts.hour}:${parts.minute}`;
+      if (!window.confirm(`이미 ${when}에 제출한 확인서입니다.\n다시 발송하시겠습니까?`)) return;
+    }
+    setMailBusy(true);
+    setErrorMessage("");
+    try {
+      await requestJson("/api/teacher/atc-confirmations/mail-send", {
+        method: "POST", body: JSON.stringify({ confirmationId: mailPreview.confirmationId, fingerprint: mailPreview.fingerprint, confirmResend }),
+      });
+      closeMailPreview();
+      await loadMonth();
+      setNoticeMessage("메일 서비스가 발송을 접수했습니다. 참여확인서를 제출완료로 기록했습니다.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "메일 발송에 실패했습니다. 제출완료 처리되지 않았습니다.");
+    } finally {
+      setMailBusy(false);
+    }
+  };
+
   if (authChecking) {
     return <div className="min-h-screen bg-slate-50 p-8 text-center font-bold text-slate-500">교사 로그인 확인 중...</div>;
   }
@@ -772,42 +830,10 @@ export default function AtcConfirmationsPage() {
   }
 
   const selectedStatus = getStatusLabel(selectedConfirmation, currentScheduleSnapshot.length, scheduleChanged);
-  const year = Number(yearMonth.slice(0, 4));
-  const month = Number(yearMonth.slice(5));
-  const officialSelectedSchool = getOfficialSchoolName(selectedSchool);
 
   return (
     <main className="min-h-screen bg-[#f5f7fb] px-3 py-5 text-slate-800">
-      <style>{`
-        .atc-print-sheet { font-family: Arial, "Noto Sans KR", sans-serif; }
-        .atc-form-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .atc-form-table th, .atc-form-table td { border: 1px solid #111827; padding: 5px 6px; vertical-align: middle; }
-        .atc-signature-img { object-fit: contain; mix-blend-mode: multiply; }
-        @media print {
-          @page { size: A4 portrait; margin: 8mm; }
-          body { background: white !important; }
-          body * { visibility: hidden !important; }
-          .atc-print-sheet, .atc-print-sheet * { visibility: visible !important; }
-          .atc-print-sheet { position: absolute !important; left: 0; top: 0; display: flex !important; flex-direction: column !important; width: 194mm !important; height: 281mm !important; box-sizing: border-box !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: 0 !important; break-inside: avoid !important; page-break-inside: avoid !important; }
-          .no-print { display: none !important; }
-          .atc-logo-row { margin-bottom: 3mm !important; }
-          .atc-title { min-height: 8mm !important; padding-top: 1.5mm !important; padding-bottom: 1.5mm !important; }
-          .atc-summary-table { margin-top: 3mm !important; }
-          .atc-lesson-table { margin-top: 3mm !important; }
-          .atc-form-table th, .atc-form-table td { padding: 1mm 1.4mm !important; font-size: 10pt !important; line-height: 1.15 !important; }
-          .atc-lesson-table tr { height: 5.6mm !important; }
-          .atc-lesson-table thead tr { height: 6.2mm !important; }
-          .atc-lesson-table th, .atc-lesson-table td { height: 5.6mm !important; padding-top: 0.55mm !important; padding-bottom: 0.55mm !important; }
-          .atc-lesson-table .atc-total-row { height: 7.4mm !important; }
-          .atc-lesson-table .atc-total-row td { height: 7.4mm !important; padding-top: 1mm !important; padding-bottom: 1mm !important; }
-          .atc-verifier-row { min-height: 11mm !important; }
-          .atc-attendance-note { margin-top: 3mm !important; }
-          .atc-footer-block { margin-top: auto !important; padding-bottom: 3mm !important; }
-          .atc-footer-statement { margin-top: 0 !important; }
-          .atc-footer-date { margin-top: 5mm !important; }
-          .atc-footer-signature { margin-top: 5mm !important; }
-        }
-      `}</style>
+      <style>{atcPrintCss}</style>
 
       <div className="no-print mx-auto max-w-6xl">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-white p-5 shadow-sm">
@@ -860,6 +886,25 @@ export default function AtcConfirmationsPage() {
 
         {errorMessage && <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{errorMessage}</div>}
         {noticeMessage && <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{noticeMessage}</div>}
+
+        <div className="mb-4 rounded-2xl bg-white p-4 shadow-sm">
+          <button type="button" onClick={() => setSettingsOpen((current) => !current)} className="text-sm font-black text-blue-700">ATC 메일 발송 설정 {settingsOpen ? "접기" : "수정"}</button>
+          {settingsOpen && mailSettings && (
+            <div className="mt-4 grid gap-3 text-sm">
+              {(["to", "bcc", "subjectTemplate"] as const).map((key) => (
+                <label key={key} className="grid gap-1 font-bold">
+                  {key === "to" ? "받는 사람(To)" : key === "bcc" ? "숨은참조(BCC)" : "제목 템플릿"}
+                  <input value={mailSettings[key]} onChange={(event) => setMailSettings((current) => current && ({ ...current, [key]: event.target.value }))} className="rounded-xl border border-slate-300 px-3 py-2" />
+                </label>
+              ))}
+              <label className="grid gap-1 font-bold">본문 템플릿
+                <textarea rows={7} value={mailSettings.bodyTemplate} onChange={(event) => setMailSettings((current) => current && ({ ...current, bodyTemplate: event.target.value }))} className="rounded-xl border border-slate-300 px-3 py-2" />
+              </label>
+              <p className="text-xs text-slate-500">변수: {"{연도}"}, {"{학교명}"}, {"{해당월}"}, {"{강사명}"}</p>
+              <button type="button" onClick={() => void saveMailSettings()} disabled={settingsSaving} className="w-fit rounded-xl bg-blue-600 px-4 py-2 font-black text-white disabled:opacity-50">{settingsSaving ? "저장 중" : "설정 저장"}</button>
+            </div>
+          )}
+        </div>
 
         {selectedSchool && (
           <div className="mb-5 grid gap-4 lg:grid-cols-2">
@@ -962,76 +1007,48 @@ export default function AtcConfirmationsPage() {
           <div className="mb-5 flex flex-wrap justify-end gap-2 rounded-3xl bg-white p-4 shadow-sm">
             <button type="button" onClick={() => void handleSave(false)} disabled={saving || loading} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50">{saving ? "저장 중" : "현재 내용 저장"}</button>
             <button type="button" onClick={printDocument} className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-black">인쇄 / PDF 저장</button>
+            <button type="button" onClick={() => void prepareMail()} disabled={mailBusy || saving || loading || !mailSettings} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50">{mailBusy ? "준비 중" : "메일로 제출"}</button>
             <button type="button" onClick={() => void handleSave(true)} disabled={saving || Boolean(selectedConfirmation?.submittedAt)} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50">{selectedConfirmation?.submittedAt ? "제출완료" : "제출완료 표시"}</button>
+          </div>
+        )}
+
+        {mailPreview && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3" role="dialog" aria-modal="true" aria-label="ATC 참여확인서 메일 발송 확인">
+            <div className="max-h-[95vh] w-full max-w-2xl overflow-auto rounded-3xl bg-white p-5 shadow-2xl">
+              <h2 className="text-lg font-black">메일 발송 전 최종 확인</h2>
+              <dl className="mt-4 grid grid-cols-[85px_1fr] gap-2 break-all text-sm">
+                <dt className="font-black">받는 사람</dt><dd>{mailPreview.info.to}</dd>
+                <dt className="font-black">숨은참조</dt><dd>{mailPreview.info.bcc}</dd>
+                <dt className="font-black">제목</dt><dd>{mailPreview.info.subject}</dd>
+                <dt className="font-black">본문</dt><dd className="whitespace-pre-wrap">{mailPreview.info.body}</dd>
+                <dt className="font-black">첨부파일</dt><dd>{mailPreview.info.filename}</dd>
+              </dl>
+              <a href={mailPreview.pdfUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-sm font-bold text-blue-700 underline">첨부 PDF 열어 확인</a>
+              {mailPreview.info.sentAt && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-800">이미 발송된 확인서입니다. 재발송 시 한 번 더 확인합니다.</p>}
+              <div className="mt-5 flex justify-end gap-2">
+                <button type="button" onClick={closeMailPreview} disabled={mailBusy} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-black disabled:opacity-50">취소</button>
+                <button type="button" onClick={() => void sendMail()} disabled={mailBusy} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50">{mailBusy ? "발송 중" : "메일 발송"}</button>
+              </div>
+            </div>
           </div>
         )}
       </div>
 
       {selectedSchool && (
-        <section className="atc-print-sheet mx-auto max-w-[850px] bg-white p-8 shadow-lg">
-          <div className="atc-logo-row">
-            <Image src="/images/atc-logo.png" alt="ATC" width={292} height={74} className="atc-print-logo" priority />
-          </div>
-          <h2 className="atc-title">2026 ATC스쿨 전담 에듀케이터 참여 확인서</h2>
-
-          <table className="atc-form-table atc-summary-table mt-5">
-            <tbody>
-              <tr><th className="w-[16%] bg-slate-50">프로그램명</th><td className="w-[34%] font-bold">ATC스쿨</td><th className="w-[16%] bg-slate-50">학교명</th><td className="w-[34%] font-bold">{officialSelectedSchool}</td></tr>
-              <tr><th className="bg-slate-50">운영기간</th><td className="font-bold">{formatPeriod(operationPeriodStart, operationPeriodEnd) || ""}</td><th className="bg-slate-50">해당월</th><td className="font-bold">{year}년 {month}월</td></tr>
-              <tr><th className="bg-slate-50">강사명</th><td className="font-bold">{profile.name}</td><th className="bg-slate-50">연락처</th><td className="font-bold">{profile.phone}</td></tr>
-              <tr>
-                <th className="bg-slate-50">확 인 자</th>
-                <td colSpan={3}>
-                  <div className="atc-verifier-row flex min-h-14 items-center gap-3">
-                    <span className="atc-verifier-affiliation">(소속) <b>{officialSelectedSchool}</b></span>
-                    <span>(성명) <b>{schoolVerifierName}</b></span>
-                    <span className="atc-signature-slot">
-                      <span aria-hidden="true">(서명)</span>
-                      {schoolSignatureDataUrl && <img src={schoolSignatureDataUrl} alt="학교 담당교사 서명" className="atc-signature-img" />}
-                    </span>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <table className="atc-form-table atc-lesson-table mt-4">
-            <thead><tr className="bg-slate-50"><th className="w-[12%]">수업횟수</th><th className="w-[23%]">수업일자</th><th className="w-[16%]">수업차시</th><th>비고</th></tr></thead>
-            <tbody>
-              <tr className="atc-example-row h-7">
-                <td>예시</td>
-                <td>4월 1일</td>
-                <td>4</td>
-                <td className="atc-remarks-cell" />
-              </tr>
-              {paddedPrintRows.map((row, index) => (
-                <tr key={`${row?.date || "blank"}-${index}`} className="h-7">
-                  <td>{index + 1}</td>
-                  <td>{row ? formatMonthDay(row.date) : ""}</td>
-                  <td>{row ? row.sessions : ""}</td>
-                  <td className="atc-remarks-cell">{row?.remarks || ""}</td>
-                </tr>
-              ))}
-              <tr className="atc-total-row"><td>합계</td><td className="font-bold">{printRows.length}일</td><td className="font-bold">{totalSessions}차시</td><td className="atc-remarks-cell" /></tr>
-            </tbody>
-          </table>
-
-          <div className="atc-attendance-note mt-3">※ 출석부 월별 해당차수에 해당하는 날짜를 기입.</div>
-          <div className="atc-footer-block">
-            <div className="atc-footer-statement mt-7 text-center">본인은 위 사항을 확인하며 참여하였음을 서명으로 증명합니다.</div>
-            <div className="atc-footer-date mt-5">{getConfirmationDate(selectedConfirmation)}</div>
-            <div className="atc-footer-signature mt-6 flex items-center gap-3">
-              <span>에듀케이터 성명</span>
-              <span className="atc-educator-name min-w-20 border-b border-slate-500 pb-1 text-center">{profile.name}</span>
-              <button type="button" onClick={openEducatorSignatureDialog} className="atc-signature-slot atc-signature-button" title="에듀케이터 기본 서명 수정">
-                <span aria-hidden="true">(인)</span>
-                {profile.signatureDataUrl && <img src={profile.signatureDataUrl} alt="에듀케이터 서명" className="atc-signature-img" />}
-              </button>
-            </div>
-          </div>
-
-          <div className="no-print mt-5 rounded-2xl bg-slate-50 p-3 text-xs font-bold text-slate-500">미리보기입니다. 인쇄 / PDF 저장 시 이 안내는 출력되지 않습니다.</div>
-        </section>
+        <AtcPrintSheet
+          schoolName={selectedSchool}
+          yearMonth={yearMonth}
+          educatorName={profile.name}
+          educatorPhone={profile.phone}
+          educatorSignatureDataUrl={profile.signatureDataUrl}
+          schoolVerifierName={schoolVerifierName}
+          schoolSignatureDataUrl={schoolSignatureDataUrl}
+          schoolSignedAt={selectedConfirmation?.schoolSignedAt || ""}
+          operationPeriodStart={operationPeriodStart}
+          operationPeriodEnd={operationPeriodEnd}
+          rows={printRows}
+          onEditEducatorSignature={openEducatorSignatureDialog}
+        />
       )}
     </main>
   );
