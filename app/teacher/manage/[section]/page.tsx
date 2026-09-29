@@ -81,7 +81,7 @@ const sections: Record<string, ManagementSection> = {
     eyebrow: "TEACHING",
     icon: "🚗",
     title: "출강 관리",
-    description: "출강 일정과 건별계약 수금, 참여확인서, 지원·제출서류를 기존 기능으로 관리합니다.",
+    description: "출강 일정과 건별계약 수금, 참여확인서와 수업 운영 기능을 관리합니다.",
     items: [
       {
         href: "/teacher/contract-schools",
@@ -119,13 +119,7 @@ const sections: Record<string, ManagementSection> = {
         description: "출강일정과 수금관리 데이터를 연결해 월별 확인서 작성",
         className: "border-indigo-200 bg-indigo-50 text-indigo-900",
       },
-      {
-        href: "/teacher/application-documents",
-        icon: "📄",
-        title: "지원 · 제출서류",
-        description: "학교 기본정보와 서명을 반영한 필수 동의서 작성",
-        className: "border-violet-200 bg-violet-50 text-violet-900",
-      },
+
       {
         href: "/teacher/activity-lab",
         icon: "🤖",
