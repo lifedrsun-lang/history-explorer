@@ -90,6 +90,7 @@ const sections: Record<string, ManagementSection> = {
         description: "학교·학년반·차시·링크 등록과 반별 공개 상태 관리",
         className: "border-sky-200 bg-sky-50 text-sky-900",
       },
+
       {
         href: "/teacher/schedule?tab=teaching",
         icon: "📅",
@@ -117,6 +118,13 @@ const sections: Record<string, ManagementSection> = {
         title: "지원 · 제출서류",
         description: "학교 기본정보와 서명을 반영한 필수 동의서 작성",
         className: "border-violet-200 bg-violet-50 text-violet-900",
+      },
+      {
+        href: "/teacher/activity-lab",
+        icon: "🤖",
+        title: "활동 결과 연구소",
+        description: "모럴머신 참여 현황과 반별·학년별 결과 관리",
+        className: "border-indigo-200 bg-indigo-50 text-indigo-900",
       },
     ],
   },
@@ -161,35 +169,6 @@ const sections: Record<string, ManagementSection> = {
         description: "학생에게 보이는 화면을 교사용 미리보기로 점검",
         className: "border-sky-200 bg-sky-50 text-sky-900",
       },
-      {
-        href: "/teacher/activity-lab",
-        icon: "🤖",
-        title: "활동 결과 연구소",
-        description: "반·학년 참여 현황, 결과 공개, 익명 집계와 초기화 관리",
-        className: "border-violet-200 bg-violet-50 text-violet-900",
-      },
-    ],
-  },
-  materials: {
-    eyebrow: "CONTENTS",
-    icon: "📂",
-    title: "자료 관리",
-    description: "수업에 사용하는 자료와 개인 보관 자료를 한곳에서 관리합니다.",
-    items: [
-      {
-        href: "/teacher/presentations",
-        icon: "📽️",
-        title: "수업자료",
-        description: "PPT·수업자료 링크를 등록하고 수업용 자료를 관리",
-        className: "border-sky-200 bg-sky-50 text-sky-900",
-      },
-      {
-        href: "/teacher/presentations?section=archive",
-        icon: "📁",
-        title: "자료실",
-        description: "공부자료·퍼실리테이터·코딩 자료를 보관",
-        className: "border-rose-200 bg-rose-50 text-rose-900",
-      },
 
     ],
   },
@@ -197,7 +176,7 @@ const sections: Record<string, ManagementSection> = {
     eyebrow: "OPERATIONS",
     icon: "⚙️",
     title: "일정 · 운영",
-    description: "교사 일정과 비용·운영 상태처럼 공통 관리 기능을 모았습니다.",
+    description: "교사 일정과 자료 보관, 비용·운영 상태처럼 공통 관리 기능을 모았습니다.",
     items: [
       {
         href: "/teacher/timer",
@@ -214,12 +193,13 @@ const sections: Record<string, ManagementSection> = {
         className: "border-rose-200 bg-rose-50 text-rose-900",
       },
       {
-        href: "/teacher/application-documents",
-        icon: "📄",
-        title: "지원 · 제출서류",
-        description: "학교명·기본정보·등록 서명을 반영해 필수 동의서를 작성하고 PDF로 저장",
-        className: "border-indigo-200 bg-indigo-50 text-indigo-900",
+        href: "/teacher/presentations?section=archive",
+        icon: "📁",
+        title: "자료실",
+        description: "공부자료·퍼실리테이터·코딩 자료를 보관",
+        className: "border-violet-200 bg-violet-50 text-violet-900",
       },
+
       {
         href: "/teacher/fees",
         icon: "💰",
