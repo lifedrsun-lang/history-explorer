@@ -50,8 +50,8 @@ const sections: Record<string, ManagementSection> = {
       {
         href: "/teacher/presentations/review",
         icon: "📝",
-        title: "복습문제",
-        description: "복습문제 만들기·배포·완료 결과 확인",
+        title: "복습문제 자료",
+        description: "복습문제를 만들고 배포 상태와 결과를 확인",
         className: "border-indigo-200 bg-indigo-50 text-indigo-900",
       },
       {
@@ -174,7 +174,7 @@ const sections: Record<string, ManagementSection> = {
     eyebrow: "CONTENTS",
     icon: "📂",
     title: "자료 관리",
-    description: "수업에 사용하는 자료와 개인 보관 자료, 복습문제를 한곳에서 관리합니다.",
+    description: "수업에 사용하는 자료와 개인 보관 자료를 한곳에서 관리합니다.",
     items: [
       {
         href: "/teacher/presentations",
@@ -190,13 +190,7 @@ const sections: Record<string, ManagementSection> = {
         description: "공부자료·퍼실리테이터·코딩 자료를 보관",
         className: "border-rose-200 bg-rose-50 text-rose-900",
       },
-      {
-        href: "/teacher/presentations/review",
-        icon: "📝",
-        title: "복습문제 자료",
-        description: "복습문제를 만들고 배포 상태와 결과를 확인",
-        className: "border-blue-200 bg-blue-50 text-blue-900",
-      },
+
     ],
   },
   operations: {
