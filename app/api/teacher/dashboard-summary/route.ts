@@ -53,8 +53,23 @@ export async function GET(request: Request) {
       return isPendingCoinExchange(docItem.data()?.status);
     }).length;
 
+    const activeAssignmentIds = new Set(
+      (
+        await db
+          .collection("assignments")
+          .where("isActive", "==", true)
+          .get()
+      ).docs.map((docItem) => docItem.id)
+    );
+
     const pendingAssignmentCount = submissionSnapshot.docs.filter((docItem) => {
-      return isAssignmentSubmissionAwaitingReview(docItem.data()?.status);
+      const data = docItem.data();
+      const assignmentId = String(data?.assignmentId || "");
+
+      return (
+        activeAssignmentIds.has(assignmentId) &&
+        isAssignmentSubmissionAwaitingReview(data?.status)
+      );
     }).length;
 
     const cutoff = Date.now() - RECENT_REVIEW_WINDOW_MS;
