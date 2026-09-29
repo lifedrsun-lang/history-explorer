@@ -235,5 +235,35 @@ export const recordApplicationDocuments = async (
   });
 
   await batch.commit();
-  return { count: documentKinds.length, schoolSlug: school.slug };
+  return {
+    count: documentKinds.length,
+    schoolSlug: school.slug,
+    generationBatchId,
+  };
+};
+
+export const markApplicationDocumentBatchSubmitted = async (
+  teacherUid: string,
+  generationBatchId: string,
+  submittedAt: string
+) => {
+  const { db } = getFirebaseAdmin();
+  const snapshot = await db
+    .collection(SCHOOL_DOCUMENT_RECORD_COLLECTION)
+    .where("teacherUid", "==", teacherUid)
+    .get();
+  const matching = snapshot.docs.filter(
+    (document) =>
+      normalize(document.data().generationBatchId, 80) === generationBatchId
+  );
+  if (matching.length === 0) return;
+  const batch = db.batch();
+  matching.forEach((document) =>
+    batch.update(document.ref, {
+      status: "submitted",
+      submittedAt,
+      updatedAt: FieldValue.serverTimestamp(),
+    })
+  );
+  await batch.commit();
 };

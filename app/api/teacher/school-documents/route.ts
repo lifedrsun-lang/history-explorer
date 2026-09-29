@@ -7,6 +7,7 @@ import {
   getSchoolDocuments,
   recordApplicationDocuments,
 } from "@/lib/schoolDocumentsServer";
+import { markSchoolDocumentsGenerated } from "@/lib/schoolDocumentManagementServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
     }
 
     const result = await recordApplicationDocuments(teacher.uid, body);
+    await markSchoolDocumentsGenerated(teacher.uid, result.schoolSlug);
     return Response.json({ ok: true, ...result }, { status: 201 });
   } catch (error) {
     return handleSchoolDocumentError(error);

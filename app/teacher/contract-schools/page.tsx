@@ -18,6 +18,10 @@ import {
   getMonsterById,
   type ClassroomLink,
 } from "@/app/student/data/classroomData";
+import {
+  SCHOOL_DOCUMENT_STATUS_LABELS,
+  type SchoolDocumentSettings,
+} from "@/lib/schoolDocumentManagement";
 
 type ApiPayload = {
   school?: ContractSchoolConfig;
@@ -88,6 +92,9 @@ export default function ContractSchoolsPage() {
   );
   const [activityStates, setActivityStates] = useState<ActivityStates>({});
   const [pendingLinkState, setPendingLinkState] = useState("");
+  const [documentSettings, setDocumentSettings] = useState<
+    Record<string, SchoolDocumentSettings>
+  >({});
 
   const getTeacherToken = useCallback(async () => {
     if (!user) throw new Error("teacher_auth_required");
@@ -127,14 +134,33 @@ export default function ContractSchoolsPage() {
 
     try {
       const token = await user.getIdToken();
-      const response = await fetch("/api/teacher/contract-schools", {
-        cache: "no-store",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const payload = (await response.json().catch(() => ({}))) as ApiPayload;
+      const [response, documentSettingsResponse] = await Promise.all([
+        fetch("/api/teacher/contract-schools", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch("/api/teacher/school-document-settings", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+      const [payload, documentSettingsPayload] = await Promise.all([
+        response.json().catch(() => ({})) as Promise<ApiPayload>,
+        documentSettingsResponse.json().catch(() => ({})) as Promise<{
+          settings?: SchoolDocumentSettings[];
+        }>,
+      ]);
       if (!response.ok) throw new Error(payload.error || "load_failed");
       const nextSchools = Array.isArray(payload.schools) ? payload.schools : [];
       setSchools(nextSchools);
+      if (documentSettingsResponse.ok) {
+        const nextSettings = Array.isArray(documentSettingsPayload.settings)
+          ? documentSettingsPayload.settings
+          : [];
+        setDocumentSettings(
+          Object.fromEntries(nextSettings.map((item) => [item.schoolSlug, item]))
+        );
+      }
 
       if (selectedSlug) {
         const refreshed = nextSchools.find((school) => school.slug === selectedSlug);
@@ -582,7 +608,9 @@ export default function ContractSchoolsPage() {
         {!selectedSchool ? (
           <>
             <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {orderedSchools.map((school) => (
+              {orderedSchools.map((school) => {
+                const documentInfo = documentSettings[school.slug];
+                return (
                 <article
                   key={school.slug}
                   className={`rounded-[24px] border p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:p-5 ${
@@ -603,6 +631,32 @@ export default function ContractSchoolsPage() {
                     </div>
                     <div className="mt-3 text-lg font-black text-slate-900">{school.displayName}</div>
                     <div className="mt-1 text-xs font-bold text-slate-400">/{school.slug} · {school.classrooms.filter((classroom) => classroom.active !== false).length}개 반 · {school.lessons.length}차시</div>
+                    {documentInfo && (
+                      <div className="mt-3 space-y-1 border-t border-slate-100 pt-3 text-xs font-bold text-slate-600">
+                        {(documentInfo.contactName || documentInfo.contactPhone) && (
+                          <div>{[documentInfo.contactName, documentInfo.contactPhone].filter(Boolean).join(" · ")}</div>
+                        )}
+                        {documentInfo.contactEmail && <div className="break-all text-slate-500">{documentInfo.contactEmail}</div>}
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          <span className={`rounded-full px-2.5 py-1 font-black ${documentInfo.processingMethod === "direct" ? "bg-violet-100 text-violet-700" : "bg-sky-100 text-sky-700"}`}>
+                            {documentInfo.processingMethod === "direct" ? "🔑 직접 발급" : "🏫 학교 처리"}
+                          </span>
+                          {documentInfo.submissionChannel && (
+                            <span className="rounded-full bg-amber-100 px-2.5 py-1 font-black text-amber-700">
+                              {documentInfo.submissionChannel === "email" ? "📧 이메일" : "💬 카카오톡"}
+                            </span>
+                          )}
+                          <span className={`rounded-full px-2.5 py-1 font-black ${documentInfo.latestStatus === "submitted" ? "bg-emerald-100 text-emerald-700" : documentInfo.latestStatus === "generated" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600"}`}>
+                            {documentInfo.latestStatus === "submitted" ? "✅ " : ""}{SCHOOL_DOCUMENT_STATUS_LABELS[documentInfo.latestStatus]}
+                          </span>
+                        </div>
+                        {documentInfo.latestProcessedAt && (
+                          <div className="pt-1 text-[11px] text-slate-400">
+                            최근 처리 {new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(documentInfo.latestProcessedAt))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </button>
                   <div className="mt-4 grid grid-cols-2 gap-2">
                     <button type="button" onClick={() => selectSchool(school)} className="rounded-xl bg-sky-100 px-3 py-2 text-xs font-black text-sky-700">관리하기 →</button>
@@ -620,7 +674,7 @@ export default function ContractSchoolsPage() {
                     </button>
                   </div>
                 </article>
-              ))}
+              );})}
               <button type="button" onClick={() => setShowNewSchool(true)} className="min-h-44 rounded-[24px] border-2 border-dashed border-sky-200 bg-sky-50 p-5 text-center text-sky-700 transition hover:border-sky-400">
                 <div className="text-3xl">＋</div>
                 <div className="mt-2 text-base font-black">신규 학교 등록</div>

@@ -13,6 +13,7 @@ import {
 import { auth } from "@/lib/firebase";
 import type { ContractSchoolConfig } from "@/lib/contractSchools";
 import type { SchoolDocumentKind } from "@/lib/schoolDocuments";
+import type { SchoolDocumentSettings } from "@/lib/schoolDocumentManagement";
 import { trimSignatureCanvas } from "@/lib/signatureCanvas";
 
 type Profile = {
@@ -23,6 +24,7 @@ type Profile = {
 };
 
 type IdentityType = "resident" | "passport" | "foreign" | "driver";
+type GmailStatus = { configured: boolean; connected: boolean; email: string };
 
 type SchoolOption = Pick<
   ContractSchoolConfig,
@@ -65,6 +67,7 @@ const DocumentSignature = ({
       (서명 또는 인)
     </span>
     {dataUrl && (
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={dataUrl}
         alt="서명"
@@ -88,10 +91,17 @@ export default function TeacherApplicationDocumentsPage() {
   const [birthDate, setBirthDate] = useState("");
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [signatureHasInk, setSignatureHasInk] = useState(false);
+  const [signaturePreviewDataUrl, setSignaturePreviewDataUrl] = useState<
+    string | null
+  >(null);
 
   const [schoolName, setSchoolName] = useState("");
   const [schoolSlug, setSchoolSlug] = useState("");
   const [schools, setSchools] = useState<SchoolOption[]>([]);
+  const [schoolSettings, setSchoolSettings] = useState<
+    Record<string, SchoolDocumentSettings>
+  >({});
+  const [gmailStatus, setGmailStatus] = useState<GmailStatus | null>(null);
   const [documentDate, setDocumentDate] = useState(todayText());
   const [policeStationName, setPoliceStationName] = useState("");
   const [residentNumber, setResidentNumber] = useState("");
@@ -99,6 +109,9 @@ export default function TeacherApplicationDocumentsPage() {
   const [identityNumber, setIdentityNumber] = useState("");
   const [includeCrimeConsent, setIncludeCrimeConsent] = useState(true);
   const [includeAdminConsent, setIncludeAdminConsent] = useState(true);
+  const [documentAction, setDocumentAction] = useState<
+    "" | "download" | "email" | "kakao"
+  >("");
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
@@ -108,6 +121,7 @@ export default function TeacherApplicationDocumentsPage() {
     return onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setAuthChecking(false);
+      if (!currentUser) setLoading(false);
     });
   }, []);
 
@@ -146,6 +160,7 @@ export default function TeacherApplicationDocumentsPage() {
       clearCanvas();
       if (!dataUrl) {
         setSignatureHasInk(false);
+        setSignaturePreviewDataUrl(null);
         return;
       }
       const canvas = canvasRef.current;
@@ -168,6 +183,7 @@ export default function TeacherApplicationDocumentsPage() {
           height
         );
         setSignatureHasInk(true);
+        setSignaturePreviewDataUrl(dataUrl);
       };
       image.src = dataUrl;
     },
@@ -175,17 +191,16 @@ export default function TeacherApplicationDocumentsPage() {
   );
 
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    if (!user) return;
     let cancelled = false;
     const loadPageData = async () => {
       setLoading(true);
       try {
-        const [data, schoolData] = await Promise.all([
+        const [data, schoolData, settingData, gmailData] = await Promise.all([
           requestJson("/api/teacher/application-documents/profile"),
           requestJson("/api/teacher/contract-schools"),
+          requestJson("/api/teacher/school-document-settings"),
+          requestJson("/api/teacher/atc-confirmations/gmail-status"),
         ]);
         if (cancelled) return;
         const profile = (data?.profile || EMPTY_PROFILE) as Profile;
@@ -197,6 +212,13 @@ export default function TeacherApplicationDocumentsPage() {
         setBirthDate(profile.birthDate || "");
         setSignatureDataUrl(profile.signatureDataUrl || null);
         setSchools(nextSchools);
+        const nextSettings = Array.isArray(settingData?.settings)
+          ? (settingData.settings as SchoolDocumentSettings[])
+          : [];
+        setSchoolSettings(
+          Object.fromEntries(nextSettings.map((item) => [item.schoolSlug, item]))
+        );
+        setGmailStatus(gmailData as GmailStatus);
 
         const params = new URLSearchParams(window.location.search);
         const requestedSlug = params.get("schoolSlug") || "";
@@ -274,12 +296,19 @@ export default function TeacherApplicationDocumentsPage() {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const nextSignature = trimSignatureCanvas(canvas);
+      setSignaturePreviewDataUrl(nextSignature);
+      setSignatureHasInk(Boolean(nextSignature));
+    }
   };
 
   const resetSignature = () => {
     clearCanvas();
     setSignatureHasInk(false);
     setSignatureDataUrl(null);
+    setSignaturePreviewDataUrl(null);
   };
 
   const saveProfile = async () => {
@@ -287,13 +316,13 @@ export default function TeacherApplicationDocumentsPage() {
     setNotice("");
     setErrorMessage("");
     try {
-      const canvas = canvasRef.current;
-      const nextSignature = signatureHasInk && canvas ? trimSignatureCanvas(canvas) : null;
+      const nextSignature = signatureHasInk ? signaturePreviewDataUrl : null;
       const data = await requestJson("/api/teacher/application-documents/profile", {
         method: "PUT",
         body: JSON.stringify({ name, phone, birthDate, signatureDataUrl: nextSignature }),
       });
       setSignatureDataUrl(data?.profile?.signatureDataUrl || null);
+      setSignaturePreviewDataUrl(data?.profile?.signatureDataUrl || null);
       setNotice("기본정보와 서명을 저장했습니다.");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "저장하지 못했습니다.");
@@ -302,11 +331,7 @@ export default function TeacherApplicationDocumentsPage() {
     }
   };
 
-  const signatureForDocument = (() => {
-    const canvas = canvasRef.current;
-    if (canvas && signatureHasInk) return trimSignatureCanvas(canvas);
-    return signatureDataUrl;
-  })();
+  const signatureForDocument = signaturePreviewDataUrl || signatureDataUrl;
 
   const dateParts = splitDate(documentDate);
   const identityNumberForDocument =
@@ -314,6 +339,154 @@ export default function TeacherApplicationDocumentsPage() {
   const policeStationForDocument = policeStationName
     .trim()
     .replace(/경찰서장?$/, "");
+
+  const selectedSchoolSettings = schoolSlug
+    ? schoolSettings[schoolSlug] || null
+    : null;
+
+  const selectedDocumentKinds = () => {
+    const documentKinds: SchoolDocumentKind[] = [];
+    if (includeCrimeConsent) documentKinds.push("crime-consent");
+    if (includeAdminConsent) documentKinds.push("administrative-consent");
+    return documentKinds;
+  };
+
+  const makeDocumentPayload = () => {
+    if (!schoolSlug) {
+      setErrorMessage("학교카드를 선택해 주세요.");
+      return null;
+    }
+    if (!schoolName.trim()) return setErrorMessage("학교명을 입력해 주세요."), null;
+    if (!name.trim()) return setErrorMessage("성명을 입력해 주세요."), null;
+    if (!phone.trim()) return setErrorMessage("전화번호를 입력해 주세요."), null;
+    if (!signatureHasInk) return setErrorMessage("등록 서명을 작성하거나 불러와 주세요."), null;
+    if (includeCrimeConsent && !residentNumber.trim()) return setErrorMessage("첫 번째 동의서에 사용할 주민등록번호를 입력해 주세요."), null;
+    if (includeAdminConsent && !birthDate) return setErrorMessage("생년월일을 입력해 주세요."), null;
+    const documentKinds = selectedDocumentKinds();
+    if (documentKinds.length === 0) return setErrorMessage("출력할 서류를 하나 이상 선택해 주세요."), null;
+    return {
+      schoolSlug,
+      schoolName,
+      documentDate,
+      documentKinds,
+      name,
+      phone,
+      birthDate,
+      signatureDataUrl: signatureForDocument,
+      policeStationName,
+      residentNumber,
+      identityType,
+      identityNumber,
+    };
+  };
+
+  const refreshSelectedSettings = async () => {
+    if (!schoolSlug) return;
+    const data = await requestJson(
+      `/api/teacher/school-document-settings?schoolSlug=${encodeURIComponent(schoolSlug)}`
+    );
+    const nextSettings = data.settings as SchoolDocumentSettings;
+    setSchoolSettings((current) => ({
+      ...current,
+      [nextSettings.schoolSlug]: nextSettings,
+    }));
+  };
+
+  const downloadPdf = async () => {
+    const payload = makeDocumentPayload();
+    if (!payload || documentAction) return;
+    setDocumentAction("download");
+    setErrorMessage("");
+    setNotice("");
+    try {
+      const token = await getToken();
+      const response = await fetch("/api/teacher/school-documents/pdf", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "PDF를 만들지 못했습니다.");
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition") || "";
+      const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1];
+      const filename = encodedName
+        ? decodeURIComponent(encodedName)
+        : `학교 필수서류_${schoolName}_${documentDate}.pdf`;
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setNotice("PDF를 생성해 저장했습니다. 학교카드 상태를 작성/발급 완료로 반영했어요.");
+      await refreshSelectedSettings();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "PDF를 만들지 못했습니다.");
+    } finally {
+      setDocumentAction("");
+    }
+  };
+
+  const emailDocuments = async () => {
+    const payload = makeDocumentPayload();
+    if (!payload || !selectedSchoolSettings || documentAction) return;
+    if (
+      !window.confirm(
+        `${selectedSchoolSettings.contactEmail} 담당자에게 선택한 필수서류를 실제 발송할까요?`
+      )
+    ) return;
+    setDocumentAction("email");
+    setErrorMessage("");
+    setNotice("");
+    try {
+      const data = await requestJson("/api/teacher/school-documents/mail-send", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      setNotice(`Gmail API가 ${data.recipientEmail} 발송을 확인했습니다. 제출완료 이력을 추가했어요.`);
+      await refreshSelectedSettings();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "메일을 발송하지 못했습니다.");
+    } finally {
+      setDocumentAction("");
+    }
+  };
+
+  const markKakaoSubmitted = async () => {
+    const payload = makeDocumentPayload();
+    if (!payload || !selectedSchoolSettings || documentAction) return;
+    setDocumentAction("kakao");
+    setErrorMessage("");
+    setNotice("");
+    try {
+      const titles = payload.documentKinds.map((kind) =>
+        kind === "crime-consent"
+          ? "성범죄 경력 및 아동학대관련범죄 전력 조회 동의서"
+          : "행정정보 공동이용 사전동의서"
+      );
+      await requestJson("/api/teacher/school-document-submissions", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "submitted",
+          schoolSlug,
+          submissionChannel: "kakao",
+          documentTitles: titles,
+        }),
+      });
+      setNotice("카카오톡 제출완료일과 담당자 정보를 이력에 추가했어요.");
+      await refreshSelectedSettings();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "제출 이력을 저장하지 못했습니다.");
+    } finally {
+      setDocumentAction("");
+    }
+  };
 
   const printDocuments = async () => {
     if (!schoolName.trim()) return setErrorMessage("학교명을 입력해 주세요.");
@@ -326,9 +499,7 @@ export default function TeacherApplicationDocumentsPage() {
     setErrorMessage("");
     setNotice("");
 
-    const documentKinds: SchoolDocumentKind[] = [];
-    if (includeCrimeConsent) documentKinds.push("crime-consent");
-    if (includeAdminConsent) documentKinds.push("administrative-consent");
+    const documentKinds = selectedDocumentKinds();
 
     if (schoolSlug) {
       setRecording(true);
@@ -453,6 +624,24 @@ export default function TeacherApplicationDocumentsPage() {
                   )}
                 </div>
               </div>
+              {selectedSchoolSettings && (
+                <div className="mt-5 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4">
+                  <div className="flex flex-wrap gap-2 text-xs font-black">
+                    <span className={`rounded-full px-3 py-1.5 ${selectedSchoolSettings.processingMethod === "direct" ? "bg-violet-100 text-violet-700" : "bg-sky-100 text-sky-700"}`}>{selectedSchoolSettings.processingMethod === "direct" ? "🔑 직접 발급" : "🏫 학교 처리"}</span>
+                    {selectedSchoolSettings.submissionChannel && <span className="rounded-full bg-amber-100 px-3 py-1.5 text-amber-700">{selectedSchoolSettings.submissionChannel === "email" ? "📧 이메일 제출" : "💬 카카오톡 제출"}</span>}
+                  </div>
+                  {(selectedSchoolSettings.contactName || selectedSchoolSettings.contactPhone) && <div className="mt-3 text-sm font-black text-slate-800">{[selectedSchoolSettings.contactName, selectedSchoolSettings.contactPhone].filter(Boolean).join(" · ")}</div>}
+                  {selectedSchoolSettings.contactEmail && <div className="mt-1 break-all text-xs font-bold text-slate-500">{selectedSchoolSettings.contactEmail}</div>}
+                  {selectedSchoolSettings.processingMethod === "direct" && (
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <button type="button" onClick={() => void navigator.clipboard.writeText(selectedSchoolSettings.facilityId)} className="rounded-xl bg-white px-3 py-2 text-left text-xs font-black text-violet-700">시설기관 ID {selectedSchoolSettings.facilityId} · 복사</button>
+                      <button type="button" onClick={() => void navigator.clipboard.writeText(selectedSchoolSettings.verificationCode)} className="rounded-xl bg-white px-3 py-2 text-left text-xs font-black text-violet-700">검증번호 {selectedSchoolSettings.verificationCode} · 복사</button>
+                      {selectedSchoolSettings.facilityManagerName && <div className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-600 sm:col-span-2">시설기관장 · {selectedSchoolSettings.facilityManagerName}</div>}
+                      <a href="https://crims.police.go.kr/" target="_blank" rel="noreferrer" className="rounded-xl bg-violet-600 px-3 py-2 text-center text-xs font-black text-white sm:col-span-2">범죄경력회보서 발급 ↗</a>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </section>
         </div>
@@ -463,8 +652,19 @@ export default function TeacherApplicationDocumentsPage() {
               <h2 className="text-xl font-black">3. 서류 선택</h2>
               <div className="mt-3 flex flex-col gap-3 text-sm font-black sm:flex-row sm:gap-6"><label className="flex items-center gap-2"><input type="checkbox" checked={includeCrimeConsent} onChange={(e) => setIncludeCrimeConsent(e.target.checked)} className="h-5 w-5" />성범죄·아동학대 전력 조회 동의서</label><label className="flex items-center gap-2"><input type="checkbox" checked={includeAdminConsent} onChange={(e) => setIncludeAdminConsent(e.target.checked)} className="h-5 w-5" />행정정보 공동이용 사전동의서</label></div>
             </div>
-            <button type="button" onClick={() => void printDocuments()} disabled={recording} className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-black text-white shadow-lg disabled:opacity-50">{recording ? "학교카드에 기록 중..." : "PDF로 저장 · 인쇄"}</button>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button type="button" onClick={() => void printDocuments()} disabled={recording || Boolean(documentAction)} className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700 disabled:opacity-50">{recording ? "기록 중..." : "브라우저 인쇄"}</button>
+              <button type="button" onClick={() => void downloadPdf()} disabled={Boolean(documentAction) || !schoolSlug} className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-lg disabled:opacity-50">{documentAction === "download" ? "PDF 생성 중..." : "PDF 생성 · 저장"}</button>
+              {selectedSchoolSettings?.submissionChannel === "email" && (
+                <button type="button" onClick={() => void emailDocuments()} disabled={Boolean(documentAction) || !selectedSchoolSettings.contactEmail || !gmailStatus?.connected} className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-lg disabled:opacity-50">{documentAction === "email" ? "Gmail 발송 중..." : "담당자에게 메일 제출"}</button>
+              )}
+              {selectedSchoolSettings?.submissionChannel === "kakao" && (
+                <button type="button" onClick={() => void markKakaoSubmitted()} disabled={Boolean(documentAction)} className="rounded-2xl bg-amber-400 px-5 py-3 text-sm font-black text-amber-950 shadow-lg disabled:opacity-50">{documentAction === "kakao" ? "기록 중..." : "제출 완료로 표시"}</button>
+              )}
+            </div>
           </div>
+          {selectedSchoolSettings?.submissionChannel === "email" && !gmailStatus?.connected && <p className="mt-3 text-right text-xs font-bold text-rose-600">Gmail 발송은 lifedr.sun@gmail.com 연결 후 사용할 수 있습니다. ATC 참여확인서 화면의 Gmail 연결 설정을 재사용합니다.</p>}
+          {selectedSchoolSettings?.submissionChannel === "kakao" && <p className="mt-3 text-right text-xs font-bold text-slate-500">PDF를 저장해 카카오톡으로 직접 전송한 뒤 제출 완료로 표시해 주세요.</p>}
         </section>
         <div className="mt-5 text-center text-xs font-bold text-slate-400">아래는 A4 실제 출력 미리보기입니다.</div>
       </div>
