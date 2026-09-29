@@ -52,7 +52,9 @@ export async function renderAtcPdf(doc: AtcMailDocument): Promise<Buffer> {
   });
   try {
     const page = await browser.newPage();
-    await page.setContent(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><style>${css}\nbody { margin: 0; }</style></head><body>${content}</body></html>`, { waitUntil: "load" });
+    // The browser print view receives Tailwind's border-box reset. Apply the same
+    // reset here so table-cell padding cannot push the signature onto page two.
+    await page.setContent(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><style>${css}\n*, *::before, *::after { box-sizing: border-box; } body { margin: 0; }</style></head><body>${content}</body></html>`, { waitUntil: "load" });
     await page.evaluate(async () => { await document.fonts.ready; await Promise.all([...document.images].map((img) => img.decode())); });
     const pdf = await page.pdf({ format: "A4", printBackground: true, margin: { top: "8mm", right: "8mm", bottom: "8mm", left: "8mm" } });
     return Buffer.from(pdf);
