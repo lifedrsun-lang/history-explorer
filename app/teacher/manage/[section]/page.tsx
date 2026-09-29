@@ -90,6 +90,13 @@ const sections: Record<string, ManagementSection> = {
         description: "학교·학년반·차시·링크 등록과 반별 공개 상태 관리",
         className: "border-sky-200 bg-sky-50 text-sky-900",
       },
+      {
+        href: "/teacher/timer",
+        icon: "⏱️",
+        title: "40분 수업 타이머",
+        description: "20분 → 10분 → 10분 구간을 자동으로 안내하는 수업용 타이머",
+        className: "border-sky-200 bg-sky-50 text-sky-900",
+      },
 
       {
         href: "/teacher/schedule?tab=teaching",
@@ -178,13 +185,7 @@ const sections: Record<string, ManagementSection> = {
     title: "일정 · 운영",
     description: "교사 일정과 자료 보관, 비용·운영 상태처럼 공통 관리 기능을 모았습니다.",
     items: [
-      {
-        href: "/teacher/timer",
-        icon: "⏱️",
-        title: "40분 수업 타이머",
-        description: "20분 → 10분 → 10분 구간을 자동으로 안내하는 수업용 타이머",
-        className: "border-sky-200 bg-sky-50 text-sky-900",
-      },
+
       {
         href: "/teacher/schedule",
         icon: "📅",
