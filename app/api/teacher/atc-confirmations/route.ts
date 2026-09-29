@@ -5,8 +5,11 @@ import {
   jsonError,
   verifyTeacherRequest,
 } from "@/lib/assignmentServer";
+import { buildAtcEducatorState, resolveAtcEducatorName } from "@/lib/atcEducator";
+import { SCHOOL_DOCUMENT_SETTINGS_COLLECTION } from "@/lib/schoolDocumentManagement";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
-import { resolveContractSchoolSlugForName } from "@/lib/schoolDocumentsServer";
+import { CONTRACT_SCHOOL_COLLECTION, DEFAULT_CONTRACT_SCHOOLS } from "@/lib/contractSchools";
+import { isSameSchoolDocument } from "@/lib/schoolDocuments";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -133,9 +136,11 @@ export async function GET(request: Request) {
     const requestedYearMonth = normalizeYearMonth(url.searchParams.get("yearMonth"));
     const { db } = getFirebaseAdmin();
 
-    const [confirmationSnapshot, feeSnapshot] = await Promise.all([
+    const [confirmationSnapshot, feeSnapshot, profileSnapshot, settingsSnapshot] = await Promise.all([
       db.collection(CONFIRMATION_COLLECTION).get(),
       db.collection(FEE_COLLECTION).get(),
+      db.collection("teacher_document_profiles").doc(teacher.uid).get(),
+      db.collection(SCHOOL_DOCUMENT_SETTINGS_COLLECTION).where("teacherUid", "==", teacher.uid).get(),
     ]);
 
     const confirmations = confirmationSnapshot.docs
@@ -183,7 +188,13 @@ export async function GET(request: Request) {
       ({ createdAtMs: _createdAtMs, ...period }) => period
     );
 
-    return Response.json({ confirmations, periods });
+    return Response.json({ confirmations, periods,
+      defaultEducatorName: normalize(profileSnapshot.data()?.name, 120),
+      schoolDefaults: settingsSnapshot.docs.map((doc) => ({
+        schoolName: normalize(doc.data().schoolName),
+        schoolVerifierName: normalize(doc.data().contactName, 120),
+      })),
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "teacher_auth_required") {
@@ -222,116 +233,141 @@ export async function PUT(request: Request) {
     );
     const markSubmitted = body.markSubmitted === true;
     const nowIso = new Date().toISOString();
-    const schoolSlug = await resolveContractSchoolSlugForName(schoolName);
     const { db } = getFirebaseAdmin();
+    // Read raw assignments without triggering the school configuration migration.
+    const schoolSnapshot = await db.collection(CONTRACT_SCHOOL_COLLECTION).get();
+    const schools = new Map(DEFAULT_CONTRACT_SCHOOLS.map((school) => [school.slug, { slug: school.slug, schoolName: school.schoolName, displayName: school.displayName }]));
+    schoolSnapshot.docs.forEach((doc) => schools.set(doc.id, { slug: doc.id, schoolName: normalize(doc.data().schoolName), displayName: normalize(doc.data().displayName) }));
+    const schoolSlug = Array.from(schools.values()).find((school) => isSameSchoolDocument(school.schoolName, schoolName) || isSameSchoolDocument(school.displayName, schoolName))?.slug || "";
     const docRef = db
       .collection(CONFIRMATION_COLLECTION)
       .doc(getConfirmationDocId(teacher.uid, yearMonth, schoolName));
-    const existingSnapshot = await docRef.get();
-    const existing = existingSnapshot.data() || {};
-
-    const previousSignature =
-      typeof existing.schoolSignatureDataUrl === "string"
-        ? existing.schoolSignatureDataUrl
-        : null;
-    const previousVerifierName = normalize(existing.schoolVerifierName, 120);
-    const previouslySigned =
-      typeof existing.schoolSignedAt === "string" ? existing.schoolSignedAt : "";
-    const previouslySubmitted =
-      typeof existing.submittedAt === "string" ? existing.submittedAt : "";
-
-    const scheduleChanged =
-      existingSnapshot.exists &&
-      scheduleFingerprint(existing.scheduleSnapshot) !==
-        scheduleFingerprint(scheduleSnapshot);
-    const verifierChanged =
-      existingSnapshot.exists && previousVerifierName !== schoolVerifierName;
-    const signatureChanged = previousSignature !== requestedSchoolSignature;
-    const signedContentChanged = scheduleChanged || verifierChanged;
-
-    // 이미 받은 학교 서명을 일정/확인자 변경 뒤 그대로 재사용하지 않는다.
-    const schoolSignatureDataUrl =
-      signedContentChanged && !signatureChanged ? null : requestedSchoolSignature;
-
-    if (schoolSignatureDataUrl && !schoolVerifierName) {
-      return jsonError(
-        "담당교사 성명을 입력한 뒤 서명해 주세요.",
-        400,
-        "school_verifier_required"
-      );
+    const profileSnapshot = await db.collection("teacher_document_profiles").doc(teacher.uid).get();
+    const defaultEducatorName = normalize(profileSnapshot.data()?.name, 120);
+    if (typeof body.educatorName === "string" && normalize(body.educatorName, 120) !== defaultEducatorName && educatorSignatureDataUrlSnapshot && educatorSignatureDataUrlSnapshot === profileSnapshot.data()?.signatureDataUrl) {
+      return jsonError("다른 에듀케이터의 기본 서명은 사용할 수 없습니다. 현재 이름으로 다시 서명해 주세요.", 400, "educator_resign_required");
     }
+    const result = await db.runTransaction(async (transaction) => {
+      const existingSnapshot = await transaction.get(docRef);
+      if (typeof body.revision === "string" && body.revision !== (existingSnapshot.updateTime?.toDate().toISOString() || "")) {
+        return jsonError("다른 화면에서 확인서가 변경되었습니다. 새로고침 후 다시 저장해 주세요.", 409, "confirmation_changed");
+      }
+      const existing = existingSnapshot.data() || {};
+      if (existing.mailStatus === "sending") return jsonError("메일 발송 중입니다. 발송 결과 확인 후 다시 저장해 주세요.", 409, "mail_in_progress");
 
-    const schoolSignedAt = schoolSignatureDataUrl
-      ? signatureChanged || signedContentChanged
-        ? nowIso
-        : previouslySigned || nowIso
-      : "";
+      const educatorState = buildAtcEducatorState(existing, {
+        educatorName: typeof body.educatorName === "string" ? body.educatorName : resolveAtcEducatorName(existing, defaultEducatorName),
+        educatorSignatureName: typeof body.educatorSignatureName === "string" ? body.educatorSignatureName : resolveAtcEducatorName(existing, defaultEducatorName),
+        educatorSignatureDataUrlSnapshot,
+      }, defaultEducatorName, nowIso);
+      const educatorChanged = resolveAtcEducatorName(existing, defaultEducatorName) !== educatorState.educatorName;
+      const educatorSignatureChanged = (existing.educatorSignatureDataUrlSnapshot || null) !== educatorState.educatorSignatureDataUrlSnapshot;
 
-    let submittedAt = signedContentChanged ? "" : previouslySubmitted;
+      const previousSignature =
+        typeof existing.schoolSignatureDataUrl === "string"
+          ? existing.schoolSignatureDataUrl
+          : null;
+      const previousVerifierName = normalize(existing.schoolVerifierName, 120);
+      const previouslySigned =
+        typeof existing.schoolSignedAt === "string" ? existing.schoolSignedAt : "";
+      const previouslySubmitted =
+        typeof existing.submittedAt === "string" ? existing.submittedAt : "";
 
-    if (markSubmitted) {
-      if (scheduleSnapshot.length === 0) {
+      const scheduleChanged =
+        existingSnapshot.exists &&
+        scheduleFingerprint(existing.scheduleSnapshot) !==
+          scheduleFingerprint(scheduleSnapshot);
+      const verifierChanged =
+        existingSnapshot.exists && previousVerifierName !== schoolVerifierName;
+      const signatureChanged = previousSignature !== requestedSchoolSignature;
+      const signedContentChanged = scheduleChanged || verifierChanged || educatorChanged;
+
+      // 이미 받은 학교 서명을 일정/확인자 변경 뒤 그대로 재사용하지 않는다.
+      const schoolSignatureDataUrl =
+        signedContentChanged && !signatureChanged ? null : requestedSchoolSignature;
+
+      if (schoolSignatureDataUrl && !schoolVerifierName) {
         return jsonError(
-          "출강일정이 없는 확인서는 제출완료로 처리할 수 없습니다.",
+          "담당교사 성명을 입력한 뒤 서명해 주세요.",
           400,
-          "schedule_required"
+          "school_verifier_required"
         );
       }
-      if (!schoolSignatureDataUrl || !schoolVerifierName) {
-        return jsonError(
-          "담당교사 확인 서명이 필요합니다.",
-          400,
-          "school_signature_required"
-        );
-      }
-      if (!educatorSignatureDataUrlSnapshot) {
-        return jsonError(
-          "에듀케이터 서명이 필요합니다.",
-          400,
-          "educator_signature_required"
-        );
-      }
-      if (!operationPeriodStart || !operationPeriodEnd) {
-        return jsonError(
-          "수금관리의 운영기간을 확인해 주세요.",
-          400,
-          "operation_period_required"
-        );
-      }
-      submittedAt =
-        signedContentChanged || signatureChanged || !previouslySubmitted
+
+      const schoolSignedAt = schoolSignatureDataUrl
+        ? signatureChanged || signedContentChanged
           ? nowIso
-          : previouslySubmitted;
-    }
+          : previouslySigned || nowIso
+        : "";
 
-    let status = "draft";
-    if (scheduleSnapshot.length > 0) status = "teacher_signature_pending";
-    if (schoolSignatureDataUrl) status = "signed";
-    if (submittedAt) status = "submitted";
+      let submittedAt = signedContentChanged || educatorSignatureChanged ? "" : previouslySubmitted;
 
-    const payload = {
-      teacherUid: teacher.uid,
-      programName: "ATC스쿨",
-      yearMonth,
-      schoolSlug: schoolSlug || normalize(existing.schoolSlug, 40),
-      schoolName,
-      schoolVerifierName,
-      schoolSignatureDataUrl,
-      schoolSignedAt,
-      educatorSignatureDataUrlSnapshot,
-      operationPeriodStart,
-      operationPeriodEnd,
-      operationPeriodSourceContractId,
-      scheduleSnapshot,
-      status,
-      submittedAt,
-      updatedAt: FieldValue.serverTimestamp(),
-      ...(existingSnapshot.exists
-        ? {}
-        : { createdAt: FieldValue.serverTimestamp() }),
-    };
+      if (markSubmitted) {
+        if (scheduleSnapshot.length === 0) {
+          return jsonError(
+            "출강일정이 없는 확인서는 제출완료로 처리할 수 없습니다.",
+            400,
+            "schedule_required"
+          );
+        }
+        if (!schoolSignatureDataUrl || !schoolVerifierName) {
+          return jsonError(
+            "담당교사 확인 서명이 필요합니다.",
+            400,
+            "school_signature_required"
+          );
+        }
+        if (!educatorSignatureDataUrlSnapshot) {
+          return jsonError(
+            "에듀케이터 서명이 필요합니다.",
+            400,
+            "educator_signature_required"
+          );
+        }
+        if (!operationPeriodStart || !operationPeriodEnd) {
+          return jsonError(
+            "수금관리의 운영기간을 확인해 주세요.",
+            400,
+            "operation_period_required"
+          );
+        }
+        submittedAt =
+          signedContentChanged || signatureChanged || educatorSignatureChanged || !previouslySubmitted
+            ? nowIso
+            : previouslySubmitted;
+      }
 
-    await docRef.set(payload, { merge: true });
+      let status = "draft";
+      if (scheduleSnapshot.length > 0) status = "teacher_signature_pending";
+      if (schoolSignatureDataUrl) status = "signed";
+      if (submittedAt) status = "submitted";
+
+      const payload = {
+        teacherUid: teacher.uid,
+        programName: "ATC스쿨",
+        yearMonth,
+        schoolSlug: schoolSlug || normalize(existing.schoolSlug, 40),
+        schoolName,
+        schoolVerifierName,
+        schoolSignatureDataUrl,
+        schoolSignedAt,
+        ...educatorState,
+        operationPeriodStart,
+        operationPeriodEnd,
+        operationPeriodSourceContractId,
+        scheduleSnapshot,
+        status,
+        submittedAt,
+        updatedAt: FieldValue.serverTimestamp(),
+        ...(existingSnapshot.exists
+          ? {}
+          : { createdAt: FieldValue.serverTimestamp() }),
+      };
+
+      transaction.set(docRef, payload, { merge: true });
+      return null;
+    });
+    if (result) return result;
     const saved = await docRef.get();
     return Response.json({ confirmation: serializeConfirmation(saved) });
   } catch (error) {
@@ -339,6 +375,12 @@ export async function PUT(request: Request) {
     if (message === "teacher_auth_required") {
       return jsonError("교사 로그인이 필요합니다.", 401, message);
     }
+    const educatorErrors: Record<string, string> = {
+      educator_name_required: "전담 에듀케이터 성명을 입력해 주세요.",
+      educator_signature_name_mismatch: "에듀케이터 이름과 서명자가 다릅니다. 현재 이름으로 다시 서명해 주세요.",
+      educator_resign_required: "에듀케이터 이름이 변경되었습니다. 새 담당자로 다시 서명한 뒤 저장해 주세요.",
+    };
+    if (educatorErrors[message]) return jsonError(educatorErrors[message], 400, message);
     if (message === "invalid_signature") {
       return jsonError("서명 이미지 형식이 올바르지 않습니다.", 400, message);
     }

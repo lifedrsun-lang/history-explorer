@@ -1,6 +1,7 @@
 import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { resolveAtcEducatorName, resolveAtcEducatorSignature } from "@/lib/atcEducator";
 import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
 import type { AtcDailyRow } from "@/app/teacher/atc-confirmations/AtcPrintSheet";
@@ -40,8 +41,8 @@ export async function renderAtcPdf(doc: AtcMailDocument): Promise<Buffer> {
     .replace("/fonts/noto-sans-kr-700.woff2", fontBold);
   const content = renderAtcPrintHtml({
     schoolName: String(c.schoolName), yearMonth: String(c.yearMonth),
-    educatorName: String(profile.name), educatorPhone: String(profile.phone || ""),
-    educatorSignatureDataUrl: String(c.educatorSignatureDataUrlSnapshot),
+    educatorName: resolveAtcEducatorName(c, String(profile.name || "")), educatorPhone: String(profile.phone || ""),
+    educatorSignatureDataUrl: resolveAtcEducatorSignature(c, String(profile.name || ""), null),
     schoolVerifierName: String(c.schoolVerifierName), schoolSignatureDataUrl: String(c.schoolSignatureDataUrl),
     schoolSignedAt: String(c.schoolSignedAt), operationPeriodStart: String(c.operationPeriodStart),
     operationPeriodEnd: String(c.operationPeriodEnd), rows: aggregateRows(c.scheduleSnapshot),

@@ -13,6 +13,7 @@ import {
   useState,
 } from "react";
 
+import { resolveAtcEducatorName, resolveAtcEducatorSignature, type AtcEducatorRecord } from "@/lib/atcEducator";
 import { auth } from "@/lib/firebase";
 import { trimSignatureCanvas, trimSignatureDataUrl } from "@/lib/signatureCanvas";
 
@@ -44,7 +45,7 @@ type ScheduleSnapshotItem = {
   lessonLabel: string;
 };
 
-type Confirmation = {
+type Confirmation = AtcEducatorRecord & {
   id: string;
   revision?: string;
   programName?: string;
@@ -262,14 +263,20 @@ export default function AtcConfirmationsPage() {
   const [confirmations, setConfirmations] = useState<Confirmation[]>([]);
   const [periods, setPeriods] = useState<OperationPeriod[]>([]);
   const [profile, setProfile] = useState<Profile>({ name: "", phone: "", birthDate: "", signatureDataUrl: null });
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState("");
+  const [defaultEducatorName, setDefaultEducatorName] = useState("");
+  const [schoolDefaults, setSchoolDefaults] = useState<Array<{ schoolName: string; schoolVerifierName: string }>>([]);
+  const [educatorName, setEducatorName] = useState("");
+  const [educatorSignatureDataUrl, setEducatorSignatureDataUrl] = useState<string | null>(null);
+  const [educatorSignatureName, setEducatorSignatureName] = useState("");
+  const educatorLoadedKeyRef = useRef("");
   const [schoolVerifierName, setSchoolVerifierName] = useState("");
   const [schoolSignatureDataUrl, setSchoolSignatureDataUrl] = useState<string | null>(null);
   const [signatureMode, setSignatureMode] = useState(true);
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
   const [educatorSignatureDialogOpen, setEducatorSignatureDialogOpen] = useState(false);
   const [educatorSignatureDraft, setEducatorSignatureDraft] = useState<string | null>(null);
-  const [educatorSignatureSaving, setEducatorSignatureSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -331,6 +338,7 @@ export default function AtcConfirmationsPage() {
           ? data.profile.signatureDataUrl
           : null;
       const normalizedSignature = await trimSignatureDataUrl(rawSignature);
+      setProfileLoaded(true);
       setProfile({
         name: String(data?.profile?.name || ""),
         phone: String(data?.profile?.phone || ""),
@@ -357,6 +365,8 @@ export default function AtcConfirmationsPage() {
       ]);
       setConfirmations(Array.isArray(atcData?.confirmations) ? atcData.confirmations : []);
       setPeriods(Array.isArray(atcData?.periods) ? atcData.periods : []);
+      setDefaultEducatorName(String(atcData?.defaultEducatorName || ""));
+      setSchoolDefaults(Array.isArray(atcData?.schoolDefaults) ? atcData.schoolDefaults : []);
       const events = Array.isArray(calendarData?.events)
         ? (calendarData.events as GoogleCalendarEvent[])
         : [];
@@ -494,7 +504,7 @@ export default function AtcConfirmationsPage() {
   );
 
   useEffect(() => {
-    setSchoolVerifierName(selectedConfirmation?.schoolVerifierName || "");
+    setSchoolVerifierName(selectedConfirmation?.schoolVerifierName || schoolDefaults.find((item) => isSameSchool(item.schoolName, selectedSchool))?.schoolVerifierName || "");
     const signature = selectedConfirmation?.schoolSignatureDataUrl || null;
     setSchoolSignatureDataUrl(signature);
     setSignatureMode(!signature);
@@ -502,7 +512,36 @@ export default function AtcConfirmationsPage() {
     signatureBeforeEditRef.current = null;
     const canvas = canvasRef.current;
     canvas?.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
-  }, [selectedConfirmation?.id, selectedConfirmation?.schoolSignatureDataUrl]);
+  }, [selectedSchool, yearMonth, selectedConfirmation?.id, selectedConfirmation?.schoolVerifierName, selectedConfirmation?.schoolSignatureDataUrl, schoolDefaults]);
+
+  useEffect(() => {
+    if (loading || !profileLoaded || !selectedSchool) return;
+    const fallbackName = defaultEducatorName || profile.name;
+    if (!fallbackName && !selectedConfirmation?.confirmedEducatorName) return;
+    const key = `${yearMonth}|${selectedSchool}|${selectedConfirmation?.revision || ""}`;
+    if (educatorLoadedKeyRef.current === key) return;
+    educatorLoadedKeyRef.current = key;
+    const name = resolveAtcEducatorName(selectedConfirmation, fallbackName);
+    const signature = resolveAtcEducatorSignature(selectedConfirmation, fallbackName, name === profile.name.trim() ? profile.signatureDataUrl : null);
+    setEducatorName(name);
+    setEducatorSignatureDataUrl(signature);
+    setEducatorSignatureName(signature ? name : "");
+    setEducatorSignatureDialogOpen(false);
+    setEducatorSignatureDraft(null);
+  }, [loading, profileLoaded, selectedSchool, yearMonth, selectedConfirmation, defaultEducatorName, profile.name, profile.signatureDataUrl]);
+
+  const changeEducatorName = (value: string) => {
+    setEducatorName(value);
+    if (value.trim() === educatorName.trim()) return;
+    setEducatorSignatureDataUrl(null);
+    setEducatorSignatureName("");
+    setEducatorSignatureDraft(null);
+    setEducatorSignatureDialogOpen(false);
+    setSchoolSignatureDataUrl(null);
+    setSignatureMode(true);
+    signatureBeforeEditRef.current = null;
+    setNoticeMessage("이름이 변경되어 기존 서명이 초기화되었습니다. 새 에듀케이터로 서명한 뒤 학교 담당교사 확인 서명도 다시 받아 주세요.");
+  };
 
   const printSnapshot = useMemo(() => {
     if (
@@ -596,6 +635,7 @@ export default function AtcConfirmationsPage() {
   };
 
   const openEducatorSignatureDialog = () => {
+    if (!educatorName.trim()) { setErrorMessage("전담 에듀케이터 성명을 입력해 주세요."); return; }
     setEducatorSignatureDraft(null);
     setEducatorSignatureDialogOpen(true);
     requestAnimationFrame(() => requestAnimationFrame(resetEducatorCanvas));
@@ -646,39 +686,21 @@ export default function AtcConfirmationsPage() {
     setEducatorSignatureDraft(trimSignatureCanvas(canvas));
   };
 
-  const saveEducatorSignature = async () => {
-    if (!educatorSignatureDraft) return;
-    setEducatorSignatureSaving(true);
-    setErrorMessage("");
-    try {
-      const data = await requestJson("/api/teacher/application-documents/profile", {
-        method: "PUT",
-        body: JSON.stringify({
-          name: profile.name,
-          phone: profile.phone,
-          birthDate: profile.birthDate,
-          signatureDataUrl: educatorSignatureDraft,
-        }),
-      });
-      setProfile((current) => ({
-        ...current,
-        signatureDataUrl:
-          typeof data?.profile?.signatureDataUrl === "string"
-            ? data.profile.signatureDataUrl
-            : educatorSignatureDraft,
-      }));
-      setEducatorSignatureDialogOpen(false);
-      setEducatorSignatureDraft(null);
-      setNoticeMessage("기본 서명을 저장했습니다. 참여확인서와 학교 필수서류에 같은 서명이 적용됩니다.");
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "기본 서명을 저장하지 못했습니다.");
-    } finally {
-      setEducatorSignatureSaving(false);
-    }
+  const saveEducatorSignature = () => {
+    if (!educatorSignatureDraft || !educatorName.trim()) return;
+    setEducatorSignatureDataUrl(educatorSignatureDraft);
+    setEducatorSignatureName(educatorName.trim());
+    setEducatorSignatureDialogOpen(false);
+    setEducatorSignatureDraft(null);
+    setNoticeMessage("현재 이름으로 서명을 적용했습니다. 확인서 저장을 눌러 이름과 서명을 확정해 주세요.");
   };
 
   const handleSave = async (markSubmitted = false) => {
     if (!selectedSchool) return;
+    if (!educatorName.trim()) { setErrorMessage("전담 에듀케이터 성명을 입력해 주세요."); return; }
+    if ((educatorName.trim() !== resolveAtcEducatorName(selectedConfirmation, defaultEducatorName || profile.name) || selectedConfirmation?.confirmedEducatorName) && !educatorSignatureDataUrl) {
+      setErrorMessage("새 담당자로 다시 서명한 뒤 저장해 주세요."); return;
+    }
     if (schoolSignatureDataUrl && !schoolVerifierName.trim()) {
       setErrorMessage("담당교사 성명을 입력한 뒤 서명해 주세요.");
       return;
@@ -692,7 +714,7 @@ export default function AtcConfirmationsPage() {
         setErrorMessage("담당교사 확인 서명이 있어야 제출완료로 처리할 수 있습니다.");
         return;
       }
-      if (!profile.signatureDataUrl) {
+      if (!educatorSignatureDataUrl) {
         setErrorMessage("에듀케이터 서명을 먼저 등록해 주세요.");
         return;
       }
@@ -709,7 +731,10 @@ export default function AtcConfirmationsPage() {
           schoolName: selectedSchool,
           schoolVerifierName: schoolVerifierName.trim(),
           schoolSignatureDataUrl,
-          educatorSignatureDataUrlSnapshot: profile.signatureDataUrl,
+          educatorName: educatorName.trim(),
+          educatorSignatureName,
+          educatorSignatureDataUrlSnapshot: educatorSignatureDataUrl,
+          revision: selectedConfirmation?.revision || "",
           operationPeriodStart,
           operationPeriodEnd,
           operationPeriodSourceContractId,
@@ -745,8 +770,8 @@ export default function AtcConfirmationsPage() {
     }
 
     const originalTitle = document.title;
-    const educatorName = profile.name.trim() || "에듀케이터";
-    const printFileName = `${yearMonth.slice(0, 4)} ATC SCHOOL 전담 에듀케이터 참여확인서_${selectedSchool}_${yearMonth.slice(5)}월_${educatorName}`
+    const printEducatorName = educatorName.trim() || "에듀케이터";
+    const printFileName = `${yearMonth.slice(0, 4)} ATC SCHOOL 전담 에듀케이터 참여확인서_${selectedSchool}_${yearMonth.slice(5)}월_${printEducatorName}`
       .replace(/[\\/:*?"<>|]/g, "-")
       .replace(/\s+/g, " ")
       .trim();
@@ -803,7 +828,9 @@ export default function AtcConfirmationsPage() {
       showPrepareMailError("참여확인서를 먼저 저장해 주세요.");
       return;
     }
-    if (scheduleChanged || schoolVerifierName.trim() !== (selectedConfirmation.schoolVerifierName || "") ||
+    if (educatorName.trim() !== resolveAtcEducatorName(selectedConfirmation, defaultEducatorName || profile.name) ||
+        educatorSignatureDataUrl !== (selectedConfirmation.educatorSignatureDataUrlSnapshot || null) ||
+        scheduleChanged || schoolVerifierName.trim() !== (selectedConfirmation.schoolVerifierName || "") ||
         schoolSignatureDataUrl !== (selectedConfirmation.schoolSignatureDataUrl || null) ||
         selectedConfirmation.operationPeriodStart !== operationPeriodStart ||
         selectedConfirmation.operationPeriodEnd !== operationPeriodEnd ||
@@ -967,10 +994,13 @@ export default function AtcConfirmationsPage() {
                 <dt className="font-bold text-slate-500">운영기간</dt><dd className="font-black">{formatPeriod(operationPeriodStart, operationPeriodEnd) || "수금관리 운영기간 미등록"}</dd>
                 <dt className="font-bold text-slate-500">수업일수</dt><dd className="font-black">{currentRows.length}일</dd>
                 <dt className="font-bold text-slate-500">총 차시</dt><dd className="font-black">{currentScheduleSnapshot.length}차시</dd>
-                <dt className="font-bold text-slate-500">본인 서명</dt><dd className="font-black">{profile.signatureDataUrl ? "등록됨 · 자동반영" : "미등록"}</dd>
+                <dt className="font-bold text-slate-500">본인 서명</dt><dd className="font-black">{educatorSignatureDataUrl ? "서명 적용됨" : "새 서명 필요"}</dd>
               </dl>
               {!operationPeriodStart && <div className="mt-4 rounded-2xl bg-amber-50 p-3 text-xs font-bold text-amber-800">운영기간을 확인할 수 없습니다. 수금관리의 해당 학교 건별계약에 계약 시작일·종료일을 먼저 저장해 주세요.</div>}
-              {!profile.signatureDataUrl && <div className="mt-3 rounded-2xl bg-amber-50 p-3 text-xs font-bold text-amber-800">에듀케이터 서명이 없습니다. <Link href="/teacher/application-documents" className="underline">지원서류 관리에서 서명 등록</Link> 후 다시 열면 자동 반영됩니다.</div>}
+              <label className="mt-4 block text-sm font-black text-slate-500" htmlFor="atc-educator-name">전담 에듀케이터 성명</label>
+              <input id="atc-educator-name" value={educatorName} maxLength={120} disabled={saving || loading || mailBusy} onChange={(event) => changeEducatorName(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" />
+              <button type="button" onClick={openEducatorSignatureDialog} disabled={saving || loading || mailBusy || !educatorName.trim()} className="mt-3 rounded-xl bg-blue-600 px-4 py-2 text-sm font-black text-white disabled:opacity-40">{educatorSignatureDataUrl ? "에듀케이터 다시 서명" : "에듀케이터 서명하기"}</button>
+              {!educatorSignatureDataUrl && <p className="mt-2 text-sm font-bold text-amber-800">현재 입력한 이름으로 서명해 주세요.</p>}
               {scheduleChanged && <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700">저장/서명 이후 Google 출강일정이 변경되었습니다. 변경된 일정을 저장하면 기존 담당교사 서명은 재사용하지 않고 다시 받도록 처리됩니다.</div>}
               {currentRows.length > 22 && <div className="mt-3 rounded-2xl bg-amber-50 p-3 text-xs font-bold text-amber-800">이 달 수업일이 원본 양식의 기본 22행을 초과했습니다. 누락 없이 모든 날짜를 출력하되 문서가 2페이지로 나뉠 수 있습니다.</div>}
             </section>
@@ -978,7 +1008,7 @@ export default function AtcConfirmationsPage() {
             <section className="rounded-3xl bg-white p-5 shadow-sm">
               <h2 className="font-black">학교 담당교사 확인</h2>
               <label className="mt-4 block text-xs font-black text-slate-500">담당교사 성명</label>
-              <input value={schoolVerifierName} onChange={(event) => setSchoolVerifierName(event.target.value)} placeholder="성명 입력" className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" />
+              <input value={schoolVerifierName} onChange={(event) => { setSchoolVerifierName(event.target.value); if (event.target.value.trim() !== schoolVerifierName.trim()) { setSchoolSignatureDataUrl(null); setSignatureMode(true); signatureBeforeEditRef.current = null; } }} placeholder="성명 입력" className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" />
 
               {schoolSignatureDataUrl && !signatureMode ? (
                 <div className="mt-4 rounded-2xl border border-slate-200 p-3">
@@ -1025,14 +1055,14 @@ export default function AtcConfirmationsPage() {
         )}
 
         {educatorSignatureDialogOpen && (
-          <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="에듀케이터 기본 서명">
+          <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="에듀케이터 서명">
             <div className="w-full max-w-5xl rounded-3xl bg-white p-4 shadow-2xl sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-black text-slate-900">에듀케이터 기본 서명</h2>
-                  <p className="mt-1 text-xs font-bold text-slate-500">여기서 저장한 서명은 참여확인서와 학교 필수서류에 공통으로 적용됩니다.</p>
+                  <h2 className="text-lg font-black text-slate-900">에듀케이터 서명</h2>
+                  <p className="mt-1 text-xs font-bold text-slate-500">{educatorName.trim()} 이름으로 서명해 주세요. 이 서명은 현재 참여확인서에만 적용됩니다.</p>
                 </div>
-                <button type="button" onClick={() => { setEducatorSignatureDialogOpen(false); setEducatorSignatureDraft(null); }} disabled={educatorSignatureSaving} className="shrink-0 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black disabled:opacity-40">취소</button>
+                <button type="button" onClick={() => { setEducatorSignatureDialogOpen(false); setEducatorSignatureDraft(null); }} disabled={saving} className="shrink-0 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black disabled:opacity-40">취소</button>
               </div>
               <canvas
                 ref={educatorCanvasRef}
@@ -1045,8 +1075,8 @@ export default function AtcConfirmationsPage() {
                 className="mt-4 h-[48vh] min-h-64 max-h-[420px] w-full touch-none rounded-2xl border-2 border-dashed border-blue-300 bg-white shadow-inner"
               />
               <div className="mt-4 flex flex-wrap justify-end gap-2">
-                <button type="button" onClick={() => { resetEducatorCanvas(); setEducatorSignatureDraft(null); }} disabled={educatorSignatureSaving} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-black disabled:opacity-40">서명 지우기</button>
-                <button type="button" onClick={() => void saveEducatorSignature()} disabled={!educatorSignatureDraft || educatorSignatureSaving} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40">{educatorSignatureSaving ? "저장 중" : "기본 서명으로 저장"}</button>
+                <button type="button" onClick={() => { resetEducatorCanvas(); setEducatorSignatureDraft(null); }} disabled={saving} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-black disabled:opacity-40">서명 지우기</button>
+                <button type="button" onClick={() => void saveEducatorSignature()} disabled={!educatorSignatureDraft || saving} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40">{saving ? "저장 중" : "이 서명 사용"}</button>
               </div>
             </div>
           </div>
@@ -1089,9 +1119,9 @@ export default function AtcConfirmationsPage() {
         <AtcPrintSheet
           schoolName={selectedSchool}
           yearMonth={yearMonth}
-          educatorName={profile.name}
+          educatorName={educatorName}
           educatorPhone={profile.phone}
-          educatorSignatureDataUrl={profile.signatureDataUrl}
+          educatorSignatureDataUrl={educatorSignatureDataUrl}
           schoolVerifierName={schoolVerifierName}
           schoolSignatureDataUrl={schoolSignatureDataUrl}
           schoolSignedAt={selectedConfirmation?.schoolSignedAt || ""}

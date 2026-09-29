@@ -1,4 +1,5 @@
 import "server-only";
+import { resolveAtcEducatorName, resolveAtcEducatorSignature } from "@/lib/atcEducator";
 import { createHash } from "node:crypto";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { ATC_GMAIL_FROM } from "@/lib/atcGmailServer";
@@ -52,9 +53,9 @@ export async function getAtcMailDocument(uid: string, id: string): Promise<AtcMa
   const profile = profileSnap.data() || {};
   if (!confirmation || confirmation.teacherUid !== uid) throw new Error("confirmation_not_found");
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(clean(confirmation.yearMonth)) ||
-      !clean(confirmation.schoolName) || !clean(profile.name) || !clean(confirmation.schoolVerifierName) ||
+      !clean(confirmation.schoolName) || !resolveAtcEducatorName(confirmation, clean(profile.name)) || !clean(confirmation.schoolVerifierName) ||
       !clean(confirmation.schoolSignatureDataUrl, 350_000).startsWith("data:image/png;base64,") ||
-      !clean(confirmation.educatorSignatureDataUrlSnapshot, 350_000).startsWith("data:image/png;base64,") ||
+      !clean(resolveAtcEducatorSignature(confirmation, clean(profile.name), null), 350_000).startsWith("data:image/png;base64,") ||
       !clean(confirmation.schoolSignedAt) || Number.isNaN(Date.parse(confirmation.schoolSignedAt)) ||
       !clean(confirmation.operationPeriodStart) || !clean(confirmation.operationPeriodEnd) ||
       !Array.isArray(confirmation.scheduleSnapshot) || confirmation.scheduleSnapshot.length === 0) {
@@ -70,7 +71,7 @@ export function makeAtcMailInfo(doc: AtcMailDocument, settings: AtcMailSettings)
   const month = `${Number(String(confirmation.yearMonth).slice(5))}월`;
   const rawSchoolName = String(confirmation.schoolName).trim();
   const schoolName = rawSchoolName.endsWith("초") ? `${rawSchoolName.slice(0, -1)}초등학교` : rawSchoolName;
-  const fields: Record<string, string> = { 연도: year, 학교명: schoolName, 해당월: month, 강사명: String(profile.name).trim() };
+  const fields: Record<string, string> = { 연도: year, 학교명: schoolName, 해당월: month, 강사명: resolveAtcEducatorName(confirmation, clean(profile.name)) };
   const render = (template: string) => template.replace(/\{(연도|학교명|해당월|강사명)\}/g, (_match, key: string) => fields[key]);
   const subject = render(settings.subjectTemplate);
   const filename = `${subject.replace(/[\\/:*?"<>|\r\n]/g, "-")}.pdf`;
