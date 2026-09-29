@@ -22,6 +22,7 @@ export type ClassActivityDefinition = {
   title: string;
   shortTitle: string;
   classroomLinkId: string;
+  classroomPath: string;
   externalExperimentUrl: string;
   characterSprite: string;
   characters: ActivityCharacter[];
@@ -86,6 +87,7 @@ export const CLASS_ACTIVITY_DEFINITIONS: Record<
     title: "모럴머신 결과 연구소",
     shortTitle: "모럴머신",
     classroomLinkId: "moral-machine-results-lab",
+    classroomPath: "/activities/moral-machine",
     externalExperimentUrl: "https://www.moralmachine.net/hl/kr",
     characterSprite: "/activities/moral-machine/characters.webp",
     characters: MORAL_MACHINE_CHARACTERS,
