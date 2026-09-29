@@ -9,6 +9,10 @@ import {
   getAllContractSchools,
   getContractSchoolAndClassroomByToken,
 } from "@/lib/contractSchoolsServer";
+import type {
+  ContractSchoolClassroom,
+  ContractSchoolConfig,
+} from "@/lib/contractSchools";
 import {
   getClassroomAccount,
   getClassroomAccountRoster,
@@ -75,6 +79,24 @@ const settingsRef = (activityId: string, schoolSlug: string, grade: number) =>
     .collection("settings")
     .doc(safeKey(`${schoolSlug}:${grade}`));
 
+const isActivityAssignedToClassroom = (
+  activityId: string,
+  school: ContractSchoolConfig,
+  classroom: ContractSchoolClassroom
+) => {
+  const definition = getClassActivityDefinition(activityId);
+  if (!definition) return false;
+
+  return school.lessons.some((lesson) =>
+    lesson.links.some(
+      (link) =>
+        link.id === definition.classroomLinkId &&
+        (link.targetType !== "class" ||
+          link.targetClassroomIds?.includes(classroom.id) === true)
+    )
+  );
+};
+
 const getCookie = (request: Request, name: string) => {
   const cookie = request.headers.get("cookie") || "";
   for (const pair of cookie.split(";")) {
@@ -130,6 +152,9 @@ const resolveClassActivityContextUncached = async (
   );
   if (!resolved) return null;
   const classroom = resolved.classroom;
+  if (!isActivityAssignedToClassroom(activityId, resolved.school, classroom)) {
+    return null;
+  }
 
   const rosterSchool =
     getSupportedClassroomSchoolName({
@@ -391,6 +416,7 @@ export const getActivityResults = async (
       (item) =>
         item.active !== false &&
         item.grade === grade &&
+        isActivityAssignedToClassroom(activityId, school, item) &&
         (classNumber === undefined || item.classNumber === classNumber)
     )
     .map((item) => item.classNumber);
@@ -448,9 +474,16 @@ export const getActivityAdminDashboard = async (activityId: string) => {
 
   const rows = [];
   for (const school of schools) {
-    const grades = [...new Set(school.classrooms.filter((c) => c.active !== false).map((c) => c.grade))];
+    const assignedClassrooms = school.classrooms.filter(
+      (classroom) =>
+        classroom.active !== false &&
+        isActivityAssignedToClassroom(activityId, school, classroom)
+    );
+    const grades = [...new Set(assignedClassrooms.map((classroom) => classroom.grade))];
     for (const grade of grades) {
-      for (const classroom of school.classrooms.filter((c) => c.active !== false && c.grade === grade)) {
+      for (const classroom of assignedClassrooms.filter(
+        (classroom) => classroom.grade === grade
+      )) {
         const rosterSchool =
           getSupportedClassroomSchoolName({
             school: school.schoolName,
