@@ -795,8 +795,12 @@ export default function AtcConfirmationsPage() {
   };
 
   const prepareMail = async () => {
+    const showPrepareMailError = (message: string) => {
+      setErrorMessage(message);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
     if (!selectedConfirmation) {
-      setErrorMessage("참여확인서를 먼저 저장해 주세요.");
+      showPrepareMailError("참여확인서를 먼저 저장해 주세요.");
       return;
     }
     if (scheduleChanged || schoolVerifierName.trim() !== (selectedConfirmation.schoolVerifierName || "") ||
@@ -805,11 +809,11 @@ export default function AtcConfirmationsPage() {
         selectedConfirmation.operationPeriodStart !== operationPeriodStart ||
         selectedConfirmation.operationPeriodEnd !== operationPeriodEnd ||
         getScheduleFingerprint(selectedConfirmation.scheduleSnapshot) !== getScheduleFingerprint(currentScheduleSnapshot)) {
-      setErrorMessage("현재 화면과 저장된 확인서 내용이 다릅니다. 변경 사항을 저장하고 서명 상태를 확인해 주세요.");
+      showPrepareMailError("현재 화면과 저장된 확인서 내용이 다릅니다. 변경 사항을 저장하고 서명 상태를 확인해 주세요.");
       return;
     }
     if (!selectedConfirmation.schoolSignedAt) {
-      setErrorMessage("저장된 실제 서명일을 확인할 수 없습니다. 담당교사 서명을 확인해 주세요.");
+      showPrepareMailError("저장된 실제 서명일을 확인할 수 없습니다. 담당교사 서명을 확인해 주세요.");
       return;
     }
     setMailBusy(true);
@@ -822,7 +826,7 @@ export default function AtcConfirmationsPage() {
       const pdfUrl = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
       setMailPreview({ info: data.info, fingerprint: data.fingerprint, pdfUrl, confirmationId: selectedConfirmation.id });
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "PDF를 준비하지 못했습니다.");
+      showPrepareMailError(error instanceof Error ? error.message : "PDF를 준비하지 못했습니다.");
     } finally {
       setMailBusy(false);
     }
