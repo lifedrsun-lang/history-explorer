@@ -88,12 +88,23 @@ const isActivityAssignedToClassroom = (
   if (!definition) return false;
 
   return school.lessons.some((lesson) =>
-    lesson.links.some(
-      (link) =>
-        link.id === definition.classroomLinkId &&
-        (link.targetType !== "class" ||
-          link.targetClassroomIds?.includes(classroom.id) === true)
-    )
+    lesson.links.some((link) => {
+      const targetsClassroom =
+        link.targetType !== "class" ||
+        link.targetClassroomIds?.includes(classroom.id) === true;
+      if (!targetsClassroom) return false;
+      if (link.id === definition.classroomLinkId) return true;
+
+      try {
+        const pathname = new URL(link.href, "https://sunlab.local").pathname.replace(
+          /\/+$/,
+          ""
+        );
+        return pathname === definition.classroomPath;
+      } catch {
+        return false;
+      }
+    })
   );
 };
 
