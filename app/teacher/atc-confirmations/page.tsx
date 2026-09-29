@@ -805,7 +805,6 @@ export default function AtcConfirmationsPage() {
     }
     if (scheduleChanged || schoolVerifierName.trim() !== (selectedConfirmation.schoolVerifierName || "") ||
         schoolSignatureDataUrl !== (selectedConfirmation.schoolSignatureDataUrl || null) ||
-        profile.signatureDataUrl !== (selectedConfirmation.educatorSignatureDataUrlSnapshot || null) ||
         selectedConfirmation.operationPeriodStart !== operationPeriodStart ||
         selectedConfirmation.operationPeriodEnd !== operationPeriodEnd ||
         getScheduleFingerprint(selectedConfirmation.scheduleSnapshot) !== getScheduleFingerprint(currentScheduleSnapshot)) {
