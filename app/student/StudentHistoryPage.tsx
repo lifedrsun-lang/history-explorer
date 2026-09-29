@@ -62,6 +62,7 @@ export default function StudentHistoryPage({
 
   const [pendingSchool, setPendingSchool] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
+  const [combinedSchoolVerified, setCombinedSchoolVerified] = useState(false);
 
   const DEFAULT_SCHOOLS = getDefaultSchoolDisplayNames();
 
@@ -391,11 +392,26 @@ export default function StudentHistoryPage({
     setLoading(false);
   };
 
+  const usesCombinedStudentEntry = (school: string) => {
+    const normalized = normalizeNoSpace(school);
+    return normalized.includes("하늘빛초") || normalized.includes("새솔초");
+  };
+
   const handleSchoolSelect = (school: string) => {
     const cleanSchool = normalize(
       getSchoolDisplayName(school)
     );
     const password = getSchoolPassword(cleanSchool);
+
+    if (usesCombinedStudentEntry(cleanSchool)) {
+      setSelectedSchool(cleanSchool);
+      setCombinedSchoolVerified(false);
+      setPendingStudent(null);
+      setSearchName("");
+      setPasswordInput("");
+      setStudentPassword("");
+      return;
+    }
 
     if (!password) {
       setSelectedSchool(cleanSchool);
@@ -573,6 +589,121 @@ export default function StudentHistoryPage({
     return <LoadingSpinner />;
   }
 
+  if (
+    selectedSchool &&
+    usesCombinedStudentEntry(selectedSchool) &&
+    !combinedSchoolVerified &&
+    !selectedStudent
+  ) {
+    return (
+      <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 text-slate-800 flex items-center justify-center px-4 py-6">
+        <div className="w-full max-w-md rounded-[32px] border border-sky-100 bg-white/95 p-7 shadow-xl">
+          <div className="text-center text-3xl font-bold text-slate-800">
+            🔐 {selectedSchool} 입장
+          </div>
+          <p className="mt-2 text-center text-sm font-bold text-slate-500">
+            학교 비밀번호, 이름, 출석번호를 입력해 주세요.
+          </p>
+
+          <label className="mt-6 block text-sm font-bold text-slate-700">학교 비밀번호</label>
+          <input
+            type="password"
+            value={passwordInput}
+            onChange={(e) => setPasswordInput(e.target.value)}
+            placeholder="학교 비밀번호"
+            className="mt-2 w-full rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-lg text-slate-800 outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100"
+          />
+
+          <label className="mt-4 block text-sm font-bold text-slate-700">학생 이름</label>
+          <input
+            type="text"
+            value={searchName}
+            onChange={(e) => {
+              setSearchName(e.target.value);
+              setPendingStudent(null);
+              setStudentPassword("");
+            }}
+            placeholder="이름 검색"
+            className="mt-2 w-full rounded-2xl border border-sky-200 bg-sky-50/70 px-4 py-4 text-lg text-slate-800 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
+          />
+
+          {searchName.trim() !== "" && !pendingStudent && (
+            <div className="mt-2">
+              <SearchDropdown
+                students={filteredStudents}
+                searchName={searchName}
+                setSearchName={setSearchName}
+                setSelectedStudent={(student: any) => setPendingStudent(student)}
+              />
+            </div>
+          )}
+
+          {pendingStudent && (
+            <div className="mt-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-slate-700">
+              선택: <span className="text-slate-900">{pendingStudent.name}</span>
+              <span className="ml-2 text-emerald-700">
+                {pendingStudent.grade}학년 {pendingStudent.class}반
+              </span>
+            </div>
+          )}
+
+          <label className="mt-4 block text-sm font-bold text-slate-700">출석번호</label>
+          <input
+            type="number"
+            inputMode="numeric"
+            value={studentPassword}
+            onChange={(e) => setStudentPassword(e.target.value)}
+            placeholder="출석번호"
+            className="mt-2 w-full rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-lg text-slate-800 outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100"
+          />
+
+          <button
+            type="button"
+            onClick={() => {
+              const schoolPasswordMatches =
+                normalize(passwordInput) === normalize(getSchoolPassword(selectedSchool));
+              const attendanceNumberMatches =
+                pendingStudent &&
+                normalize(studentPassword) === normalize(pendingStudent.studentNumber);
+
+              if (!schoolPasswordMatches || !attendanceNumberMatches) {
+                alert("입력 정보를 확인해 주세요.");
+                return;
+              }
+
+              setSelectedStudent(pendingStudent);
+              localStorage.setItem("selectedSchool", selectedSchool);
+              localStorage.setItem("selectedStudent", JSON.stringify(pendingStudent));
+              setCombinedSchoolVerified(true);
+              setPendingStudent(null);
+              setPasswordInput("");
+              setStudentPassword("");
+            }}
+            disabled={!passwordInput.trim() || !pendingStudent || !studentPassword.trim()}
+            className="mt-5 w-full rounded-2xl bg-sky-400 py-4 text-xl font-bold text-white shadow-sm transition hover:bg-sky-500 disabled:opacity-50"
+          >
+            수업방 입장
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedSchool("");
+              setCombinedSchoolVerified(false);
+              setPendingStudent(null);
+              setSearchName("");
+              setPasswordInput("");
+              setStudentPassword("");
+            }}
+            className="mt-3 w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-600"
+          >
+            학교 목록으로
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 text-slate-800 px-3 py-4">
       <div className="max-w-2xl mx-auto space-y-4">
@@ -607,6 +738,7 @@ export default function StudentHistoryPage({
 
                 setSelectedSchool("");
                 setSelectedStudent(null);
+                setCombinedSchoolVerified(false);
                 setStudents([]);
               }}
               className="bg-sky-50 border border-sky-200 px-3 py-2 rounded-2xl text-xs font-bold text-sky-700 shrink-0"
