@@ -46,6 +46,19 @@ export default async function AfterSchoolSchoolPage({
         </section>
 
         <section className="mt-4 grid gap-3 sm:grid-cols-2 sm:gap-4">
+          {school.slug === "haneulbit" && (
+            <Link
+              href="/teacher/after-school/haneulbit/reports"
+              className="rounded-[28px] border border-indigo-200 bg-indigo-50 p-5 text-indigo-950 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:p-7"
+            >
+              <div className="text-4xl">📄</div>
+              <h2 className="mt-4 text-2xl font-black">결과통지서</h2>
+              <p className="mt-2 text-sm font-bold leading-relaxed text-indigo-700">
+                역사논술탐험 수강생의 분기별 평가를 함께 작성하고 PDF로 내려받습니다.
+              </p>
+              <div className="mt-6 text-sm font-black">결과통지서 작성</div>
+            </Link>
+          )}
           <Link
             href={studentManagementHref}
             className="rounded-[28px] border border-blue-200 bg-blue-50 p-5 text-blue-950 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:p-7"
