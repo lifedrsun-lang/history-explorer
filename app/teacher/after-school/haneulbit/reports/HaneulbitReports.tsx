@@ -3,6 +3,7 @@ import Link from "next/link";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { auth } from "@/lib/firebase";
+import { reportWeeklyActivities } from "@/lib/haneulbitReportActivities";
 import { EVALUATION_FIELDS, EVALUATION_LEVELS, REPORT_PROGRAM, emptyEvaluation, evaluationStatus, newReportCommon, reportFilename, type EvaluationField, type EvaluationLevel, type ReportCommon, type ReportData, type ReportEvaluation, type ReportPeriod, type ReportStudent, type SavedEvaluation } from "@/lib/haneulbitReports";
 
 const API = "/api/teacher/haneulbit-reports";
@@ -101,6 +102,13 @@ export default function HaneulbitReports() {
   rows.forEach((s) => counts[evaluationStatus(evaluations[s.id], common, s)]++);
   const visible = rows.filter((s) => filter === "all" || (filter === "incomplete" ? evaluationStatus(evaluations[s.id], common, s) !== "작성완료" : evaluationStatus(evaluations[s.id], common, s) === filter));
   const changeCommon = (key: keyof ReportCommon, value: string) => { setCommon((c) => ({ ...c, [key]: value })); setDirty(true); setMessage(""); };
+  const weeklyActivities = reportWeeklyActivities(common);
+  const importWeeklyActivities = () => {
+    if (busy || weeklyActivities === null) return;
+    if (common.activities.trim() && !window.confirm("기존 학습 활동 내용을 1~12주차 수업 제목으로 덮어씁니다.\n직접 수정한 내용도 바뀝니다. 계속할까요?")) return;
+    changeCommon("activities", weeklyActivities);
+    setMessage("1~12주차 활동을 불러왔습니다. 필요한 내용을 수정한 뒤 변경사항을 저장해 주세요.");
+  };
   const edit = (student: ReportStudent, patch: Partial<ReportEvaluation>) => {
     changed.current.add(student.id);
     setEvaluations((current) => ({ ...current, [student.id]: { ...(current[student.id] || emptyEvaluation()), ...patch, student } }));
@@ -191,7 +199,15 @@ export default function HaneulbitReports() {
           <label className="text-sm font-bold text-slate-700">교육기간 시작일 *<input type="date" value={common.startDate} onChange={(e) => changeCommon("startDate", e.target.value)} className={`${inputStyle} mt-1`} /></label>
           <label className="text-sm font-bold text-slate-700">교육기간 종료일 *<input type="date" value={common.endDate} onChange={(e) => changeCommon("endDate", e.target.value)} className={`${inputStyle} mt-1`} /></label>
           <label className="text-sm font-bold text-slate-700">지도강사명 *<input maxLength={100} value={common.instructor} onChange={(e) => changeCommon("instructor", e.target.value)} className={`${inputStyle} mt-1`} /></label>
-          <label className="text-sm font-bold text-slate-700 sm:col-span-3">학습 활동 내용 *<textarea rows={3} maxLength={5000} value={common.activities} onChange={(e) => changeCommon("activities", e.target.value)} className={`${inputStyle} mt-1 resize-y`} /><span className="mt-1 block text-xs font-normal text-slate-500">활동별로 줄바꿈하면 원본의 12개 활동 칸에 순서대로 배치됩니다. 칸보다 긴 내용은 다음 칸으로 이어집니다.</span></label>
+          <div className="sm:col-span-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label htmlFor="report-activities" className="text-sm font-bold text-slate-700">학습 활동 내용 *</label>
+              <button type="button" disabled={weeklyActivities === null} className={buttonStyle} onClick={importWeeklyActivities}>주차별 활동 불러오기</button>
+            </div>
+            <p className="mt-2 text-sm text-slate-600">{weeklyActivities === null ? "주차별 불러오기는 수업 자료가 등록된 2026년 3분기에서 사용할 수 있습니다." : "1~4주차: 7호 · 5~8주차: 8호 · 9~12주차: 9호"}</p>
+            <textarea id="report-activities" rows={12} maxLength={5000} value={common.activities} onChange={(e) => changeCommon("activities", e.target.value)} className={`${inputStyle} mt-2 resize-y`} aria-describedby="report-activities-help" />
+            <p id="report-activities-help" className="mt-1 text-sm text-slate-500">12줄로 입력하면 각 줄이 1~12주차의 활동 칸에 하나씩 들어갑니다. 불러온 내용은 직접 수정할 수 있으며, 저장 버튼을 눌러야 저장됩니다.</p>
+          </div>
         </div>
       </fieldset>
       <fieldset disabled={busy} className="mt-4 rounded-[28px] border border-indigo-100 bg-indigo-50 p-5"><legend className="sr-only">일괄 평가</legend>

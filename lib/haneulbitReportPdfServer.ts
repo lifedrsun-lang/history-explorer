@@ -64,6 +64,21 @@ export async function renderReportPdfs(common: ReportCommon, entries: SavedEvalu
       // twelve bounded activity cells. Explicit newlines start a new cell.
       const activitiesFit = await page.evaluate((text) => {
         const cells = Array.from(document.querySelectorAll<HTMLElement>("[data-activity-cell]"));
+        const lines = text.replaceAll("\r\n", "\n").split("\n");
+        // Twelve weekly entries must stay in twelve corresponding cells.
+        // Fit each title within its own cell instead of moving later weeks.
+        if (lines.length === cells.length) {
+          cells.forEach((cell, index) => {
+            cell.textContent = lines[index];
+            cell.style.padding = "0.6mm";
+            cell.style.lineHeight = "1.2";
+          });
+          for (const size of [13.33, 12.5, 12, 11.5, 11]) {
+            cells.forEach((cell) => { cell.style.fontSize = `${size}px`; });
+            if (cells.every((cell) => cell.scrollHeight <= cell.clientHeight + 1 && cell.scrollWidth <= cell.clientWidth + 1)) return true;
+          }
+          return false;
+        }
         for (const size of [13.33, 12.5, 12, 11.5, 11]) {
           cells.forEach((cell) => { cell.textContent = ""; cell.style.fontSize = `${size}px`; });
           let index = 0;
