@@ -1,0 +1,1 @@
+{"buildCommand":"node scripts/probe-homework-storage.cjs && npm run build"}
