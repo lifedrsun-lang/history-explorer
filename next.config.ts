@@ -2,6 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
+    "/api/teacher/haneulbit-reports{,/pdf}": [
+      "./templates/haneulbit/result-report.html",
+      "./public/fonts/noto-sans-kr-*.woff2",
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+    ],
     "/api/teacher/atc-confirmations/mail-{preview,send}": [
       "./public/fonts/noto-sans-kr-*.woff2",
       "./public/images/atc-logo.png",
