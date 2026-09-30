@@ -105,6 +105,17 @@ async function main() {
   fs.mkdirSync(path.join(fixtureRoot, 'templates/haneulbit'), { recursive: true });
   fs.mkdirSync(path.join(fixtureRoot, 'public/fonts'), { recursive: true });
   for (const weight of [400, 700]) fs.copyFileSync(path.join(root, `public/fonts/noto-sans-kr-${weight}.woff2`), path.join(fixtureRoot, `public/fonts/noto-sans-kr-${weight}.woff2`));
+  fs.copyFileSync(path.join(root, 'public/fonts/report-symbols.ttf'), path.join(fixtureRoot, 'public/fonts/report-symbols.ttf'));
+  // Missing glyphs can still extract as the original Unicode character.
+  // Verify real outlines in the font and the PDF's selected embedded font.
+  execFileSync('python3', ['-c', `import sys
+from fontTools.ttLib import TTFont
+f=TTFont(sys.argv[1]); cmap=f.getBestCmap()
+for symbol in '✓□◈※':
+ assert ord(symbol) in cmap, symbol
+ glyph=f['glyf'][cmap[ord(symbol)]]
+ assert glyph.numberOfContours>0 or glyph.isComposite(), symbol
+`, path.join(fixtureRoot, 'public/fonts/report-symbols.ttf')]);
   for (const filename of ['result-report.html', 'result-report-2026-q3.html']) fs.copyFileSync(path.join(root, 'templates/haneulbit', filename), path.join(fixtureRoot, 'templates/haneulbit', filename));
   assert.equal(pdf.reportTemplateFilename(common), 'result-report-2026-q3.html');
   assert.equal(pdf.reportTemplateFilename({...common, quarter:2}), 'result-report.html');
@@ -157,6 +168,14 @@ for i,title in enumerate(titles):
     assert.ok(oldText.includes('2분기'));
     assert.ok(!oldText.includes('선선한 바람'));
     assert.ok(oldText.includes('2026년 5월 26일 ~ 8월 14일'));
+    execFileSync('python3', ['-c', `import sys,pdfplumber
+for filename in sys.argv[1:]:
+ page=pdfplumber.open(filename).pages[0]
+ for symbol,count in {'✓':4,'□':5,'◈':2,'※':1}.items():
+  chars=[char for char in page.chars if char['text']==symbol]
+  assert len(chars)==count, (filename,symbol,len(chars))
+  assert all('ReportSymbols' in char['fontname'] for char in chars), (filename,symbol,[char['fontname'] for char in chars])
+`, file, oldFile]);
     if (process.env.REPORT_VERIFY_OUTPUT) fs.copyFileSync(oldFile,process.env.REPORT_VERIFY_OUTPUT.replace(/\.pdf$/, '-q2.pdf'));
     const actualZip = load('lib/reportZip.ts').makeReportZip(generated.map((data, i) => ({name: collision[i], data})));
     fs.writeFileSync(path.join(temp, 'actual.zip'), actualZip);

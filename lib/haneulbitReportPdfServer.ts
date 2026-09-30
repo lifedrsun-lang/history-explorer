@@ -19,7 +19,7 @@ async function readTemplate(common: Pick<ReportCommon, "year" | "quarter">) {
   }
   // The template is a developer-maintained reproduction of the supplied original,
   // never a layout created from assumptions. All original wording stays in it.
-  const tokens = ["program", "period", "grade", "schoolClass", "name", "quarter", "comment", "instructor", "fontRegular", "fontBold", ...EVALUATION_FIELDS.flatMap(({ key }) => EVALUATION_LEVELS.map((_, i) => `${key}.${i}`))];
+  const tokens = ["program", "period", "grade", "schoolClass", "name", "quarter", "comment", "instructor", "fontRegular", "fontBold", "fontSymbols", ...EVALUATION_FIELDS.flatMap(({ key }) => EVALUATION_LEVELS.map((_, i) => `${key}.${i}`))];
   if (tokens.some((token) => !template.includes(`{{${token}}}`))) throw new Error("report_template_missing");
   if (!template.includes('data-activity-cell="11"') || !template.includes('data-report-fit="comment"')) throw new Error("report_template_missing");
   return template;
@@ -35,10 +35,11 @@ export function reportPeriodText(start: string, end: string) {
   return `${sy}년 ${sm}월 ${sd}일 ~ ${sy === ey ? "" : `${ey}년 `}${em}월 ${ed}일`;
 }
 export async function renderReportPdfs(common: ReportCommon, entries: SavedEvaluation[]): Promise<Buffer[]> {
-  const [template, regular, bold] = await Promise.all([
+  const [template, regular, bold, symbols] = await Promise.all([
     readTemplate(common),
     readFile(path.join(process.cwd(), "public/fonts/noto-sans-kr-400.woff2")),
     readFile(path.join(process.cwd(), "public/fonts/noto-sans-kr-700.woff2")),
+    readFile(path.join(process.cwd(), "public/fonts/report-symbols.ttf")),
   ]);
   const browser = await puppeteer.launch({ args: chromium.args, executablePath: await chromium.executablePath(), headless: true });
   try {
@@ -55,6 +56,9 @@ export async function renderReportPdfs(common: ReportCommon, entries: SavedEvalu
         comment: entry.comment, instructor: common.instructor,
         fontRegular: `data:font/woff2;base64,${regular.toString("base64")}`,
         fontBold: `data:font/woff2;base64,${bold.toString("base64")}`,
+        // The Korean font subset has no checkmark, box, diamond or footnote
+        // glyphs. Embed actual outlines instead of relying on system fallback.
+        fontSymbols: `data:font/ttf;base64,${symbols.toString("base64")}`,
       };
       for (const { key } of EVALUATION_FIELDS) EVALUATION_LEVELS.forEach((level, i) => { replacements[`${key}.${i}`] = entry[key] === level ? "✓" : ""; });
       const html = template.replace(/\{\{([\w.]+)\}\}/g, (_, key: string) => escape(replacements[key] || ""));

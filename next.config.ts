@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     "/api/teacher/haneulbit-reports{,/pdf}": [
       "./templates/haneulbit/result-report*.html",
       "./public/fonts/noto-sans-kr-*.woff2",
+      "./public/fonts/report-symbols.ttf",
       "./node_modules/@sparticuz/chromium/bin/**/*",
     ],
     "/api/teacher/atc-confirmations/mail-{preview,send}": [
