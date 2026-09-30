@@ -74,7 +74,7 @@ export default function SchoolSelect({
     const isCompleted = status === "completed";
     const isPaused = status === "paused";
     const statusLabel = isCompleted ? "종강" : isPaused ? "휴강" : null;
-    const cardClassName = `block h-full min-h-[112px] w-full rounded-3xl border p-4 text-center text-slate-700 shadow-sm transition ${
+    const cardClassName = `block h-full min-h-[112px] w-full rounded-3xl border p-4 text-center text-slate-700 shadow-sm transition md:min-h-[104px] ${
       isCompleted
         ? "border-slate-200 bg-white hover:bg-slate-50"
         : isPaused
@@ -110,7 +110,7 @@ export default function SchoolSelect({
   const sunLabCard = (
     <Link
       href="/student/book"
-      className="flex h-full min-h-[112px] w-full items-center justify-center rounded-3xl border border-[#d8c59f] p-4 text-center transition hover:shadow-md"
+      className="flex h-full min-h-[112px] w-full items-center justify-center rounded-3xl border border-[#d8c59f] p-4 text-center transition hover:shadow-md md:min-h-[104px]"
       style={{
         backgroundImage:
           "linear-gradient(135deg, #f7f1e4 0%, #eee1c8 32%, #dcc59c 50%, #f5ecdc 72%, #e7d7b9 100%)",
@@ -125,12 +125,12 @@ export default function SchoolSelect({
   );
 
   return (
-    <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 text-slate-800 px-3 pt-6 pb-28 sm:px-4 sm:pt-8 sm:pb-28">
-      <div className="max-w-xl mx-auto">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 px-3 pb-28 pt-6 text-slate-800 sm:px-4 sm:pb-28 sm:pt-8 md:px-6 md:pt-10">
+      <div className="mx-auto max-w-xl md:max-w-[980px] min-[1200px]:max-w-[1180px]">
         <div className="mb-5 text-center sm:mb-6">
           <div className="text-2xl font-black text-slate-800 sm:text-3xl">🧭 탐험대원, 입장하세요!</div>
         </div>
-        <div className="grid grid-cols-2 gap-3 rounded-[32px] border border-white/80 bg-white/80 p-3 sm:p-4 shadow-sm">
+        <div className="grid grid-cols-2 gap-3 rounded-[32px] border border-white/80 bg-white/80 p-3 shadow-sm sm:p-4 md:grid-cols-3 md:gap-4 md:p-5 min-[1200px]:grid-cols-4">
           {schoolCards
             .filter(({ status, school }) => status === "active" && !normalizeSchoolText(school).includes("문화센터"))
             .map(renderSchoolCard)}
@@ -143,7 +143,7 @@ export default function SchoolSelect({
         </div>
       </div>
       <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/80 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-4px_18px_rgba(15,23,42,0.10)] backdrop-blur">
-        <div className="mx-auto grid max-w-xl grid-cols-3 gap-2">
+        <div className="mx-auto grid max-w-xl grid-cols-3 gap-2 md:max-w-3xl">
           <a href="https://open.kakao.com/o/sZ5UIoLi" target="_blank" rel="noopener noreferrer" className="flex min-h-12 items-center justify-center rounded-2xl bg-[#FEE500] px-2 text-sm font-black text-slate-800">💬 카톡문의</a>
           <a href="tel:01083762497" className="flex min-h-12 items-center justify-center rounded-2xl bg-sky-100 px-2 text-sm font-black text-sky-800">☎ 전화문의</a>
           <Link href="/teacher" className="flex min-h-12 items-center justify-center rounded-2xl bg-slate-800 px-2 text-sm font-black text-white">🔐 화선 IN</Link>
