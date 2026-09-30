@@ -314,6 +314,37 @@ export const assertStoragePathForStudent = (
   }
 };
 
+export const assertHomeworkStagingPaths = (
+  assignmentId: string,
+  studentKey: string,
+  attemptId: string,
+  paths: string[]
+) => {
+  const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+  if (!new RegExp(`^${uuid}$`).test(attemptId) || paths.length === 0 || paths.length > HOMEWORK_MAX_FILES) {
+    throw new Error("invalid_storage_path");
+  }
+  const prefix = `assignments/${assignmentId}/submissions/${makeStorageSafeStudentKey(studentKey)}/${attemptId}/staging/`;
+  for (const path of paths) {
+    if (!path.startsWith(prefix) || !new RegExp(`^${uuid}\\.(jpg|png|webp)$`).test(path.slice(prefix.length))) {
+      throw new Error("invalid_storage_path");
+    }
+  }
+  if (new Set(paths).size !== paths.length) throw new Error("invalid_storage_path");
+};
+
+export const mapHomeworkSubmitError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("사진") || message.includes("파일")) return jsonError(message, 400, "invalid_file");
+  if (["student_auth_required", "invalid_student_collection", "student_not_found", "inactive_student",
+    "invalid_student_password", "assignment_not_found", "inactive_assignment", "assignment_forbidden",
+    "invalid_storage_path", "files_required", "too_many_files", "invalid_file", "object_not_found",
+    "storage_upload_failed", "approved_submission_locked"].includes(message)) {
+    return jsonError("제출 사진을 다시 확인해 주세요.", 400, message);
+  }
+  return handleRouteError(error);
+};
+
 export const verifyTeacherRequest = async (request: Request) => {
   const header = request.headers.get("authorization") || "";
   const match = header.match(/^Bearer (.+)$/);

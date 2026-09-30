@@ -10,8 +10,8 @@ import {
   getAssignmentForStudent,
   getSubmissionDocId,
   getVerifiedStudent,
-  handleRouteError,
-  jsonError,
+  assertHomeworkStagingPaths,
+  mapHomeworkSubmitError,
 } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import {
@@ -19,59 +19,51 @@ import {
   getSupabaseServer,
 } from "@/lib/supabaseServer";
 
+import { processHomeworkPhoto } from "@/lib/homeworkPhotoServer";
+import { HOMEWORK_PHOTO_ERROR, validateHomeworkPhotoSize } from "@/lib/homeworkPhoto";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const mapSubmitError = (error: unknown) => {
-  const message = error instanceof Error ? error.message : "";
-
-  if (
-    [
-      "student_auth_required",
-      "invalid_student_collection",
-      "student_not_found",
-      "inactive_student",
-      "invalid_student_password",
-      "assignment_not_found",
-      "inactive_assignment",
-      "assignment_forbidden",
-      "invalid_storage_path",
-      "files_required",
-      "too_many_files",
-      "invalid_file",
-      "object_not_found",
-      "storage_upload_failed",
-      "approved_submission_locked",
-    ].includes(message)
-  ) {
-    return jsonError("제출 사진을 다시 확인해 주세요.", 400, message);
-  }
-
-  if (message.includes("사진") || message.includes("파일")) {
-    return jsonError(message, 400, "invalid_file");
-  }
-
-  return handleRouteError(error);
-};
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ assignmentId: string }> }
 ) {
   const uploadedStoragePaths: string[] = [];
+  const stagingPaths: string[] = [];
 
   try {
     const { assignmentId } = await params;
-    const formData = await request.formData();
-    const photos = formData
-      .getAll("photos")
-      .filter((item): item is File => item instanceof File);
-    const student = await getVerifiedStudent({
-      studentId: formData.get("studentId"),
-      studentCollection: formData.get("studentCollection"),
-      studentPassword: formData.get("studentPassword"),
+    const isStaged = request.headers.get("content-type")?.includes("application/json");
+    const body = isStaged ? await request.json() : null;
+    const formData = isStaged ? null : await request.formData();
+    const student = await getVerifiedStudent(body || {
+      studentId: formData?.get("studentId"),
+      studentCollection: formData?.get("studentCollection"),
+      studentPassword: formData?.get("studentPassword"),
     });
     const assignment = await getAssignmentForStudent(assignmentId, student);
+    const photos: File[] = [];
+    if (isStaged) {
+      if (!Array.isArray(body.photos) || !body.photos.every((photo: { storagePath?: unknown }) => photo && typeof photo.storagePath === "string")) throw new Error("invalid_file");
+      const paths = body.photos.map((photo: { storagePath: string }) => photo.storagePath);
+      assertHomeworkStagingPaths(assignment.id, student.studentKey, body.attemptId, paths);
+      stagingPaths.push(...paths);
+      const bucket = getSupabaseServer().storage.from(getAssignmentBucketName());
+      for (const photo of body.photos) {
+        // Inspect the actual stored size, not the client's claimed size, before downloading.
+        const { data: info, error: infoError } = await bucket.info(photo.storagePath);
+        if (infoError || !info) throw new Error("object_not_found");
+        const sizeError = validateHomeworkPhotoSize(Number(info.size));
+        if (sizeError) throw new Error(sizeError);
+        const { data, error } = await bucket.download(photo.storagePath);
+        if (error || !data) throw new Error("object_not_found");
+        if (data.size !== info.size) throw new Error(HOMEWORK_PHOTO_ERROR);
+        photos.push(new File([data], String(photo.name || "photo.jpg"), { type: data.type }));
+      }
+    } else {
+      photos.push(...(formData?.getAll("photos") || []).filter((item): item is File => item instanceof File));
+    }
 
     if (photos.length === 0) {
       throw new Error("files_required");
@@ -100,10 +92,8 @@ export async function POST(
 
     const files = [];
 
-    for (const photo of photos) {
-      if (photo.type !== "image/jpeg") {
-        throw new Error("invalid_file");
-      }
+    for (const inputPhoto of photos) {
+      const photo = await processHomeworkPhoto(inputPhoto);
 
       const uploadTarget = createUploadTarget(
         assignment.id,
@@ -219,6 +209,16 @@ export async function POST(
       }
     }
 
-    return mapSubmitError(error);
+    return mapHomeworkSubmitError(error);
+  } finally {
+    if (stagingPaths.length) {
+      try {
+        const { error } = await getSupabaseServer().storage.from(getAssignmentBucketName()).remove(stagingPaths);
+        if (error) console.error("Homework staging cleanup failed", { name: error.name });
+      } catch {
+        console.error("Homework staging cleanup failed");
+      }
+    }
+
   }
 }

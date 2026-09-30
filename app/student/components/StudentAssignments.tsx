@@ -9,8 +9,11 @@ import {
   HOMEWORK_MAX_FILES,
   StudentCollection,
   isAllowedStudentCollection,
-  validateHomeworkPhotoFile,
 } from "@/lib/assignments";
+
+import { prepareHomeworkPhoto } from "@/lib/homeworkPhotoClient";
+import { homeworkUploadError, submitHomeworkPhotos } from "@/lib/homeworkPhotoUploadClient";
+import { validateHomeworkPhotoSize } from "@/lib/homeworkPhoto";
 
 type Props = {
   student: StudentLike;
@@ -27,11 +30,6 @@ type UploadState = {
   message: string;
   error: string;
 };
-
-const COMPRESSED_MAX_SIDE = 1200;
-const COMPRESSED_TARGET_SIZE = 300 * 1024;
-const COMPRESSED_INITIAL_QUALITY = 0.82;
-const COMPRESSED_MIN_QUALITY = 0.62;
 
 const formatDueDate = (value?: string | null) => {
   if (!value) {
@@ -84,87 +82,6 @@ const getAssignmentStatusClassName = (assignment: AssignmentSummary) => {
   }
 
   return "bg-emerald-100 text-emerald-700";
-};
-
-const canvasToJpegBlob = (canvas: HTMLCanvasElement, quality: number) => {
-  return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) {
-          reject(new Error("사진 압축에 실패했습니다."));
-          return;
-        }
-
-        resolve(blob);
-      },
-      "image/jpeg",
-      quality
-    );
-  });
-};
-
-const loadBitmapFromFile = async (file: File) => {
-  if ("createImageBitmap" in window) {
-    return createImageBitmap(file, {
-      imageOrientation: "from-image",
-    } as ImageBitmapOptions);
-  }
-
-  const objectUrl = URL.createObjectURL(file);
-
-  try {
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new window.Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("사진을 불러오지 못했습니다."));
-      img.src = objectUrl;
-    });
-
-    return image;
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-};
-
-const compressPhoto = async (file: File) => {
-  const source = await loadBitmapFromFile(file);
-  const sourceWidth = source.width;
-  const sourceHeight = source.height;
-  const scale = Math.min(
-    1,
-    COMPRESSED_MAX_SIDE / Math.max(sourceWidth, sourceHeight)
-  );
-  const canvas = document.createElement("canvas");
-
-  canvas.width = Math.max(1, Math.round(sourceWidth * scale));
-  canvas.height = Math.max(1, Math.round(sourceHeight * scale));
-
-  const context = canvas.getContext("2d");
-
-  if (!context) {
-    throw new Error("사진 압축을 준비하지 못했습니다.");
-  }
-
-  context.fillStyle = "#ffffff";
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  context.drawImage(source, 0, 0, canvas.width, canvas.height);
-
-  if ("close" in source && typeof source.close === "function") {
-    source.close();
-  }
-
-  let quality = COMPRESSED_INITIAL_QUALITY;
-  let blob = await canvasToJpegBlob(canvas, quality);
-
-  while (blob.size > COMPRESSED_TARGET_SIZE && quality > COMPRESSED_MIN_QUALITY) {
-    quality = Math.max(COMPRESSED_MIN_QUALITY, quality - 0.08);
-    blob = await canvasToJpegBlob(canvas, quality);
-  }
-
-  return new File([blob], file.name, {
-    type: "image/jpeg",
-    lastModified: Date.now(),
-  });
 };
 
 const getStudentCollection = (student: StudentLike): StudentCollection => {
@@ -263,13 +180,7 @@ export default function StudentAssignments({ student }: Props) {
     }
 
     const invalidMessage = nextFiles
-      .map((file) =>
-        validateHomeworkPhotoFile({
-          name: file.name,
-          type: file.type,
-          size: file.size,
-        })
-      )
+      .map((file) => validateHomeworkPhotoSize(file.size))
       .find(Boolean);
 
     if (invalidMessage) {
@@ -302,41 +213,16 @@ export default function StudentAssignments({ student }: Props) {
 
     setAssignmentState(assignment.id, {
       isUploading: true,
-      message: "사진을 압축하는 중...",
+      message: "사진을 준비하는 중...",
       error: "",
     });
 
     try {
-      const compressedFiles = await Promise.all(files.map(compressPhoto));
-      const authBody = getStudentAuthBody();
-      const formData = new FormData();
-
-      formData.append("studentId", authBody.studentId);
-      formData.append("studentCollection", authBody.studentCollection);
-      formData.append("studentPassword", authBody.studentPassword);
-
-      compressedFiles.forEach((file) => {
-        formData.append("photos", file, file.name);
-      });
-
-      setAssignmentState(assignment.id, {
-        message: "사진을 제출하는 중...",
-      });
-
-      const submitResponse = await fetch(
-        `/api/student/assignments/${assignment.id}/submit`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-      const submitData = await submitResponse.json();
-
-      if (!submitResponse.ok) {
-        throw new Error(
-          submitData?.error || "사진 제출에 실패했습니다. 다시 시도해 주세요."
-        );
-      }
+      // Process sequentially to avoid decoding three large gallery photos at once.
+      const preparedFiles: File[] = [];
+      for (const file of files) preparedFiles.push(await prepareHomeworkPhoto(file));
+      setAssignmentState(assignment.id, { message: "사진을 제출하는 중..." });
+      await submitHomeworkPhotos(assignment.id, preparedFiles, getStudentAuthBody());
 
       setSelectedFiles((current) => ({
         ...current,
@@ -352,10 +238,7 @@ export default function StudentAssignments({ student }: Props) {
       setAssignmentState(assignment.id, {
         isUploading: false,
         message: "",
-        error:
-          error instanceof Error
-            ? error.message
-            : "사진 제출에 실패했습니다. 다시 시도해 주세요.",
+        error: homeworkUploadError(error),
       });
     }
   };
