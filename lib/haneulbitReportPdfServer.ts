@@ -34,7 +34,7 @@ export function reportPeriodText(start: string, end: string) {
   const [ey, em, ed] = end.split("-").map(Number);
   return `${sy}년 ${sm}월 ${sd}일 ~ ${sy === ey ? "" : `${ey}년 `}${em}월 ${ed}일`;
 }
-export async function renderReportPdfs(common: ReportCommon, entries: SavedEvaluation[]): Promise<Buffer[]> {
+export async function renderReportPdfs(common: ReportCommon, entries: SavedEvaluation[], options: { combined?: boolean } = {}): Promise<Buffer[]> {
   const [template, regular, bold, symbols] = await Promise.all([
     readTemplate(common),
     readFile(path.join(process.cwd(), "public/fonts/noto-sans-kr-400.woff2")),
@@ -49,6 +49,8 @@ export async function renderReportPdfs(common: ReportCommon, entries: SavedEvalu
     page.on("request", (request) => /^(data:|about:)/.test(request.url()) ? void request.continue() : void request.abort());
     await page.setJavaScriptEnabled(false);
     const files: Buffer[] = [];
+    const sheets: string[] = [];
+    let documentHead = "";
     for (const entry of entries) {
       const replacements: Record<string, string> = {
         program: REPORT_PROGRAM, period: reportPeriodText(common.startDate, common.endDate), quarter: String(common.quarter),
@@ -113,6 +115,19 @@ export async function renderReportPdfs(common: ReportCommon, entries: SavedEvalu
         return true;
       });
       if (!fits) throw new Error("report_text_overflow");
+      if (options.combined) {
+        // Capture fitted text and inline sizing before loading the next student.
+        // Each positioned form gets its own A4 containing block in the final PDF.
+        const fitted = await page.evaluate(() => ({ head: document.head.innerHTML, body: document.body.innerHTML }));
+        if (!documentHead) documentHead = fitted.head;
+        sheets.push(`<section class="report-sheet">${fitted.body}</section>`);
+      } else {
+        files.push(Buffer.from(await page.pdf({ format: "A4", printBackground: true, margin: { top: "0", right: "0", bottom: "0", left: "0" } })));
+      }
+    }
+    if (options.combined && sheets.length) {
+      await page.setContent(`<!doctype html><html lang="ko"><head>${documentHead}<style>body{height:auto}.report-sheet{position:relative;width:210mm;height:297mm;break-inside:avoid;break-after:page}.report-sheet:last-child{break-after:auto}</style></head><body>${sheets.join("")}</body></html>`, { waitUntil: "load" });
+      await page.evaluate(async () => { await document.fonts.ready; });
       files.push(Buffer.from(await page.pdf({ format: "A4", printBackground: true, margin: { top: "0", right: "0", bottom: "0", left: "0" } })));
     }
     return files;

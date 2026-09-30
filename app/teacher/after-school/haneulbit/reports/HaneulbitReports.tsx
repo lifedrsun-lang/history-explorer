@@ -162,7 +162,7 @@ export default function HaneulbitReports() {
       setError("학생 정보가 변경되었습니다. 해당 학생의 ‘현재 학생 정보 반영’을 누르고 저장한 뒤 PDF를 생성해 주세요.");
       return;
     }
-    if (mode === "all" && counts["미작성"] + counts["작성중"] > 0 && !window.confirm(`미작성 학생 ${counts["미작성"]}명, 작성중 학생 ${counts["작성중"]}명이 있습니다.\n작성완료 ${counts["작성완료"]}명의 PDF만 다운로드할까요?`)) return;
+    if (mode === "all" && counts["미작성"] + counts["작성중"] > 0 && !window.confirm(`미작성 학생 ${counts["미작성"]}명, 작성중 학생 ${counts["작성중"]}명이 있습니다.\n작성완료 ${counts["작성완료"]}명의 통지서를 하나의 PDF로 다운로드할까요?`)) return;
     setBusy(true); setError("");
     try {
       const response = await request(user, `${API}/pdf`, { method: "POST", body: JSON.stringify({ year: common.year, quarter: common.quarter, revision, mode, studentId: student?.id, studentIds: rows.map((s) => s.id) }) });
@@ -171,7 +171,7 @@ export default function HaneulbitReports() {
       if (mode === "preview") { closePreview(); previewRef.current = url; setPreview({ url, name: student!.name }); }
       else {
         const anchor = document.createElement("a"); anchor.href = url;
-        anchor.download = mode === "all" ? `하늘빛초_${REPORT_PROGRAM}_${common.year}년${common.quarter}분기.zip` : reportFilename(common, evaluations[student!.id].student);
+        anchor.download = mode === "all" ? `하늘빛초_${REPORT_PROGRAM}_${common.year}년${common.quarter}분기_전체.pdf` : reportFilename(common, evaluations[student!.id].student);
         document.body.appendChild(anchor); anchor.click(); anchor.remove();
         window.setTimeout(() => URL.revokeObjectURL(url), 60000);
       }
@@ -216,7 +216,7 @@ export default function HaneulbitReports() {
       </fieldset>
       <div className="sticky top-0 z-10 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <p aria-live="polite" className="text-sm font-bold text-slate-700">전체 {rows.length}명 / 작성완료 {counts["작성완료"]}명 / 작성중 {counts["작성중"]}명 / 미작성 {counts["미작성"]}명</p>
-        <div className="flex flex-wrap gap-2"><button disabled={busy || !dirty} onClick={() => void save()} className="min-h-11 rounded-xl bg-indigo-600 px-5 py-2 text-sm font-black text-white disabled:opacity-40">{busy ? "처리 중…" : dirty ? "변경사항 저장" : "저장됨"}</button><button disabled={busy || dirty || !templateReady || !counts["작성완료"]} onClick={() => void exportPdf("all")} className={buttonStyle}>전체 PDF 다운로드</button></div>
+        <div className="flex flex-wrap gap-2"><button disabled={busy || !dirty} onClick={() => void save()} className="min-h-11 rounded-xl bg-indigo-600 px-5 py-2 text-sm font-black text-white disabled:opacity-40">{busy ? "처리 중…" : dirty ? "변경사항 저장" : "저장됨"}</button><button disabled={busy || dirty || !templateReady || !counts["작성완료"]} onClick={() => void exportPdf("all")} className={buttonStyle}>전체 통합 PDF 다운로드</button></div>
       </div>
       {dirty && <p className="mt-2 text-sm font-bold text-amber-800">저장하지 않은 변경사항이 있습니다. 저장한 뒤 미리보기·다운로드할 수 있습니다.</p>}
       {!templateReady && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">학교 원본 양식을 확인한 뒤 PDF 기능을 사용할 수 있습니다. 평가 내용은 먼저 작성하고 저장할 수 있습니다.</p>}
