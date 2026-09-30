@@ -177,6 +177,45 @@ for filename in sys.argv[1:]:
   assert all('ReportSymbols' in char['fontname'] for char in chars), (filename,symbol,[char['fontname'] for char in chars])
 `, file, oldFile]);
     if (process.env.REPORT_VERIFY_OUTPUT) fs.copyFileSync(oldFile,process.env.REPORT_VERIFY_OUTPUT.replace(/\.pdf$/, '-q2.pdf'));
+    // Exercise a full class: one A4 page per student, in input order, with
+    // each student's fitted comment and the same original form coordinates.
+    const batchEntries = Array.from({length:22}, (_, i) => ({...ready, student:{...student, id:`batch-${i}`, name:`시험학생${i+1}`}, comment:`${i+1}번 학생의 개별 시험 의견`}));
+    const combined = await pdf.renderReportPdfs(common, batchEntries, {combined:true});
+    assert.equal(combined.length, 1);
+    const combinedFile=path.join(temp,'combined.pdf'); fs.writeFileSync(combinedFile,combined[0]);
+    execFileSync('python3', ['-c', `import sys,json,pdfplumber
+entries=json.loads(sys.argv[2])
+with pdfplumber.open(sys.argv[1]) as pdf:
+ assert len(pdf.pages)==len(entries), len(pdf.pages)
+ with pdfplumber.open(sys.argv[3]) as original:
+  original_marks=[c for c in original.pages[0].chars if c['text']=='✓']
+ for page,entry in zip(pdf.pages,entries):
+  text=page.extract_text()
+  assert entry['student']['name'] in text, text
+  assert entry['comment'] in text, text
+  assert sum(e['comment'] in text.splitlines() for e in entries)==1, text
+  assert abs(page.width-595.28)<1 and abs(page.height-841.89)<1
+  for symbol,count in {'✓':4,'□':5,'◈':2,'※':1}.items():
+   chars=[c for c in page.chars if c['text']==symbol]
+   assert len(chars)==count, (page.page_number,symbol,len(chars))
+   assert all('ReportSymbols' in c['fontname'] for c in chars)
+  marks=[c for c in page.chars if c['text']=='✓']
+  for mark,original_mark in zip(marks,original_marks):
+   assert abs(mark['top']-original_mark['top'])<1 and abs(mark['x0']-original_mark['x0'])<1, (page.page_number,mark)
+`, combinedFile, JSON.stringify(batchEntries), file]);
+    const combinedOldFile=path.join(temp,'combined-q2.pdf');
+    fs.writeFileSync(combinedOldFile,(await pdf.renderReportPdfs(oldCommon,batchEntries.slice(0,2),{combined:true}))[0]);
+    execFileSync('python3',['-c',`import sys,pdfplumber
+with pdfplumber.open(sys.argv[1]) as pdf:
+ assert len(pdf.pages)==2
+ for i,page in enumerate(pdf.pages):
+  text=page.extract_text()
+  assert '시험학생'+str(i+1) in text and '2분기' in text and '무더웠던 여름' in text
+`,combinedOldFile]);
+    if(process.env.REPORT_VERIFY_OUTPUT) {
+      fs.copyFileSync(combinedFile,process.env.REPORT_VERIFY_OUTPUT.replace(/\.pdf$/, '-combined.pdf'));
+      fs.copyFileSync(combinedOldFile,process.env.REPORT_VERIFY_OUTPUT.replace(/\.pdf$/, '-combined-q2.pdf'));
+    }
     const actualZip = load('lib/reportZip.ts').makeReportZip(generated.map((data, i) => ({name: collision[i], data})));
     fs.writeFileSync(path.join(temp, 'actual.zip'), actualZip);
     execFileSync('python3', ['-c', 'import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; assert all(z.read(n).startswith(b"%PDF") for n in z.namelist())', path.join(temp, 'actual.zip')]);
@@ -213,16 +252,35 @@ for i,w in enumerate(widths):
     const individual=await send({...exportBody,mode:'download'});
     assert.equal(individual.status,200); assert.match(individual.headers.get('Content-Disposition'),/^attachment/);
     const all=await send({...exportBody,mode:'all',studentIds:['active','alias']});
-    assert.equal(all.status,200); assert.equal(all.headers.get('Content-Type'),'application/zip');
-    fs.writeFileSync(path.join(temp,'api.zip'),Buffer.from(await all.arrayBuffer()));
-    execFileSync('python3',['-c','import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); assert len(z.namelist())==1; assert z.testzip() is None; assert z.read(z.namelist()[0]).startswith(b"%PDF")',path.join(temp,'api.zip')]);
+    assert.equal(all.status,200); assert.equal(all.headers.get('Content-Type'),'application/pdf');
+    assert.match(decodeURIComponent(all.headers.get('Content-Disposition')), /_전체\.pdf$/);
+    const apiFile=path.join(temp,'api-combined.pdf');
+    fs.writeFileSync(apiFile,Buffer.from(await all.arrayBuffer()));
+    assert.match(execFileSync('pdfinfo',[apiFile],{encoding:'utf8'}), /Pages:\s+1/);
+    const activeSnapshot=(await server.loadReportPeriod('2026-Q3')).evaluations.active;
+    documents.set('haneulbit_result_reports/2026-Q3/evaluations/alias', {...activeSnapshot,student:roster[0],comment:'두 번째 학생만의 개별 의견'});
+    documents.set('haneulbit_result_reports/2026-Q3/evaluations/incomplete', {...activeSnapshot,student:{...student,id:'incomplete',name:'작성중시험학생'},comment:''});
+    const batchResponse=await send({...exportBody,mode:'all',studentIds:['alias','incomplete','active','alias','missing']});
+    assert.equal(batchResponse.status,200);
+    fs.writeFileSync(apiFile,Buffer.from(await batchResponse.arrayBuffer()));
+    execFileSync('python3',['-c',`import sys,pdfplumber
+with pdfplumber.open(sys.argv[1]) as pdf:
+ assert len(pdf.pages)==2
+ first,second=[p.extract_text() for p in pdf.pages]
+ assert '동명이인' in first and '두 번째 학생만의 개별 의견' in first
+ assert '수정된이름' in second and '교사가 직접 입력한 시험용 의견' in second
+ assert '교사가 직접 입력한 시험용 의견' not in first and '두 번째 학생만의 개별 의견' not in second
+ assert '작성중시험학생' not in first+second
+`,apiFile]);
+    if(process.env.REPORT_VERIFY_OUTPUT) fs.copyFileSync(apiFile,process.env.REPORT_VERIFY_OUTPUT.replace(/\.pdf$/, '-api-combined.pdf'));
+    assert.equal((await send({...exportBody,mode:'all',studentIds:['incomplete','missing']})).status,400);
     assert.equal((await send({...exportBody,revision:1,mode:'download'})).status,409);
     fs.unlinkSync(path.join(fixtureRoot, 'templates/haneulbit/result-report-2026-q3.html'));
     assert.equal(await pdf.reportTemplateReady({...common, quarter:2}),true);
     assert.equal(await pdf.reportTemplateReady(common), false);
     await assert.rejects(pdf.renderReportPdfs(common, [{...ready, student}]), /report_template_missing/);
   } finally { process.chdir(originalCwd); }
-  console.log(JSON.stringify({ passed: true, database: 'isolated in-memory fixture, NOT production', checked: ['school filtering and field mapping', 'required fields and status', 'invalid dates and ratings', 'save/reload', 'revision conflict', 'quarter isolation', 'live roster changes and archived snapshots', 'no writes to student collections', 'UTF-8 ZIP and duplicate names', 'missing-original PDF gate', 'real PDF rendering with school original template', 'Korean PDF text and four checkmarks', 'single A4 page', 'new autumn form and source dates', 'historical quarter retains old summer form and saved dates', 'all five check positions against original cell coordinates', 'authenticated preview, individual PDF and completed-only ZIP API responses', 'long-comment overflow rejection'], productionRosterVerified: false, originalPdfVerified: true }, null, 2));
+  console.log(JSON.stringify({ passed: true, database: 'isolated in-memory fixture, NOT production', checked: ['school filtering and field mapping', 'required fields and status', 'invalid dates and ratings', 'save/reload', 'revision conflict', 'quarter isolation', 'live roster changes and archived snapshots', 'no writes to student collections', 'UTF-8 ZIP utility and duplicate names', 'missing-original PDF gate', 'real PDF rendering with school original template', 'Korean PDF text and embedded symbol glyphs', 'single A4 page', 'new autumn form and source dates', 'historical quarter retains old summer form and saved dates', 'all five check positions against original cell coordinates', '22-student combined PDF with ordered A4 pages and isolated comments', 'Q2 combined PDF preserves historical form', 'authenticated preview, individual PDF and completed-only combined PDF API responses', 'duplicate and unknown IDs excluded; caller order preserved', 'long-comment overflow rejection'], productionRosterVerified: false, originalPdfVerified: true }, null, 2));
   fs.rmSync(temp, { recursive: true, force: true });
 }
 main().catch((e) => { console.error(e); process.exitCode = 1; });
