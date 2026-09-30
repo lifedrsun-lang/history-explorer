@@ -6,8 +6,8 @@ import { auth } from "@/lib/firebase";
 import { EVALUATION_FIELDS, EVALUATION_LEVELS, REPORT_PROGRAM, emptyEvaluation, evaluationStatus, reportFilename, type EvaluationField, type EvaluationLevel, type ReportCommon, type ReportData, type ReportEvaluation, type ReportPeriod, type ReportStudent, type SavedEvaluation } from "@/lib/haneulbitReports";
 
 const API = "/api/teacher/haneulbit-reports";
-const inputStyle = "w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-indigo-500 disabled:opacity-50";
-const buttonStyle = "min-h-11 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40";
+const inputStyle = "min-w-0 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-indigo-500 disabled:opacity-50";
+const buttonStyle = "shrink-0 whitespace-nowrap min-h-11 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40";
 const shortLevels = ["매우우수", "우수", "보통", "약간부족", "부족"];
 function defaultCommon(): ReportCommon {
   const today = new Date();
@@ -196,7 +196,7 @@ export default function HaneulbitReports() {
       </fieldset>
       <fieldset disabled={busy} className="mt-4 rounded-[28px] border border-indigo-100 bg-indigo-50 p-5"><legend className="sr-only">일괄 평가</legend>
         <h2 className="text-lg font-black text-indigo-950">항목별 일괄 평가</h2><p className="mt-1 text-sm font-bold text-indigo-800">현재 수강생 전체에 적용합니다. 개별 수정값도 덮어씁니다.</p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{EVALUATION_FIELDS.map(({ key, short }) => <div key={key} className="flex items-center gap-2"><label className="text-sm font-bold text-indigo-950">{short}</label><select aria-label={`전체 ${short} 평가`} value={bulk[key] || ""} onChange={(e) => setBulk((b) => ({ ...b, [key]: e.target.value as EvaluationLevel }))} className={inputStyle}><option value="">평가 선택</option>{EVALUATION_LEVELS.map((level) => <option key={level}>{level}</option>)}</select><button className={buttonStyle} disabled={!bulk[key] || !students.length} onClick={() => applyBulk(key)}>적용</button></div>)}</div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{EVALUATION_FIELDS.map(({ key, short }) => <div key={key} className="flex items-center gap-2"><label className="shrink-0 whitespace-nowrap text-sm font-bold text-indigo-950">{short}</label><select aria-label={`전체 ${short} 평가`} value={bulk[key] || ""} onChange={(e) => setBulk((b) => ({ ...b, [key]: e.target.value as EvaluationLevel }))} className={inputStyle}><option value="">평가 선택</option>{EVALUATION_LEVELS.map((level) => <option key={level}>{level}</option>)}</select><button className={buttonStyle} disabled={!bulk[key] || !students.length} onClick={() => applyBulk(key)}>적용</button></div>)}</div>
       </fieldset>
       <div className="sticky top-0 z-10 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <p aria-live="polite" className="text-sm font-bold text-slate-700">전체 {rows.length}명 / 작성완료 {counts["작성완료"]}명 / 작성중 {counts["작성중"]}명 / 미작성 {counts["미작성"]}명</p>
