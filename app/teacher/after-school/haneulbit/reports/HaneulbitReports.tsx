@@ -191,7 +191,7 @@ export default function HaneulbitReports() {
           <label className="text-sm font-bold text-slate-700">교육기간 시작일 *<input type="date" value={common.startDate} onChange={(e) => changeCommon("startDate", e.target.value)} className={`${inputStyle} mt-1`} /></label>
           <label className="text-sm font-bold text-slate-700">교육기간 종료일 *<input type="date" value={common.endDate} onChange={(e) => changeCommon("endDate", e.target.value)} className={`${inputStyle} mt-1`} /></label>
           <label className="text-sm font-bold text-slate-700">지도강사명 *<input maxLength={100} value={common.instructor} onChange={(e) => changeCommon("instructor", e.target.value)} className={`${inputStyle} mt-1`} /></label>
-          <label className="text-sm font-bold text-slate-700 sm:col-span-3">학습 활동 내용 *<textarea rows={3} maxLength={5000} value={common.activities} onChange={(e) => changeCommon("activities", e.target.value)} className={`${inputStyle} mt-1 resize-y`} /></label>
+          <label className="text-sm font-bold text-slate-700 sm:col-span-3">학습 활동 내용 *<textarea rows={3} maxLength={5000} value={common.activities} onChange={(e) => changeCommon("activities", e.target.value)} className={`${inputStyle} mt-1 resize-y`} /><span className="mt-1 block text-xs font-normal text-slate-500">활동별로 줄바꿈하면 원본의 12개 활동 칸에 순서대로 배치됩니다. 칸보다 긴 내용은 다음 칸으로 이어집니다.</span></label>
         </div>
       </fieldset>
       <fieldset disabled={busy} className="mt-4 rounded-[28px] border border-indigo-100 bg-indigo-50 p-5"><legend className="sr-only">일괄 평가</legend>

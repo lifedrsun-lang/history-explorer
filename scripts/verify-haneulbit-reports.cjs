@@ -28,7 +28,7 @@ function load(filename) {
   const resolve = (name) => {
     if (name === 'server-only') return {};
     if (name === '@/lib/firebaseAdmin') return { getFirebaseAdmin: () => ({ db }) };
-    if (name === '@/lib/assignmentServer') return { serializeDate: (v) => v || null, jsonError: () => {}, handleRouteError: () => {} };
+    if (name === '@/lib/assignmentServer') return { serializeDate: (v) => v || null, jsonError: (error, status, code) => Response.json({error,code},{status}), handleRouteError: () => Response.json({error:'unexpected'}, {status:500}), verifyTeacherRequest: async (request) => { if(request.headers.get('Authorization') !== 'Bearer fixture-teacher') throw new Error('teacher_auth_required'); return {uid:'fixture-teacher'}; } };
     if (name === 'firebase-admin/firestore') return { FieldValue: { serverTimestamp: () => 'fixture timestamp' } };
     if (name.startsWith('@/')) return load(`${name.slice(2)}.ts`);
     return require(name);
@@ -88,23 +88,13 @@ async function main() {
   fs.writeFileSync(path.join(temp, 'test.zip'), zip);
   execFileSync('python3', ['-c', 'import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; assert len(z.namelist())==2; assert all("동명이인" in n for n in z.namelist()); assert z.read(z.namelist()[0])==b"%PDF-test1"', path.join(temp, 'test.zip')]);
   const pdf = load('lib/haneulbitReportPdfServer.ts');
-  assert.equal(await pdf.reportTemplateReady(), false);
-  await assert.rejects(pdf.renderReportPdfs(common, [{ ...ready, student }]), /report_template_missing/);
-  // Exercise the actual PDF engine with an explicitly synthetic template.
-  // This cannot verify the missing school's original design or check positions.
+  assert.equal(await pdf.reportTemplateReady(), true);
+  assert.equal(pdf.reportPeriodText('2026-05-26', '2026-08-14'), '2026년 5월 26일 ~ 8월 14일');
   const fixtureRoot = path.join(temp, 'pdf-fixture');
   fs.mkdirSync(path.join(fixtureRoot, 'templates/haneulbit'), { recursive: true });
   fs.mkdirSync(path.join(fixtureRoot, 'public/fonts'), { recursive: true });
   for (const weight of [400, 700]) fs.copyFileSync(path.join(root, `public/fonts/noto-sans-kr-${weight}.woff2`), path.join(fixtureRoot, `public/fonts/noto-sans-kr-${weight}.woff2`));
-  const template = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><style>
-    @page { size: A4; margin: 0; } @font-face { font-family:Noto; src:url('{{fontRegular}}'); font-weight:400; }
-    @font-face { font-family:Noto; src:url('{{fontBold}}'); font-weight:700; }
-    body { margin:20mm; font:14px Noto; } table { width:100%; border-collapse:collapse; } td { border:1px solid black; padding:8px; }
-    [data-report-fit] { width:170mm; height:35mm; white-space:pre-wrap; overflow-wrap:anywhere; }
-    </style></head><body><h1>시험용 양식 · {{program}}</h1><p>{{period}} / {{grade}} / {{schoolClass}} / {{name}}</p>
-    <div data-report-fit="activities">{{activities}}</div><table>${h.EVALUATION_FIELDS.map(({key,label}) => `<tr><td>${label}</td>${h.EVALUATION_LEVELS.map((level,i) => `<td>${level} {{${key}.${i}}}</td>`).join('')}</tr>`).join('')}</table>
-    <div data-report-fit="comment">{{comment}}</div><p>{{instructor}}</p></body></html>`;
-  fs.writeFileSync(path.join(fixtureRoot, 'templates/haneulbit/result-report.html'), template);
+  fs.copyFileSync(path.join(root, 'templates/haneulbit/result-report.html'), path.join(fixtureRoot, 'templates/haneulbit/result-report.html'));
   const originalCwd = process.cwd();
   try {
     process.chdir(fixtureRoot);
@@ -113,16 +103,57 @@ async function main() {
     assert.equal(generated.length, 2);
     assert.ok(generated.every((buffer) => buffer.subarray(0, 4).toString() === '%PDF'));
     const file = path.join(temp, 'fixture.pdf'); fs.writeFileSync(file, generated[0]);
+    if (process.env.REPORT_VERIFY_OUTPUT) fs.copyFileSync(file, process.env.REPORT_VERIFY_OUTPUT);
     const extracted = execFileSync('pdftotext', [file, '-'], { encoding: 'utf8' });
     assert.ok(extracted.includes('역사논술탐험'));
     assert.ok(extracted.includes(student.name));
     assert.ok(extracted.includes(ready.comment));
+    assert.ok(extracted.includes('3분기'));
+    assert.ok(!extracted.includes('2분기'));
+    const actualZip = load('lib/reportZip.ts').makeReportZip(generated.map((data, i) => ({name: collision[i], data})));
+    fs.writeFileSync(path.join(temp, 'actual.zip'), actualZip);
+    execFileSync('python3', ['-c', 'import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; assert all(z.read(n).startswith(b"%PDF") for n in z.namelist())', path.join(temp, 'actual.zip')]);
     assert.equal((extracted.match(/✓/g) || []).length, 4);
     const info = execFileSync('pdfinfo', [file], { encoding: 'utf8' });
     assert.match(info, /Pages:\s+1/);
     await assert.rejects(pdf.renderReportPdfs(common, [{ ...ready, comment: '긴 의견\n'.repeat(700), student }]), /report_text_overflow/);
+    await assert.rejects(pdf.renderReportPdfs({...common, activities: '아주 긴 활동 내용'.repeat(700)}, [{...ready, student}]), /report_text_overflow/);
+    // Compare each checkmark's PDF coordinates with the HWPX rating cells.
+    const positions = await pdf.renderReportPdfs(common, h.EVALUATION_LEVELS.map((level) => ({...ready, ...Object.fromEntries(h.EVALUATION_FIELDS.map(({key}) => [key,level])),student})));
+    positions.forEach((buffer,i) => fs.writeFileSync(path.join(temp, `position-${i}.pdf`), buffer));
+    execFileSync('python3', ['-c', `import sys,pdfplumber
+from pathlib import Path
+widths=[6111,5828,5262,5263,5552]
+for i,w in enumerate(widths):
+ p=pdfplumber.open(str(Path(sys.argv[1])/('position-%d.pdf'%i))).pages[0]
+ marks=[c for c in p.chars if c['text']=='✓']
+ assert len(marks)==4
+ left=16.5*72/25.4+(22150+sum(widths[:i]))/100
+ right=left+w/100
+ for c in marks: assert left<c['x0']<c['x1']<right, (i,c)
+ for r,c in enumerate(sorted(marks,key=lambda c:c['top'])):
+  top=10.5*72/25.4+(6596+4221+4221+1163+14800+4050+9669+3060*(r+1))/100
+  assert top<c['top']<c['bottom']<top+30.6, (r,c,top)
+`, temp]);
+    const route = load('app/api/teacher/haneulbit-reports/pdf/route.ts');
+    const send = (body, authorized=true) => route.POST(new Request('https://fixture.local/api/teacher/haneulbit-reports/pdf', {method:'POST', headers:{'Content-Type':'application/json',...(authorized?{Authorization:'Bearer fixture-teacher'}:{})}, body:JSON.stringify(body)}));
+    const exportBody={year:2026,quarter:3,revision:2,studentId:'active'};
+    assert.equal((await send({...exportBody,mode:'preview'},false)).status,401);
+    const preview=await send({...exportBody,mode:'preview'});
+    assert.equal(preview.status,200); assert.equal(preview.headers.get('Content-Type'),'application/pdf'); assert.match(preview.headers.get('Content-Disposition'),/^inline/);
+    assert.equal(Buffer.from(await preview.arrayBuffer()).subarray(0,4).toString(),'%PDF');
+    const individual=await send({...exportBody,mode:'download'});
+    assert.equal(individual.status,200); assert.match(individual.headers.get('Content-Disposition'),/^attachment/);
+    const all=await send({...exportBody,mode:'all',studentIds:['active','alias']});
+    assert.equal(all.status,200); assert.equal(all.headers.get('Content-Type'),'application/zip');
+    fs.writeFileSync(path.join(temp,'api.zip'),Buffer.from(await all.arrayBuffer()));
+    execFileSync('python3',['-c','import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); assert len(z.namelist())==1; assert z.testzip() is None; assert z.read(z.namelist()[0]).startswith(b"%PDF")',path.join(temp,'api.zip')]);
+    assert.equal((await send({...exportBody,revision:1,mode:'download'})).status,409);
+    fs.unlinkSync(path.join(fixtureRoot, 'templates/haneulbit/result-report.html'));
+    assert.equal(await pdf.reportTemplateReady(), false);
+    await assert.rejects(pdf.renderReportPdfs(common, [{...ready, student}]), /report_template_missing/);
   } finally { process.chdir(originalCwd); }
-  console.log(JSON.stringify({ passed: true, database: 'isolated in-memory fixture, NOT production', checked: ['school filtering and field mapping', 'required fields and status', 'invalid dates and ratings', 'save/reload', 'revision conflict', 'quarter isolation', 'live roster changes and archived snapshots', 'no writes to student collections', 'UTF-8 ZIP and duplicate names', 'missing-original PDF gate', 'real PDF rendering with synthetic fixture', 'Korean PDF text and four checkmarks', 'single A4 page', 'long-comment overflow rejection'], productionRosterVerified: false, originalPdfVerified: false }, null, 2));
+  console.log(JSON.stringify({ passed: true, database: 'isolated in-memory fixture, NOT production', checked: ['school filtering and field mapping', 'required fields and status', 'invalid dates and ratings', 'save/reload', 'revision conflict', 'quarter isolation', 'live roster changes and archived snapshots', 'no writes to student collections', 'UTF-8 ZIP and duplicate names', 'missing-original PDF gate', 'real PDF rendering with school original template', 'Korean PDF text and four checkmarks', 'single A4 page', 'all five check positions against original cell coordinates', 'authenticated preview, individual PDF and completed-only ZIP API responses', 'long-comment overflow rejection'], productionRosterVerified: false, originalPdfVerified: true }, null, 2));
   fs.rmSync(temp, { recursive: true, force: true });
 }
 main().catch((e) => { console.error(e); process.exitCode = 1; });

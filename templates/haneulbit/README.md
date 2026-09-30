@@ -1,15 +1,13 @@
-# School original required before publication
+# 하늘빛초 원본 양식
 
-The referenced `2026 2분기 교육활동 결과통지서 (과목명)_2026_09_30_10_07_44.hwpx` was not attached to this turn and was not found in accessible Library search/list results. Do not invent its notice, wording, geometry, or rating-grid coordinates.
+`result-report.html`은 제공된 `2026 2분기 교육활동 결과통지서 (과목명)_2026_09_30_10_07_44.hwpx`의 첫 번째 표를 XML 치수와 미리보기 이미지에 따라 재현한다. 원본에는 동일한 표 10개가 있으며 학생마다 첫 표 한 장을 출력한다.
 
-Once the original is supplied, inspect its XML and visual preview, retain the original as an internal source asset, and reproduce its verified page in `result-report.html`. Use A4 `@page` with zero margins and embed all artwork as data URLs. Preserve the original notice, wording, five rating columns, table geometry, and instructor line. Do not fetch any external resources.
+원본 SHA-256: `7c2a5301a888ccc09c70ef2bfc722f63ff4031f9c7ae772ecf7ca337737f0e23`.
 
-Supported escaped text tokens: `{{program}}`, `{{period}}`, `{{grade}}`, `{{schoolClass}}`, `{{name}}`, `{{activities}}`, `{{comment}}`, `{{instructor}}`.
+A4, 왼쪽 16.5mm, 위 10.5mm, 표 너비 50168/7200인치. 원본 로고 GIF를 내장하고 안내문, 12칸 활동 표, 5단계 평가 표, 종합의견 영역, 하단 안내문을 유지한다. 사용자가 선택한 정책에 따라 안내문의 분기 숫자만 현재 분기로 바꾼다. 원본의 여름 문구는 유지한다.
 
-Embedded-font tokens: `{{fontRegular}}`, `{{fontBold}}`.
+원본 HY헤드라인M/맑은 고딕은 서버에 제공되지 않아 기존 Sun Lab의 Noto Sans KR 폰트를 내장한다. 따라서 글꼴 모양과 일부 줄바꿈은 원본과 차이가 있다. 표 치수와 내용은 원본 기준이다.
 
-Each evaluation cell uses `{{readiness.0}}` through `.4`, and likewise `participation`, `concentration`, `completion`. Indices correspond exactly to `매우 우수함`, `우수함`, `보통임`, `약간 부족함`, `부족함`. A selected cell contains `✓`; others are empty. Verify the original's column order when placing these tokens.
+텍스트 토큰: program, period, grade, schoolClass, name, quarter, comment, instructor. 폰트 토큰: fontRegular, fontBold. 평가 토큰: readiness/participation/concentration/completion 각각 .0~.4, 매우 우수함→부족함 순서. 선택 칸에는 ✓를 표시한다.
 
-The original's bounded text regions must have `data-report-fit="activities"` and `data-report-fit="comment"`, fixed dimensions, and `white-space: pre-wrap; overflow-wrap: anywhere`. Renderer decreases font size no lower than 11 px and rejects overflow rather than cutting off text. Inspect short/long text and all five rating positions against the supplied original using the PDF skill.
-
-Without a verified template, API returns 503 and editor visibly disables preview/download. Evaluation saving remains available. This is an explicit incomplete implementation, not a substituted school form.
+활동 내용은 `data-activity-cell="0"`~`"11"`에 순서대로 배치한다. 명시적 줄바꿈은 다음 칸을 시작하고 긴 내용은 다음 칸으로 이어진다. 원문을 생성·요약·삭제하지 않는다. 영역에 맞지 않으면 11px까지 축소한 뒤 422 오류로 반환한다. 종합의견과 학생 정보·안내문도 영역 초과를 검증한다. 외부 요청은 차단한다.

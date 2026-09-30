@@ -15,9 +15,9 @@ async function readTemplate() {
   }
   // The template is a developer-maintained reproduction of the supplied original,
   // never a layout created from assumptions. All original wording stays in it.
-  const tokens = ["program", "period", "grade", "schoolClass", "name", "activities", "comment", "instructor", "fontRegular", "fontBold", ...EVALUATION_FIELDS.flatMap(({ key }) => EVALUATION_LEVELS.map((_, i) => `${key}.${i}`))];
+  const tokens = ["program", "period", "grade", "schoolClass", "name", "quarter", "comment", "instructor", "fontRegular", "fontBold", ...EVALUATION_FIELDS.flatMap(({ key }) => EVALUATION_LEVELS.map((_, i) => `${key}.${i}`))];
   if (tokens.some((token) => !template.includes(`{{${token}}}`))) throw new Error("report_template_missing");
-  if (!template.includes('data-report-fit="activities"') || !template.includes('data-report-fit="comment"')) throw new Error("report_template_missing");
+  if (!template.includes('data-activity-cell="11"') || !template.includes('data-report-fit="comment"')) throw new Error("report_template_missing");
   return template;
 }
 export async function reportTemplateReady() {
@@ -25,6 +25,11 @@ export async function reportTemplateReady() {
   catch (error) { if ((error as Error).message === "report_template_missing") return false; throw error; }
 }
 const escape = (value: string) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+export function reportPeriodText(start: string, end: string) {
+  const [sy, sm, sd] = start.split("-").map(Number);
+  const [ey, em, ed] = end.split("-").map(Number);
+  return `${sy}년 ${sm}월 ${sd}일 ~ ${sy === ey ? "" : `${ey}년 `}${em}월 ${ed}일`;
+}
 export async function renderReportPdfs(common: ReportCommon, entries: SavedEvaluation[]): Promise<Buffer[]> {
   const [template, regular, bold] = await Promise.all([
     readTemplate(),
@@ -41,9 +46,9 @@ export async function renderReportPdfs(common: ReportCommon, entries: SavedEvalu
     const files: Buffer[] = [];
     for (const entry of entries) {
       const replacements: Record<string, string> = {
-        program: REPORT_PROGRAM, period: `${common.startDate} ~ ${common.endDate}`,
-        grade: entry.student.grade, schoolClass: entry.student.schoolClass, name: entry.student.name,
-        activities: common.activities, comment: entry.comment, instructor: common.instructor,
+        program: REPORT_PROGRAM, period: reportPeriodText(common.startDate, common.endDate), quarter: String(common.quarter),
+        grade: entry.student.grade.replace(/학년\s*$/, "").trim(), schoolClass: entry.student.schoolClass.replace(/반\s*$/, "").trim(), name: entry.student.name,
+        comment: entry.comment, instructor: common.instructor,
         fontRegular: `data:font/woff2;base64,${regular.toString("base64")}`,
         fontBold: `data:font/woff2;base64,${bold.toString("base64")}`,
       };
@@ -51,6 +56,29 @@ export async function renderReportPdfs(common: ReportCommon, entries: SavedEvalu
       const html = template.replace(/\{\{([\w.]+)\}\}/g, (_, key: string) => escape(replacements[key] || ""));
       await page.setContent(html, { waitUntil: "load" });
       await page.evaluate(async () => { await document.fonts.ready; });
+      // Preserve all teacher-entered text while flowing it through the original
+      // twelve bounded activity cells. Explicit newlines start a new cell.
+      const activitiesFit = await page.evaluate((text) => {
+        const cells = Array.from(document.querySelectorAll<HTMLElement>("[data-activity-cell]"));
+        for (const size of [13.33, 12.5, 12, 11.5, 11]) {
+          cells.forEach((cell) => { cell.textContent = ""; cell.style.fontSize = `${size}px`; });
+          let index = 0;
+          for (const char of Array.from(text.replaceAll("\r\n", "\n"))) {
+            if (char === "\n") { index++; continue; }
+            if (!cells[index]) return false;
+            const cell = cells[index]; const previous = cell.textContent || "";
+            cell.textContent = previous + char;
+            if (cell.scrollHeight > cell.clientHeight + 1 || cell.scrollWidth > cell.clientWidth + 1) {
+              cell.textContent = previous; index++;
+              if (!cells[index]) break;
+              cells[index].textContent = char;
+            }
+          }
+          if (index < cells.length) return true;
+        }
+        return false;
+      }, common.activities);
+      if (!activitiesFit) throw new Error("report_text_overflow");
       const fits = await page.evaluate(() => {
         for (const element of Array.from(document.querySelectorAll<HTMLElement>("[data-report-fit]"))) {
           let size = parseFloat(getComputedStyle(element).fontSize);
