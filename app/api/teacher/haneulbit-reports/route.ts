@@ -9,10 +9,11 @@ export async function GET(request: Request) {
   try {
     await verifyTeacherRequest(request);
     const url = new URL(request.url);
-    const id = reportPeriodId(Number(url.searchParams.get("year")), Number(url.searchParams.get("quarter")));
+    const year = Number(url.searchParams.get("year")), quarter = Number(url.searchParams.get("quarter"));
+    const id = reportPeriodId(year, quarter);
     const { db } = getFirebaseAdmin();
     const [students, saved, periods, templateReady] = await Promise.all([
-      loadReportStudents(), loadReportPeriod(id), db.collection(REPORT_COLLECTION).get(), reportTemplateReady(),
+      loadReportStudents(), loadReportPeriod(id), db.collection(REPORT_COLLECTION).get(), reportTemplateReady({ year, quarter }),
     ]);
     return Response.json({ students, ...saved, periods: periods.docs.map((d) => serializePeriod(d.id, d.data())).sort((a, b) => b.id.localeCompare(a.id)), templateReady }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) { return reportError(error); }

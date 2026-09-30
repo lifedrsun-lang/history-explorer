@@ -3,7 +3,7 @@ import Link from "next/link";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { auth } from "@/lib/firebase";
-import { EVALUATION_FIELDS, EVALUATION_LEVELS, REPORT_PROGRAM, emptyEvaluation, evaluationStatus, reportFilename, type EvaluationField, type EvaluationLevel, type ReportCommon, type ReportData, type ReportEvaluation, type ReportPeriod, type ReportStudent, type SavedEvaluation } from "@/lib/haneulbitReports";
+import { EVALUATION_FIELDS, EVALUATION_LEVELS, REPORT_PROGRAM, emptyEvaluation, evaluationStatus, newReportCommon, reportFilename, type EvaluationField, type EvaluationLevel, type ReportCommon, type ReportData, type ReportEvaluation, type ReportPeriod, type ReportStudent, type SavedEvaluation } from "@/lib/haneulbitReports";
 
 const API = "/api/teacher/haneulbit-reports";
 const inputStyle = "min-w-0 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-indigo-500 disabled:opacity-50";
@@ -11,7 +11,7 @@ const buttonStyle = "shrink-0 whitespace-nowrap min-h-11 rounded-xl border borde
 const shortLevels = ["매우우수", "우수", "보통", "약간부족", "부족"];
 function defaultCommon(): ReportCommon {
   const today = new Date();
-  return { year: today.getFullYear(), quarter: Math.ceil((today.getMonth() + 1) / 3), startDate: "", endDate: "", activities: "", instructor: "" };
+  return newReportCommon(today.getFullYear(), Math.ceil((today.getMonth() + 1) / 3));
 }
 function Rating({ id, label, value, onChange }: { id: string; label: string; value: EvaluationLevel | ""; onChange: (value: EvaluationLevel) => void }) {
   return <fieldset className="grid grid-cols-5 gap-1"><legend className="sr-only">{label}</legend>{EVALUATION_LEVELS.map((level, index) => <label key={level} title={level} className="cursor-pointer">
@@ -55,7 +55,7 @@ export default function HaneulbitReports() {
       const data = await response.json() as ReportData & { error?: string };
       if (!response.ok) throw new Error(data.error || "결과통지서를 불러오지 못했습니다.");
       if (sequence !== requestSequence.current) return;
-      setCommon(data.period || { year, quarter, startDate: "", endDate: "", activities: "", instructor: "" });
+      setCommon(data.period || newReportCommon(year, quarter));
       setTarget({ year, quarter }); setStudents(data.students); setPeriods(data.periods);
       setEvaluations(data.evaluations); setRevision(data.period?.revision || 0); setTemplateReady(data.templateReady);
       setDirty(false); changed.current.clear(); setFilter("all"); setIncludeArchived(false); setBulk({});

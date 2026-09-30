@@ -16,6 +16,11 @@ export type SavedEvaluation = ReportEvaluation & { student: ReportStudent };
 export type ReportPeriod = ReportCommon & { id: string; revision: number; updatedAt: string | null };
 export type ReportData = { students: ReportStudent[]; periods: ReportPeriod[]; period: ReportPeriod | null; evaluations: Record<string, SavedEvaluation>; templateReady: boolean };
 export const emptyEvaluation = (): ReportEvaluation => ({ readiness: "", participation: "", concentration: "", completion: "", comment: "" });
+export function newReportCommon(year: number, quarter: number): ReportCommon {
+  // Only the newly supplied quarter has known source dates. Saved dates always win.
+  const suppliedQuarter = year === 2026 && quarter === 3;
+  return { year, quarter, startDate: suppliedQuarter ? "2026-08-18" : "", endDate: suppliedQuarter ? "2026-11-06" : "", activities: "", instructor: "" };
+}
 export function reportPeriodId(year: number, quarter: number) {
   if (!Number.isInteger(year) || year < 2000 || year > 2100 || !Number.isInteger(quarter) || quarter < 1 || quarter > 4) throw new Error("invalid_period");
   return `${year}-Q${quarter}`;

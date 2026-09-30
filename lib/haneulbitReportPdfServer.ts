@@ -5,10 +5,14 @@ import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
 import { EVALUATION_FIELDS, EVALUATION_LEVELS, REPORT_PROGRAM, type ReportCommon, type SavedEvaluation } from "@/lib/haneulbitReports";
 
-const templatePath = () => path.join(process.cwd(), "templates", "haneulbit", "result-report.html");
-async function readTemplate() {
+// Keep historical quarters on their supplied form when a newer form is added.
+export function reportTemplateFilename(common: Pick<ReportCommon, "year" | "quarter">) {
+  return common.year > 2026 || (common.year === 2026 && common.quarter >= 3)
+    ? "result-report-2026-q3.html" : "result-report.html";
+}
+async function readTemplate(common: Pick<ReportCommon, "year" | "quarter">) {
   let template: string;
-  try { template = await readFile(templatePath(), "utf8"); }
+  try { template = await readFile(path.join(process.cwd(), "templates", "haneulbit", reportTemplateFilename(common)), "utf8"); }
   catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") throw new Error("report_template_missing");
     throw error;
@@ -20,8 +24,8 @@ async function readTemplate() {
   if (!template.includes('data-activity-cell="11"') || !template.includes('data-report-fit="comment"')) throw new Error("report_template_missing");
   return template;
 }
-export async function reportTemplateReady() {
-  try { await readTemplate(); return true; }
+export async function reportTemplateReady(common: Pick<ReportCommon, "year" | "quarter">) {
+  try { await readTemplate(common); return true; }
   catch (error) { if ((error as Error).message === "report_template_missing") return false; throw error; }
 }
 const escape = (value: string) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
@@ -32,7 +36,7 @@ export function reportPeriodText(start: string, end: string) {
 }
 export async function renderReportPdfs(common: ReportCommon, entries: SavedEvaluation[]): Promise<Buffer[]> {
   const [template, regular, bold] = await Promise.all([
-    readTemplate(),
+    readTemplate(common),
     readFile(path.join(process.cwd(), "public/fonts/noto-sans-kr-400.woff2")),
     readFile(path.join(process.cwd(), "public/fonts/noto-sans-kr-700.woff2")),
   ]);
