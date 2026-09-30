@@ -38,8 +38,16 @@ function load(filename) {
 }
 async function main() {
   const h = load('lib/haneulbitReports.ts');
+  const weekly = load('lib/haneulbitReportActivities.ts');
+  const schedule = load('app/student/data/haneulbitSchedule.ts').HANEULBIT_SCHEDULE;
   const server = load('lib/haneulbitReportsServer.ts');
-  const common = { ...h.newReportCommon(2026, 3), activities: '역사 퀴즈와 만들기\n역사 흐름 정리', instructor: '테스트 강사' };
+  const activities = weekly.reportWeeklyActivities({ year: 2026, quarter: 3 });
+  assert.deepEqual(activities.split('\n'), schedule.map((lesson) => lesson.title));
+  assert.equal(activities.split('\n').length, 12);
+  assert.equal(weekly.reportWeeklyActivities({ year: 2026, quarter: 2 }), null);
+  assert.equal(weekly.reportWeeklyActivities({ year: 2026, quarter: 4 }), null);
+  assert.equal(weekly.reportWeeklyActivities({ year: 2027, quarter: 3 }), null);
+  const common = { ...h.newReportCommon(2026, 3), activities, instructor: '테스트 강사' };
   assert.equal(common.startDate, '2026-08-18');
   assert.equal(common.endDate, '2026-11-06');
   assert.equal(h.newReportCommon(2026, 4).startDate, '');
@@ -127,6 +135,20 @@ async function main() {
     assert.ok(extracted.includes('선선한 바람이 불어오는 가을'));
     assert.ok(!extracted.includes('무더웠던 여름'));
     assert.ok(extracted.includes('2026년 8월 18일 ~ 11월 6일'));
+    // Every title must remain in its own original cell, including the long
+    // fifth-week title; no spilling may shift the subsequent eleven weeks.
+    execFileSync('python3', ['-c', String.raw`import json,sys,pdfplumber,re
+p=pdfplumber.open(sys.argv[1]).pages[0]
+titles=json.loads(sys.argv[2])
+norm=lambda s: re.sub(r'\s+', '', s)
+for i,title in enumerate(titles):
+ left=(16.5+36.99933+(i%4)*34.99556)*72/25.4
+ top=(10.5+123.65214+(i//4)*9.37331)*72/25.4
+ right=left+(35.00261 if i%4==3 else 34.99556)*72/25.4
+ bottom=top+9.37331*72/25.4
+ actual=p.crop((left,top,right,bottom)).extract_text() or ''
+ assert norm(actual)==norm(title), (i+1,title,actual)
+`, file, JSON.stringify(schedule.map((lesson) => lesson.title))]);
     const oldCommon = {...common, quarter:2, startDate:'2026-05-26', endDate:'2026-08-14'};
     const oldFile=path.join(temp,'old-quarter.pdf');
     fs.writeFileSync(oldFile,(await pdf.renderReportPdfs(oldCommon,[{...ready,student}]))[0]);
@@ -144,6 +166,7 @@ async function main() {
     assert.match(info, /Pages:\s+1/);
     await assert.rejects(pdf.renderReportPdfs(common, [{ ...ready, comment: '긴 의견\n'.repeat(700), student }]), /report_text_overflow/);
     await assert.rejects(pdf.renderReportPdfs({...common, activities: '아주 긴 활동 내용'.repeat(700)}, [{...ready, student}]), /report_text_overflow/);
+    await assert.rejects(pdf.renderReportPdfs({...common, activities: ['아주 긴 주차별 제목'.repeat(200), ...schedule.slice(1).map((lesson) => lesson.title)].join('\n')}, [{...ready, student}]), /report_text_overflow/);
     // Compare each checkmark's PDF coordinates with the HWPX rating cells.
     const positions = await pdf.renderReportPdfs(common, h.EVALUATION_LEVELS.map((level) => ({...ready, ...Object.fromEntries(h.EVALUATION_FIELDS.map(({key}) => [key,level])),student})));
     positions.forEach((buffer,i) => fs.writeFileSync(path.join(temp, `position-${i}.pdf`), buffer));
