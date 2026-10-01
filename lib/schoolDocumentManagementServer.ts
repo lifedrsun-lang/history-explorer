@@ -290,10 +290,10 @@ export async function getSchoolDocumentSubmissionHistory(
     .where("teacherUid", "==", teacherUid)
     .get();
   return snapshot.docs
-    .flatMap((document) => {
+    .flatMap((document): SchoolDocumentSubmissionHistoryItem[] => {
       const data = document.data();
       if (text(data.schoolSlug, 40) !== schoolSlug) return [];
-      const channel = validChannel(data.submissionChannel);
+      const channel = data.submissionChannel === "band" ? "band" : validChannel(data.submissionChannel);
       if (!channel) return [];
       return [
         {

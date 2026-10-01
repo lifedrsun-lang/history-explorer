@@ -37,7 +37,7 @@ export type SchoolDocumentSubmissionHistoryItem = {
   schoolName: string;
   contactName: string;
   recipientEmail: string;
-  submissionChannel: SchoolDocumentSubmissionChannel;
+  submissionChannel: SchoolDocumentSubmissionChannel | "band";
   documentTitles: string[];
   submittedAt: string;
   gmailMessageId: string;
@@ -69,9 +69,10 @@ export const SCHOOL_DOCUMENT_METHOD_LABELS: Record<
 };
 
 export const SCHOOL_DOCUMENT_CHANNEL_LABELS: Record<
-  SchoolDocumentSubmissionChannel,
+  SchoolDocumentSubmissionHistoryItem["submissionChannel"],
   string
 > = {
   email: "이메일",
   kakao: "카카오톡",
+  band: "밴드",
 };

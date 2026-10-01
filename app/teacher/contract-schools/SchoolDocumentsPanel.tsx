@@ -8,6 +8,7 @@ import type { SchoolDocumentListItem } from "@/lib/schoolDocuments";
 import type { SchoolDocumentSchool } from "@/lib/schoolDocumentSchools";
 import {
   SCHOOL_DOCUMENT_STATUS_LABELS,
+  SCHOOL_DOCUMENT_CHANNEL_LABELS,
   type SchoolDocumentSettings,
   type SchoolDocumentSubmissionHistoryItem,
 } from "@/lib/schoolDocumentManagement";
@@ -76,7 +77,7 @@ export default function SchoolDocumentsPanel({
     [user]
   );
 
-  const loadDocuments = useCallback(async () => {
+  const loadDocuments = useCallback(async (preserveDraft = false) => {
     setLoading(true);
     setErrorMessage("");
     try {
@@ -90,7 +91,7 @@ export default function SchoolDocumentsPanel({
         Array.isArray(documentPayload.documents) ? documentPayload.documents : []
       );
       setSettings(nextSettings);
-      setDraft(nextSettings);
+      setDraft((current) => preserveDraft ? current || nextSettings : nextSettings);
       setHistory(
         Array.isArray(managementPayload.history) ? managementPayload.history : []
       );
@@ -110,10 +111,15 @@ export default function SchoolDocumentsPanel({
   }, [loadDocuments]);
 
   useEffect(() => {
-    const refreshOnFocus = () => void loadDocuments();
+    const refreshOnFocus = () => void loadDocuments(true);
+    const refreshOnSubmission = (event: StorageEvent) => {
+      if (event.key !== "sunlab-school-documents:v1" || !event.newValue) return;
+      try { if (JSON.parse(event.newValue).schoolSlug === school.slug) void loadDocuments(true); } catch { /* Ignore unrelated or invalid storage values. */ }
+    };
     window.addEventListener("focus", refreshOnFocus);
-    return () => window.removeEventListener("focus", refreshOnFocus);
-  }, [loadDocuments]);
+    window.addEventListener("storage", refreshOnSubmission);
+    return () => { window.removeEventListener("focus", refreshOnFocus); window.removeEventListener("storage", refreshOnSubmission); };
+  }, [loadDocuments, school.slug]);
 
   const saveSettings = async () => {
     if (!draft || saving) return;
@@ -220,6 +226,7 @@ export default function SchoolDocumentsPanel({
           <p className="mt-2 text-xs font-bold leading-5 text-slate-500">담당자 정보는 학교 기본정보로, 제출 당시 정보는 별도 이력으로 보존합니다.</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {school.slug === "haneulbit" && <Link href="/teacher/after-school/haneulbit/reports" target="_blank" className="rounded-xl bg-emerald-100 px-3 py-2 text-xs font-black text-emerald-800">+ 결과통지서</Link>}
           <Link href={atcDocumentsUrl} target="_blank" className="rounded-xl bg-blue-100 px-3 py-2 text-xs font-black text-blue-700">+ ATC 참여확인서</Link>
           <Link href={applicationDocumentsUrl} target="_blank" className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-black text-white">+ 필수 동의서</Link>
           <button type="button" onClick={() => void loadDocuments()} disabled={loading} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600 disabled:opacity-50">{loading ? "불러오는 중" : "새로고침"}</button>
@@ -285,7 +292,7 @@ export default function SchoolDocumentsPanel({
       <div className="mt-6 border-t border-slate-100 pt-5">
         <h4 className="text-sm font-black text-slate-900">제출 이력 <span className="text-indigo-500">{history.length}</span></h4>
         {history.length === 0 ? <div className="mt-3 text-xs font-bold text-slate-400">아직 제출 완료 이력이 없습니다.</div> : <div className="mt-3 space-y-2">{history.map((item) => (
-          <article key={item.id} className="rounded-xl bg-slate-50 p-3 text-xs font-bold text-slate-600"><div className="flex flex-wrap gap-2"><span className="font-black text-slate-900">{formatDateTime(item.submittedAt)}</span><span>{item.submissionChannel === "email" ? "📧 이메일" : "💬 카카오톡"}</span><span>✅ 제출완료</span></div><div className="mt-1">담당자: {item.contactName || "기록 없음"}{item.recipientEmail ? ` · 수신자: ${item.recipientEmail}` : ""}</div><div className="mt-1 text-slate-500">{item.documentTitles.join(" · ")}</div></article>
+          <article key={item.id} className="rounded-xl bg-slate-50 p-3 text-xs font-bold text-slate-600"><div className="flex flex-wrap gap-2"><span className="font-black text-slate-900">{formatDateTime(item.submittedAt)}</span><span>{SCHOOL_DOCUMENT_CHANNEL_LABELS[item.submissionChannel]}</span><span>✅ 제출완료</span></div><div className="mt-1">담당자: {item.contactName || "기록 없음"}{item.recipientEmail ? ` · 수신자: ${item.recipientEmail}` : ""}</div><div className="mt-1 text-slate-500">{item.documentTitles.join(" · ")}</div></article>
         ))}</div>}
       </div>
     </section>

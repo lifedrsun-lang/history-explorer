@@ -4,12 +4,15 @@ import { onAuthStateChanged, type User } from "firebase/auth";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { auth } from "@/lib/firebase";
 import { reportWeeklyActivities } from "@/lib/haneulbitReportActivities";
-import { EVALUATION_FIELDS, EVALUATION_LEVELS, REPORT_PROGRAM, emptyEvaluation, evaluationStatus, newReportCommon, reportFilename, type EvaluationField, type EvaluationLevel, type ReportCommon, type ReportData, type ReportEvaluation, type ReportPeriod, type ReportStudent, type SavedEvaluation } from "@/lib/haneulbitReports";
+import { EVALUATION_FIELDS, EVALUATION_LEVELS, REPORT_PROGRAM, emptyEvaluation, evaluationStatus, newReportCommon, reportFilename, type EvaluationField, type EvaluationLevel, type ReportCommon, type ReportData, type ReportEvaluation, type ReportPeriod, type ReportStudent, type ReportSubmission, type SavedEvaluation } from "@/lib/haneulbitReports";
 
 const API = "/api/teacher/haneulbit-reports";
 const inputStyle = "min-w-0 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-indigo-500 disabled:opacity-50";
 const buttonStyle = "shrink-0 whitespace-nowrap min-h-11 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40";
 const shortLevels = ["매우우수", "우수", "보통", "약간부족", "부족"];
+function notifySchoolDocuments() {
+  try { window.localStorage.setItem("sunlab-school-documents:v1", JSON.stringify({ schoolSlug: "haneulbit", updatedAt: new Date().toISOString() })); } catch { /* Saved records remain available on return or refresh. */ }
+}
 function defaultCommon(): ReportCommon {
   const today = new Date();
   return newReportCommon(today.getFullYear(), Math.ceil((today.getMonth() + 1) / 3));
@@ -29,6 +32,7 @@ export default function HaneulbitReports() {
   const [periods, setPeriods] = useState<ReportPeriod[]>([]);
   const [evaluations, setEvaluations] = useState<Record<string, SavedEvaluation>>({});
   const [revision, setRevision] = useState(0);
+  const [submission, setSubmission] = useState<ReportSubmission | null>(null);
   const [dirty, setDirty] = useState(false);
   const changed = useRef(new Set<string>());
   const [busy, setBusy] = useState(false);
@@ -58,14 +62,18 @@ export default function HaneulbitReports() {
       if (sequence !== requestSequence.current) return;
       setCommon(data.period || newReportCommon(year, quarter));
       setTarget({ year, quarter }); setStudents(data.students); setPeriods(data.periods);
-      setEvaluations(data.evaluations); setRevision(data.period?.revision || 0); setTemplateReady(data.templateReady);
+      setEvaluations(data.evaluations); setRevision(data.period?.revision || 0); setSubmission(data.period?.submission || null); setTemplateReady(data.templateReady);
       setDirty(false); changed.current.clear(); setFilter("all"); setIncludeArchived(false); setBulk({});
     } catch (e) { if (sequence === requestSequence.current) setError((e as Error).message); }
     finally { if (sequence === requestSequence.current) setBusy(false); }
   }, [request]);
   useEffect(() => onAuthStateChanged(auth, (currentUser) => {
     setUser(currentUser); setAuthChecking(false);
-    if (currentUser) { const c = defaultCommon(); void load(currentUser, c.year, c.quarter); }
+    if (currentUser) {
+      const c = defaultCommon(), params = new URLSearchParams(window.location.search);
+      const year = Number(params.get("year")), quarter = Number(params.get("quarter"));
+      void load(currentUser, Number.isInteger(year) && year >= 2000 && year <= 2100 ? year : c.year, Number.isInteger(quarter) && quarter >= 1 && quarter <= 4 ? quarter : c.quarter);
+    }
     else { ++requestSequence.current; setStudents([]); setEvaluations({}); setBusy(false); }
   }), [load]);
   useEffect(() => {
@@ -133,9 +141,9 @@ export default function HaneulbitReports() {
       const response = await request(user, API, { method: "PUT", body: JSON.stringify({ common, revision, entries: [...changed.current].map((studentId) => ({ studentId, evaluation: evaluations[studentId] })) }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "저장하지 못했습니다.");
-      setCommon(data.period); setRevision(data.period.revision); setEvaluations(data.evaluations);
+      setCommon(data.period); setRevision(data.period.revision); setSubmission(data.period.submission || null); setEvaluations(data.evaluations);
       setPeriods((p) => [data.period, ...p.filter((item) => item.id !== data.period.id)].sort((a, b) => b.id.localeCompare(a.id)));
-      changed.current.clear(); setDirty(false); setMessage(`${common.year}년 ${common.quarter}분기 저장 완료`);
+      changed.current.clear(); setDirty(false); setMessage(`${common.year}년 ${common.quarter}분기 저장 완료`); notifySchoolDocuments();
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   };
@@ -150,6 +158,26 @@ export default function HaneulbitReports() {
     if (dirty && !window.confirm("현재 공통 정보를 이전 분기의 내용으로 바꿀까요? 학생 평가값은 유지됩니다.")) return;
     setCommon((c) => ({ ...c, activities: source.activities, instructor: source.instructor }));
     setDirty(true); setMessage("학습 활동 내용과 지도강사명을 복사했습니다. 새 교육기간을 입력해 주세요.");
+  };
+  const submitted = submission?.revision === revision;
+  const markSubmitted = async () => {
+    if (!user || busy || dirty || revision < 1 || submitted || !counts["작성완료"]) return;
+    const completed = rows.filter((student) => evaluationStatus(evaluations[student.id], common, student) === "작성완료");
+    if (completed.some((student) => {
+      const saved = evaluations[student.id].student;
+      return saved.name !== student.name || saved.grade !== student.grade || saved.schoolClass !== student.schoolClass;
+    })) { setError("학생 정보가 변경되었습니다. 현재 학생 정보를 반영하고 저장한 뒤 제출완료로 표시해 주세요."); return; }
+    if (!window.confirm(`${common.year}년 ${common.quarter}분기 결과통지서 ${completed.length}명을 밴드에 직접 제출하셨나요?\n제출완료로 기록하면 학교별 필수서류 관리의 제출 이력에 반영됩니다.`)) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const response = await request(user, `${API}/submission`, { method: "POST", body: JSON.stringify({ year: common.year, quarter: common.quarter, revision, studentIds: completed.map((student) => student.id) }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "제출 이력을 저장하지 못했습니다.");
+      setSubmission(data.period.submission);
+      setMessage(`${common.year}년 ${common.quarter}분기 결과통지서 ${data.period.submission.studentIds.length}명 제출완료. 학교별 필수서류 관리의 목록과 제출 이력을 업데이트했습니다.`);
+      notifySchoolDocuments();
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
   };
   const closePreview = () => { if (previewRef.current) URL.revokeObjectURL(previewRef.current); previewRef.current = null; setPreview(null); };
   const exportPdf = async (mode: "preview" | "download" | "all", student?: ReportStudent) => {
@@ -216,8 +244,10 @@ export default function HaneulbitReports() {
       </fieldset>
       <div className="sticky top-0 z-10 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <p aria-live="polite" className="text-sm font-bold text-slate-700">전체 {rows.length}명 / 작성완료 {counts["작성완료"]}명 / 작성중 {counts["작성중"]}명 / 미작성 {counts["미작성"]}명</p>
-        <div className="flex flex-wrap gap-2"><button disabled={busy || !dirty} onClick={() => void save()} className="min-h-11 rounded-xl bg-indigo-600 px-5 py-2 text-sm font-black text-white disabled:opacity-40">{busy ? "처리 중…" : dirty ? "변경사항 저장" : "저장됨"}</button><button disabled={busy || dirty || !templateReady || !counts["작성완료"]} onClick={() => void exportPdf("all")} className={buttonStyle}>전체 통합 PDF 다운로드</button></div>
+        <div className="flex flex-wrap gap-2"><button disabled={busy || !dirty} onClick={() => void save()} className="min-h-11 rounded-xl bg-indigo-600 px-5 py-2 text-sm font-black text-white disabled:opacity-40">{busy ? "처리 중…" : dirty ? "변경사항 저장" : "저장됨"}</button><button disabled={busy || dirty || !templateReady || !counts["작성완료"]} onClick={() => void exportPdf("all")} className={buttonStyle}>전체 통합 PDF 다운로드</button><button disabled={busy || dirty || revision < 1 || submitted || !counts["작성완료"]} onClick={() => void markSubmitted()} className="min-h-11 rounded-xl bg-emerald-600 px-5 py-2 text-sm font-black text-white disabled:opacity-40">{submitted ? "제출완료" : "제출완료 표시"}</button></div>
       </div>
+      <p className="mt-2 text-sm text-slate-600">PDF를 밴드에 직접 제출한 뒤 제출완료로 표시해 주세요.</p>
+      {submission && <p className={`mt-2 text-sm font-bold ${submitted && !dirty ? "text-emerald-800" : "text-amber-800"}`}>{submitted && !dirty ? `제출완료 · ${submission.studentIds.length}명 · ${new Date(submission.submittedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}` : "제출 이후 수정한 내용이 있습니다. 저장 후 다시 제출완료로 표시해 주세요."}</p>}
       {dirty && <p className="mt-2 text-sm font-bold text-amber-800">저장하지 않은 변경사항이 있습니다. 저장한 뒤 미리보기·다운로드할 수 있습니다.</p>}
       {!templateReady && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">학교 원본 양식을 확인한 뒤 PDF 기능을 사용할 수 있습니다. 평가 내용은 먼저 작성하고 저장할 수 있습니다.</p>}
       {error && <p role="alert" className="mt-3 rounded-xl bg-red-50 p-4 text-sm font-bold text-red-800">{error}</p>}
