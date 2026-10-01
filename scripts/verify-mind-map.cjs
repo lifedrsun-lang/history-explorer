@@ -60,7 +60,7 @@ function load(relative) {
   const mod = new Module(filename); cache[filename] = mod; mod.filename = filename; mod.paths = Module._nodeModulePaths(path.dirname(filename));
   mod.require = name => {
     if (name in mocks) return mocks[name];
-    if (name.endsWith(".module.css")) return new Proxy({}, { get: (_t,k) => String(k) });
+    if (name.endsWith(".module.css")) return { __esModule: true, default: new Proxy({}, { get: (_t,k) => String(k) }) };
     if (name.startsWith("@/")) return load(name.slice(2) + ".ts");
     return require(name);
   };
@@ -145,7 +145,7 @@ async function main() {
   await expect(await login.POST(request("/api/mind-map/session","POST",{classroomToken:"class-2",studentId:"history-a",studentCollection:"students",studentPassword:"fixture-history"})),403);
   const React = require("react"), { renderToStaticMarkup } = require("react-dom/server");
   const Board = load("app/activities/mind-map/MindMapBoard.tsx").default;
-  const html=renderToStaticMarkup(React.createElement(Board,{data:result})); assert(html.includes("사람에게 도움을 주는 AI 기술")); assert.equal((html.match(/<article /g)||[]).length,182);
+  const html=renderToStaticMarkup(React.createElement(Board,{data:result})); assert(html.includes("사람에게 도움을 주는 AI 기술")); assert.equal((html.match(/<article /g)||[]).length,182); assert(html.includes('class="board"')); assert(html.includes('class="branch"'));
   const escapePost={...result.posts[0],id:"escape",content:"<script>alert('x')</script>"}; const escaped=renderToStaticMarkup(React.createElement(Board,{data:{...result,posts:[escapePost]}})); assert(!escaped.includes("<script>")); assert(escaped.includes("&lt;script&gt;"));
   // No legacy service, auth, uploads, materials or database schema changed.
   const expected = new Set(["mind_map_activities","mind_map_student_sessions","mind_map_login_attempts","students"]);

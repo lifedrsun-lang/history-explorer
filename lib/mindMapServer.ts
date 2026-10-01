@@ -104,7 +104,7 @@ export async function loginMindMapStudent(request: Request, body: Record<string,
   if (!context) throw new MindMapError("우리 반 수업방 링크로 들어와 주세요.", 404);
   // A shared classroom link or selecting a number alone never grants authorship.
   const { db } = getFirebaseAdmin();
-  const candidate = String(body.studentId || body.studentNumber || "member");
+  const candidate = body.studentId ? `student:${mindMapId(body.studentId)}` : body.studentNumber !== undefined ? `roster:${Number(body.studentNumber)}` : "member";
   const limitRef = db.collection("mind_map_login_attempts").doc(hash(`${classroomToken}:${candidate}`));
   await db.runTransaction(async tx => {
     const snap = await tx.get(limitRef); const data = snap.data();
