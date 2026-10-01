@@ -63,3 +63,11 @@ export function summarizeMindMap(activity: MindMapActivity, posts: MindMapPost[]
   visible.forEach(p => counts[p.branchId]++);
   return { activity, posts: visible.sort((a,b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id)), counts, total: visible.length, hiddenTotal: visible.filter(p => p.hidden).length };
 }
+export function withMindMapClassroomContext(href: string, classroomToken: string): string | null {
+  try {
+    const url = new URL(href, "https://sunlab.me.kr");
+    if (url.origin !== "https://sunlab.me.kr" || url.pathname.replace(/\/$/, "") !== "/activities/mind-map") return null;
+    url.searchParams.set("classroomToken", classroomToken);
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch { return null; }
+}

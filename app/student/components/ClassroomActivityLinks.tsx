@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 
 import { auth } from "@/lib/firebase";
+import { withMindMapClassroomContext } from "@/lib/mindMap";
 import {
   GAEBONG_SCHOOL_NAME,
   type ClassroomLesson,
@@ -25,13 +26,9 @@ const activityStateUrl = (token: string) =>
   `/api/classroom/${encodeURIComponent(token)}/activity-state`;
 
 const withClassroomContext = (href: string, classroomToken: string) => {
-  if (!href.includes("/activities/moral-machine") && !href.includes("/activities/mind-map")) return href;
-  if (href.includes("/activities/mind-map")) {
-    const url = new URL(href, "https://sunlab.me.kr");
-    if (url.origin !== "https://sunlab.me.kr" || url.pathname.replace(/\/$/, "") !== "/activities/mind-map") return href;
-    url.searchParams.set("classroomToken", classroomToken);
-    return `${url.pathname}${url.search}${url.hash}`;
-  }
+  const mindMapHref = withMindMapClassroomContext(href, classroomToken);
+  if (mindMapHref !== null) return mindMapHref;
+  if (!href.includes("/activities/moral-machine")) return href;
   const separator = href.includes("?") ? "&" : "?";
   return `${href}${separator}classroomToken=${encodeURIComponent(classroomToken)}`;
 };

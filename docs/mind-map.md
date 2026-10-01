@@ -42,8 +42,10 @@ Teacher ownership is enforced in the new APIs using `createdBy`. Existing teache
 - `npx tsc --noEmit`: passed.
 - `node scripts/verify-mind-map.cjs`: real new service/route handlers against isolated in-memory storage and mock identity services; checks creation with six branches, prepare/open/paused/closed/reopened states, two students, own edit, other-author edit/delete denial, teacher moderation, counts, another-class denial, retry deduplication, saved login verification, invalid input, expired sessions, and HTML escaping. It renders 182 opinions including a long multiline opinion. This is **not** production Firestore/Supabase or logged-in browser integration.
 - `node scripts/verify-student-data-flow.mjs`: existing 13-case regression script passed.
+- Production build HTTP smoke test: new pages returned 200, unauthenticated new APIs returned 401, and the existing moral-machine, activity-lab, school-management, assignments, student entry and materials pages returned 200 (11 checks). These checks did not access a database.
+- Browser geometry/visual checks on the actual board HTML/CSS with 182 synthetic cards: 390px mobile iframe (375px content viewport), 768px tablet iframe (753px content viewport), 1366px PC iframe (1351px content viewport). Each had equal content/scroll width, no overlapping cards; mobile had one branch column, tablet two, PC a centered topic between branches. These were layout fixtures, not authenticated full-app tests.
 - Full production teacher/student workflow and direct DB access rules still need authenticated verification before release.
-- Layout fixtures can be generated outside the repository with `MIND_MAP_FIXTURE_DIR=/tmp/sunlab-mind-map-qa node scripts/verify-mind-map.cjs`. Their 390/768/1366px iframes use the actual board component HTML and stylesheet with synthetic opinions, not production student data.
+- Layout fixtures can be generated outside the repository with `MIND_MAP_FIXTURE_DIR=/tmp/sunlab-mind-map-qa node scripts/verify-mind-map.cjs`. Their 390/768/1366px iframes use the actual board component HTML and stylesheet with synthetic opinions, not production student data. Temporary public fixtures were removed from the final source after preview QA.
 
 ## Deliberately omitted
 

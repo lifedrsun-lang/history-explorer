@@ -78,6 +78,11 @@ const request = (url, method="GET", body, cookie="", teacher="") => new Request(
 let checks = 0;
 async function expect(response, status) { assert.equal(response.status, status, await response.clone().text()); checks++; return response.json(); }
 async function main() {
+  const { withMindMapClassroomContext } = load("lib/mindMap.ts");
+  assert.equal(withMindMapClassroomContext("/activities/mind-map?activityId=test&classroomToken=old#board","class-1"),"/activities/mind-map?activityId=test&classroomToken=class-1#board");
+  assert.equal(withMindMapClassroomContext("https://another.test/activities/mind-map","class-1"),null);
+  assert.equal(withMindMapClassroomContext("http://[invalid/activities/mind-map","class-1"),null);
+  assert.equal(withMindMapClassroomContext("/activities/moral-machine","class-1"),null);
   await expect(await teacherList.GET(request("/api/teacher/mind-maps")),401);
   const initial = await expect(await teacherList.GET(request("/api/teacher/mind-maps","GET",undefined,"","teacher-1")),200);
   assert.equal(initial.classrooms.length,2);
