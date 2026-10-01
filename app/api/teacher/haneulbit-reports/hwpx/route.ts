@@ -1,0 +1,43 @@
+import { verifyTeacherRequest } from "@/lib/assignmentServer";
+import { evaluationStatus, reportFilename, reportPeriodId, type SavedEvaluation } from "@/lib/haneulbitReports";
+import { loadReportPeriod, reportError } from "@/lib/haneulbitReportsServer";
+import { renderReportHwpx } from "@/lib/haneulbitReportHwpxServer";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
+export async function POST(request: Request) {
+  try {
+    await verifyTeacherRequest(request);
+    const body = await request.json();
+    const id = reportPeriodId(Number(body.year), Number(body.quarter));
+    const { period, evaluations } = await loadReportPeriod(id);
+    if (!period) throw new Error("report_not_found");
+    // Restrict exports to the exact saved revision shown in the editor.
+    if (body.revision !== period.revision) throw new Error("report_conflict");
+    let selected: SavedEvaluation[];
+    if (body.mode === "all") {
+      if (!Array.isArray(body.studentIds) || body.studentIds.length > 400 || body.studentIds.some((id: unknown) => typeof id !== "string")) throw new Error("invalid_report_input");
+      const requested = new Set<string>(body.studentIds);
+      // Preserve the editor's student order and include each completed row once.
+      selected = [...requested].flatMap((studentId) => {
+        const entry = Object.hasOwn(evaluations, studentId) ? evaluations[studentId] : null;
+        return entry && evaluationStatus(entry, period, entry.student) === "작성완료" ? [entry] : [];
+      });
+    } else {
+      if (body.mode !== "download") throw new Error("invalid_report_input");
+      const entry = Object.hasOwn(evaluations, String(body.studentId)) ? evaluations[String(body.studentId)] : null;
+      if (!entry) throw new Error("report_not_found");
+      if (evaluationStatus(entry, period, entry.student) !== "작성완료") throw new Error("report_incomplete");
+      selected = [entry];
+    }
+    if (!selected.length) throw new Error("report_incomplete");
+    const combined = body.mode === "all";
+    const data = await renderReportHwpx(period, selected);
+    const filename = combined ? `하늘빛초_역사논술탐험_${period.year}년${period.quarter}분기_전체.hwpx` : reportFilename(period, selected[0].student).replace(/\.pdf$/, ".hwpx");
+    return new Response(new Uint8Array(data), { headers: {
+      "Content-Type": "application/hwp+zip",
+      "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+      "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+    } });
+  } catch (error) { return reportError(error); }
+}

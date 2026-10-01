@@ -1,0 +1,26 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Isolated saved-data export fixture. */
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const {execFileSync} = require('node:child_process');
+const fixture = require('./verify-haneulbit-submissions.cjs');
+(async () => {
+ const {common,ready}=await fixture.setupSubmissionFixture();
+ const render=fixture.load('lib/haneulbitReportHwpxServer.ts').renderReportHwpx;
+ const dir=path.resolve(__dirname,'../tmp/hwpx-verification');fs.mkdirSync(dir,{recursive:true});
+ const activities=Array.from({length:12},(_,i)=>`${i+1}주차 · ${Math.floor(i/4)+7}호 활동`).join('\n');
+ const entries=Array.from({length:22},(_,i)=>({...ready,readiness:['매우 우수함','우수함','보통임','약간 부족함','부족함'][i%5],comment:`학생${i+1} 의견 <&>\n다음 줄 😀`,student:{id:`test-${i}`,name:`시험학생${i+1}`,grade:'2학년',schoolClass:'3반'}}));
+ const files=['combined-q3.hwpx','single-q3.hwpx','single-q2.hwpx','extra-lines.hwpx'];
+ for(const [i,filename] of files.entries())fs.writeFileSync(path.join(dir,filename),await render({...common,quarter:i===2?2:3,activities:i===3?activities+'\n13번째 추가내용':activities},i===0?entries:[entries[0]]));
+ const route=fixture.load('app/api/teacher/haneulbit-reports/hwpx/route.ts');
+ const send=(body,auth=true)=>route.POST(new Request('https://fixture.local/api/teacher/haneulbit-reports/hwpx',{method:'POST',headers:{'Content-Type':'application/json',...(auth?{Authorization:'Bearer fixture-teacher'}:{})},body:JSON.stringify(body)}));
+ const body={year:2026,quarter:3,revision:1,mode:'all',studentIds:['second','active','second','incomplete','unknown']};
+ const before=JSON.stringify([...fixture.documents]);
+ assert.equal((await send(body,false)).status,401);assert.equal((await send({...body,revision:0})).status,409);
+ assert.equal((await send({...body,mode:'preview'})).status,400);assert.equal((await send({...body,studentIds:['incomplete']})).status,400);
+ const response=await send(body);assert.equal(response.status,200);assert.equal(response.headers.get('Content-Type'),'application/hwp+zip');assert.ok(decodeURIComponent(response.headers.get('Content-Disposition')).endsWith('_전체.hwpx'));fs.writeFileSync(path.join(dir,'api-combined.hwpx'),Buffer.from(await response.arrayBuffer()));
+ const one=await send({...body,mode:'download',studentId:'active'});assert.equal(one.status,200);assert.ok(decodeURIComponent(one.headers.get('Content-Disposition')).endsWith('_첫학생.hwpx'));
+ assert.equal(JSON.stringify([...fixture.documents]),before);
+ execFileSync('python',['scripts/verify-haneulbit-hwpx.py',dir],{cwd:path.resolve(__dirname,'..'),stdio:'inherit'});
+ console.log(JSON.stringify({passed:true,checks:['22 student forms in one native HWPX','Q2 and updated Q3 school templates','saved revision and authorization','completed rows only, editor order and deduplication','individual download filename and MIME','XML escaping, multiline and full text retained','no database mutations']},null,2));
+})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -200,7 +200,7 @@ export const getSchoolDocuments = async (
       statusLabel: submitted ? `제출완료 · ${period.submission!.studentIds.length}명` : period.submission ? "수정됨 · 재제출 필요" : "저장됨 · 미제출",
       createdAt: toIso(data.createdAt), updatedAt: toIso(data.updatedAt),
       previewUrl: `/teacher/after-school/haneulbit/reports?year=${period.year}&quarter=${period.quarter}`,
-      fileAvailability: "browser-print", fileAvailabilityLabel: "저장 자료 · PDF 재생성",
+      fileAvailability: "browser-print", fileAvailabilityLabel: "저장 자료 · HWPX/PDF 다운로드",
     };
   }) || [];
 
