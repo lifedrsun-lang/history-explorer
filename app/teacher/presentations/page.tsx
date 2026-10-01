@@ -320,6 +320,25 @@ function getLessonNumbers(values: Iterable<number>) {
   return [...lessonNumbers].sort((a, b) => a - b);
 }
 
+// Display aliases only: stored names and keys still identify the original materials.
+function getHelloMapleProgram(category: PresentationCategory, storedName: string) {
+  if (category !== "hello_maple") return null;
+  const name = normalizeCardKey(storedName).replace(/[\s_\/]+/gu, "");
+  if (name === "서울개봉초헬로메이플") {
+    return { version: "V1", name: "인공지능윤리탐험대", school: "서울 개봉초" };
+  }
+  if (name === "원종초헬로메이플") {
+    return { version: "V2", name: "찾아가는 AI체험학습", school: "부천 원종초" };
+  }
+  return null;
+}
+
+function HelloMapleProgramTitle({ program }: {
+  program: NonNullable<ReturnType<typeof getHelloMapleProgram>>;
+}) {
+  return <>{program.version} {program.name}<wbr /><span className="inline-block whitespace-nowrap">({program.school})</span></>;
+}
+
 function isWonjongHelloMapleCard(card: PresentationNamedCard) {
   const compactName = normalizeCardKey(card.displayName).replace(/\s*\/\s*/gu, "/");
   return card.category === "hello_maple" && compactName === "원종초/헬로메이플";
@@ -1580,6 +1599,7 @@ function NamedResourceCard({
   const [expandedLesson, setExpandedLesson] = useState<number | null>(null);
   const isLessonCard = card.category === "coding" || card.category === "hello_maple";
   const isWonjongHelloMaple = isWonjongHelloMapleCard(card);
+  const program = getHelloMapleProgram(card.category, card.displayName);
   const icon =
     card.category === "boardgame" || card.category === "teaching_boardgame"
       ? "🎲"
@@ -1629,21 +1649,21 @@ function NamedResourceCard({
 
   return (
     <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
-      <div className="flex items-start gap-3">
+      <div className={`flex items-start gap-3 ${program ? "flex-wrap" : ""}`}>
         <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${soft} text-2xl`}>
           {icon}
         </div>
         <div className="min-w-0 flex-1">
           <p className={`text-xs font-black ${accent}`}>{CATEGORY_LABELS[card.category]}</p>
           <h3 className="mt-1 break-words text-lg font-black leading-6 text-slate-800">
-            {card.displayName}
+            {program ? <HelloMapleProgramTitle program={program} /> : card.displayName}
           </h3>
           {isWonjongHelloMaple ? (
             <p className="mt-1 text-xs font-black text-emerald-600">클래스포에듀 협력 수업</p>
           ) : null}
           <p className="mt-1 text-xs font-bold text-slate-400">자료 {card.resources.length}개</p>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className={`flex shrink-0 items-center gap-1.5 ${program ? "w-full justify-end" : ""}`}>
           <Link
             href={buildNamedCardAddHref(card)}
             className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-black text-slate-600 transition hover:bg-white hover:text-slate-900"
@@ -1847,6 +1867,7 @@ function CompactBookCard({
   onHide?: () => void;
 }) {
   const coverUrl = getDisplayCoverUrl(book.coverUrl);
+  const program = getHelloMapleProgram(book.category, book.bookNumber);
   const isWorld = book.category === "world";
   const [coverFailed, setCoverFailed] = useState(false);
   const [expandedLesson, setExpandedLesson] = useState<number | null>(null);
@@ -1908,17 +1929,17 @@ function CompactBookCard({
             />
           )}
           <span className="absolute left-1.5 top-1.5 rounded-full bg-white/95 px-2 py-1 text-[10px] font-black text-blue-700 shadow-sm">
-            {book.bookNumber || "호수"}
+            {program?.version || book.bookNumber || "호수"}
           </span>
         </div>
 
         <div className="min-w-0 flex-1 py-1">
-          <div className="flex items-start justify-between gap-2">
+          <div className={`flex items-start justify-between gap-2 ${program ? "flex-wrap" : ""}`}>
             <div className="min-w-0">
               <p className={`text-xs font-black ${accentText}`}>{book.shortTitle}</p>
-              <h3 className="mt-1 text-base font-black leading-6 text-slate-800">{book.title}</h3>
+              <h3 className="mt-1 break-words text-base font-black leading-6 text-slate-800">{program ? <HelloMapleProgramTitle program={program} /> : book.title}</h3>
             </div>
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className={`flex shrink-0 items-center gap-1.5 ${program ? "w-full justify-end" : ""}`}>
               <Link
                 href={buildBookAddHref(book)}
                 className="inline-flex h-8 items-center justify-center rounded-xl border border-slate-200 bg-white px-2.5 text-[11px] font-black text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
