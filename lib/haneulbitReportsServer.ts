@@ -17,7 +17,7 @@ export async function loadReportStudents(): Promise<ReportStudent[]> {
   }).sort((a, b) => a.grade.localeCompare(b.grade, "ko", { numeric: true }) || a.schoolClass.localeCompare(b.schoolClass, "ko", { numeric: true }) || a.name.localeCompare(b.name, "ko"));
 }
 export function serializePeriod(id: string, data: FirebaseFirestore.DocumentData): ReportPeriod {
-  return { ...validateCommon(data), id, revision: Number(data.revision || 0), updatedAt: serializeDate(data.updatedAt) };
+  return { ...validateCommon(data), id, revision: Number(data.revision || 0), updatedAt: serializeDate(data.updatedAt), submission: data.submission || null };
 }
 export async function loadReportPeriod(id: string) {
   const { db } = getFirebaseAdmin();

@@ -4,6 +4,8 @@ import { randomUUID } from "crypto";
 import { FieldValue } from "firebase-admin/firestore";
 
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
+import { REPORT_COLLECTION, commonComplete } from "@/lib/haneulbitReports";
+import { serializePeriod } from "@/lib/haneulbitReportsServer";
 import {
   getAllSchoolDocumentSchools,
   getSchoolDocumentSchool,
@@ -99,7 +101,7 @@ export const getSchoolDocuments = async (
   if (!school) throw new Error("school_not_found");
 
   const { db } = getFirebaseAdmin();
-  const [atcSnapshot, recordSnapshot] = await Promise.all([
+  const [atcSnapshot, recordSnapshot, reportSnapshot] = await Promise.all([
     db
       .collection(ATC_CONFIRMATION_COLLECTION)
       .where("teacherUid", "==", teacherUid)
@@ -108,6 +110,7 @@ export const getSchoolDocuments = async (
       .collection(SCHOOL_DOCUMENT_RECORD_COLLECTION)
       .where("teacherUid", "==", teacherUid)
       .get(),
+    school.slug === "haneulbit" ? db.collection(REPORT_COLLECTION).get() : Promise.resolve(null),
   ]);
   const atcDocuments = atcSnapshot.docs.flatMap((document) => {
     const data = document.data();
@@ -184,7 +187,24 @@ export const getSchoolDocuments = async (
     ];
   });
 
-  const documents = [...atcDocuments, ...applicationDocuments].sort((a, b) =>
+  const reportDocuments = reportSnapshot?.docs.map((document): SchoolDocumentListItem => {
+    const data = document.data();
+    const period = serializePeriod(document.id, data);
+    const submitted = period.submission?.revision === period.revision;
+    const definition = SCHOOL_DOCUMENT_DEFINITIONS["haneulbit-result-report"];
+    return {
+      id: `haneulbit-report:${document.id}`, schoolSlug: school.slug, schoolName: school.schoolName,
+      title: definition.title, kind: "haneulbit-result-report", kindLabel: definition.kindLabel,
+      periodLabel: `${period.year}년 ${period.quarter}분기`,
+      status: submitted ? "submitted" : commonComplete(period) ? "generated" : "draft",
+      statusLabel: submitted ? `제출완료 · ${period.submission!.studentIds.length}명` : period.submission ? "수정됨 · 재제출 필요" : "저장됨 · 미제출",
+      createdAt: toIso(data.createdAt), updatedAt: toIso(data.updatedAt),
+      previewUrl: `/teacher/after-school/haneulbit/reports?year=${period.year}&quarter=${period.quarter}`,
+      fileAvailability: "browser-print", fileAvailabilityLabel: "저장 자료 · PDF 재생성",
+    };
+  }) || [];
+
+  const documents = [...atcDocuments, ...applicationDocuments, ...reportDocuments].sort((a, b) =>
     (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt)
   );
 

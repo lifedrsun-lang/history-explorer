@@ -13,7 +13,8 @@ export type ReportStudent = { id: string; name: string; grade: string; schoolCla
 export type ReportEvaluation = Record<EvaluationField, EvaluationLevel | ""> & { comment: string };
 export type ReportCommon = { year: number; quarter: number; startDate: string; endDate: string; activities: string; instructor: string };
 export type SavedEvaluation = ReportEvaluation & { student: ReportStudent };
-export type ReportPeriod = ReportCommon & { id: string; revision: number; updatedAt: string | null };
+export type ReportSubmission = { revision: number; studentIds: string[]; submittedAt: string; submittedBy: string; historyId: string };
+export type ReportPeriod = ReportCommon & { id: string; revision: number; updatedAt: string | null; submission?: ReportSubmission | null };
 export type ReportData = { students: ReportStudent[]; periods: ReportPeriod[]; period: ReportPeriod | null; evaluations: Record<string, SavedEvaluation>; templateReady: boolean };
 export const emptyEvaluation = (): ReportEvaluation => ({ readiness: "", participation: "", concentration: "", completion: "", comment: "" });
 export function newReportCommon(year: number, quarter: number): ReportCommon {

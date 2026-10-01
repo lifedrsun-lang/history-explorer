@@ -4,6 +4,7 @@ export const SCHOOL_DOCUMENT_KINDS = [
   "atc-confirmation",
   "crime-consent",
   "administrative-consent",
+  "haneulbit-result-report",
 ] as const;
 
 export type SchoolDocumentKind = (typeof SCHOOL_DOCUMENT_KINDS)[number];
@@ -47,6 +48,10 @@ export const SCHOOL_DOCUMENT_DEFINITIONS: Record<
   "administrative-consent": {
     title: "행정정보 공동이용 사전동의서",
     kindLabel: "필수 동의서",
+  },
+  "haneulbit-result-report": {
+    title: "교육활동 결과통지서 (역사논술탐험)",
+    kindLabel: "결과통지서",
   },
 };
 
