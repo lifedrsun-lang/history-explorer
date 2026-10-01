@@ -1,5 +1,7 @@
 export type ConfirmationOutputVersion = "atc" | "class4edu";
 
+export const CLASS4EDU_MAIL_TO = "class4edu@class4edu.com";
+
 export type ConfirmationOutputPreset = {
   label: string;
   description: string;

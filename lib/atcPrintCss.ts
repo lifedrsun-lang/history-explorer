@@ -16,15 +16,15 @@ export const atcPrintCss = `/* ATC 참여확인서는 원본 양식의 색감과
 }
 
 .atc-print-sheet .class4edu-print-logo {
-  width: 56mm;
-  height: auto;
-  max-width: 56mm;
-  max-height: 19.6mm;
+  width: 35.31mm;
+  height: 12.34mm;
+  max-width: 35.31mm;
+  max-height: 12.34mm;
 }
 
 .atc-print-sheet.class4edu-print-sheet .atc-logo-row {
-  min-height: 19.6mm;
-  margin-bottom: 3mm;
+  min-height: 12.34mm;
+  margin-bottom: 5mm;
 }
 
 .atc-print-sheet .atc-logo-row {
