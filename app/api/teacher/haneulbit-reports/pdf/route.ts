@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     if (!selected.length) throw new Error("report_incomplete");
     const combined = body.mode === "all";
     const [data] = await renderReportPdfs(period, selected, { combined });
-    const filename = combined ? `하늘빛초_역사논술탐험_${period.year}년${period.quarter}분기_전체.pdf` : reportFilename(period, selected[0].student);
+    const filename = reportFilename(period, "pdf");
     return new Response(new Uint8Array(data), { headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `${body.mode === "preview" ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(filename)}`,

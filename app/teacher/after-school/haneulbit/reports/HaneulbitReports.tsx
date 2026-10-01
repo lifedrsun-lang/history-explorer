@@ -199,7 +199,7 @@ export default function HaneulbitReports() {
       if (mode === "preview") { closePreview(); previewRef.current = url; setPreview({ url, name: student!.name }); }
       else {
         const anchor = document.createElement("a"); anchor.href = url;
-        anchor.download = mode === "all" ? `하늘빛초_${REPORT_PROGRAM}_${common.year}년${common.quarter}분기_전체.${format}` : reportFilename(common, evaluations[student!.id].student).replace(/\.pdf$/, `.${format}`);
+        anchor.download = reportFilename(common, format);
         document.body.appendChild(anchor); anchor.click(); anchor.remove();
         window.setTimeout(() => URL.revokeObjectURL(url), 60000);
       }

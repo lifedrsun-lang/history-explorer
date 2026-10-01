@@ -50,7 +50,7 @@ export const SCHOOL_DOCUMENT_DEFINITIONS: Record<
     kindLabel: "필수 동의서",
   },
   "haneulbit-result-report": {
-    title: "교육활동 결과통지서 (역사논술탐험)",
+    title: "교육활동 결과통지서 (역사탐험논술)",
     kindLabel: "결과통지서",
   },
 };

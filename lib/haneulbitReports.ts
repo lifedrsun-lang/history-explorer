@@ -1,4 +1,4 @@
-export const REPORT_PROGRAM = "역사논술탐험";
+export const REPORT_PROGRAM = "역사탐험논술";
 export const REPORT_COLLECTION = "haneulbit_result_reports";
 export const EVALUATION_FIELDS = [
   { key: "readiness", label: "수업에 대한 준비도", short: "준비도" },
@@ -64,11 +64,11 @@ export function validateEvaluation(value: unknown): ReportEvaluation {
   return result;
 }
 const safeName = (s: string) => s.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_").trim();
-export const reportFilename = (c: ReportCommon, student: ReportStudent) => `하늘빛초_${REPORT_PROGRAM}_${c.year}년${c.quarter}분기_${safeName(student.name)}.pdf`;
+export const reportFilename = (c: ReportCommon, format: "pdf" | "hwpx" = "pdf") => `${c.year} ${c.quarter}분기 교육활동 결과통지서 (${REPORT_PROGRAM})_${safeName(c.instructor)}.${format}`;
 export function uniqueReportFilenames(c: ReportCommon, students: ReportStudent[]) {
   const counts = new Map<string, number>();
   return students.map((student) => {
-    const filename = reportFilename(c, student);
+    const filename = reportFilename(c);
     const count = (counts.get(filename) || 0) + 1;
     counts.set(filename, count);
     return count === 1 ? filename : filename.replace(/\.pdf$/, `_${safeName(student.grade)}학년${safeName(student.schoolClass)}반_${count}.pdf`);
