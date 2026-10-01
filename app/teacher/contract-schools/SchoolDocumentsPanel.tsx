@@ -57,6 +57,7 @@ export default function SchoolDocumentsPanel({
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [notice, setNotice] = useState("");
+  const [expandedSchoolSlug, setExpandedSchoolSlug] = useState<string | null>(null);
 
   const requestJson = useCallback(
     async (url: string, init?: RequestInit) => {
@@ -216,24 +217,50 @@ export default function SchoolDocumentsPanel({
 
   const applicationDocumentsUrl = `/teacher/application-documents?schoolSlug=${encodeURIComponent(school.slug)}`;
   const atcDocumentsUrl = `/teacher/atc-confirmations?school=${encodeURIComponent(school.schoolName)}&schoolSlug=${encodeURIComponent(school.slug)}`;
+  const isExpanded = expandedSchoolSlug === school.slug;
+  const documentSummary = useMemo(() => {
+    if (loading && !settings) return "서류 정보를 불러오는 중이에요.";
+    if (errorMessage && !settings) return "서류 정보를 확인하지 못했어요.";
+    const contactName = settings?.contactName.trim() || "담당자 미등록";
+    const channelLabel = settings?.submissionChannel
+      ? SCHOOL_DOCUMENT_CHANNEL_LABELS[settings.submissionChannel]
+      : "제출채널 미설정";
+    return `${contactName} · ${channelLabel} · 등록서류 ${documents.length}건`;
+  }, [documents.length, errorMessage, loading, settings]);
 
   return (
-    <section className="rounded-[28px] border border-indigo-100 bg-white p-5 shadow-lg sm:p-7">
+    <section className={`rounded-[28px] border border-indigo-100 bg-white shadow-lg ${isExpanded ? "p-5 sm:p-7" : "p-4 sm:px-6 sm:py-4"}`}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="text-xs font-black text-indigo-500">제출서류</div>
           <h3 className="mt-1 text-xl font-black text-slate-900">학교별 필수서류 관리</h3>
-          <p className="mt-2 text-xs font-bold leading-5 text-slate-500">담당자 정보는 학교 기본정보로, 제출 당시 정보는 별도 이력으로 보존합니다.</p>
+          <p className="mt-2 text-xs font-bold leading-5 text-slate-500">{documentSummary}</p>
+          {isExpanded && <p className="mt-1 text-xs font-bold leading-5 text-slate-400">담당자 정보는 학교 기본정보로, 제출 당시 정보는 별도 이력으로 보존합니다.</p>}
         </div>
-        <div className="flex flex-wrap gap-2">
-          {school.slug === "haneulbit" && <Link href="/teacher/after-school/haneulbit/reports" target="_blank" className="rounded-xl bg-emerald-100 px-3 py-2 text-xs font-black text-emerald-800">+ 결과통지서</Link>}
-          <Link href={atcDocumentsUrl} target="_blank" className="rounded-xl bg-blue-100 px-3 py-2 text-xs font-black text-blue-700">+ ATC 참여확인서</Link>
-          <Link href={applicationDocumentsUrl} target="_blank" className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-black text-white">+ 필수 동의서</Link>
-          <button type="button" onClick={() => void loadDocuments()} disabled={loading} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600 disabled:opacity-50">{loading ? "불러오는 중" : "새로고침"}</button>
+        <div className="flex flex-wrap items-center gap-2">
+          {isExpanded && (
+            <>
+              {school.slug === "haneulbit" && <Link href="/teacher/after-school/haneulbit/reports" target="_blank" className="rounded-xl bg-emerald-100 px-3 py-2 text-xs font-black text-emerald-800">+ 결과통지서</Link>}
+              <Link href={atcDocumentsUrl} target="_blank" className="rounded-xl bg-blue-100 px-3 py-2 text-xs font-black text-blue-700">+ ATC 참여확인서</Link>
+              <Link href={applicationDocumentsUrl} target="_blank" className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-black text-white">+ 필수 동의서</Link>
+              <button type="button" onClick={() => void loadDocuments()} disabled={loading} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600 disabled:opacity-50">{loading ? "불러오는 중" : "새로고침"}</button>
+            </>
+          )}
+          <button
+            type="button"
+            aria-expanded={isExpanded}
+            aria-controls={`school-documents-details-${school.slug}`}
+            onClick={() => setExpandedSchoolSlug(isExpanded ? null : school.slug)}
+            className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white"
+          >
+            {isExpanded ? "접기 ▲" : "펼치기 ▼"}
+          </button>
         </div>
       </div>
 
-      {(errorMessage || notice) && <div className={`mt-4 rounded-2xl px-4 py-3 text-sm font-black ${errorMessage ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>{errorMessage || notice}</div>}
+      {isExpanded && (
+        <div id={`school-documents-details-${school.slug}`}>
+          {(errorMessage || notice) && <div className={`mt-4 rounded-2xl px-4 py-3 text-sm font-black ${errorMessage ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>{errorMessage || notice}</div>}
 
       {settings && draft && (
         <>
@@ -289,12 +316,14 @@ export default function SchoolDocumentsPanel({
         ))}</div>}
       </div>
 
-      <div className="mt-6 border-t border-slate-100 pt-5">
-        <h4 className="text-sm font-black text-slate-900">제출 이력 <span className="text-indigo-500">{history.length}</span></h4>
-        {history.length === 0 ? <div className="mt-3 text-xs font-bold text-slate-400">아직 제출 완료 이력이 없습니다.</div> : <div className="mt-3 space-y-2">{history.map((item) => (
-          <article key={item.id} className="rounded-xl bg-slate-50 p-3 text-xs font-bold text-slate-600"><div className="flex flex-wrap gap-2"><span className="font-black text-slate-900">{formatDateTime(item.submittedAt)}</span><span>{SCHOOL_DOCUMENT_CHANNEL_LABELS[item.submissionChannel]}</span><span>✅ 제출완료</span></div><div className="mt-1">담당자: {item.contactName || "기록 없음"}{item.recipientEmail ? ` · 수신자: ${item.recipientEmail}` : ""}</div><div className="mt-1 text-slate-500">{item.documentTitles.join(" · ")}</div></article>
-        ))}</div>}
-      </div>
+          <div className="mt-6 border-t border-slate-100 pt-5">
+            <h4 className="text-sm font-black text-slate-900">제출 이력 <span className="text-indigo-500">{history.length}</span></h4>
+            {history.length === 0 ? <div className="mt-3 text-xs font-bold text-slate-400">아직 제출 완료 이력이 없습니다.</div> : <div className="mt-3 space-y-2">{history.map((item) => (
+              <article key={item.id} className="rounded-xl bg-slate-50 p-3 text-xs font-bold text-slate-600"><div className="flex flex-wrap gap-2"><span className="font-black text-slate-900">{formatDateTime(item.submittedAt)}</span><span>{SCHOOL_DOCUMENT_CHANNEL_LABELS[item.submissionChannel]}</span><span>✅ 제출완료</span></div><div className="mt-1">담당자: {item.contactName || "기록 없음"}{item.recipientEmail ? ` · 수신자: ${item.recipientEmail}` : ""}</div><div className="mt-1 text-slate-500">{item.documentTitles.join(" · ")}</div></article>
+            ))}</div>}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
