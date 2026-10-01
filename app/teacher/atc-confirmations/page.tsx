@@ -2,6 +2,12 @@
 
 import AtcPrintSheet from "./AtcPrintSheet";
 import { atcPrintCss } from "@/lib/atcPrintCss";
+import {
+  CONFIRMATION_OUTPUT_PRESETS,
+  getConfirmationPdfFileName,
+  type ConfirmationOutputVersion,
+} from "@/lib/confirmationOutput";
+import Image from "next/image";
 import Link from "next/link";
 import { onAuthStateChanged, User } from "firebase/auth";
 import {
@@ -73,6 +79,7 @@ type MailPreview = {
   fingerprint: string;
   pdfUrl: string;
   confirmationId: string;
+  outputVersion: ConfirmationOutputVersion;
 };
 
 type OperationPeriod = {
@@ -88,6 +95,8 @@ type DailyRow = {
   sessions: number;
   remarks: string;
 };
+
+const OUTPUT_VERSION_OPTIONS: ConfirmationOutputVersion[] = ["atc", "class4edu"];
 
 const isContractCalendarEvent = (event: GoogleCalendarEvent) =>
   event.calendarType === "contract";
@@ -265,6 +274,7 @@ export default function AtcConfirmationsPage() {
   const [profile, setProfile] = useState<Profile>({ name: "", phone: "", birthDate: "", signatureDataUrl: null });
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState("");
+  const [outputVersion, setOutputVersion] = useState<ConfirmationOutputVersion>("atc");
   const [defaultEducatorName, setDefaultEducatorName] = useState("");
   const [schoolDefaults, setSchoolDefaults] = useState<Array<{ schoolName: string; schoolVerifierName: string }>>([]);
   const [educatorName, setEducatorName] = useState("");
@@ -770,11 +780,12 @@ export default function AtcConfirmationsPage() {
     }
 
     const originalTitle = document.title;
-    const printEducatorName = educatorName.trim() || "에듀케이터";
-    const printFileName = `${yearMonth.slice(0, 4)} ATC SCHOOL 전담 에듀케이터 참여확인서_${selectedSchool}_${yearMonth.slice(5)}월_${printEducatorName}`
-      .replace(/[\\/:*?"<>|]/g, "-")
-      .replace(/\s+/g, " ")
-      .trim();
+    const printFileName = getConfirmationPdfFileName({
+      version: outputVersion,
+      yearMonth,
+      schoolName: selectedSchool,
+      educatorName,
+    }).replace(/\.pdf$/i, "");
 
     document.title = printFileName;
     try {
@@ -846,11 +857,11 @@ export default function AtcConfirmationsPage() {
     setErrorMessage("");
     try {
       const data = await requestJson("/api/teacher/atc-confirmations/mail-preview", {
-        method: "POST", body: JSON.stringify({ confirmationId: selectedConfirmation.id, revision: selectedConfirmation.revision }),
+        method: "POST", body: JSON.stringify({ confirmationId: selectedConfirmation.id, revision: selectedConfirmation.revision, outputVersion }),
       });
       const bytes = Uint8Array.from(atob(data.pdfBase64), (character) => character.charCodeAt(0));
       const pdfUrl = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
-      setMailPreview({ info: data.info, fingerprint: data.fingerprint, pdfUrl, confirmationId: selectedConfirmation.id });
+      setMailPreview({ info: data.info, fingerprint: data.fingerprint, pdfUrl, confirmationId: selectedConfirmation.id, outputVersion: data.outputVersion });
     } catch (error) {
       showPrepareMailError(error instanceof Error ? error.message : "PDF를 준비하지 못했습니다.");
     } finally {
@@ -870,7 +881,7 @@ export default function AtcConfirmationsPage() {
     setErrorMessage("");
     try {
       await requestJson("/api/teacher/atc-confirmations/mail-send", {
-        method: "POST", body: JSON.stringify({ confirmationId: mailPreview.confirmationId, fingerprint: mailPreview.fingerprint, confirmRepeat }),
+        method: "POST", body: JSON.stringify({ confirmationId: mailPreview.confirmationId, fingerprint: mailPreview.fingerprint, confirmRepeat, outputVersion: mailPreview.outputVersion }),
       });
       closeMailPreview();
       await loadMonth();
@@ -901,6 +912,13 @@ export default function AtcConfirmationsPage() {
   }
 
   const selectedStatus = getStatusLabel(selectedConfirmation, currentScheduleSnapshot.length, scheduleChanged);
+  const outputPreset = CONFIRMATION_OUTPUT_PRESETS[outputVersion];
+  const outputFileName = getConfirmationPdfFileName({
+    version: outputVersion,
+    yearMonth,
+    schoolName: selectedSchool,
+    educatorName,
+  });
 
   return (
     <main className="min-h-screen bg-[#f5f7fb] px-3 py-5 text-slate-800">
@@ -1083,16 +1101,47 @@ export default function AtcConfirmationsPage() {
         )}
 
         {selectedSchool && (
-          <div className="mb-5 flex flex-wrap justify-end gap-2 rounded-3xl bg-white p-4 shadow-sm">
-            <button type="button" onClick={() => void handleSave(false)} disabled={saving || loading} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50">{saving ? "저장 중" : "현재 내용 저장"}</button>
-            <button type="button" onClick={printDocument} className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-black">인쇄 / PDF 저장</button>
-            <button type="button" onClick={() => void prepareMail()} disabled={mailBusy || saving || loading || !mailSettings} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50">{mailBusy ? "준비 중" : "메일로 제출"}</button>
-            <button type="button" onClick={() => void handleSave(true)} disabled={saving || Boolean(selectedConfirmation?.submittedAt)} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50">{selectedConfirmation?.submittedAt ? "제출완료" : "제출완료 표시"}</button>
+          <div className="mb-5 rounded-3xl bg-white p-4 shadow-sm">
+            <fieldset>
+              <legend className="font-black">출력 버전 선택</legend>
+              <p className="mt-1 text-xs font-bold text-slate-500">PDF 저장 또는 메일 제출 전에 사용할 로고와 문서 제목을 선택해 주세요.</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {OUTPUT_VERSION_OPTIONS.map((version) => {
+                  const preset = CONFIRMATION_OUTPUT_PRESETS[version];
+                  const selected = outputVersion === version;
+                  return (
+                    <label key={version} className={`relative cursor-pointer rounded-2xl border p-4 transition ${selected ? "border-blue-500 bg-blue-50 ring-2 ring-blue-100" : "border-slate-200 bg-white hover:border-slate-300"}`}>
+                      <input type="radio" name="confirmation-output-version" value={version} checked={selected} onChange={() => setOutputVersion(version)} className="sr-only" />
+                      <span className="flex min-h-20 items-center justify-center rounded-xl bg-white p-3">
+                        <Image src={preset.logoSrc} alt={`${preset.label} 로고 미리보기`} width={220} height={77} className="max-h-16 w-auto max-w-full object-contain" />
+                      </span>
+                      <span className="mt-3 flex items-center justify-between gap-2">
+                        <span>
+                          <span className="block text-sm font-black text-slate-900">{preset.label}</span>
+                          <span className="block text-xs font-bold text-slate-500">{preset.description}</span>
+                        </span>
+                        {selected && <span className="shrink-0 rounded-full bg-blue-600 px-2.5 py-1 text-[11px] font-black text-white">선택됨</span>}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+            <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-3">
+              <div className="text-xs font-black text-slate-500">생성될 PDF 파일명</div>
+              <div className="mt-1 break-all text-sm font-black text-slate-800">{outputFileName}</div>
+            </div>
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button type="button" onClick={() => void handleSave(false)} disabled={saving || loading} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50">{saving ? "저장 중" : "현재 내용 저장"}</button>
+              <button type="button" onClick={printDocument} className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-black">{outputPreset.label}로 인쇄 / PDF 저장</button>
+              <button type="button" onClick={() => void prepareMail()} disabled={mailBusy || saving || loading || !mailSettings} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50">{mailBusy ? "준비 중" : `${outputPreset.label}로 메일 제출`}</button>
+              <button type="button" onClick={() => void handleSave(true)} disabled={saving || Boolean(selectedConfirmation?.submittedAt)} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50">{selectedConfirmation?.submittedAt ? "제출완료" : "제출완료 표시"}</button>
+            </div>
           </div>
         )}
 
         {mailPreview && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3" role="dialog" aria-modal="true" aria-label="ATC 참여확인서 메일 발송 확인">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3" role="dialog" aria-modal="true" aria-label="참여확인서 메일 발송 확인">
             <div className="max-h-[95vh] w-full max-w-2xl overflow-auto rounded-3xl bg-white p-5 shadow-2xl">
               <h2 className="text-lg font-black">메일 발송 전 최종 확인</h2>
               <dl className="mt-4 grid grid-cols-[85px_1fr] gap-2 break-all text-sm">
@@ -1101,6 +1150,7 @@ export default function AtcConfirmationsPage() {
                 <dt className="font-black">숨은참조</dt><dd>{mailPreview.info.bcc}</dd>
                 <dt className="font-black">제목</dt><dd>{mailPreview.info.subject}</dd>
                 <dt className="font-black">본문</dt><dd className="whitespace-pre-wrap">{mailPreview.info.body}</dd>
+                <dt className="font-black">출력 버전</dt><dd>{CONFIRMATION_OUTPUT_PRESETS[mailPreview.outputVersion].label}</dd>
                 <dt className="font-black">첨부파일</dt><dd>{mailPreview.info.filename}</dd>
               </dl>
               <a href={mailPreview.pdfUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-sm font-bold text-blue-700 underline">첨부 PDF 열어 확인</a>
@@ -1117,6 +1167,7 @@ export default function AtcConfirmationsPage() {
 
       {selectedSchool && (
         <AtcPrintSheet
+          outputVersion={outputVersion}
           schoolName={selectedSchool}
           yearMonth={yearMonth}
           educatorName={educatorName}

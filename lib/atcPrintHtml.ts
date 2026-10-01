@@ -1,11 +1,14 @@
 import { formatAtcSignedDate, type AtcDailyRow } from "@/app/teacher/atc-confirmations/AtcPrintSheet";
 import type { AtcPrintProps } from "@/app/teacher/atc-confirmations/AtcPrintSheet";
+import { CONFIRMATION_OUTPUT_PRESETS, normalizeConfirmationOutputVersion } from "@/lib/confirmationOutput";
 
 const escape = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, (character) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
 
 // The PDF uses the same fields, row order and class names as AtcPrintSheet.
 export function renderAtcPrintHtml(props: AtcPrintProps): string {
+  const outputVersion = normalizeConfirmationOutputVersion(props.outputVersion);
+  const outputPreset = CONFIRMATION_OUTPUT_PRESETS[outputVersion];
   const school = props.schoolName.endsWith("초") ? `${props.schoolName.slice(0, -1)}초등학교` : props.schoolName;
   const year = Number(props.yearMonth.slice(0, 4));
   const month = Number(props.yearMonth.slice(5));
@@ -16,9 +19,9 @@ export function renderAtcPrintHtml(props: AtcPrintProps): string {
   const total = props.rows.reduce((sum, row) => sum + row.sessions, 0);
   const signature = (src: string | null, alt: string) => src
     ? `<img src="${escape(src)}" alt="${escape(alt)}" class="atc-signature-img">` : "";
-  return `<section class="atc-print-sheet">
-    <div class="atc-logo-row"><img src="${escape(props.logoSrc)}" alt="ATC" width="292" height="74" class="atc-print-logo"></div>
-    <h2 class="atc-title">2026 ATC스쿨 전담 에듀케이터 참여 확인서</h2>
+  return `<section class="atc-print-sheet${outputVersion === "class4edu" ? " class4edu-print-sheet" : ""}">
+    <div class="atc-logo-row"><img src="${escape(props.logoSrc)}" alt="${escape(outputPreset.logoAlt)}" width="${outputVersion === "class4edu" ? 567 : 292}" height="${outputVersion === "class4edu" ? 198 : 74}" class="atc-print-logo${outputVersion === "class4edu" ? " class4edu-print-logo" : ""}"></div>
+    <h2 class="atc-title">${escape(outputPreset.documentTitle)}</h2>
     <table class="atc-form-table atc-summary-table"><tbody>
       <tr><th style="width:16%">프로그램명</th><td style="width:34%"><b>ATC스쿨</b></td><th style="width:16%">학교명</th><td style="width:34%"><b>${escape(school)}</b></td></tr>
       <tr><th>운영기간</th><td><b>${escape(period)}</b></td><th>해당월</th><td><b>${year}년 ${month}월</b></td></tr>

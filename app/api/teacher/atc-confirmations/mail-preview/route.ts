@@ -1,6 +1,7 @@
 import { renderAtcPdf } from "@/lib/atcPdfServer";
 import { handleRouteError, jsonError, verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getAtcMailDocument, getAtcMailSettings, makeAtcMailInfo, mailFingerprint } from "@/lib/atcMailData";
+import { normalizeConfirmationOutputVersion } from "@/lib/confirmationOutput";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -9,11 +10,12 @@ export async function POST(request: Request) {
   try {
     const teacher = await verifyTeacherRequest(request);
     const body = await request.json();
+    const outputVersion = normalizeConfirmationOutputVersion(body.outputVersion);
     const doc = await getAtcMailDocument(teacher.uid, String(body.confirmationId || ""));
     if (body.revision !== doc.revision) return jsonError("저장된 확인서가 변경되었습니다. 새로고침 후 다시 확인해 주세요.", 409);
-    const info = makeAtcMailInfo(doc, await getAtcMailSettings(teacher.uid));
-    const pdf = await renderAtcPdf(doc);
-    return Response.json({ info, fingerprint: mailFingerprint(info), pdfBase64: pdf.toString("base64") });
+    const info = makeAtcMailInfo(doc, await getAtcMailSettings(teacher.uid), outputVersion);
+    const pdf = await renderAtcPdf(doc, outputVersion);
+    return Response.json({ info, fingerprint: mailFingerprint(info), pdfBase64: pdf.toString("base64"), outputVersion });
   } catch (error) {
     if (error instanceof Error && error.message === "teacher_auth_required") return jsonError("교사 로그인이 필요합니다.", 401);
     if (error instanceof Error && error.message === "confirmation_not_found") return jsonError("저장된 확인서를 찾을 수 없습니다.", 404);

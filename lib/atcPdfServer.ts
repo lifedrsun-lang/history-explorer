@@ -8,6 +8,7 @@ import type { AtcDailyRow } from "@/app/teacher/atc-confirmations/AtcPrintSheet"
 import { renderAtcPrintHtml } from "@/lib/atcPrintHtml";
 import { atcPrintCss } from "@/lib/atcPrintCss";
 import type { AtcMailDocument } from "@/lib/atcMailData";
+import { normalizeConfirmationOutputVersion, type ConfirmationOutputVersion } from "@/lib/confirmationOutput";
 const clean = (value: unknown, max = 200) => typeof value === "string" ? value.trim().slice(0, max) : "";
 function aggregateRows(snapshot: FirebaseFirestore.DocumentData[]): AtcDailyRow[] {
   const dates = new Map<string, FirebaseFirestore.DocumentData[]>();
@@ -30,16 +31,18 @@ async function dataUri(file: string, mime: string) {
   return `data:${mime};base64,${content.toString("base64")}`;
 }
 
-export async function renderAtcPdf(doc: AtcMailDocument): Promise<Buffer> {
+export async function renderAtcPdf(doc: AtcMailDocument, outputVersionValue: ConfirmationOutputVersion = "atc"): Promise<Buffer> {
+  const outputVersion = normalizeConfirmationOutputVersion(outputVersionValue);
   const { confirmation: c, profile } = doc;
   const [logo, fontRegular, fontBold] = await Promise.all([
-    dataUri("images/atc-logo.png", "image/png"),
+    dataUri(outputVersion === "class4edu" ? "images/class4edu-logo.png" : "images/atc-logo.png", "image/png"),
     dataUri("fonts/noto-sans-kr-400.woff2", "font/woff2"),
     dataUri("fonts/noto-sans-kr-700.woff2", "font/woff2"),
   ]);
   const css = atcPrintCss.replace("/fonts/noto-sans-kr-400.woff2", fontRegular)
     .replace("/fonts/noto-sans-kr-700.woff2", fontBold);
   const content = renderAtcPrintHtml({
+    outputVersion,
     schoolName: String(c.schoolName), yearMonth: String(c.yearMonth),
     educatorName: resolveAtcEducatorName(c, String(profile.name || "")), educatorPhone: String(profile.phone || ""),
     educatorSignatureDataUrl: resolveAtcEducatorSignature(c, String(profile.name || ""), null),

@@ -15,6 +15,18 @@ export const atcPrintCss = `/* ATC 참여확인서는 원본 양식의 색감과
   object-position: right center;
 }
 
+.atc-print-sheet .class4edu-print-logo {
+  width: 56mm;
+  height: auto;
+  max-width: 56mm;
+  max-height: 19.6mm;
+}
+
+.atc-print-sheet.class4edu-print-sheet .atc-logo-row {
+  min-height: 19.6mm;
+  margin-bottom: 3mm;
+}
+
 .atc-print-sheet .atc-logo-row {
   display: flex;
   min-height: 13.29mm;
@@ -42,6 +54,10 @@ export const atcPrintCss = `/* ATC 참여확인서는 원본 양식의 색감과
   font-family: "HYHeadLineM", "HY헤드라인M", "Malgun Gothic", sans-serif;
   font-size: 16pt;
   font-weight: 700 !important;
+}
+
+.atc-print-sheet.class4edu-print-sheet .atc-title {
+  font-size: 14.5pt;
 }
 
 .atc-print-sheet h2::before {

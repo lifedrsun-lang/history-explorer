@@ -3,6 +3,7 @@ import { resolveAtcEducatorName, resolveAtcEducatorSignature } from "@/lib/atcEd
 import { createHash } from "node:crypto";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { ATC_GMAIL_FROM } from "@/lib/atcGmailServer";
+import { getConfirmationPdfFileName, type ConfirmationOutputVersion } from "@/lib/confirmationOutput";
 export const ATC_COLLECTION = "teacher_atc_confirmations";
 const SETTINGS_COLLECTION = "teacher_atc_mail_settings";
 const PROFILE_COLLECTION = "teacher_document_profiles";
@@ -65,7 +66,7 @@ export async function getAtcMailDocument(uid: string, id: string): Promise<AtcMa
   return { ref, confirmation, profile, revision };
 }
 
-export function makeAtcMailInfo(doc: AtcMailDocument, settings: AtcMailSettings) {
+export function makeAtcMailInfo(doc: AtcMailDocument, settings: AtcMailSettings, outputVersion: ConfirmationOutputVersion = "atc") {
   const { confirmation, profile } = doc;
   const year = String(confirmation.yearMonth).slice(0, 4);
   const month = `${Number(String(confirmation.yearMonth).slice(5))}월`;
@@ -74,7 +75,12 @@ export function makeAtcMailInfo(doc: AtcMailDocument, settings: AtcMailSettings)
   const fields: Record<string, string> = { 연도: year, 학교명: schoolName, 해당월: month, 강사명: resolveAtcEducatorName(confirmation, clean(profile.name)) };
   const render = (template: string) => template.replace(/\{(연도|학교명|해당월|강사명)\}/g, (_match, key: string) => fields[key]);
   const subject = render(settings.subjectTemplate);
-  const filename = `${subject.replace(/[\\/:*?"<>|\r\n]/g, "-")}.pdf`;
+  const filename = getConfirmationPdfFileName({
+    version: outputVersion,
+    yearMonth: String(confirmation.yearMonth),
+    schoolName: rawSchoolName,
+    educatorName: fields.강사명,
+  });
   return { from: ATC_GMAIL_FROM, to: settings.to, bcc: settings.bcc, subject, body: render(settings.bodyTemplate), filename,
     sentAt: clean(confirmation.mailSentAt), mailStatus: clean(confirmation.mailStatus), revision: doc.revision };
 }

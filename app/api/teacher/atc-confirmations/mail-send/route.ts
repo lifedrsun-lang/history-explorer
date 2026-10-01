@@ -5,6 +5,7 @@ import { getAtcGmailStatus, sendAtcGmail } from "@/lib/atcGmailServer";
 import { handleRouteError, jsonError, verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { getAtcMailDocument, getAtcMailSettings, makeAtcMailInfo, mailFingerprint } from "@/lib/atcMailData";
+import { normalizeConfirmationOutputVersion } from "@/lib/confirmationOutput";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -13,13 +14,14 @@ export async function POST(request: Request) {
   try {
     const teacher = await verifyTeacherRequest(request);
     const body = await request.json();
+    const outputVersion = normalizeConfirmationOutputVersion(body.outputVersion);
     const doc = await getAtcMailDocument(teacher.uid, String(body.confirmationId || ""));
-    const info = makeAtcMailInfo(doc, await getAtcMailSettings(teacher.uid));
+    const info = makeAtcMailInfo(doc, await getAtcMailSettings(teacher.uid), outputVersion);
     if (body.fingerprint !== mailFingerprint(info)) return jsonError("확인서 또는 메일 설정이 변경되었습니다. 다시 미리보기를 확인해 주세요.", 409);
     if (info.sentAt && body.confirmRepeat !== true) return jsonError("이미 제출한 확인서입니다. 재발송 여부를 확인해 주세요.", 409);
     const gmail = await getAtcGmailStatus(teacher.uid);
     if (!gmail.configured || !gmail.connected) return jsonError("lifedr.sun@gmail.com 계정을 먼저 연결해 주세요. 참여확인서는 제출완료 처리되지 않았습니다.", 503);
-    const pdf = await renderAtcPdf(doc);
+    const pdf = await renderAtcPdf(doc, outputVersion);
     const { db } = getFirebaseAdmin();
     const now = new Date().toISOString();
     const attemptId = await db.runTransaction(async (transaction) => {

@@ -1,8 +1,14 @@
 import type { ReactNode } from "react";
+import {
+  CONFIRMATION_OUTPUT_PRESETS,
+  normalizeConfirmationOutputVersion,
+  type ConfirmationOutputVersion,
+} from "@/lib/confirmationOutput";
 
 export type AtcDailyRow = { date: string; sessions: number; remarks: string };
 
 export type AtcPrintProps = {
+  outputVersion?: ConfirmationOutputVersion;
   schoolName: string;
   yearMonth: string;
   educatorName: string;
@@ -38,8 +44,11 @@ export default function AtcPrintSheet(props: AtcPrintProps): ReactNode {
     schoolName, yearMonth, educatorName, educatorPhone, educatorSignatureDataUrl,
     schoolVerifierName, schoolSignatureDataUrl, schoolSignedAt,
     operationPeriodStart, operationPeriodEnd, rows: printRows,
-    logoSrc = "/images/atc-logo.png", onEditEducatorSignature, forPdf = false,
+    outputVersion: outputVersionValue = "atc", logoSrc, onEditEducatorSignature, forPdf = false,
   } = props;
+  const outputVersion = normalizeConfirmationOutputVersion(outputVersionValue);
+  const outputPreset = CONFIRMATION_OUTPUT_PRESETS[outputVersion];
+  const resolvedLogoSrc = logoSrc || outputPreset.logoSrc;
   const officialSelectedSchool = getOfficialSchoolName(schoolName);
   const year = Number(yearMonth.slice(0, 4));
   const month = Number(yearMonth.slice(5));
@@ -50,11 +59,12 @@ export default function AtcPrintSheet(props: AtcPrintProps): ReactNode {
     ? formatAtcSignedDate(schoolSignedAt)
     : formatAtcSignedDate(new Date().toISOString());
   return (
-        <section className="atc-print-sheet mx-auto max-w-[850px] bg-white p-8 shadow-lg">
+        <section className={`atc-print-sheet mx-auto max-w-[850px] bg-white p-8 shadow-lg ${outputVersion === "class4edu" ? "class4edu-print-sheet" : ""}`}>
           <div className="atc-logo-row">
-            {/* eslint-disable-next-line @next/next/no-img-element */}<img src={logoSrc} alt="ATC" width={292} height={74} className="atc-print-logo" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={resolvedLogoSrc} alt={outputPreset.logoAlt} width={outputVersion === "class4edu" ? 567 : 292} height={outputVersion === "class4edu" ? 198 : 74} className={`atc-print-logo ${outputVersion === "class4edu" ? "class4edu-print-logo" : ""}`} />
           </div>
-          <h2 className="atc-title">2026 ATC스쿨 전담 에듀케이터 참여 확인서</h2>
+          <h2 className="atc-title">{outputPreset.documentTitle}</h2>
 
           <table className="atc-form-table atc-summary-table mt-5">
             <tbody>
