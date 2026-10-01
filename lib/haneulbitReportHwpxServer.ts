@@ -36,7 +36,8 @@ export async function renderReportHwpx(common: ReportCommon, entries: SavedEvalu
         return textXml(fields[token]);
       })
       .replace(/(<hp:p\b[^>]*\bid=")[^"]*/g, (_, prefix: string) => `${prefix}${paragraphId++}`)
-      .replace(/(<hp:(?:tbl|pic)\b[^>]*\bid=")[^"]*/g, (_, prefix: string) => `${prefix}${objectId++}`);
+      .replace(/(<hp:(?:tbl|pic)\b[^>]*\bid=")[^"]*/g, (_, prefix: string) => `${prefix}${objectId++}`)
+      .replace(/\binstid="[^"]*"/g, () => `instid="${objectId++}"`);
   });
   const files = template.files.map((file) => ({ name: file.name, data: Buffer.from(file.base64, "base64") }));
   // HWPX is an XML document package; mimetype must be its first, uncompressed entry.

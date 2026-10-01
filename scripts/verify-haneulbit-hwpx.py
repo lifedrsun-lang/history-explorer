@@ -18,6 +18,7 @@ for f in Path(sys.argv[1]).glob('*.hwpx'):
   assert [p.get('pageBreak') for p in ps]==['0']+['1']*(count-1)
   assert len({p.get('id') for p in sec.findall('.//hp:p',ns)})==len(sec.findall('.//hp:p',ns))
   assert len({p.get('id') for p in sec.findall('.//hp:tbl',ns)})==count
+  assert len({p.get('instid') for p in sec.findall('.//hp:pic',ns)})==count
   assert len(sec.findall('.//hp:pic',ns))==count and z.read('BinData/image1.gif').startswith(b'GIF')
   char_ids={c.get('id') for c in head.findall('.//hh:charPr',ns)}
   assert all(run.get('charPrIDRef') in char_ids for run in sec.findall('.//hp:run',ns))
