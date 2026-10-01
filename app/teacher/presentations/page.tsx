@@ -325,10 +325,10 @@ function getHelloMapleProgram(category: PresentationCategory, storedName: string
   if (category !== "hello_maple") return null;
   const name = normalizeCardKey(storedName).replace(/[\s_\/]+/gu, "");
   if (name === "서울개봉초헬로메이플") {
-    return { version: "V1", name: "인공지능윤리탐험대", school: "서울 개봉초" };
+    return { name: "인공지능윤리탐험대", school: "서울 개봉초" };
   }
   if (name === "원종초헬로메이플") {
-    return { version: "V2", name: "찾아가는 AI체험학습", school: "부천 원종초" };
+    return { name: "찾아가는 AI체험학습", school: "부천 원종초" };
   }
   return null;
 }
@@ -336,7 +336,7 @@ function getHelloMapleProgram(category: PresentationCategory, storedName: string
 function HelloMapleProgramTitle({ program }: {
   program: NonNullable<ReturnType<typeof getHelloMapleProgram>>;
 }) {
-  return <>{program.version} {program.name}<wbr /><span className="inline-block whitespace-nowrap">({program.school})</span></>;
+  return <>{program.name}<wbr /><span className="inline-block whitespace-nowrap">({program.school})</span></>;
 }
 
 function isWonjongHelloMapleCard(card: PresentationNamedCard) {
@@ -1928,9 +1928,11 @@ function CompactBookCard({
               onError={() => setCoverFailed(true)}
             />
           )}
-          <span className="absolute left-1.5 top-1.5 rounded-full bg-white/95 px-2 py-1 text-[10px] font-black text-blue-700 shadow-sm">
-            {program?.version || book.bookNumber || "호수"}
-          </span>
+          {!program ? (
+            <span className="absolute left-1.5 top-1.5 rounded-full bg-white/95 px-2 py-1 text-[10px] font-black text-blue-700 shadow-sm">
+              {book.bookNumber || "호수"}
+            </span>
+          ) : null}
         </div>
 
         <div className="min-w-0 flex-1 py-1">
