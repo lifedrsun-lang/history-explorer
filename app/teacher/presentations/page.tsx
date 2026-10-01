@@ -152,7 +152,7 @@ const TEACHING_LIBRARIES: LibraryCard[] = [
   },
   {
     value: "coding",
-    label: "코딩",
+    label: "코딩(스팀도서관)",
     icon: "💻",
     description: "일반 코딩 수업 PPT와 링크를 관리합니다.",
     accent: "text-emerald-700",
