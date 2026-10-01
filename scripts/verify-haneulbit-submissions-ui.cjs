@@ -82,14 +82,14 @@ async function waitEnabled(page,text){await page.waitForFunction(text=>[...docum
  // Exercise actual HWPX downloads before marking any submission.
  const downloadDir=path.resolve(root,'tmp/hwpx-ui-downloads');fs.mkdirSync(downloadDir,{recursive:true});
  const cdp=await report.createCDPSession();await cdp.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:downloadDir});
- const dlName='하늘빛초_역사논술탐험_2026년3분기_전체.hwpx';const dlPath=path.join(downloadDir,dlName);fs.rmSync(dlPath,{force:true});
+ const dlName='2026 3분기 교육활동 결과통지서 (역사탐험논술)_이화선.hwpx';const dlPath=path.join(downloadDir,dlName);fs.rmSync(dlPath,{force:true});
  report.once('dialog',d=>{assert.ok(d.message().includes('HWPX'));void d.accept();});
  await click(report,'전체 통합 HWPX 다운로드');
  for(let i=0;i<50&&!fs.existsSync(dlPath);i++)await new Promise(r=>setTimeout(r,100));
  assert.ok(fs.existsSync(dlPath));assert.equal(fs.readFileSync(dlPath).readUInt32LE(0),0x04034b50);
  assert.equal((await fixture.load('lib/schoolDocumentManagementServer.ts').getSchoolDocumentSubmissionHistory('fixture-teacher','haneulbit')).length,0);
  await waitEnabled(report,'전체 통합 HWPX 다운로드');
- const individualPath=path.join(downloadDir,'하늘빛초_역사논술탐험_2026년3분기_둘째학생.hwpx');fs.rmSync(individualPath,{force:true});
+ const individualPath=path.join(downloadDir,'2026 3분기 교육활동 결과통지서 (역사탐험논술)_이화선.hwpx');fs.rmSync(individualPath,{force:true});
  await click(report,'HWPX 다운로드');
  for(let i=0;i<50&&!fs.existsSync(individualPath);i++)await new Promise(r=>setTimeout(r,100));
  assert.ok(fs.existsSync(individualPath));await waitEnabled(report,'제출완료 표시');

@@ -97,7 +97,7 @@ async function main() {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'sunlab-report-verify-'));
   const zip = load('lib/reportZip.ts').makeReportZip([{ name: collision[0], data: Buffer.from('%PDF-test1') }, { name: collision[1], data: Buffer.from('%PDF-test2') }]);
   fs.writeFileSync(path.join(temp, 'test.zip'), zip);
-  execFileSync('python3', ['-c', 'import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; assert len(z.namelist())==2; assert all("동명이인" in n for n in z.namelist()); assert z.read(z.namelist()[0])==b"%PDF-test1"', path.join(temp, 'test.zip')]);
+  execFileSync('python3', ['-c', 'import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; assert len(z.namelist())==2; assert all("교육활동 결과통지서" in n for n in z.namelist()); assert z.read(z.namelist()[0])==b"%PDF-test1"', path.join(temp, 'test.zip')]);
   const pdf = load('lib/haneulbitReportPdfServer.ts');
   assert.equal(await pdf.reportTemplateReady(common), true);
   assert.equal(pdf.reportPeriodText('2026-05-26', '2026-08-14'), '2026년 5월 26일 ~ 8월 14일');
@@ -138,7 +138,7 @@ for symbol in '✓□◈※':
     const file = path.join(temp, 'fixture.pdf'); fs.writeFileSync(file, generated[0]);
     if (process.env.REPORT_VERIFY_OUTPUT) fs.copyFileSync(file, process.env.REPORT_VERIFY_OUTPUT);
     const extracted = execFileSync('pdftotext', [file, '-'], { encoding: 'utf8' });
-    assert.ok(extracted.includes('역사논술탐험'));
+    assert.ok(extracted.includes('역사탐험논술'));
     assert.ok(extracted.includes(student.name));
     assert.ok(extracted.includes(ready.comment));
     assert.ok(extracted.includes('3분기'));
@@ -253,7 +253,8 @@ for i,w in enumerate(widths):
     assert.equal(individual.status,200); assert.match(individual.headers.get('Content-Disposition'),/^attachment/);
     const all=await send({...exportBody,mode:'all',studentIds:['active','alias']});
     assert.equal(all.status,200); assert.equal(all.headers.get('Content-Type'),'application/pdf');
-    assert.match(decodeURIComponent(all.headers.get('Content-Disposition')), /_전체\.pdf$/);
+    assert.equal(decodeURIComponent(all.headers.get('Content-Disposition')), `attachment; filename*=UTF-8''2026 3분기 교육활동 결과통지서 (역사탐험논술)_${common.instructor}.pdf`);
+    assert.equal(individual.headers.get('Content-Disposition'),all.headers.get('Content-Disposition'));
     const apiFile=path.join(temp,'api-combined.pdf');
     fs.writeFileSync(apiFile,Buffer.from(await all.arrayBuffer()));
     assert.match(execFileSync('pdfinfo',[apiFile],{encoding:'utf8'}), /Pages:\s+1/);

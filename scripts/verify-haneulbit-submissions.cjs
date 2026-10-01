@@ -44,7 +44,7 @@ function load(filename) {
 async function setupSubmissionFixture() {
  documents.clear();
  const h=load('lib/haneulbitReports.ts');
- const common={...h.newReportCommon(2026,3),activities:'첫 주 활동\n둘째 주 활동',instructor:'시험 강사'};
+ const common={...h.newReportCommon(2026,3),activities:'첫 주 활동\n둘째 주 활동',instructor:'이화선'};
  const ready={readiness:'매우 우수함',participation:'우수함',concentration:'보통임',completion:'약간 부족함',comment:'직접 입력한 시험용 의견'};
  documents.set('students/active',{name:'첫학생',school:'하늘빛초',grade:'2',schoolClass:'3'});
  documents.set('students/second',{name:'둘째학생',school:'하늘빛초',grade:'1',schoolClass:'2'});

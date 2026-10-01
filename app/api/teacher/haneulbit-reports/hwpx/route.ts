@@ -31,9 +31,8 @@ export async function POST(request: Request) {
       selected = [entry];
     }
     if (!selected.length) throw new Error("report_incomplete");
-    const combined = body.mode === "all";
     const data = await renderReportHwpx(period, selected);
-    const filename = combined ? `하늘빛초_역사논술탐험_${period.year}년${period.quarter}분기_전체.hwpx` : reportFilename(period, selected[0].student).replace(/\.pdf$/, ".hwpx");
+    const filename = reportFilename(period, "hwpx");
     return new Response(new Uint8Array(data), { headers: {
       "Content-Type": "application/hwp+zip",
       "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
