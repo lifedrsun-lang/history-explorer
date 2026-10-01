@@ -180,26 +180,26 @@ export default function HaneulbitReports() {
     finally { setBusy(false); }
   };
   const closePreview = () => { if (previewRef.current) URL.revokeObjectURL(previewRef.current); previewRef.current = null; setPreview(null); };
-  const exportPdf = async (mode: "preview" | "download" | "all", student?: ReportStudent) => {
+  const exportReport = async (mode: "preview" | "download" | "all", student?: ReportStudent, format: "pdf" | "hwpx" = "pdf") => {
     if (!user || busy || dirty || !templateReady) return;
     const exportRows = mode === "all" ? rows : student ? [student] : [];
     if (exportRows.some((s) => {
       const saved = evaluations[s.id]?.student;
       return saved && (saved.name !== s.name || saved.grade !== s.grade || saved.schoolClass !== s.schoolClass);
     })) {
-      setError("학생 정보가 변경되었습니다. 해당 학생의 ‘현재 학생 정보 반영’을 누르고 저장한 뒤 PDF를 생성해 주세요.");
+      setError("학생 정보가 변경되었습니다. 해당 학생의 ‘현재 학생 정보 반영’을 누르고 저장한 뒤 파일을 생성해 주세요.");
       return;
     }
-    if (mode === "all" && counts["미작성"] + counts["작성중"] > 0 && !window.confirm(`미작성 학생 ${counts["미작성"]}명, 작성중 학생 ${counts["작성중"]}명이 있습니다.\n작성완료 ${counts["작성완료"]}명의 통지서를 하나의 PDF로 다운로드할까요?`)) return;
+    if (mode === "all" && counts["미작성"] + counts["작성중"] > 0 && !window.confirm(`미작성 학생 ${counts["미작성"]}명, 작성중 학생 ${counts["작성중"]}명이 있습니다.\n작성완료 ${counts["작성완료"]}명의 통지서를 하나의 ${format.toUpperCase()} 파일로 다운로드할까요?`)) return;
     setBusy(true); setError("");
     try {
-      const response = await request(user, `${API}/pdf`, { method: "POST", body: JSON.stringify({ year: common.year, quarter: common.quarter, revision, mode, studentId: student?.id, studentIds: rows.map((s) => s.id) }) });
-      if (!response.ok) { const data = await response.json(); throw new Error(data.error || "PDF를 생성하지 못했습니다."); }
+      const response = await request(user, `${API}/${format}`, { method: "POST", body: JSON.stringify({ year: common.year, quarter: common.quarter, revision, mode, studentId: student?.id, studentIds: rows.map((s) => s.id) }) });
+      if (!response.ok) { const data = await response.json(); throw new Error(data.error || "파일을 생성하지 못했습니다."); }
       const url = URL.createObjectURL(await response.blob());
       if (mode === "preview") { closePreview(); previewRef.current = url; setPreview({ url, name: student!.name }); }
       else {
         const anchor = document.createElement("a"); anchor.href = url;
-        anchor.download = mode === "all" ? `하늘빛초_${REPORT_PROGRAM}_${common.year}년${common.quarter}분기_전체.pdf` : reportFilename(common, evaluations[student!.id].student);
+        anchor.download = mode === "all" ? `하늘빛초_${REPORT_PROGRAM}_${common.year}년${common.quarter}분기_전체.${format}` : reportFilename(common, evaluations[student!.id].student).replace(/\.pdf$/, `.${format}`);
         document.body.appendChild(anchor); anchor.click(); anchor.remove();
         window.setTimeout(() => URL.revokeObjectURL(url), 60000);
       }
@@ -244,26 +244,26 @@ export default function HaneulbitReports() {
       </fieldset>
       <div className="sticky top-0 z-10 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <p aria-live="polite" className="text-sm font-bold text-slate-700">전체 {rows.length}명 / 작성완료 {counts["작성완료"]}명 / 작성중 {counts["작성중"]}명 / 미작성 {counts["미작성"]}명</p>
-        <div className="flex flex-wrap gap-2"><button disabled={busy || !dirty} onClick={() => void save()} className="min-h-11 rounded-xl bg-indigo-600 px-5 py-2 text-sm font-black text-white disabled:opacity-40">{busy ? "처리 중…" : dirty ? "변경사항 저장" : "저장됨"}</button><button disabled={busy || dirty || !templateReady || !counts["작성완료"]} onClick={() => void exportPdf("all")} className={buttonStyle}>전체 통합 PDF 다운로드</button><button disabled={busy || dirty || revision < 1 || submitted || !counts["작성완료"]} onClick={() => void markSubmitted()} className="min-h-11 rounded-xl bg-emerald-600 px-5 py-2 text-sm font-black text-white disabled:opacity-40">{submitted ? "제출완료" : "제출완료 표시"}</button></div>
+        <div className="flex flex-wrap gap-2"><button disabled={busy || !dirty} onClick={() => void save()} className="min-h-11 rounded-xl bg-indigo-600 px-5 py-2 text-sm font-black text-white disabled:opacity-40">{busy ? "처리 중…" : dirty ? "변경사항 저장" : "저장됨"}</button><button disabled={busy || dirty || !templateReady || !counts["작성완료"]} onClick={() => void exportReport("all", undefined, "hwpx")} className={buttonStyle}>전체 통합 HWPX 다운로드</button><button disabled={busy || dirty || !templateReady || !counts["작성완료"]} onClick={() => void exportReport("all")} className={buttonStyle}>전체 통합 PDF 다운로드</button><button disabled={busy || dirty || revision < 1 || submitted || !counts["작성완료"]} onClick={() => void markSubmitted()} className="min-h-11 rounded-xl bg-emerald-600 px-5 py-2 text-sm font-black text-white disabled:opacity-40">{submitted ? "제출완료" : "제출완료 표시"}</button></div>
       </div>
-      <p className="mt-2 text-sm text-slate-600">PDF를 밴드에 직접 제출한 뒤 제출완료로 표시해 주세요.</p>
+      <p className="mt-2 text-sm text-slate-600">한글 파일(HWPX)을 밴드에 직접 제출한 뒤 제출완료로 표시해 주세요.</p>
       {submission && <p className={`mt-2 text-sm font-bold ${submitted && !dirty ? "text-emerald-800" : "text-amber-800"}`}>{submitted && !dirty ? `제출완료 · ${submission.studentIds.length}명 · ${new Date(submission.submittedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}` : "제출 이후 수정한 내용이 있습니다. 저장 후 다시 제출완료로 표시해 주세요."}</p>}
       {dirty && <p className="mt-2 text-sm font-bold text-amber-800">저장하지 않은 변경사항이 있습니다. 저장한 뒤 미리보기·다운로드할 수 있습니다.</p>}
-      {!templateReady && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">학교 원본 양식을 확인한 뒤 PDF 기능을 사용할 수 있습니다. 평가 내용은 먼저 작성하고 저장할 수 있습니다.</p>}
+      {!templateReady && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">학교 원본 양식을 확인한 뒤 다운로드 기능을 사용할 수 있습니다. 평가 내용은 먼저 작성하고 저장할 수 있습니다.</p>}
       {error && <p role="alert" className="mt-3 rounded-xl bg-red-50 p-4 text-sm font-bold text-red-800">{error}</p>}
       {message && <p role="status" className="mt-3 rounded-xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800">{message}</p>}
       <div className="my-4 flex flex-wrap items-center gap-3"><label className="text-sm font-bold text-slate-700">작성 상태<select aria-label="작성 상태 필터" value={filter} onChange={(e) => setFilter(e.target.value)} className={`${inputStyle} ml-2 inline-block w-auto`}><option value="all">전체</option><option value="미작성">미작성만</option><option value="작성중">작성중만</option><option value="incomplete">미완료 전체</option><option value="작성완료">작성완료만</option></select></label>{archived.length > 0 && <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={includeArchived} onChange={(e) => setIncludeArchived(e.target.checked)} />과거 수강생 기록 {archived.length}명 함께 보기</label>}<button disabled={busy} className={buttonStyle} onClick={() => navigate(common.year, common.quarter)}>다시 불러오기</button></div>
       <fieldset disabled={busy} className="min-w-0 overflow-x-auto rounded-2xl border border-slate-200 bg-white"><legend className="sr-only">학생별 평가 입력</legend>
         <table className="w-full min-w-[1460px] table-fixed text-left text-sm"><caption className="sr-only">하늘빛초 수강생별 결과통지서 평가. 평가 단계는 매우 우수함, 우수함, 보통임, 약간 부족함, 부족함입니다.</caption><colgroup><col className="w-40" />{EVALUATION_FIELDS.map((f) => <col key={f.key} className="w-52" />)}<col className="w-72" /><col className="w-40" /></colgroup>
-          <thead className="bg-slate-100 text-slate-700"><tr><th className="p-3">학생</th>{EVALUATION_FIELDS.map((f) => <th key={f.key} scope="col" className="p-3">{f.label}</th>)}<th scope="col" className="p-3">강사 종합 의견 *</th><th scope="col" className="p-3">상태 / PDF</th></tr></thead>
+          <thead className="bg-slate-100 text-slate-700"><tr><th className="p-3">학생</th>{EVALUATION_FIELDS.map((f) => <th key={f.key} scope="col" className="p-3">{f.label}</th>)}<th scope="col" className="p-3">강사 종합 의견 *</th><th scope="col" className="p-3">상태 / 다운로드</th></tr></thead>
           <tbody>{visible.map((student) => {
             const e = evaluations[student.id] || emptyEvaluation(); const status = evaluationStatus(e, common, student);
             const savedStudent = evaluations[student.id]?.student;
             const identityChanged = savedStudent && (savedStudent.name !== student.name || savedStudent.grade !== student.grade || savedStudent.schoolClass !== student.schoolClass);
-            return <tr key={student.id} className="border-t border-slate-200 align-top hover:bg-slate-50"><th scope="row" className="p-3"><span className="font-black text-slate-900">{student.name || "이름 미등록"}</span><span className="mt-1 block font-normal text-slate-600">{student.grade || "학년 미등록"} / {student.schoolClass || "반 미등록"}</span>{!liveIds.has(student.id) && <span className="mt-1 block text-xs text-slate-500">과거 수강생</span>}{identityChanged && <span className="mt-2 block text-xs font-normal text-amber-800">저장된 PDF 정보: {savedStudent.grade} / {savedStudent.schoolClass} / {savedStudent.name}<button onClick={() => edit(student, {})} className="mt-1 block underline">현재 학생 정보 반영</button></span>}</th>
+            return <tr key={student.id} className="border-t border-slate-200 align-top hover:bg-slate-50"><th scope="row" className="p-3"><span className="font-black text-slate-900">{student.name || "이름 미등록"}</span><span className="mt-1 block font-normal text-slate-600">{student.grade || "학년 미등록"} / {student.schoolClass || "반 미등록"}</span>{!liveIds.has(student.id) && <span className="mt-1 block text-xs text-slate-500">과거 수강생</span>}{identityChanged && <span className="mt-2 block text-xs font-normal text-amber-800">저장된 문서 정보: {savedStudent.grade} / {savedStudent.schoolClass} / {savedStudent.name}<button onClick={() => edit(student, {})} className="mt-1 block underline">현재 학생 정보 반영</button></span>}</th>
               {EVALUATION_FIELDS.map((f) => <td className="p-2 pt-3" key={f.key}><Rating id={`${student.id}-${f.key}`} label={`${student.name} ${f.short}`} value={e[f.key]} onChange={(value) => edit(student, { [f.key]: value })} /></td>)}
               <td className="p-3"><textarea aria-label={`${student.name} 강사 종합 의견`} rows={3} maxLength={4000} value={e.comment} onChange={(event) => edit(student, { comment: event.target.value })} className={`${inputStyle} resize-y`} /></td>
-              <td className="p-3"><span className={`inline-block rounded-lg px-2 py-1 font-bold ${status === "작성완료" ? "bg-emerald-50 text-emerald-800" : status === "작성중" ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-500"}`}>{status}</span><div className="mt-2 flex flex-col gap-1"><button disabled={busy || dirty || !templateReady || status !== "작성완료"} onClick={() => void exportPdf("preview", student)} className={buttonStyle}>미리보기</button><button disabled={busy || dirty || !templateReady || status !== "작성완료"} onClick={() => void exportPdf("download", student)} className={buttonStyle}>PDF 다운로드</button></div></td>
+              <td className="p-3"><span className={`inline-block rounded-lg px-2 py-1 font-bold ${status === "작성완료" ? "bg-emerald-50 text-emerald-800" : status === "작성중" ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-500"}`}>{status}</span><div className="mt-2 flex flex-col gap-1"><button disabled={busy || dirty || !templateReady || status !== "작성완료"} onClick={() => void exportReport("preview", student)} className={buttonStyle}>미리보기</button><button disabled={busy || dirty || !templateReady || status !== "작성완료"} onClick={() => void exportReport("download", student)} className={buttonStyle}>PDF 다운로드</button><button disabled={busy || dirty || !templateReady || status !== "작성완료"} onClick={() => void exportReport("download", student, "hwpx")} className={buttonStyle}>HWPX 다운로드</button></div></td>
             </tr>;
           })}</tbody>
         </table>

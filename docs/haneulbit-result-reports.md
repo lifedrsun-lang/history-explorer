@@ -82,3 +82,13 @@ PDF API는 저장된 revision의 자료만 출력한다. 출력 전 변경사항
 생성된 서류 목록의 링크는 해당 연도·분기의 결과통지서를 연다. 저장과 제출 시 같은 브라우저의 학교 관리 탭에 갱신을 알리고, 갱신 중 입력하던 담당자 초안은 유지한다. 제출 후 수정·저장하면 기존 제출 이력은 보존하고 현재 분기는 재제출 필요로 표시한다.
 
 검증: `scripts/verify-haneulbit-submissions.cjs`에서 격리 DB의 인증·필수 항목·revision 충돌·중복 및 동시 요청·제출/수정/재제출·과거 분기·학교 및 교사별 이력 분리·학생 컬렉션 변경 없음 검사. `scripts/verify-haneulbit-submissions-ui.cjs`에서 실제 React/Chromium/API로 확인 취소, 제출 버튼 상태, 학교 목록과 밴드 제출 이력의 탭 간 갱신, 담당자 초안 유지, 수정 후 재제출, 새로고침 유지 검증. 실제 학생의 제출완료 상태는 시험으로 변경하지 않는다.
+
+## HWPX 제출용 다운로드
+
+- `전체 통합 HWPX 다운로드`: 화면 순서대로 작성완료 학생을 한 파일에 포함합니다. 학생별 양식 앞에 쪽 나눔을 넣습니다.
+- `HWPX 다운로드`: 해당 학생의 저장된 평가를 다운로드합니다. 기존 PDF와 PDF 미리보기도 제공합니다.
+- `/api/teacher/haneulbit-reports/hwpx`는 교사 인증과 저장 revision을 확인하며 데이터를 수정하거나 제출완료로 표시하지 않습니다.
+- `*.hwpx.json` 템플릿은 학교 제공 원본 HWPX의 첫 번째 양식, 표/글꼴/로고/문구를 보존한 패키지입니다. 생성 방법: `python scripts/prepare-haneulbit-hwpx.py ORIGINAL.hwpx OUTPUT.json` (개발 환경에 lxml 필요). 오래된 빈 문서의 미리보기 이미지는 포함하지 않습니다.
+- 12개 활동 셀은 행 순서대로 채웁니다. 추가 줄도 마지막 셀에 보존하며, XML 문자 이스케이프와 줄 나눔을 적용합니다.
+- 검증: `node scripts/verify-haneulbit-hwpx.cjs`는 독립 Python ZIP/XML 검증과 실제 인증 API/저장 데이터 fixture를 실행합니다. UI 검증은 `node scripts/verify-haneulbit-submissions-ui.cjs`에 포함됩니다.
+- 한컴 실행 환경이 없어 실제 한글 프로그램에서의 조판은 검증하지 못했습니다. ZIP/XML 구조, 원본 서식 참조, 학생 데이터, 브라우저 다운로드까지 검증했습니다.
