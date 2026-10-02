@@ -62,15 +62,15 @@ Previews tested: `history-explorer-efbx5651z-sunclass.vercel.app` at `c096c83578
 
 | Check | Result | Evidence / remaining work |
 | --- | --- | --- |
-| Teacher login | Passed | User completed sign-in again around 20:14 KST; the authenticated activity and classroom lists appeared. |
+| Teacher login | Passed | User completed sign-in around 20:14 KST and again after the configuration fix around 22:06 KST; authenticated activity and synthetic-school management appeared. |
 | Activity create and reload | Passed | `개발검증용 마인드맵 · 수업 사용 안 함`, synthetic 1학년 1반, six initial branches and zero opinions. |
 | Branch edit, reorder, add | Passed | Saved order: 교통·이동, 의학, 학교, 환경, 예술, 쇼핑, 안전. |
 | Start and pause submissions | Passed | Last observed state was `진행중 · 제출 중지`; `학생 제출 허용` appeared. |
-| Resume, close, reopen | Passed | Actual UI/server round trip: paused → accepting → closed → open → closed. Final activity state is closed. |
+| Resume, close, reopen | Passed | Actual UI/server round trip: paused → accepting → closed → open → closed. Reopened after the configuration fix to prepare student submission tests; current state is open with zero opinions. |
 | Empty branch deletion | Pending live check | Covered by isolated service tests only. Remove the synthetic seventh branch if needed. |
 | Presentation | Passed | Authenticated modal rendered the topic and seven branches; Escape returned to teacher controls. |
 | Print/PDF | Unverified | Clicking the actual print control produced no visible print dialog in this remote browser. No PDF was produced. Verify in a browser with printing available. |
-| Student A/B and another class | Pending authenticated runtime check | The earlier configuration error was traced to Production-only Supabase variables. The user added Preview, and a new feature Preview redeploy reached READY. The current test page requires teacher sign-in again; no test credentials or accounts have been submitted. A successful roster query and student flows are still unverified. |
+| Student A/B and another class | Pending test identities | Teacher sign-in and live roster reads now work: the synthetic 1-1 and 1-2 account panels show empty rosters, and Vercel recorded HTTP 200 for both initial roster requests. No test credentials or accounts have been submitted. Authenticated student opinion and permission flows remain unverified. |
 | Hidden/deleted opinions and counts | Pending live check | Covered by isolated service tests only; requires the test student opinions above. |
 | Firestore direct-access rules | Pending | No rules source or administrative rules access is available. Review the deployed rules configuration without reading student documents. The earlier direct data probe was rejected by automatic approval review and was not retried. |
 
@@ -86,7 +86,9 @@ Around 21:56–21:57 KST, the user reported adding Preview and deploying. A fres
 
 The new deployment visible at that point targeted `main`/Production. To apply the settings to the feature under test, the agent used Redeploy on the existing `codex/classroom-mind-map` deployment with **Preview** selected and build cache unchecked. Deployment `dpl_2WVxfAx1BYuLgmduBpQY1sUb5qMx`, source `a726c905345e9b7bc8b827158aaac634fac12cf1`, reached **READY** at 22:00:45 KST. Its immutable URL is `https://history-explorer-56d8xrqxa-sunclass.vercel.app`; the feature-branch alias was assigned successfully.
 
-This verifies the saved environment scopes and successful Preview deployment, not a working Supabase query. The feature teacher page currently asks for Sun Lab teacher sign-in again. Complete that sign-in, confirm the synthetic roster API works, then create the dedicated test identities through the permitted manual credential workflow and run the live student checks. Do not put the service role key in a `NEXT_PUBLIC_` variable or send it in chat.
+The user completed Sun Lab teacher sign-in again, and live roster reads then succeeded. The documentation-only follow-up Preview `dpl_27Cd8RLHQTDCTQy7TUDsDgQ8eWG7` at source `d8f7eb8741ca5dd1c149ef0f4c6464071ed3e3b1` is also READY. Its immutable URL is `https://history-explorer-ecrzsmvfb-sunclass.vercel.app`. In that Preview, the synthetic 1-1 and 1-2 panels showed empty rosters without the configuration error. Vercel runtime logs, scoped to that deployment, Preview, the account-roster path, and a ten-minute window, returned `statusCode 200: count 2` for the two initial queries. The route returns 200 after the roster service resolves. This verifies the previously broken account-configuration boundary, while student authentication and writes still need test identities.
+
+Do not put the service role key in a `NEXT_PUBLIC_` variable or send it in chat.
 
 Evidence screenshots show synthetic classroom data or deployment/configuration metadata, with no secret values:
 
@@ -95,7 +97,25 @@ Evidence screenshots show synthetic classroom data or deployment/configuration m
 - [Preview account configuration error](qa/mind-map-preview-account-config-error.jpg)
 - [Saved Production and Preview Supabase scopes](qa/mind-map-preview-env-scopes.jpg)
 - [Feature Preview redeploy READY](qa/mind-map-preview-redeploy-ready.jpg)
+- [Student submission QA prepared](qa/mind-map-student-qa-ready.jpg)
+- [Blank credential fields for the first test account](qa/mind-map-test-account-form.jpg)
 
 The feature branch was updated with current `main` resource-library changes without code conflicts. The draft PR remains the review vehicle; these checks do not authorize claiming the feature is ready for production.
 
 After that merge, `npm run build` (including TypeScript), the 230-response mind-map verification, the 13/13 student-data regression, and `scripts/verify-recent-materials.mjs` all passed again. Those automated checks use isolated/mock data and do not close the live pending items above.
+
+### Live student-test preparation after the configuration fix
+
+Only the synthetic school was changed. A single lesson, `마인드맵 개발 검증 · 수업 사용 안 함`, and the `마인드맵 기능 검증` link were saved; both synthetic classes' lesson and activity controls are public. The school is **temporarily published** so the normal student resolver can recognize it, and the activity is **open and accepting** with zero opinions. After the student checks, close the activity and return the synthetic school to unpublished. This is the existing backend with synthetic records, not an isolated test database.
+
+The stored lesson link uses `https://sunlab.me.kr/activities/mind-map`. The student 1-1 classroom rendered its actual href as `/activities/mind-map?classroomToken=qa-mindm-1c1-6314a4712f`, keeping the Preview origin and supplying that class's token. The student page rendered the existing number/password sign-in form. This checks link generation and the unauthenticated entry screen; no student was signed in by the agent.
+
+The required synthetic identity plan is:
+
+| Class | Student number | Nickname | Purpose |
+| --- | --- | --- | --- |
+| 1-1 | 1 | 검증A | Own create/edit/read flow |
+| 1-1 | 2 | 검증B | Same-class visibility and other-author controls |
+| 1-2 | 1 | 검증C | Other-class isolation |
+
+The first account form was opened with only student number `1` and nickname `검증A` filled. Account ID and temporary password remain blank. Creating new authentication credentials requires manual user entry and submission; browserAuth must not be used for account creation. No new account was saved. After the user saves these test identities, continue through the normal student sign-in flow without reading, logging, or copying passwords. The remaining student moderation/count checks, deployed Firestore rules review, and actual print/PDF output are still pending.
