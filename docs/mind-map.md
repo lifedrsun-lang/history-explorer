@@ -58,22 +58,35 @@ Verify new Firestore collection rules and authenticated live APIs, then complete
 
 ## Live verification record — 2026-10-02
 
-Preview tested: `history-explorer-efbx5651z-sunclass.vercel.app`, feature commit `c096c8357878665f42e30609f43a77bf0b5ff52f`. The preview uses the existing backing services; synthetic records were kept unpublished rather than treating it as an isolated database.
+Previews tested: `history-explorer-efbx5651z-sunclass.vercel.app` at `c096c8357878665f42e30609f43a77bf0b5ff52f`, then `history-explorer-git-codex-classroom-mind-map-sunclass.vercel.app` at `d9d28f6186f89009d7ec02315359fb190a2a691c`. The preview uses the existing Firestore service; synthetic records were kept unpublished rather than treating it as an isolated database.
 
 | Check | Result | Evidence / remaining work |
 | --- | --- | --- |
-| Teacher login | Passed previously | User completed sign-in; the teacher dashboard and authenticated classroom list appeared. |
+| Teacher login | Passed | User completed sign-in again around 20:14 KST; the authenticated activity and classroom lists appeared. |
 | Activity create and reload | Passed | `개발검증용 마인드맵 · 수업 사용 안 함`, synthetic 1학년 1반, six initial branches and zero opinions. |
 | Branch edit, reorder, add | Passed | Saved order: 교통·이동, 의학, 학교, 환경, 예술, 쇼핑, 안전. |
 | Start and pause submissions | Passed | Last observed state was `진행중 · 제출 중지`; `학생 제출 허용` appeared. |
-| Resume, close, reopen | Pending live check | Covered by isolated service tests only. Resume the synthetic activity and finish with it closed. |
+| Resume, close, reopen | Passed | Actual UI/server round trip: paused → accepting → closed → open → closed. Final activity state is closed. |
 | Empty branch deletion | Pending live check | Covered by isolated service tests only. Remove the synthetic seventh branch if needed. |
-| Presentation and print/PDF | Pending live check | Component/layout checks passed; authenticated presentation and browser print flow remain. |
-| Student A/B and another class | Pending live check | No synthetic student accounts or credentials were created. Use dedicated test identities through the existing account flow, then verify submission, own edits/deletes, other-author denial and class isolation. |
+| Presentation | Passed | Authenticated modal rendered the topic and seven branches; Escape returned to teacher controls. |
+| Print/PDF | Unverified | Clicking the actual print control produced no visible print dialog in this remote browser. No PDF was produced. Verify in a browser with printing available. |
+| Student A/B and another class | Blocked by preview configuration | Existing account management returned `Supabase 환경변수가 설정되지 않았습니다.` No test credentials or accounts were submitted. Configure the approved Supabase backend for this preview branch before testing student flows. |
 | Hidden/deleted opinions and counts | Pending live check | Covered by isolated service tests only; requires the test student opinions above. |
 | Firestore direct-access rules | Pending | No rules source or administrative rules access is available. Review the deployed rules configuration without reading student documents. The earlier direct data probe was rejected by automatic approval review and was not retried. |
 
-Continuation encountered a fresh browser with no teacher session. The secure sign-in request timed out; its submission and authentication outcome could not be verified. Do not report a failed password or a successful login from that timeout. A new verified teacher login is needed before continuing browser checks.
+Earlier continuation encountered a fresh browser with no teacher session and a timed-out secure sign-in request. That outcome was unknown, not evidence of a failed password. The user later signed in manually and the authenticated mind-map API-backed screens were verified.
+
+### First remaining broken boundary: account API → Supabase configuration
+
+Opening 1학년 1반 account management in the synthetic school displayed the existing configuration error. `lib/supabaseServer.ts` requires `SUPABASE_URL` followed by `SUPABASE_SERVICE_ROLE_KEY`; `lib/assignmentServer.ts` maps either missing value to this exact message and HTTP 500. The UI error proves at least one required value is absent; it does not identify which one. This happens before the roster database query, so the empty-roster placeholder is not proof that no rows exist.
+
+The connected Vercel tools can inspect deployment/project metadata but do not provide environment-variable management. The project environment-settings page redirects to Vercel sign-in; this is separate from the completed Sun Lab teacher sign-in. Environment scopes/values have not been inspected or changed. Configure approved server-only values narrowly for the preview branch, redeploy, then confirm the synthetic roster API works before creating test identities. Do not put the service role key in a `NEXT_PUBLIC_` variable or send it in chat.
+
+Evidence screenshots contain only synthetic classroom data:
+
+- [Final closed activity](qa/mind-map-live-closed.jpg)
+- [Authenticated presentation](qa/mind-map-live-presentation.jpg)
+- [Preview account configuration error](qa/mind-map-preview-account-config-error.jpg)
 
 The feature branch was updated with current `main` resource-library changes without code conflicts. The draft PR remains the review vehicle; these checks do not authorize claiming the feature is ready for production.
 
