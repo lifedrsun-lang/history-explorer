@@ -16,6 +16,9 @@ import {
 import { useRouter } from "next/navigation";
 
 import { auth, db } from "@/lib/firebase";
+import CardActions, { CardTitlesContext, useCardTitle } from "./CardActions";
+import { readPresentationCardTitle, savePresentationCardTitle } from "@/lib/presentations/cardTitles";
+
 import {
   normalizeCardDisplayName,
   normalizeCardKey,
@@ -206,11 +209,18 @@ export default function PersonalStudyLibrary() {
   const [authorized, setAuthorized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [cardTitles, setCardTitles] = useState<Map<string, string>>(new Map());
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [detailEditing, setDetailEditing] = useState(false);
   const [detailBusy, setDetailBusy] = useState(false);
   const [resources, setResources] = useState<PersonalStudyResource[]>([]);
   const { recentKeys, recordOpen, error: recentError } = useRecentMaterials();
+  const saveCardTitle = async (cardId: string, value: string) => {
+    const title = await savePresentationCardTitle(cardId, value);
+    setCardTitles((current) => new Map(current).set(cardId, title));
+  };
+  const getSubjectTitle = (subject: PersonalStudySubject) => cardTitles.get(`named:${subject.key}`) || subject.displayName;
+
   const subjects = useMemo(() => groupSubjects(resources), [resources]);
 
   useEffect(() => {
@@ -230,6 +240,13 @@ export default function PersonalStudyLibrary() {
       unsubscribeCards = onSnapshot(
         query(collection(db, "presentations"), orderBy("createdAt", "desc")),
         (snapshot) => {
+
+        const nextTitles = new Map<string, string>();
+        snapshot.docs.forEach((document) => {
+          const entry = readPresentationCardTitle(document.data());
+          if (entry) nextTitles.set(entry.cardId, entry.title);
+        });
+        setCardTitles(nextTitles);
 
         setResources(
           snapshot.docs.flatMap((docItem) => {
@@ -285,6 +302,7 @@ export default function PersonalStudyLibrary() {
   if (!authorized) return null;
 
   return (
+    <CardTitlesContext.Provider value={{ titles: cardTitles, saveTitle: saveCardTitle }}>
     <main className="min-h-[100dvh] bg-[#f5f7fb] p-3 text-slate-800 md:p-5">
       <div className="mx-auto max-w-7xl">
         <header className="mb-4 flex flex-col gap-3 rounded-3xl bg-white p-5 shadow-md md:flex-row md:items-center md:justify-between">
@@ -333,20 +351,22 @@ export default function PersonalStudyLibrary() {
 
           {!isLoading && !loadError && subjects.length > 0 ? (
             <ResourceLibraryLayout items={subjects} busy={detailBusy} editing={detailEditing}
-              getSummary={(subject) => ({ key: subject.key, title: subject.displayName, category: "내 공부자료", icon: "🌱", meta: `강의 ${subject.lectures.length}개 · 자료 ${subject.resources.length}개` })}
+              getSummary={(subject) => ({ key: subject.key, title: getSubjectTitle(subject), category: "내 공부자료", icon: "🌱", meta: `강의 ${subject.lectures.length}개 · 자료 ${subject.resources.length}개` })}
               recentKeys={recentKeys.map((key) => key.replace(/^named:/, ""))}
               onOpen={(subject) => recordOpen(`named:${subject.key}`)}
               recentError={recentError}
+              renderActions={(subject) => <CardActions cardId={`named:${subject.key}`} title={getSubjectTitle(subject)} />}
               renderDetail={(subject) => <ResourceDetailContent
                 onReload={() => setRefreshVersion((current) => current + 1)}
                 onEditingChange={setDetailEditing} onBusyChange={setDetailBusy}
-                renameContext={{ category: "personal_study", cardKey: subject.resources[0].cardKey, cardName: subject.displayName }}
+                renameContext={{ cardId: `named:${subject.key}`, cardName: getSubjectTitle(subject) }}
               ><SubjectCard subject={subject} /></ResourceDetailContent>}
             />
           ) : null}
         </section>
       </div>
     </main>
+    </CardTitlesContext.Provider>
   );
 }
 
@@ -355,6 +375,7 @@ function SubjectCard({
 }: {
   subject: PersonalStudySubject;
 }) {
+  const title = useCardTitle(`named:${subject.key}`, subject.displayName);
   const [isExpanded, setIsExpanded] = useState(true);
   const [expandedLectureKey, setExpandedLectureKey] = useState<string | null>(null);
   const addHref = `/teacher/presentations/new?category=personal_study&cardName=${encodeURIComponent(
@@ -375,7 +396,7 @@ function SubjectCard({
           </span>
           <span className="min-w-0 flex-1">
             <span className="block break-words text-lg font-black leading-6 text-slate-800">
-              {subject.displayName}
+              {title}
             </span>
             <span className="mt-1 block text-xs font-bold text-slate-400">
               강의 {subject.lectures.length}개 · {getResourceSummary(subject.resources)}

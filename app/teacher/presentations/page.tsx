@@ -17,6 +17,9 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { auth, db } from "@/lib/firebase";
+import CardActions, { CardTitlesContext, useCardTitle } from "./CardActions";
+import { readPresentationCardTitle, savePresentationCardTitle } from "@/lib/presentations/cardTitles";
+
 import {
   getBoardgameCardMetadata,
   getBoardgameCardMetadataMapKey,
@@ -335,12 +338,6 @@ function getHelloMapleProgram(category: PresentationCategory, storedName: string
   return null;
 }
 
-function HelloMapleProgramTitle({ program }: {
-  program: NonNullable<ReturnType<typeof getHelloMapleProgram>>;
-}) {
-  return <>{program.name}<wbr /><span className="inline-block whitespace-nowrap">({program.school})</span></>;
-}
-
 function isWonjongHelloMapleCard(card: PresentationNamedCard) {
   const compactName = normalizeCardKey(card.displayName).replace(/\s*\/\s*/gu, "/");
   return card.category === "hello_maple" && compactName === "원종초/헬로메이플";
@@ -607,6 +604,7 @@ function TeacherPresentationsPageContent() {
   const [boardgameCardMetadata, setBoardgameCardMetadata] = useState<
     Map<string, BoardgameCardMetadata>
   >(new Map());
+  const [cardTitles, setCardTitles] = useState<Map<string, string>>(new Map());
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [detailEditing, setDetailEditing] = useState(false);
   const [detailBusy, setDetailBusy] = useState(false);
@@ -745,6 +743,13 @@ function TeacherPresentationsPageContent() {
           );
         });
         setBoardgameCardMetadata(nextMetadata);
+        const nextTitles = new Map<string, string>();
+        snapshot.docs.forEach((document) => {
+          const entry = readPresentationCardTitle(document.data());
+          if (entry) nextTitles.set(entry.cardId, entry.title);
+        });
+        setCardTitles(nextTitles);
+
 
         setPresentations(
           snapshot.docs
@@ -809,6 +814,15 @@ function TeacherPresentationsPageContent() {
     return () => { unsubscribe(); unsubscribeCards?.(); };
   }, [router, refreshVersion]);
 
+  const saveCardTitle = async (cardId: string, value: string) => {
+    const title = await savePresentationCardTitle(cardId, value);
+    setCardTitles((current) => new Map(current).set(cardId, title));
+  };
+  const getSummary = (item: DisplayLibraryCard): ResourceSummary => {
+    const summary = getLibraryCardSummary(item);
+    return { ...summary, title: cardTitles.get(item.materialKey) || summary.title };
+  };
+
   const openLibrary = (category: PresentationCategory) => {
     setWorldSeriesFilter("all");
     setWorldBookFilter("all");
@@ -872,6 +886,7 @@ function TeacherPresentationsPageContent() {
   if (!authorized) return null;
 
   return (
+    <CardTitlesContext.Provider value={{ titles: cardTitles, saveTitle: saveCardTitle }}>
     <main className="min-h-[100dvh] bg-[#f5f7fb] p-3 text-slate-800 md:p-5">
       <div className="mx-auto max-w-7xl">
         <header className="mb-4 flex flex-col gap-3 rounded-3xl bg-white p-5 shadow-md md:flex-row md:items-center md:justify-between">
@@ -1056,22 +1071,20 @@ function TeacherPresentationsPageContent() {
               <ResourceLibraryLayout
                 key={`${activeLibrary}:${worldSeriesFilter}:${worldBookFilter}:${worldLessonFilter}`}
                 items={displayLibraryCards}
-                getSummary={getLibraryCardSummary}
+                getSummary={getSummary}
                 busy={detailBusy}
                 editing={detailEditing}
                 recentKeys={recentKeys}
                 onOpen={(item) => recordOpen(item.materialKey)}
                 recentError={recentError}
+                renderActions={(item) => <CardActions cardId={item.materialKey} title={getSummary(item).title}
+                  onHide={isHideableCodingCard(item) ? () => hideCodingCard(item.materialKey, getSummary(item).title) : undefined} />}
                 renderDetail={(item) => {
                   return <ResourceDetailContent
                     onReload={() => setRefreshVersion((current) => current + 1)}
                     onEditingChange={setDetailEditing}
                     onBusyChange={setDetailBusy}
-                    renameContext={item.kind === "named" ? {
-                      category: item.card.category,
-                      cardKey: item.card.cardKey,
-                      cardName: item.card.displayName,
-                    } : undefined}
+                    renameContext={{ cardId: item.materialKey, cardName: getSummary(item).title }}
                   >
                     {item.kind === "named" ? (
                       isBoardgameCategory(item.card.category) ? <BoardgameResourcePanel card={item.card} /> :
@@ -1090,6 +1103,7 @@ function TeacherPresentationsPageContent() {
         )}
       </div>
     </main>
+    </CardTitlesContext.Provider>
   );
 }
 
@@ -1114,6 +1128,7 @@ function PersonalStudySubjectCard({
 }: {
   card: PresentationNamedCard;
 }) {
+  const title = useCardTitle(`named:${card.key}`, card.displayName);
   const [isSubjectExpanded, setIsSubjectExpanded] = useState(false);
   const [expandedLectureKey, setExpandedLectureKey] = useState<string | null>(null);
   const lectures = groupPersonalStudyLectures(card.resources);
@@ -1132,7 +1147,7 @@ function PersonalStudySubjectCard({
           </span>
           <span className="min-w-0 flex-1">
             <span className="block break-words text-lg font-black leading-6 text-slate-800">
-              {card.displayName}
+              {title}
             </span>
             <span className="mt-1 block text-xs font-bold text-slate-400">
               강의 {lectures.length}개 · 자료 {card.resources.length}개
@@ -1320,9 +1335,10 @@ function BoardgameResourcePanel({
 }: {
   card: PresentationNamedCard;
 }) {
+  const title = useCardTitle(`named:${card.key}`, card.displayName);
   return (
     <section
-      aria-label={`${card.displayName} 자료 목록`}
+      aria-label={`${title} 자료 목록`}
       className="rounded-3xl border border-orange-200 bg-white shadow-sm"
     >
       <div className="shrink-0 border-b border-orange-100 bg-orange-50 px-4 py-3">
@@ -1330,7 +1346,7 @@ function BoardgameResourcePanel({
         <div className="mt-1 flex items-end justify-between gap-3">
           <div className="min-w-0">
             <h3 className="break-words text-lg font-black leading-6 text-slate-800">
-              {card.displayName}
+              {title}
             </h3>
             {card.brandName ? (
               <p className="mt-0.5 truncate text-xs font-bold text-slate-500">
@@ -1345,7 +1361,7 @@ function BoardgameResourcePanel({
       </div>
 
       <div className="grid gap-3 p-3">
-        {card.coverImageDataUrl ? <Image src={card.coverImageDataUrl} alt={`${card.displayName} 대표 이미지`} width={720} height={540} unoptimized className="max-h-48 w-full rounded-2xl object-contain" /> : null}
+        {card.coverImageDataUrl ? <Image src={card.coverImageDataUrl} alt={`${title} 대표 이미지`} width={720} height={540} unoptimized className="max-h-48 w-full rounded-2xl object-contain" /> : null}
         <div className="flex flex-wrap gap-2">
           <Link href={buildNamedCardAddHref(card)} className="rounded-xl border px-3 py-2 text-sm font-black">+ 자료·링크 추가</Link>
           {card.resources[0] ? <Link href={`/teacher/presentations/${card.resources[0].id}/edit`} className="rounded-xl border px-3 py-2 text-sm font-black">이미지·업체 {card.coverImageDataUrl || card.brandName ? "수정" : "추가"}</Link> : null}
@@ -1373,6 +1389,7 @@ function NamedResourceCard({
   const isLessonCard = card.category === "coding" || card.category === "hello_maple";
   const isWonjongHelloMaple = isWonjongHelloMapleCard(card);
   const program = getHelloMapleProgram(card.category, card.displayName);
+  const title = useCardTitle(`named:${card.key}`, program ? `${program.name}(${program.school})` : card.displayName);
   const icon =
     card.category === "boardgame" || card.category === "teaching_boardgame"
       ? "🎲"
@@ -1429,7 +1446,7 @@ function NamedResourceCard({
         <div className="min-w-0 flex-1">
           <p className={`text-xs font-black ${accent}`}>{CATEGORY_LABELS[card.category]}</p>
           <h3 className="mt-1 break-words text-lg font-black leading-6 text-slate-800">
-            {program ? <HelloMapleProgramTitle program={program} /> : card.displayName}
+            {title}
           </h3>
           {isWonjongHelloMaple ? (
             <p className="mt-1 text-xs font-black text-emerald-600">클래스포에듀 협력 수업</p>
@@ -1443,7 +1460,7 @@ function NamedResourceCard({
           >
             + 추가
           </Link>
-          {onHide ? <CardHideButton label={card.displayName} onHide={onHide} /> : null}
+          {onHide ? <CardHideButton label={title} onHide={onHide} /> : null}
         </div>
       </div>
 
@@ -1575,6 +1592,7 @@ function LinkedResourceCard({
 }: {
   resource: LinkedLibraryResource;
 }) {
+  const title = useCardTitle(`linked:${resource.category}:${resource.id}`, resource.title);
   return (
     <article
       className={`relative flex h-full flex-col rounded-2xl border-2 ${resource.border} ${resource.soft} p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md`}
@@ -1591,7 +1609,7 @@ function LinkedResourceCard({
           </div>
           <div className="min-w-0 flex-1 py-1 pr-10">
             <p className={`text-xs font-black ${resource.accent}`}>{resource.eyebrow}</p>
-            <h3 className="mt-1 text-base font-black leading-6 text-slate-800">{resource.title}</h3>
+            <h3 className="mt-1 text-base font-black leading-6 text-slate-800">{title}</h3>
             <p className="mt-2 text-xs font-bold leading-5 text-slate-500">{resource.description}</p>
           </div>
         </div>
@@ -1623,6 +1641,7 @@ function CompactBookCard({
 }) {
   const coverUrl = getDisplayCoverUrl(book.coverUrl);
   const program = getHelloMapleProgram(book.category, book.bookNumber);
+  const title = useCardTitle(`book:${book.key}`, program ? `${program.name}(${program.school})` : book.title);
   const isWorld = book.category === "world";
   const [coverFailed, setCoverFailed] = useState(false);
   const [expandedLesson, setExpandedLesson] = useState<number | null>(null);
@@ -1694,7 +1713,7 @@ function CompactBookCard({
           <div className={`flex items-start justify-between gap-2 ${program ? "flex-wrap" : ""}`}>
             <div className="min-w-0">
               <p className={`text-xs font-black ${accentText}`}>{book.shortTitle}</p>
-              <h3 className="mt-1 break-words text-base font-black leading-6 text-slate-800">{program ? <HelloMapleProgramTitle program={program} /> : book.title}</h3>
+              <h3 className="mt-1 break-words text-base font-black leading-6 text-slate-800">{title}</h3>
             </div>
             <div className={`flex shrink-0 items-center gap-1.5 ${program ? "w-full justify-end" : ""}`}>
               <Link
@@ -1703,7 +1722,7 @@ function CompactBookCard({
               >
                 + 추가
               </Link>
-              {onHide ? <CardHideButton label={book.title} onHide={onHide} /> : null}
+              {onHide ? <CardHideButton label={title} onHide={onHide} /> : null}
             </div>
           </div>
           <p className="mt-2 text-xs font-bold text-slate-400">
