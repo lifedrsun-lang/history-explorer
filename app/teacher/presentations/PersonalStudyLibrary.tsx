@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import ResourceLibraryLayout from "./ResourceLibraryLayout";
+import useRecentMaterials from "./useRecentMaterials";
+import ResourceDetailContent from "./ResourceDetailContent";
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
-  getDocs,
+  onSnapshot,
   orderBy,
   query,
   Timestamp,
@@ -13,6 +16,9 @@ import {
 import { useRouter } from "next/navigation";
 
 import { auth, db } from "@/lib/firebase";
+import CardActions, { CardTitlesContext, useCardTitle } from "./CardActions";
+import { readPresentationCardTitle, savePresentationCardTitle } from "@/lib/presentations/cardTitles";
+
 import {
   normalizeCardDisplayName,
   normalizeCardKey,
@@ -45,8 +51,6 @@ type PersonalStudySubject = {
   resources: PersonalStudyResource[];
   lectures: PersonalStudyLecture[];
 };
-
-const FAVORITE_CARDS_STORAGE_KEY = "sun-lab:presentation-card-favorites:v1";
 
 const RESOURCE_META: Record<
   PersonalStudyResourceKind,
@@ -199,36 +203,30 @@ function getResourceSummary(resources: PersonalStudyResource[]) {
   return [`자료 ${resources.length}개`, ...details].join(" · ");
 }
 
-function getStoredFavorites() {
-  if (typeof window === "undefined") return new Set<string>();
-  try {
-    const stored = JSON.parse(localStorage.getItem(FAVORITE_CARDS_STORAGE_KEY) || "[]");
-    return new Set(Array.isArray(stored) ? stored.filter((key): key is string => typeof key === "string") : []);
-  } catch {
-    return new Set<string>();
-  }
-}
-
 export default function PersonalStudyLibrary() {
   const router = useRouter();
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [cardTitles, setCardTitles] = useState<Map<string, string>>(new Map());
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const [detailEditing, setDetailEditing] = useState(false);
+  const [detailBusy, setDetailBusy] = useState(false);
   const [resources, setResources] = useState<PersonalStudyResource[]>([]);
-  const [favoriteKeys, setFavoriteKeys] = useState<Set<string>>(getStoredFavorites);
+  const { recentKeys, recordOpen, error: recentError } = useRecentMaterials();
+  const saveCardTitle = async (cardId: string, value: string) => {
+    const title = await savePresentationCardTitle(cardId, value);
+    setCardTitles((current) => new Map(current).set(cardId, title));
+  };
+  const getSubjectTitle = (subject: PersonalStudySubject) => cardTitles.get(`named:${subject.key}`) || subject.displayName;
 
-  const subjects = useMemo(() => {
-    const grouped = groupSubjects(resources);
-    return [...grouped].sort((a, b) => {
-      const aFavorite = favoriteKeys.has(`named:${a.key}`);
-      const bFavorite = favoriteKeys.has(`named:${b.key}`);
-      return Number(bFavorite) - Number(aFavorite);
-    });
-  }, [favoriteKeys, resources]);
+  const subjects = useMemo(() => groupSubjects(resources), [resources]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let unsubscribeCards: (() => void) | undefined;
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      unsubscribeCards?.();
       if (!user) {
         router.replace("/teacher");
         return;
@@ -236,13 +234,19 @@ export default function PersonalStudyLibrary() {
 
       setAuthorized(true);
       setAuthChecking(false);
-      setIsLoading(true);
+      if (refreshVersion === 0) setIsLoading(true);
       setLoadError("");
 
-      try {
-        const snapshot = await getDocs(
-          query(collection(db, "presentations"), orderBy("createdAt", "desc"))
-        );
+      unsubscribeCards = onSnapshot(
+        query(collection(db, "presentations"), orderBy("createdAt", "desc")),
+        (snapshot) => {
+
+        const nextTitles = new Map<string, string>();
+        snapshot.docs.forEach((document) => {
+          const entry = readPresentationCardTitle(document.data());
+          if (entry) nextTitles.set(entry.cardId, entry.title);
+        });
+        setCardTitles(nextTitles);
 
         setResources(
           snapshot.docs.flatMap((docItem) => {
@@ -260,7 +264,7 @@ export default function PersonalStudyLibrary() {
               {
                 id: docItem.id,
                 cardName,
-                cardKey: normalizeCardKey(cardName),
+                cardKey: String(data?.cardKey || "").trim() || normalizeCardKey(cardName),
                 resourceTitle: String(data?.resourceTitle || data?.title || "").trim(),
                 resourceKind: isPersonalStudyResourceKind(data?.resourceKind)
                   ? data.resourceKind
@@ -272,31 +276,18 @@ export default function PersonalStudyLibrary() {
             ];
           })
         );
-      } catch (error) {
-        console.error("Personal study library load failed:", error);
-        setLoadError("내 공부자료를 불러오지 못했습니다.");
-      } finally {
-        setIsLoading(false);
-      }
+          setIsLoading(false);
+        },
+        (error) => {
+          console.error("Personal study library load failed:", error);
+          setLoadError("내 공부자료를 불러오지 못했습니다.");
+          setIsLoading(false);
+        }
+      );
     });
 
-    return unsubscribe;
-  }, [router]);
-
-  const toggleFavorite = (subject: PersonalStudySubject) => {
-    const favoriteKey = `named:${subject.key}`;
-    setFavoriteKeys((current) => {
-      const next = new Set(current);
-      if (next.has(favoriteKey)) next.delete(favoriteKey);
-      else next.add(favoriteKey);
-      try {
-        localStorage.setItem(FAVORITE_CARDS_STORAGE_KEY, JSON.stringify([...next]));
-      } catch (error) {
-        console.warn("Personal study favorites could not be saved:", error);
-      }
-      return next;
-    });
-  };
+    return () => { unsubscribe(); unsubscribeCards?.(); };
+  }, [router, refreshVersion]);
 
   if (authChecking) {
     return (
@@ -311,6 +302,7 @@ export default function PersonalStudyLibrary() {
   if (!authorized) return null;
 
   return (
+    <CardTitlesContext.Provider value={{ titles: cardTitles, saveTitle: saveCardTitle }}>
     <main className="min-h-[100dvh] bg-[#f5f7fb] p-3 text-slate-800 md:p-5">
       <div className="mx-auto max-w-7xl">
         <header className="mb-4 flex flex-col gap-3 rounded-3xl bg-white p-5 shadow-md md:flex-row md:items-center md:justify-between">
@@ -320,7 +312,7 @@ export default function PersonalStudyLibrary() {
             </div>
             <h1 className="mt-2 text-2xl font-black md:text-3xl">🌱 내 공부자료</h1>
             <p className="mt-2 text-sm font-bold text-slate-500">
-              과목을 누르면 강의 목록이, 강의를 누르면 문서·동영상·사진·PPT·링크가 펼쳐집니다.
+              과목을 선택하면 상세보기에서 강의 자료를 확인하고 추가·수정할 수 있습니다.
             </p>
           </div>
           <Link
@@ -358,37 +350,37 @@ export default function PersonalStudyLibrary() {
           ) : null}
 
           {!isLoading && !loadError && subjects.length > 0 ? (
-            <div className="mt-5 grid gap-3">
-              {subjects.map((subject) => (
-                <SubjectCard
-                  key={subject.key}
-                  subject={subject}
-                  isFavorite={favoriteKeys.has(`named:${subject.key}`)}
-                  onToggleFavorite={() => toggleFavorite(subject)}
-                />
-              ))}
-            </div>
+            <ResourceLibraryLayout items={subjects} busy={detailBusy} editing={detailEditing}
+              getSummary={(subject) => ({ key: subject.key, title: getSubjectTitle(subject), category: "내 공부자료", icon: "🌱", meta: `강의 ${subject.lectures.length}개 · 자료 ${subject.resources.length}개` })}
+              recentKeys={recentKeys.map((key) => key.replace(/^named:/, ""))}
+              onOpen={(subject) => recordOpen(`named:${subject.key}`)}
+              recentError={recentError}
+              renderActions={(subject) => <CardActions cardId={`named:${subject.key}`} title={getSubjectTitle(subject)} />}
+              renderDetail={(subject) => <ResourceDetailContent
+                onReload={() => setRefreshVersion((current) => current + 1)}
+                onEditingChange={setDetailEditing} onBusyChange={setDetailBusy}
+                renameContext={{ cardId: `named:${subject.key}`, cardName: getSubjectTitle(subject) }}
+              ><SubjectCard subject={subject} /></ResourceDetailContent>}
+            />
           ) : null}
         </section>
       </div>
     </main>
+    </CardTitlesContext.Provider>
   );
 }
 
 function SubjectCard({
   subject,
-  isFavorite,
-  onToggleFavorite,
 }: {
   subject: PersonalStudySubject;
-  isFavorite: boolean;
-  onToggleFavorite: () => void;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const title = useCardTitle(`named:${subject.key}`, subject.displayName);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [expandedLectureKey, setExpandedLectureKey] = useState<string | null>(null);
   const addHref = `/teacher/presentations/new?category=personal_study&cardName=${encodeURIComponent(
     subject.displayName
-  )}&quick=1`;
+  )}&cardKey=${encodeURIComponent(subject.resources[0].cardKey)}&quick=1`;
 
   return (
     <article className="overflow-hidden rounded-2xl border border-rose-100 bg-white shadow-sm transition hover:shadow-md">
@@ -404,7 +396,7 @@ function SubjectCard({
           </span>
           <span className="min-w-0 flex-1">
             <span className="block break-words text-lg font-black leading-6 text-slate-800">
-              {subject.displayName}
+              {title}
             </span>
             <span className="mt-1 block text-xs font-bold text-slate-400">
               강의 {subject.lectures.length}개 · {getResourceSummary(subject.resources)}
@@ -427,19 +419,6 @@ function SubjectCard({
           >
             + 추가
           </Link>
-          <button
-            type="button"
-            onClick={onToggleFavorite}
-            aria-pressed={isFavorite}
-            title={isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border text-xl font-black shadow-sm transition ${
-              isFavorite
-                ? "border-amber-300 bg-amber-100 text-amber-500"
-                : "border-slate-200 bg-white text-slate-400 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-500"
-            }`}
-          >
-            {isFavorite ? "★" : "☆"}
-          </button>
         </div>
       </div>
 

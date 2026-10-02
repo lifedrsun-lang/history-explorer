@@ -44,7 +44,8 @@ Teacher ownership is enforced in the new APIs using `createdBy`. Existing teache
 - `node scripts/verify-student-data-flow.mjs`: existing 13-case regression script passed.
 - Production build HTTP smoke test: new pages returned 200, unauthenticated new APIs returned 401, and the existing moral-machine, activity-lab, school-management, assignments, student entry and materials pages returned 200 (11 checks). These checks did not access a database.
 - Browser geometry/visual checks on the actual board HTML/CSS with 182 synthetic cards: 390px mobile iframe (375px content viewport), 768px tablet iframe (753px content viewport), 1366px PC iframe (1351px content viewport). Each had equal content/scroll width, no overlapping cards; mobile had one branch column, tablet two, PC a centered topic between branches. These were layout fixtures, not authenticated full-app tests.
-- Full production teacher/student workflow and direct DB access rules still need authenticated verification before release.
+- The preview teacher workflow reached the live server and database on 2026-10-02: an unpublished synthetic school with two empty classes was created, a six-branch activity was saved and reloaded, a branch was renamed and reordered, a seventh branch was added, and the activity was started and submissions paused. No existing school/student records were modified. This verifies teacher configuration persistence; it does not verify student authentication, opinion submission, or direct DB access rules.
+- Full teacher/student workflow and direct DB access rules still need authenticated verification before release. See the live verification record below for the remaining steps.
 - Layout fixtures can be generated outside the repository with `MIND_MAP_FIXTURE_DIR=/tmp/sunlab-mind-map-qa node scripts/verify-mind-map.cjs`. Their 390/768/1366px iframes use the actual board component HTML and stylesheet with synthetic opinions, not production student data. Temporary public fixtures were removed from the final source after preview QA.
 
 ## Deliberately omitted
@@ -54,3 +55,26 @@ Image attachment, dragging, student-drawn connections, shape editor, comments, l
 ## Follow-up
 
 Verify new Firestore collection rules and authenticated live APIs, then complete teacher/student browser tests on a non-production test class. Configure expiration cleanup for new session/attempt documents if using this regularly. After these checks, merge the feature branch to deploy to the existing Vercel production project.
+
+## Live verification record — 2026-10-02
+
+Preview tested: `history-explorer-efbx5651z-sunclass.vercel.app`, feature commit `c096c8357878665f42e30609f43a77bf0b5ff52f`. The preview uses the existing backing services; synthetic records were kept unpublished rather than treating it as an isolated database.
+
+| Check | Result | Evidence / remaining work |
+| --- | --- | --- |
+| Teacher login | Passed previously | User completed sign-in; the teacher dashboard and authenticated classroom list appeared. |
+| Activity create and reload | Passed | `개발검증용 마인드맵 · 수업 사용 안 함`, synthetic 1학년 1반, six initial branches and zero opinions. |
+| Branch edit, reorder, add | Passed | Saved order: 교통·이동, 의학, 학교, 환경, 예술, 쇼핑, 안전. |
+| Start and pause submissions | Passed | Last observed state was `진행중 · 제출 중지`; `학생 제출 허용` appeared. |
+| Resume, close, reopen | Pending live check | Covered by isolated service tests only. Resume the synthetic activity and finish with it closed. |
+| Empty branch deletion | Pending live check | Covered by isolated service tests only. Remove the synthetic seventh branch if needed. |
+| Presentation and print/PDF | Pending live check | Component/layout checks passed; authenticated presentation and browser print flow remain. |
+| Student A/B and another class | Pending live check | No synthetic student accounts or credentials were created. Use dedicated test identities through the existing account flow, then verify submission, own edits/deletes, other-author denial and class isolation. |
+| Hidden/deleted opinions and counts | Pending live check | Covered by isolated service tests only; requires the test student opinions above. |
+| Firestore direct-access rules | Pending | No rules source or administrative rules access is available. Review the deployed rules configuration without reading student documents. The earlier direct data probe was rejected by automatic approval review and was not retried. |
+
+Continuation encountered a fresh browser with no teacher session. The secure sign-in request timed out; its submission and authentication outcome could not be verified. Do not report a failed password or a successful login from that timeout. A new verified teacher login is needed before continuing browser checks.
+
+The feature branch was updated with current `main` resource-library changes without code conflicts. The draft PR remains the review vehicle; these checks do not authorize claiming the feature is ready for production.
+
+After that merge, `npm run build` (including TypeScript), the 230-response mind-map verification, the 13/13 student-data regression, and `scripts/verify-recent-materials.mjs` all passed again. Those automated checks use isolated/mock data and do not close the live pending items above.
