@@ -111,7 +111,7 @@ export default function ResourceLibraryLayout<T>({
     <div className="mt-5 grid min-w-0 gap-4 lg:h-[clamp(24rem,calc(100dvh-16rem),54rem)] lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" data-resource-library>
       <div className="min-h-0 min-w-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-2" data-resource-list>
         {recentError ? <p role="status" className="mb-3 text-sm font-bold text-red-600">{recentError}</p> : null}
-        {recentItems.length > 0 ? (
+        {items.length >= 10 && recentItems.length > 0 ? (
           <section className="mb-5" aria-label="최근 사용한 자료" data-recent-materials>
             <h3 className="mb-3 text-lg font-black text-slate-800">최근 사용한 자료</h3>
             <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">

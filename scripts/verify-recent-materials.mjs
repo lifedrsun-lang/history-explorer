@@ -31,10 +31,18 @@ const { renderToStaticMarkup } = require("react-dom/server");
 const Layout = load("app/teacher/presentations/ResourceLibraryLayout.tsx", { "@/lib/presentations/recentMaterials": recent }).default;
 const props = { items: cards, getSummary: (card) => ({ ...card, category: "역사" }), renderDetail: (card) => card.title };
 assert.equal(renderToStaticMarkup(React.createElement(Layout, props)).includes("data-recent-materials"), false);
-const html = renderToStaticMarkup(React.createElement(Layout, { ...props, recentKeys: keys }));
-assert.equal((html.match(/data-resource-card=/g) || []).length, 10); // Four shortcuts plus all six cards.
+const displayCards = [...cards, ...Array.from({ length: 5 }, (_, i) => ({ key: `extra:${i}`, title: `추가 자료 ${i}` }))];
+for (const count of [2, 9]) {
+  const smallList = renderToStaticMarkup(React.createElement(Layout, { ...props, items: displayCards.slice(0, count), recentKeys: keys }));
+  assert.equal(smallList.includes("data-recent-materials"), false);
+  assert.equal((smallList.match(/data-resource-card=/g) || []).length, count);
+}
+const html = renderToStaticMarkup(React.createElement(Layout, { ...props, items: displayCards.slice(0, 10), recentKeys: keys }));
+assert.equal((html.match(/data-resource-card=/g) || []).length, 14); // Four shortcuts plus all ten cards.
 assert.ok(html.includes("최근 사용한 자료") && html.includes("전체 자료"));
 assert.ok(!html.includes("즐겨찾기") && !html.includes("☆"));
+assert.equal(renderToStaticMarkup(React.createElement(Layout, { ...props, items: displayCards, recentKeys: keys })).includes("data-recent-materials"), true);
+assert.equal(renderToStaticMarkup(React.createElement(Layout, { ...props, items: displayCards, recentKeys: [] })).includes("data-recent-materials"), false);
 
 const histories = new Map();
 let clock = 0;
