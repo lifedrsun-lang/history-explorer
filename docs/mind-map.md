@@ -70,23 +70,31 @@ Previews tested: `history-explorer-efbx5651z-sunclass.vercel.app` at `c096c83578
 | Empty branch deletion | Pending live check | Covered by isolated service tests only. Remove the synthetic seventh branch if needed. |
 | Presentation | Passed | Authenticated modal rendered the topic and seven branches; Escape returned to teacher controls. |
 | Print/PDF | Unverified | Clicking the actual print control produced no visible print dialog in this remote browser. No PDF was produced. Verify in a browser with printing available. |
-| Student A/B and another class | Blocked by preview configuration | Existing account management returned `Supabase 환경변수가 설정되지 않았습니다.` No test credentials or accounts were submitted. Configure the approved Supabase backend for this preview branch before testing student flows. |
+| Student A/B and another class | Pending authenticated runtime check | The earlier configuration error was traced to Production-only Supabase variables. The user added Preview, and a new feature Preview redeploy reached READY. The current test page requires teacher sign-in again; no test credentials or accounts have been submitted. A successful roster query and student flows are still unverified. |
 | Hidden/deleted opinions and counts | Pending live check | Covered by isolated service tests only; requires the test student opinions above. |
 | Firestore direct-access rules | Pending | No rules source or administrative rules access is available. Review the deployed rules configuration without reading student documents. The earlier direct data probe was rejected by automatic approval review and was not retried. |
 
 Earlier continuation encountered a fresh browser with no teacher session and a timed-out secure sign-in request. That outcome was unknown, not evidence of a failed password. The user later signed in manually and the authenticated mind-map API-backed screens were verified.
 
-### First remaining broken boundary: account API → Supabase configuration
+### Account API → Supabase configuration: diagnosis and scope correction
 
 Opening 1학년 1반 account management in the synthetic school displayed the existing configuration error. `lib/supabaseServer.ts` requires `SUPABASE_URL` followed by `SUPABASE_SERVICE_ROLE_KEY`; `lib/assignmentServer.ts` maps either missing value to this exact message and HTTP 500. The UI error proves at least one required value is absent; it does not identify which one. This happens before the roster database query, so the empty-roster placeholder is not proof that no rows exist.
 
-The connected Vercel tools can inspect deployment/project metadata but do not provide environment-variable management. The project environment-settings page redirects to Vercel sign-in; this is separate from the completed Sun Lab teacher sign-in. Environment scopes/values have not been inspected or changed. Configure approved server-only values narrowly for the preview branch, redeploy, then confirm the synthetic roster API works before creating test identities. Do not put the service role key in a `NEXT_PUBLIC_` variable or send it in chat.
+The user completed the separate Vercel administrator sign-in around 21:53 KST. The authenticated environment-variable list showed `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_ASSIGNMENT_BUCKET` scoped only to Production. This confirms that both required account-backend variables were excluded from the Preview environment. No secret values were opened, read, copied, or entered by the agent.
 
-Evidence screenshots contain only synthetic classroom data:
+Around 21:56–21:57 KST, the user reported adding Preview and deploying. A fresh settings-page read confirmed all three variables now say **Production and Preview**. The agent did not save an environment-variable change; a Production-variable edit was cancelled and a blank add-variable form was dismissed during verification of the user's saved changes. The saved scope is Preview generally, not just the feature branch.
+
+The new deployment visible at that point targeted `main`/Production. To apply the settings to the feature under test, the agent used Redeploy on the existing `codex/classroom-mind-map` deployment with **Preview** selected and build cache unchecked. Deployment `dpl_2WVxfAx1BYuLgmduBpQY1sUb5qMx`, source `a726c905345e9b7bc8b827158aaac634fac12cf1`, reached **READY** at 22:00:45 KST. Its immutable URL is `https://history-explorer-56d8xrqxa-sunclass.vercel.app`; the feature-branch alias was assigned successfully.
+
+This verifies the saved environment scopes and successful Preview deployment, not a working Supabase query. The feature teacher page currently asks for Sun Lab teacher sign-in again. Complete that sign-in, confirm the synthetic roster API works, then create the dedicated test identities through the permitted manual credential workflow and run the live student checks. Do not put the service role key in a `NEXT_PUBLIC_` variable or send it in chat.
+
+Evidence screenshots show synthetic classroom data or deployment/configuration metadata, with no secret values:
 
 - [Final closed activity](qa/mind-map-live-closed.jpg)
 - [Authenticated presentation](qa/mind-map-live-presentation.jpg)
 - [Preview account configuration error](qa/mind-map-preview-account-config-error.jpg)
+- [Saved Production and Preview Supabase scopes](qa/mind-map-preview-env-scopes.jpg)
+- [Feature Preview redeploy READY](qa/mind-map-preview-redeploy-ready.jpg)
 
 The feature branch was updated with current `main` resource-library changes without code conflicts. The draft PR remains the review vehicle; these checks do not authorize claiming the feature is ready for production.
 
