@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { getRecentMaterials } from "@/lib/presentations/recentMaterials";
 
 export type ResourceSummary = {
   key: string;
@@ -24,6 +25,7 @@ function ResourceCover({ src, icon }: { src?: string; icon?: string }) {
 /** One selection surface for books, named cards, board games and study subjects. */
 export default function ResourceLibraryLayout<T>({
   items, getSummary, renderDetail, renderActions, busy = false, editing = false,
+  recentKeys = [], onOpen, recentError,
 }: {
   items: T[];
   getSummary: (item: T) => ResourceSummary;
@@ -31,6 +33,9 @@ export default function ResourceLibraryLayout<T>({
   renderActions?: (item: T) => ReactNode;
   busy?: boolean;
   editing?: boolean;
+  recentKeys?: string[];
+  onOpen?: (item: T) => void;
+  recentError?: string;
 }) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const selectedIndex = items.findIndex((item) => getSummary(item).key === selectedKey);
@@ -39,11 +44,16 @@ export default function ResourceLibraryLayout<T>({
   const detailScrollRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
   const hasSelection = selectedIndex >= 0;
+  const recentItems = getRecentMaterials(items, recentKeys, (item) => getSummary(item).key);
 
   const select = (key: string | null) => {
-    if (key === selectedKey || busy) return;
-    if (editing && !window.confirm("작성 중인 내용을 저장하지 않고 이동할까요?")) return;
+    if (busy) return;
+    if (key !== selectedKey && editing && !window.confirm("작성 중인 내용을 저장하지 않고 이동할까요?")) return;
     setSelectedKey(key);
+    if (key !== null) {
+      const opened = items.find((item) => getSummary(item).key === key);
+      if (opened !== undefined) onOpen?.(opened);
+    }
   };
 
   useEffect(() => {
@@ -75,31 +85,43 @@ export default function ResourceLibraryLayout<T>({
     detailScrollRef.current?.scrollTo({ top: 0 });
   }, [selectedKey]);
 
+  const renderCard = (item: T) => {
+    const summary = getSummary(item);
+    const isSelected = summary.key === selectedKey;
+    return (
+      <article data-resource-card={summary.key} key={summary.key} className={`overflow-hidden rounded-2xl border bg-white shadow-sm ${isSelected ? "border-orange-400 bg-orange-50 ring-2 ring-orange-200" : "border-slate-200"}`}>
+        <button type="button" aria-pressed={isSelected} aria-controls={panelId}
+          onClick={() => select(summary.key)} disabled={busy}
+          className="flex w-full min-w-0 items-center gap-3 p-4 text-left outline-none transition hover:bg-orange-50 focus-visible:ring-4 focus-visible:ring-orange-200 disabled:opacity-60">
+          <span className="flex h-16 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50 text-3xl">
+            <ResourceCover key={summary.image} src={summary.image} icon={summary.icon} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-bold text-slate-500">{summary.category}</span>
+            <span className="mt-1 line-clamp-2 break-words text-base font-black leading-6 text-slate-800">{summary.title}</span>
+            {summary.meta ? <span className="mt-1 block truncate text-sm text-slate-500">{summary.meta}</span> : null}
+          </span>
+        </button>
+        {renderActions ? <div className="flex justify-end gap-2 border-t border-slate-100 px-3 py-2">{renderActions(item)}</div> : null}
+      </article>
+    );
+  };
+
   return (
     <div className="mt-5 grid min-w-0 gap-4 lg:h-[clamp(24rem,calc(100dvh-16rem),54rem)] lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" data-resource-library>
       <div className="min-h-0 min-w-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-2" data-resource-list>
+        {recentError ? <p role="status" className="mb-3 text-sm font-bold text-red-600">{recentError}</p> : null}
+        {recentItems.length > 0 ? (
+          <section className="mb-5" aria-label="최근 사용한 자료" data-recent-materials>
+            <h3 className="mb-3 text-lg font-black text-slate-800">최근 사용한 자료</h3>
+            <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {recentItems.map(renderCard)}
+            </div>
+          </section>
+        ) : null}
+        <h3 className="mb-3 text-lg font-black text-slate-800">전체 자료</h3>
         <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {items.map((item) => {
-            const summary = getSummary(item);
-            const isSelected = summary.key === selectedKey;
-            return (
-              <article key={summary.key} className={`overflow-hidden rounded-2xl border bg-white shadow-sm ${isSelected ? "border-orange-400 bg-orange-50 ring-2 ring-orange-200" : "border-slate-200"}`}>
-                <button type="button" aria-pressed={isSelected} aria-controls={panelId}
-                  onClick={() => select(summary.key)} disabled={busy}
-                  className="flex w-full min-w-0 items-center gap-3 p-4 text-left outline-none transition hover:bg-orange-50 focus-visible:ring-4 focus-visible:ring-orange-200 disabled:opacity-60">
-                  <span className="flex h-16 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50 text-3xl">
-                    <ResourceCover key={summary.image} src={summary.image} icon={summary.icon} />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-bold text-slate-500">{summary.category}</span>
-                    <span className="mt-1 line-clamp-2 break-words text-base font-black leading-6 text-slate-800">{summary.title}</span>
-                    {summary.meta ? <span className="mt-1 block truncate text-sm text-slate-500">{summary.meta}</span> : null}
-                  </span>
-                </button>
-                {renderActions ? <div className="flex justify-end gap-2 border-t border-slate-100 px-3 py-2">{renderActions(item)}</div> : null}
-              </article>
-            );
-          })}
+          {items.map(renderCard)}
         </div>
         {items.length === 0 ? <p className="p-5 text-sm text-slate-500">표시할 자료가 없습니다.</p> : null}
       </div>

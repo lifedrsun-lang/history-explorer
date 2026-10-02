@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import ResourceLibraryLayout from "./ResourceLibraryLayout";
+import useRecentMaterials from "./useRecentMaterials";
 import ResourceDetailContent from "./ResourceDetailContent";
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
-  getDocs,
+  onSnapshot,
   orderBy,
   query,
   Timestamp,
@@ -47,8 +48,6 @@ type PersonalStudySubject = {
   resources: PersonalStudyResource[];
   lectures: PersonalStudyLecture[];
 };
-
-const FAVORITE_CARDS_STORAGE_KEY = "sun-lab:presentation-card-favorites:v1";
 
 const RESOURCE_META: Record<
   PersonalStudyResourceKind,
@@ -201,16 +200,6 @@ function getResourceSummary(resources: PersonalStudyResource[]) {
   return [`자료 ${resources.length}개`, ...details].join(" · ");
 }
 
-function getStoredFavorites() {
-  if (typeof window === "undefined") return new Set<string>();
-  try {
-    const stored = JSON.parse(localStorage.getItem(FAVORITE_CARDS_STORAGE_KEY) || "[]");
-    return new Set(Array.isArray(stored) ? stored.filter((key): key is string => typeof key === "string") : []);
-  } catch {
-    return new Set<string>();
-  }
-}
-
 export default function PersonalStudyLibrary() {
   const router = useRouter();
   const [authChecking, setAuthChecking] = useState(true);
@@ -221,19 +210,13 @@ export default function PersonalStudyLibrary() {
   const [detailEditing, setDetailEditing] = useState(false);
   const [detailBusy, setDetailBusy] = useState(false);
   const [resources, setResources] = useState<PersonalStudyResource[]>([]);
-  const [favoriteKeys, setFavoriteKeys] = useState<Set<string>>(getStoredFavorites);
-
-  const subjects = useMemo(() => {
-    const grouped = groupSubjects(resources);
-    return [...grouped].sort((a, b) => {
-      const aFavorite = favoriteKeys.has(`named:${a.key}`);
-      const bFavorite = favoriteKeys.has(`named:${b.key}`);
-      return Number(bFavorite) - Number(aFavorite);
-    });
-  }, [favoriteKeys, resources]);
+  const { recentKeys, recordOpen, error: recentError } = useRecentMaterials();
+  const subjects = useMemo(() => groupSubjects(resources), [resources]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let unsubscribeCards: (() => void) | undefined;
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      unsubscribeCards?.();
       if (!user) {
         router.replace("/teacher");
         return;
@@ -244,10 +227,9 @@ export default function PersonalStudyLibrary() {
       if (refreshVersion === 0) setIsLoading(true);
       setLoadError("");
 
-      try {
-        const snapshot = await getDocs(
-          query(collection(db, "presentations"), orderBy("createdAt", "desc"))
-        );
+      unsubscribeCards = onSnapshot(
+        query(collection(db, "presentations"), orderBy("createdAt", "desc")),
+        (snapshot) => {
 
         setResources(
           snapshot.docs.flatMap((docItem) => {
@@ -277,31 +259,18 @@ export default function PersonalStudyLibrary() {
             ];
           })
         );
-      } catch (error) {
-        console.error("Personal study library load failed:", error);
-        setLoadError("내 공부자료를 불러오지 못했습니다.");
-      } finally {
-        setIsLoading(false);
-      }
+          setIsLoading(false);
+        },
+        (error) => {
+          console.error("Personal study library load failed:", error);
+          setLoadError("내 공부자료를 불러오지 못했습니다.");
+          setIsLoading(false);
+        }
+      );
     });
 
-    return unsubscribe;
+    return () => { unsubscribe(); unsubscribeCards?.(); };
   }, [router, refreshVersion]);
-
-  const toggleFavorite = (subject: PersonalStudySubject) => {
-    const favoriteKey = `named:${subject.key}`;
-    setFavoriteKeys((current) => {
-      const next = new Set(current);
-      if (next.has(favoriteKey)) next.delete(favoriteKey);
-      else next.add(favoriteKey);
-      try {
-        localStorage.setItem(FAVORITE_CARDS_STORAGE_KEY, JSON.stringify([...next]));
-      } catch (error) {
-        console.warn("Personal study favorites could not be saved:", error);
-      }
-      return next;
-    });
-  };
 
   if (authChecking) {
     return (
@@ -365,12 +334,14 @@ export default function PersonalStudyLibrary() {
           {!isLoading && !loadError && subjects.length > 0 ? (
             <ResourceLibraryLayout items={subjects} busy={detailBusy} editing={detailEditing}
               getSummary={(subject) => ({ key: subject.key, title: subject.displayName, category: "내 공부자료", icon: "🌱", meta: `강의 ${subject.lectures.length}개 · 자료 ${subject.resources.length}개` })}
-              renderActions={(subject) => <button type="button" aria-label={`${subject.displayName} 즐겨찾기`} aria-pressed={favoriteKeys.has(`named:${subject.key}`)} onClick={() => toggleFavorite(subject)} className="rounded-xl border px-3 py-1 text-lg text-amber-500">{favoriteKeys.has(`named:${subject.key}`) ? "★" : "☆"}</button>}
+              recentKeys={recentKeys.map((key) => key.replace(/^named:/, ""))}
+              onOpen={(subject) => recordOpen(`named:${subject.key}`)}
+              recentError={recentError}
               renderDetail={(subject) => <ResourceDetailContent
                 onReload={() => setRefreshVersion((current) => current + 1)}
                 onEditingChange={setDetailEditing} onBusyChange={setDetailBusy}
                 renameContext={{ category: "personal_study", cardKey: subject.resources[0].cardKey, cardName: subject.displayName }}
-              ><SubjectCard subject={subject} isFavorite={favoriteKeys.has(`named:${subject.key}`)} onToggleFavorite={() => toggleFavorite(subject)} /></ResourceDetailContent>}
+              ><SubjectCard subject={subject} /></ResourceDetailContent>}
             />
           ) : null}
         </section>
@@ -381,12 +352,8 @@ export default function PersonalStudyLibrary() {
 
 function SubjectCard({
   subject,
-  isFavorite,
-  onToggleFavorite,
 }: {
   subject: PersonalStudySubject;
-  isFavorite: boolean;
-  onToggleFavorite: () => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [expandedLectureKey, setExpandedLectureKey] = useState<string | null>(null);
@@ -431,19 +398,6 @@ function SubjectCard({
           >
             + 추가
           </Link>
-          <button
-            type="button"
-            onClick={onToggleFavorite}
-            aria-pressed={isFavorite}
-            title={isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border text-xl font-black shadow-sm transition ${
-              isFavorite
-                ? "border-amber-300 bg-amber-100 text-amber-500"
-                : "border-slate-200 bg-white text-slate-400 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-500"
-            }`}
-          >
-            {isFavorite ? "★" : "☆"}
-          </button>
         </div>
       </div>
 

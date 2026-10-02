@@ -2,13 +2,14 @@
 
 import Image from "next/image";
 import ResourceLibraryLayout, { type ResourceSummary } from "./ResourceLibraryLayout";
+import useRecentMaterials from "./useRecentMaterials";
 import ResourceDetailContent from "./ResourceDetailContent";
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
-  getDocs,
+  onSnapshot,
   orderBy,
   query,
   Timestamp,
@@ -117,9 +118,9 @@ type LinkedLibraryResource = {
 };
 
 type DisplayLibraryCard =
-  | { kind: "named"; favoriteKey: string; card: PresentationNamedCard }
-  | { kind: "book"; favoriteKey: string; book: PresentationBook }
-  | { kind: "linked"; favoriteKey: string; resource: LinkedLibraryResource };
+  | { kind: "named"; materialKey: string; card: PresentationNamedCard }
+  | { kind: "book"; materialKey: string; book: PresentationBook }
+  | { kind: "linked"; materialKey: string; resource: LinkedLibraryResource };
 
 const CATEGORY_LABELS: Record<PresentationCategory, string> = {
   history: "별꼼역사",
@@ -241,7 +242,6 @@ const LINKED_LIBRARY_RESOURCES: LinkedLibraryResource[] = [
 
 const BASE_LESSON_COUNT = 4;
 const DEFAULT_PRESENTATION_COVER_URL = "/covers/default-presentation-cover.png";
-const FAVORITE_CARDS_STORAGE_KEY = "sun-lab:presentation-card-favorites:v1";
 const HIDDEN_CODING_CARDS_STORAGE_KEY = "sun-lab:hidden-coding-cards:v1";
 const PERSONAL_STUDY_RESOURCE_META: Record<
   PersonalStudyResourceKind,
@@ -567,22 +567,6 @@ function groupNamedCards(
   );
 }
 
-function getStoredFavoriteCardKeys() {
-  if (typeof window === "undefined") return new Set<string>();
-
-  try {
-    const storedKeys = JSON.parse(localStorage.getItem(FAVORITE_CARDS_STORAGE_KEY) || "[]");
-    return new Set(
-      Array.isArray(storedKeys)
-        ? storedKeys.filter((key): key is string => typeof key === "string")
-        : []
-    );
-  } catch (error) {
-    console.warn("Presentation favorites could not be loaded:", error);
-    return new Set<string>();
-  }
-}
-
 function getStoredHiddenCodingCardKeys() {
   if (typeof window === "undefined") return new Set<string>();
 
@@ -616,7 +600,7 @@ function TeacherPresentationsPageContent() {
   const [worldSeriesFilter, setWorldSeriesFilter] = useState<WorldSeriesFilter>("all");
   const [worldBookFilter, setWorldBookFilter] = useState("all");
   const [worldLessonFilter, setWorldLessonFilter] = useState("all");
-  const [favoriteCardKeys, setFavoriteCardKeys] = useState<Set<string>>(getStoredFavoriteCardKeys);
+  const { recentKeys, recordOpen, error: recentError } = useRecentMaterials();
   const [hiddenCodingCardKeys, setHiddenCodingCardKeys] = useState<Set<string>>(
     getStoredHiddenCodingCardKeys
   );
@@ -689,17 +673,17 @@ function TeacherPresentationsPageContent() {
     () => [
       ...namedCards.map((card) => ({
         kind: "named" as const,
-        favoriteKey: `named:${card.key}`,
+        materialKey: `named:${card.key}`,
         card,
       })),
       ...presentationBooks.map((book) => ({
         kind: "book" as const,
-        favoriteKey: `book:${book.key}`,
+        materialKey: `book:${book.key}`,
         book,
       })),
       ...linkedLibraryResources.map((resource) => ({
         kind: "linked" as const,
-        favoriteKey: `linked:${resource.category}:${resource.id}`,
+        materialKey: `linked:${resource.category}:${resource.id}`,
         resource,
       })),
     ],
@@ -709,7 +693,7 @@ function TeacherPresentationsPageContent() {
     () =>
       allLibraryCards.filter(
         (item) =>
-          isHideableCodingCard(item) && hiddenCodingCardKeys.has(item.favoriteKey)
+          isHideableCodingCard(item) && hiddenCodingCardKeys.has(item.materialKey)
       ).length,
     [allLibraryCards, hiddenCodingCardKeys]
   );
@@ -718,13 +702,11 @@ function TeacherPresentationsPageContent() {
       if (item.kind === "named" && isLegacyHelloMapleBasicCard(item.card)) {
         return false;
       }
-      return !isHideableCodingCard(item) || !hiddenCodingCardKeys.has(item.favoriteKey);
+      return !isHideableCodingCard(item) || !hiddenCodingCardKeys.has(item.materialKey);
     });
 
-    return [...visibleCards].sort(
-      (a, b) => Number(favoriteCardKeys.has(b.favoriteKey)) - Number(favoriteCardKeys.has(a.favoriteKey))
-    );
-  }, [allLibraryCards, favoriteCardKeys, hiddenCodingCardKeys]);
+    return visibleCards;
+  }, [allLibraryCards, hiddenCodingCardKeys]);
   const worldLessonOptions = useMemo(
     () =>
       getLessonNumbers(
@@ -736,7 +718,9 @@ function TeacherPresentationsPageContent() {
   );
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let unsubscribeCards: (() => void) | undefined;
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      unsubscribeCards?.();
       if (!user) {
         router.replace("/teacher");
         return;
@@ -747,10 +731,9 @@ function TeacherPresentationsPageContent() {
       if (refreshVersion === 0) setIsLoading(true);
       setLoadError("");
 
-      try {
-        const snapshot = await getDocs(
-          query(collection(db, "presentations"), orderBy("createdAt", "desc"))
-        );
+      unsubscribeCards = onSnapshot(
+        query(collection(db, "presentations"), orderBy("createdAt", "desc")),
+        (snapshot) => {
 
         const nextMetadata = new Map<string, BoardgameCardMetadata>();
         snapshot.docs.forEach((metadataDocument) => {
@@ -813,15 +796,17 @@ function TeacherPresentationsPageContent() {
             .filter((item) => item.pptUrl)
         );
 
-      } catch (error) {
-        console.error("Presentation list load failed:", error);
-        setLoadError("수업자료 목록을 불러오지 못했습니다.");
-      } finally {
-        setIsLoading(false);
-      }
+          setIsLoading(false);
+        },
+        (error) => {
+          console.error("Presentation list load failed:", error);
+          setLoadError("수업자료 목록을 불러오지 못했습니다.");
+          setIsLoading(false);
+        }
+      );
     });
 
-    return unsubscribe;
+    return () => { unsubscribe(); unsubscribeCards?.(); };
   }, [router, refreshVersion]);
 
   const openLibrary = (category: PresentationCategory) => {
@@ -842,25 +827,6 @@ function TeacherPresentationsPageContent() {
       isArchiveSection ? "/teacher/presentations?section=archive" : "/teacher/presentations",
       { scroll: false }
     );
-  };
-
-  const toggleFavoriteCard = (favoriteKey: string) => {
-    setFavoriteCardKeys((current) => {
-      const next = new Set(current);
-      if (next.has(favoriteKey)) {
-        next.delete(favoriteKey);
-      } else {
-        next.add(favoriteKey);
-      }
-
-      try {
-        localStorage.setItem(FAVORITE_CARDS_STORAGE_KEY, JSON.stringify([...next]));
-      } catch (error) {
-        console.warn("Presentation favorites could not be saved:", error);
-      }
-
-      return next;
-    });
   };
 
   const hideCodingCard = (cardKey: string, label: string) => {
@@ -1093,14 +1059,10 @@ function TeacherPresentationsPageContent() {
                 getSummary={getLibraryCardSummary}
                 busy={detailBusy}
                 editing={detailEditing}
-                renderActions={(item) => <FavoriteButton
-                  label={getLibraryCardSummary(item).title}
-                  isFavorite={favoriteCardKeys.has(item.favoriteKey)}
-                  onToggle={() => toggleFavoriteCard(item.favoriteKey)}
-                />}
+                recentKeys={recentKeys}
+                onOpen={(item) => recordOpen(item.materialKey)}
+                recentError={recentError}
                 renderDetail={(item) => {
-                  const isFavorite = favoriteCardKeys.has(item.favoriteKey);
-                  const onToggleFavorite = () => toggleFavoriteCard(item.favoriteKey);
                   return <ResourceDetailContent
                     onReload={() => setRefreshVersion((current) => current + 1)}
                     onEditingChange={setDetailEditing}
@@ -1113,13 +1075,13 @@ function TeacherPresentationsPageContent() {
                   >
                     {item.kind === "named" ? (
                       isBoardgameCategory(item.card.category) ? <BoardgameResourcePanel card={item.card} /> :
-                      item.card.category === "personal_study" ? <PersonalStudySubjectCard card={item.card} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite} /> :
-                      <NamedResourceCard card={item.card} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite}
-                        onHide={item.card.category === "coding" || item.card.category === "hello_maple" ? () => hideCodingCard(item.favoriteKey, item.card.displayName) : undefined} />
+                      item.card.category === "personal_study" ? <PersonalStudySubjectCard card={item.card} /> :
+                      <NamedResourceCard card={item.card}
+                        onHide={item.card.category === "coding" || item.card.category === "hello_maple" ? () => hideCodingCard(item.materialKey, item.card.displayName) : undefined} />
                     ) : item.kind === "book" ? (
-                      <CompactBookCard book={item.book} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite}
-                        onHide={item.book.category === "coding" || item.book.category === "hello_maple" ? () => hideCodingCard(item.favoriteKey, item.book.title) : undefined} />
-                    ) : <LinkedResourceCard resource={item.resource} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite} />}
+                      <CompactBookCard book={item.book}
+                        onHide={item.book.category === "coding" || item.book.category === "hello_maple" ? () => hideCodingCard(item.materialKey, item.book.title) : undefined} />
+                    ) : <LinkedResourceCard resource={item.resource} />}
                   </ResourceDetailContent>;
                 }}
               />
@@ -1149,12 +1111,8 @@ export default function TeacherPresentationsPage() {
 
 function PersonalStudySubjectCard({
   card,
-  isFavorite,
-  onToggleFavorite,
 }: {
   card: PresentationNamedCard;
-  isFavorite: boolean;
-  onToggleFavorite: () => void;
 }) {
   const [isSubjectExpanded, setIsSubjectExpanded] = useState(false);
   const [expandedLectureKey, setExpandedLectureKey] = useState<string | null>(null);
@@ -1198,11 +1156,6 @@ function PersonalStudySubjectCard({
           >
             + 추가
           </Link>
-          <FavoriteButton
-            label={card.displayName}
-            isFavorite={isFavorite}
-            onToggle={onToggleFavorite}
-          />
         </div>
       </div>
 
@@ -1340,7 +1293,7 @@ function getLibraryCardSummary(item: DisplayLibraryCard): ResourceSummary {
     const { card } = item;
     const program = getHelloMapleProgram(card.category, card.displayName);
     return {
-      key: item.favoriteKey,
+      key: item.materialKey,
       title: program ? program.name : card.displayName,
       category: CATEGORY_LABELS[card.category],
       image: card.coverImageDataUrl || undefined,
@@ -1352,14 +1305,14 @@ function getLibraryCardSummary(item: DisplayLibraryCard): ResourceSummary {
     const { book } = item;
     const program = getHelloMapleProgram(book.category, book.bookNumber);
     return {
-      key: item.favoriteKey,
+      key: item.materialKey,
       title: program ? program.name : book.title,
       category: CATEGORY_LABELS[book.category],
       image: getDisplayCoverUrl(book.coverUrl) || DEFAULT_PRESENTATION_COVER_URL,
       meta: program?.school || book.shortTitle,
     };
   }
-  return { key: item.favoriteKey, title: item.resource.title, category: CATEGORY_LABELS[item.resource.category], icon: item.resource.icon, meta: item.resource.eyebrow };
+  return { key: item.materialKey, title: item.resource.title, category: CATEGORY_LABELS[item.resource.category], icon: item.resource.icon, meta: item.resource.eyebrow };
 }
 
 function BoardgameResourcePanel({
@@ -1411,13 +1364,9 @@ function BoardgameResourcePanel({
 
 function NamedResourceCard({
   card,
-  isFavorite,
-  onToggleFavorite,
   onHide,
 }: {
   card: PresentationNamedCard;
-  isFavorite: boolean;
-  onToggleFavorite: () => void;
   onHide?: () => void;
 }) {
   const [expandedLesson, setExpandedLesson] = useState<number | null>(null);
@@ -1494,11 +1443,6 @@ function NamedResourceCard({
           >
             + 추가
           </Link>
-          <FavoriteButton
-            label={card.displayName}
-            isFavorite={isFavorite}
-            onToggle={onToggleFavorite}
-          />
           {onHide ? <CardHideButton label={card.displayName} onHide={onHide} /> : null}
         </div>
       </div>
@@ -1628,23 +1572,14 @@ function ResourceRow({
 
 function LinkedResourceCard({
   resource,
-  isFavorite,
-  onToggleFavorite,
 }: {
   resource: LinkedLibraryResource;
-  isFavorite: boolean;
-  onToggleFavorite: () => void;
 }) {
   return (
     <article
       className={`relative flex h-full flex-col rounded-2xl border-2 ${resource.border} ${resource.soft} p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md`}
     >
       <div className="absolute right-3 top-3 z-10">
-        <FavoriteButton
-          label={resource.title}
-          isFavorite={isFavorite}
-          onToggle={onToggleFavorite}
-        />
       </div>
       <Link
         href={resource.href}
@@ -1681,13 +1616,9 @@ function LinkedResourceCard({
 
 function CompactBookCard({
   book,
-  isFavorite,
-  onToggleFavorite,
   onHide,
 }: {
   book: PresentationBook;
-  isFavorite: boolean;
-  onToggleFavorite: () => void;
   onHide?: () => void;
 }) {
   const coverUrl = getDisplayCoverUrl(book.coverUrl);
@@ -1772,11 +1703,6 @@ function CompactBookCard({
               >
                 + 추가
               </Link>
-              <FavoriteButton
-                label={book.title}
-                isFavorite={isFavorite}
-                onToggle={onToggleFavorite}
-              />
               {onHide ? <CardHideButton label={book.title} onHide={onHide} /> : null}
             </div>
           </div>
@@ -1910,35 +1836,6 @@ function StatusBox({ children }: { children: ReactNode }) {
     <div className="mt-5 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center text-sm font-black text-slate-500">
       {children}
     </div>
-  );
-}
-
-function FavoriteButton({
-  label,
-  isFavorite,
-  onToggle,
-}: {
-  label: string;
-  isFavorite: boolean;
-  onToggle: () => void;
-}) {
-  const actionLabel = isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가";
-
-  return (
-    <button
-      type="button"
-      aria-label={`${label} ${actionLabel}`}
-      aria-pressed={isFavorite}
-      title={actionLabel}
-      onClick={onToggle}
-      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-xl font-black shadow-sm transition ${
-        isFavorite
-          ? "border-amber-300 bg-amber-100 text-amber-500 hover:bg-amber-50"
-          : "border-slate-200 bg-white text-slate-400 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-500"
-      }`}
-    >
-      <span aria-hidden="true">{isFavorite ? "★" : "☆"}</span>
-    </button>
   );
 }
 
