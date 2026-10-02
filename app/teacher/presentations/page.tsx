@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import ResourceLibraryLayout, { type ResourceSummary } from "./ResourceLibraryLayout";
+import ResourceDetailContent from "./ResourceDetailContent";
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { onAuthStateChanged } from "firebase/auth";
@@ -621,7 +623,9 @@ function TeacherPresentationsPageContent() {
   const [boardgameCardMetadata, setBoardgameCardMetadata] = useState<
     Map<string, BoardgameCardMetadata>
   >(new Map());
-  const [expandedBoardgameCardKey, setExpandedBoardgameCardKey] = useState<string | null>(null);
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const [detailEditing, setDetailEditing] = useState(false);
+  const [detailBusy, setDetailBusy] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
 
@@ -721,15 +725,6 @@ function TeacherPresentationsPageContent() {
       (a, b) => Number(favoriteCardKeys.has(b.favoriteKey)) - Number(favoriteCardKeys.has(a.favoriteKey))
     );
   }, [allLibraryCards, favoriteCardKeys, hiddenCodingCardKeys]);
-  const boardgameDisplayCards = useMemo(
-    () =>
-      displayLibraryCards.flatMap((item) =>
-        item.kind === "named" && isBoardgameCategory(item.card.category)
-          ? [{ favoriteKey: item.favoriteKey, card: item.card }]
-          : []
-      ),
-    [displayLibraryCards]
-  );
   const worldLessonOptions = useMemo(
     () =>
       getLessonNumbers(
@@ -749,7 +744,7 @@ function TeacherPresentationsPageContent() {
 
       setAuthorized(true);
       setAuthChecking(false);
-      setIsLoading(true);
+      if (refreshVersion === 0) setIsLoading(true);
       setLoadError("");
 
       try {
@@ -827,10 +822,9 @@ function TeacherPresentationsPageContent() {
     });
 
     return unsubscribe;
-  }, [router]);
+  }, [router, refreshVersion]);
 
   const openLibrary = (category: PresentationCategory) => {
-    setExpandedBoardgameCardKey(null);
     setWorldSeriesFilter("all");
     setWorldBookFilter("all");
     setWorldLessonFilter("all");
@@ -841,7 +835,6 @@ function TeacherPresentationsPageContent() {
   };
 
   const closeLibrary = () => {
-    setExpandedBoardgameCardKey(null);
     setWorldSeriesFilter("all");
     setWorldBookFilter("all");
     setWorldLessonFilter("all");
@@ -1094,82 +1087,42 @@ function TeacherPresentationsPageContent() {
             {!isLoading &&
             !loadError &&
             (presentationBooks.length > 0 || namedCards.length > 0 || linkedLibraryResources.length > 0) ? (
-              activeLibrary && isBoardgameCategory(activeLibrary) ? (
-                <BoardgameLibrary
-                  cards={boardgameDisplayCards}
-                  expandedCardKey={expandedBoardgameCardKey}
-                  onToggleCard={(cardKey) =>
-                    setExpandedBoardgameCardKey((current) =>
-                      current === cardKey ? null : cardKey
-                    )
-                  }
-                  favoriteCardKeys={favoriteCardKeys}
-                  onToggleFavorite={toggleFavoriteCard}
-                />
-              ) : (
-                <div
-                  className={`mt-5 grid gap-3 ${
-                    activeLibrary === "personal_study" ? "" : "md:grid-cols-2 xl:grid-cols-3"
-                  }`}
-                >
-                  {displayLibraryCards.map((item) => {
+              <ResourceLibraryLayout
+                key={`${activeLibrary}:${worldSeriesFilter}:${worldBookFilter}:${worldLessonFilter}`}
+                items={displayLibraryCards}
+                getSummary={getLibraryCardSummary}
+                busy={detailBusy}
+                editing={detailEditing}
+                renderActions={(item) => <FavoriteButton
+                  label={getLibraryCardSummary(item).title}
+                  isFavorite={favoriteCardKeys.has(item.favoriteKey)}
+                  onToggle={() => toggleFavoriteCard(item.favoriteKey)}
+                />}
+                renderDetail={(item) => {
                   const isFavorite = favoriteCardKeys.has(item.favoriteKey);
                   const onToggleFavorite = () => toggleFavoriteCard(item.favoriteKey);
-
-                  if (item.kind === "named") {
-                    if (item.card.category === "personal_study") {
-                      return (
-                        <PersonalStudySubjectCard
-                          key={item.favoriteKey}
-                          card={item.card}
-                          isFavorite={isFavorite}
-                          onToggleFavorite={onToggleFavorite}
-                        />
-                      );
-                    }
-
-                    return (
-                      <NamedResourceCard
-                        key={item.favoriteKey}
-                        card={item.card}
-                        isFavorite={isFavorite}
-                        onToggleFavorite={onToggleFavorite}
-                        onHide={
-                          item.card.category === "coding" || item.card.category === "hello_maple"
-                            ? () => hideCodingCard(item.favoriteKey, item.card.displayName)
-                            : undefined
-                        }
-                      />
-                    );
-                  }
-
-                  if (item.kind === "book") {
-                    return (
-                      <CompactBookCard
-                        key={item.favoriteKey}
-                        book={item.book}
-                        isFavorite={isFavorite}
-                        onToggleFavorite={onToggleFavorite}
-                        onHide={
-                          item.book.category === "coding" || item.book.category === "hello_maple"
-                            ? () => hideCodingCard(item.favoriteKey, item.book.title)
-                            : undefined
-                        }
-                      />
-                    );
-                  }
-
-                  return (
-                    <LinkedResourceCard
-                      key={item.favoriteKey}
-                      resource={item.resource}
-                      isFavorite={isFavorite}
-                      onToggleFavorite={onToggleFavorite}
-                    />
-                  );
-                  })}
-                </div>
-              )
+                  return <ResourceDetailContent
+                    onReload={() => setRefreshVersion((current) => current + 1)}
+                    onEditingChange={setDetailEditing}
+                    onBusyChange={setDetailBusy}
+                    renameContext={item.kind === "named" ? {
+                      category: item.card.category,
+                      cardKey: item.card.cardKey,
+                      cardName: item.card.displayName,
+                    } : undefined}
+                  >
+                    {item.kind === "named" ? (
+                      isBoardgameCategory(item.card.category) ? <BoardgameResourcePanel card={item.card} /> :
+                      item.card.category === "personal_study" ? <PersonalStudySubjectCard card={item.card} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite} /> :
+                      <NamedResourceCard card={item.card} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite}
+                        onHide={item.card.category === "coding" || item.card.category === "hello_maple" ? () => hideCodingCard(item.favoriteKey, item.card.displayName) : undefined} />
+                    ) : item.kind === "book" ? (
+                      <CompactBookCard book={item.book} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite}
+                        onHide={item.book.category === "coding" || item.book.category === "hello_maple" ? () => hideCodingCard(item.favoriteKey, item.book.title) : undefined} />
+                    ) : <LinkedResourceCard resource={item.resource} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite} />}
+                  </ResourceDetailContent>;
+                }}
+              />
             ) : null}
           </section>
         )}
@@ -1382,176 +1335,42 @@ function PersonalStudyResourceRow({
   );
 }
 
-function BoardgameLibrary({
-  cards,
-  expandedCardKey,
-  onToggleCard,
-  favoriteCardKeys,
-  onToggleFavorite,
-}: {
-  cards: Array<{ favoriteKey: string; card: PresentationNamedCard }>;
-  expandedCardKey: string | null;
-  onToggleCard: (cardKey: string) => void;
-  favoriteCardKeys: Set<string>;
-  onToggleFavorite: (favoriteKey: string) => void;
-}) {
-  const expandedCard = cards.find(({ card }) => card.key === expandedCardKey)?.card;
-
-  return (
-    <div className="mt-5 grid items-start gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
-      <div className="grid gap-3 xl:grid-cols-2">
-        {cards.map(({ favoriteKey, card }) => {
-          const isExpanded = expandedCardKey === card.key;
-          const panelId = `boardgame-resources-${encodeURIComponent(card.key)}`;
-
-          return (
-            <div key={favoriteKey}>
-              <BoardgameSummaryCard
-                card={card}
-                isExpanded={isExpanded}
-                isFavorite={favoriteCardKeys.has(favoriteKey)}
-                panelId={panelId}
-                onToggle={() => onToggleCard(card.key)}
-                onToggleFavorite={() => onToggleFavorite(favoriteKey)}
-              />
-              {isExpanded ? (
-                <div className="mt-2 lg:hidden">
-                  <BoardgameResourcePanel card={card} id={panelId} />
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="hidden lg:sticky lg:top-4 lg:block">
-        {expandedCard ? (
-          <BoardgameResourcePanel
-            card={expandedCard}
-            id={`boardgame-resources-${encodeURIComponent(expandedCard.key)}`}
-          />
-        ) : (
-          <div className="flex min-h-64 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-orange-200 bg-orange-50/50 p-6 text-center">
-            <div className="text-4xl" aria-hidden="true">🎲</div>
-            <p className="mt-3 text-sm font-black text-orange-800">카드를 선택해 주세요</p>
-            <p className="mt-1 text-xs font-bold leading-5 text-slate-500">
-              대표 사진이나 카드 본문을 누르면 이 영역에 자료 링크가 표시됩니다.
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function BoardgameSummaryCard({
-  card,
-  isExpanded,
-  isFavorite,
-  panelId,
-  onToggle,
-  onToggleFavorite,
-}: {
-  card: PresentationNamedCard;
-  isExpanded: boolean;
-  isFavorite: boolean;
-  panelId: string;
-  onToggle: () => void;
-  onToggleFavorite: () => void;
-}) {
-  const firstResource = card.resources[0];
-
-  return (
-    <article
-      className={`overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:shadow-md ${
-        isExpanded ? "border-orange-300 ring-4 ring-orange-100" : "border-slate-200"
-      }`}
-    >
-      <button
-        type="button"
-        aria-expanded={isExpanded}
-        aria-controls={panelId}
-        onClick={onToggle}
-        className="flex w-full items-center gap-4 p-3 text-left outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-orange-100"
-      >
-        <span className="relative aspect-[4/3] w-28 shrink-0 overflow-hidden rounded-xl border border-orange-100 bg-orange-50">
-          {card.coverImageDataUrl ? (
-            <Image
-              src={card.coverImageDataUrl}
-              alt={`${card.displayName} 대표 사진`}
-              fill
-              sizes="112px"
-              unoptimized
-              className="object-cover"
-            />
-          ) : (
-            <span className="flex h-full items-center justify-center text-4xl" aria-label="기본 주사위 이미지">
-              🎲
-            </span>
-          )}
-        </span>
-
-        <span className="min-w-0 flex-1">
-          <span className="block break-words text-lg font-black leading-6 text-slate-800">
-            {card.displayName}
-          </span>
-          {card.brandName ? (
-            <span className="mt-1 block truncate text-xs font-black text-orange-700">
-              {card.brandName}
-            </span>
-          ) : null}
-          <span className="mt-1 block text-xs font-bold text-slate-400">
-            자료 {card.resources.length}개
-          </span>
-        </span>
-
-        <span
-          aria-hidden="true"
-          className={`shrink-0 text-lg font-black text-orange-400 transition-transform ${
-            isExpanded ? "rotate-180" : ""
-          }`}
-        >
-          ⌄
-        </span>
-      </button>
-
-      <div className="flex flex-wrap items-center justify-end gap-1.5 border-t border-slate-100 px-3 py-2">
-        <Link
-          href={buildNamedCardAddHref(card)}
-          className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-black text-slate-600 transition hover:bg-white hover:text-slate-900"
-        >
-          + 자료
-        </Link>
-        {firstResource ? (
-          <Link
-            href={`/teacher/presentations/${firstResource.id}/edit`}
-            className="inline-flex h-9 items-center justify-center rounded-xl border border-orange-200 bg-orange-50 px-3 text-xs font-black text-orange-700 transition hover:bg-orange-100"
-          >
-            카드 수정
-          </Link>
-        ) : null}
-        <FavoriteButton
-          label={card.displayName}
-          isFavorite={isFavorite}
-          onToggle={onToggleFavorite}
-        />
-      </div>
-    </article>
-  );
+function getLibraryCardSummary(item: DisplayLibraryCard): ResourceSummary {
+  if (item.kind === "named") {
+    const { card } = item;
+    const program = getHelloMapleProgram(card.category, card.displayName);
+    return {
+      key: item.favoriteKey,
+      title: program ? program.name : card.displayName,
+      category: CATEGORY_LABELS[card.category],
+      image: card.coverImageDataUrl || undefined,
+      icon: isBoardgameCategory(card.category) ? "🎲" : card.category === "personal_study" ? "🌱" : card.category === "facilitator" ? "🧭" : "💻",
+      meta: [program?.school || card.brandName, `자료 ${card.resources.length}개`].filter(Boolean).join(" · "),
+    };
+  }
+  if (item.kind === "book") {
+    const { book } = item;
+    const program = getHelloMapleProgram(book.category, book.bookNumber);
+    return {
+      key: item.favoriteKey,
+      title: program ? program.name : book.title,
+      category: CATEGORY_LABELS[book.category],
+      image: getDisplayCoverUrl(book.coverUrl) || DEFAULT_PRESENTATION_COVER_URL,
+      meta: program?.school || book.shortTitle,
+    };
+  }
+  return { key: item.favoriteKey, title: item.resource.title, category: CATEGORY_LABELS[item.resource.category], icon: item.resource.icon, meta: item.resource.eyebrow };
 }
 
 function BoardgameResourcePanel({
   card,
-  id,
 }: {
   card: PresentationNamedCard;
-  id: string;
 }) {
   return (
     <section
-      id={id}
       aria-label={`${card.displayName} 자료 목록`}
-      className="flex max-h-[min(65vh,34rem)] flex-col overflow-hidden rounded-3xl border border-orange-200 bg-white shadow-md"
+      className="rounded-3xl border border-orange-200 bg-white shadow-sm"
     >
       <div className="shrink-0 border-b border-orange-100 bg-orange-50 px-4 py-3">
         <p className="text-xs font-black text-orange-700">자료 목록</p>
@@ -1572,7 +1391,12 @@ function BoardgameResourcePanel({
         </div>
       </div>
 
-      <div className="grid min-h-0 gap-2 overflow-y-auto overscroll-contain p-3">
+      <div className="grid gap-3 p-3">
+        {card.coverImageDataUrl ? <Image src={card.coverImageDataUrl} alt={`${card.displayName} 대표 이미지`} width={720} height={540} unoptimized className="max-h-48 w-full rounded-2xl object-contain" /> : null}
+        <div className="flex flex-wrap gap-2">
+          <Link href={buildNamedCardAddHref(card)} className="rounded-xl border px-3 py-2 text-sm font-black">+ 자료·링크 추가</Link>
+          {card.resources[0] ? <Link href={`/teacher/presentations/${card.resources[0].id}/edit`} className="rounded-xl border px-3 py-2 text-sm font-black">이미지·업체 {card.coverImageDataUrl || card.brandName ? "수정" : "추가"}</Link> : null}
+        </div>
         {card.resources.map((resource, index) => (
           <ResourceRow
             key={resource.id}

@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import ResourceLibraryLayout from "./ResourceLibraryLayout";
+import ResourceDetailContent from "./ResourceDetailContent";
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import {
@@ -215,6 +217,9 @@ export default function PersonalStudyLibrary() {
   const [authorized, setAuthorized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const [detailEditing, setDetailEditing] = useState(false);
+  const [detailBusy, setDetailBusy] = useState(false);
   const [resources, setResources] = useState<PersonalStudyResource[]>([]);
   const [favoriteKeys, setFavoriteKeys] = useState<Set<string>>(getStoredFavorites);
 
@@ -236,7 +241,7 @@ export default function PersonalStudyLibrary() {
 
       setAuthorized(true);
       setAuthChecking(false);
-      setIsLoading(true);
+      if (refreshVersion === 0) setIsLoading(true);
       setLoadError("");
 
       try {
@@ -260,7 +265,7 @@ export default function PersonalStudyLibrary() {
               {
                 id: docItem.id,
                 cardName,
-                cardKey: normalizeCardKey(cardName),
+                cardKey: String(data?.cardKey || "").trim() || normalizeCardKey(cardName),
                 resourceTitle: String(data?.resourceTitle || data?.title || "").trim(),
                 resourceKind: isPersonalStudyResourceKind(data?.resourceKind)
                   ? data.resourceKind
@@ -281,7 +286,7 @@ export default function PersonalStudyLibrary() {
     });
 
     return unsubscribe;
-  }, [router]);
+  }, [router, refreshVersion]);
 
   const toggleFavorite = (subject: PersonalStudySubject) => {
     const favoriteKey = `named:${subject.key}`;
@@ -320,7 +325,7 @@ export default function PersonalStudyLibrary() {
             </div>
             <h1 className="mt-2 text-2xl font-black md:text-3xl">🌱 내 공부자료</h1>
             <p className="mt-2 text-sm font-bold text-slate-500">
-              과목을 누르면 강의 목록이, 강의를 누르면 문서·동영상·사진·PPT·링크가 펼쳐집니다.
+              과목을 선택하면 상세보기에서 강의 자료를 확인하고 추가·수정할 수 있습니다.
             </p>
           </div>
           <Link
@@ -358,16 +363,15 @@ export default function PersonalStudyLibrary() {
           ) : null}
 
           {!isLoading && !loadError && subjects.length > 0 ? (
-            <div className="mt-5 grid gap-3">
-              {subjects.map((subject) => (
-                <SubjectCard
-                  key={subject.key}
-                  subject={subject}
-                  isFavorite={favoriteKeys.has(`named:${subject.key}`)}
-                  onToggleFavorite={() => toggleFavorite(subject)}
-                />
-              ))}
-            </div>
+            <ResourceLibraryLayout items={subjects} busy={detailBusy} editing={detailEditing}
+              getSummary={(subject) => ({ key: subject.key, title: subject.displayName, category: "내 공부자료", icon: "🌱", meta: `강의 ${subject.lectures.length}개 · 자료 ${subject.resources.length}개` })}
+              renderActions={(subject) => <button type="button" aria-label={`${subject.displayName} 즐겨찾기`} aria-pressed={favoriteKeys.has(`named:${subject.key}`)} onClick={() => toggleFavorite(subject)} className="rounded-xl border px-3 py-1 text-lg text-amber-500">{favoriteKeys.has(`named:${subject.key}`) ? "★" : "☆"}</button>}
+              renderDetail={(subject) => <ResourceDetailContent
+                onReload={() => setRefreshVersion((current) => current + 1)}
+                onEditingChange={setDetailEditing} onBusyChange={setDetailBusy}
+                renameContext={{ category: "personal_study", cardKey: subject.resources[0].cardKey, cardName: subject.displayName }}
+              ><SubjectCard subject={subject} isFavorite={favoriteKeys.has(`named:${subject.key}`)} onToggleFavorite={() => toggleFavorite(subject)} /></ResourceDetailContent>}
+            />
           ) : null}
         </section>
       </div>
@@ -384,11 +388,11 @@ function SubjectCard({
   isFavorite: boolean;
   onToggleFavorite: () => void;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [expandedLectureKey, setExpandedLectureKey] = useState<string | null>(null);
   const addHref = `/teacher/presentations/new?category=personal_study&cardName=${encodeURIComponent(
     subject.displayName
-  )}&quick=1`;
+  )}&cardKey=${encodeURIComponent(subject.resources[0].cardKey)}&quick=1`;
 
   return (
     <article className="overflow-hidden rounded-2xl border border-rose-100 bg-white shadow-sm transition hover:shadow-md">
