@@ -66,12 +66,13 @@ Previews tested: `history-explorer-efbx5651z-sunclass.vercel.app` at `c096c83578
 | Activity create and reload | Passed | `개발검증용 마인드맵 · 수업 사용 안 함`, synthetic 1학년 1반, six initial branches and zero opinions. |
 | Branch edit, reorder, add | Passed | Saved order: 교통·이동, 의학, 학교, 환경, 예술, 쇼핑, 안전. |
 | Start and pause submissions | Passed | Last observed state was `진행중 · 제출 중지`; `학생 제출 허용` appeared. |
-| Resume, close, reopen | Passed | Actual UI/server round trip: paused → accepting → closed → open → closed. Reopened after the configuration fix to prepare student submission tests; current state is open with zero opinions. |
+| Resume, close, reopen | Passed | Actual UI/server round trip: paused → accepting → closed → open → closed. Reopened after the configuration fix for student tests. See the latest student record below for current opinion counts. |
 | Empty branch deletion | Pending live check | Covered by isolated service tests only. Remove the synthetic seventh branch if needed. |
 | Presentation | Passed | Authenticated modal rendered the topic and seven branches; Escape returned to teacher controls. |
 | Print/PDF | Unverified | Clicking the actual print control produced no visible print dialog in this remote browser. No PDF was produced. Verify in a browser with printing available. |
-| Student A/B and another class | Pending test identities | Teacher sign-in and live roster reads now work: the synthetic 1-1 and 1-2 account panels show empty rosters, and Vercel recorded HTTP 200 for both initial roster requests. No test credentials or accounts have been submitted. Authenticated student opinion and permission flows remain unverified. |
-| Hidden/deleted opinions and counts | Pending live check | Covered by isolated service tests only; requires the test student opinions above. |
+| Student A and another class | Passed in live Preview | User-created 검증A and 검증C signed in through the normal number/password form. A registered and edited one opinion; C's list and direct activity URL denied the other class's activity. See screenshots below. |
+| Student B / other-author UI controls | Passed live | B signed in, read A's opinion with no edit/delete buttons on A's card, and submitted a separate opinion. B's own card exposed edit/delete controls. Forged other-author API writes remain covered by isolated route tests, not browser attempts. |
+| Opinion counts | Partly passed live | A's create produced total 1 / 학교 1; editing the branch produced total 1 / 학교 0 / 환경 1. B's create produced total 2 / 의학 1 / 환경 1. Teacher hiding, moving, deleting and their counts still require live checks. |
 | Firestore direct-access rules | Pending | No rules source or administrative rules access is available. Review the deployed rules configuration without reading student documents. The earlier direct data probe was rejected by automatic approval review and was not retried. |
 
 Earlier continuation encountered a fresh browser with no teacher session and a timed-out secure sign-in request. That outcome was unknown, not evidence of a failed password. The user later signed in manually and the authenticated mind-map API-backed screens were verified.
@@ -118,4 +119,29 @@ The required synthetic identity plan is:
 | 1-1 | 2 | 검증B | Same-class visibility and other-author controls |
 | 1-2 | 1 | 검증C | Other-class isolation |
 
-The first account form was opened with only student number `1` and nickname `검증A` filled. Account ID and temporary password remain blank. Creating new authentication credentials requires manual user entry and submission; browserAuth must not be used for account creation. No new account was saved. After the user saves these test identities, continue through the normal student sign-in flow without reading, logging, or copying passwords. The remaining student moderation/count checks, deployed Firestore rules review, and actual print/PDF output are still pending.
+At the account-creation handoff, the first form had only student number `1` and nickname `검증A` filled; account ID and temporary password were blank. Creating new authentication credentials required manual user entry and submission. The agent did not save a new account or use browserAuth for account creation. The user later reported completion, followed by the student checks below. The remaining student moderation/count checks, deployed Firestore rules review, and actual print/PDF output are still pending.
+
+### Live student A and other-class checks
+
+The user subsequently reported completing the three account registrations. After browser cleanup left only a blank tab, the feature student page was reopened. Latest Preview `dpl_6U3mYWVXqHYX2gk5UN2BmPU3QvTn`, source `fdd2a328bd7d1f57e31a1127659c959ede727867`, was confirmed READY through Vercel. The draft PR remains unmerged.
+
+Normal secure sign-in showed the positive identities `검증A의 생각을 함께 나눠요.` and later `검증C의 생각을 함께 나눠요.`. No account IDs or password values were read or copied. The following used only the synthetic activity and accounts:
+
+- A selected the 1-1 activity and submitted an opinion under 학교 with the optional title left blank. The save message appeared, the card showed 검증A, and both total and 학교 counts became 1.
+- A used the card's own 수정 control, supplied a title and revised content, and changed its branch to 환경. The same card remained: total 1, 학교 0, 환경 1. Its own 수정/삭제 controls were present. Deletion was not performed.
+- After a browser reload and selecting the activity again, the revised title/content and counts persisted. [Student A evidence](qa/mind-map-student-a-live.jpg).
+- Visiting 1-2 with the 1-1 session showed its normal login form. After C signed in, the 1-2 activity list had no 1-1 activity. Supplying the synthetic 1-1 activity ID with the 1-2 token displayed `우리 반 활동으로 들어와 주세요.` and no board or opinion. [Other-class access denial](qa/mind-map-student-c-isolation.jpg).
+
+### Live student B ownership and counts
+
+Returning to 1-1 after C's login required that class's normal sign-in. The secure request returned `locator_invalid` as page state changed; that result was not treated as a failed password. Explicit navigation to the retained student URL and fresh UI showed `검증B의 생각을 함께 나눠요.`, positively confirming B's signed-in identity.
+
+B selected the same activity and saw A's revised opinion. The A card had zero 수정 and zero 삭제 buttons. After selecting 의학, the submit button was disabled while content was blank. B then submitted `개발검증 B · 권한 확인`; total opinions became 2, with 의학 1 and 환경 1. B's own card had one 수정 and one 삭제 button while A's card still had no 수정 button. [Student B ownership evidence](qa/mind-map-student-b-ownership.jpg).
+
+These are actual signed-in UI checks against the Preview backend. Forged other-author API mutations were not attempted through browser scripts; denial of those requests is separately covered by the isolated route tests. No opinion has been deleted.
+
+Latest verified state is temporarily published synthetic school, open/accepting activity, two synthetic opinions: A in 환경 and B in 의학. Teacher moderation and close/read-only behavior with actual student opinions, empty-branch deletion, deployed Firestore rules, and actual print/PDF remain pending. Close the activity and unpublish the synthetic school after the live student checks.
+
+### Teacher continuation — 2026-10-03
+
+The teacher secure request was interrupted; its result was unknown. The user reported signing in the next morning. Browser recovery found no previous Preview tabs and a user-owned tab at `https://sunlab.me.kr/teacher`. The reopened feature Preview still showed its teacher sign-in requirement. The production and Preview origins do not share that sign-in state; no credentials, tokens, or browser storage were copied between them. A [Preview teacher sign-in screen](qa/mind-map-preview-teacher-login.jpg) was prepared for manual continuation. Teacher moderation and cleanup have therefore not been performed or claimed as verified.
