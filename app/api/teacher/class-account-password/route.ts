@@ -1,5 +1,6 @@
 import {
   setClassroomAccountChangedPassword,
+  grantClassroomAccountPasswordReset,
   type ClassroomAccountRosterKey,
 } from "@/lib/classroomAccountRosterServer";
 import {
@@ -8,7 +9,6 @@ import {
 } from "@/lib/assignmentServer";
 import {
   normalizeSchoolName,
-  WONJONG_SCHOOL_NAME,
 } from "@/lib/gaebongClassroom";
 import { getContractSchoolForClassroom } from "@/lib/contractSchoolsServer";
 
@@ -47,6 +47,9 @@ const mapRouteError = (error: unknown) => {
     );
   }
 
+  if (message === "account_identity_mismatch") {
+    return jsonPrivate({ error: "학생 계정 정보가 바뀌었습니다. 다시 불러와 주세요.", code: message }, { status: 409 });
+  }
   if (message === "classroom_account_not_found") {
     return jsonPrivate(
       { error: "해당 학생 계정을 찾을 수 없습니다.", code: message },
@@ -66,6 +69,8 @@ type PasswordBody = {
   classNumber?: unknown;
   studentNumber?: unknown;
   changedPassword?: unknown;
+  accountId?: unknown;
+  action?: unknown;
 };
 
 export async function POST(request: Request) {
@@ -94,18 +99,13 @@ export async function POST(request: Request) {
       );
     }
 
-    if (school === WONJONG_SCHOOL_NAME) {
-      return jsonPrivate(
-        {
-          error: "원종초는 비밀번호 변경 저장 기능 대상이 아닙니다.",
-          code: "password_change_not_supported",
-        },
-        { status: 400 }
-      );
-    }
-
     const studentNumber = Number(body.studentNumber);
     const changedPassword = String(body.changedPassword || "").trim();
+    const accountId = String(body.accountId || "").trim();
+    const action = body.action || "teacher_change";
+    if (!accountId || accountId.length > 256 || !["teacher_change", "grant_reset"].includes(String(action))) {
+      return jsonPrivate({ error: "학생 계정과 요청을 다시 확인해 주세요." }, { status: 400 });
+    }
 
     if (
       !Number.isInteger(studentNumber) ||
@@ -118,23 +118,17 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!changedPassword || changedPassword.length > 256) {
+    if (action === "teacher_change" && (!changedPassword || changedPassword.length > 256)) {
       return jsonPrivate(
         { error: "변경 후 비밀번호를 확인해 주세요.", code: "invalid_changed_password" },
         { status: 400 }
       );
     }
 
-    const account = await setClassroomAccountChangedPassword(
-      {
-        school,
-        grade: rawKey.grade,
-        classNumber: rawKey.classNumber,
-      },
-      studentNumber,
-      changedPassword,
-      teacher.uid
-    );
+    const key = { school, grade: rawKey.grade, classNumber: rawKey.classNumber };
+    const account = action === "grant_reset"
+      ? await grantClassroomAccountPasswordReset(key, studentNumber, accountId, teacher.uid)
+      : await setClassroomAccountChangedPassword(key, studentNumber, accountId, changedPassword, teacher.uid);
 
     return jsonPrivate({ account });
   } catch (error) {

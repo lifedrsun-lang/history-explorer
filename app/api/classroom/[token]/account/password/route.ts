@@ -3,7 +3,6 @@ import {
 } from "@/lib/classroomAccountRosterServer";
 import {
   normalizeSchoolName,
-  WONJONG_SCHOOL_NAME,
 } from "@/lib/gaebongClassroom";
 import { getContractClassroomByToken } from "@/lib/contractSchoolsServer";
 
@@ -23,6 +22,7 @@ type PasswordBody = {
   accountId?: unknown;
   changedPassword?: unknown;
   changedPasswordConfirm?: unknown;
+  resetGrantId?: unknown;
 };
 
 export async function POST(
@@ -42,18 +42,15 @@ export async function POST(
 
     const school = normalizeSchoolName(classroom.schoolName);
 
-    if (school === WONJONG_SCHOOL_NAME) {
-      return jsonPrivate(
-        { error: "원종초는 비밀번호 저장 기능 대상이 아니에요." },
-        { status: 400 }
-      );
-    }
-
     const body = (await request.json().catch(() => ({}))) as PasswordBody;
     const studentNumber = Number(body.studentNumber);
     const accountId = String(body.accountId || "").trim();
     const changedPassword = String(body.changedPassword || "").trim();
     const changedPasswordConfirm = String(body.changedPasswordConfirm || "").trim();
+    const resetGrantId = String(body.resetGrantId || "").trim();
+    if (resetGrantId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resetGrantId)) {
+      return jsonPrivate({ error: "계정을 다시 찾아 주세요." }, { status: 400 });
+    }
 
     if (
       !Number.isInteger(studentNumber) ||
@@ -95,18 +92,19 @@ export async function POST(
       },
       studentNumber,
       accountId,
-      changedPassword
+      changedPassword,
+      resetGrantId
     );
 
     return jsonPrivate({ account });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
 
-    if (message === "password_already_saved") {
+    if (message === "password_reset_not_allowed" || message === "password_reset_permission_changed" || message === "password_already_saved") {
       return jsonPrivate(
         {
           error:
-            "변경 후 비밀번호가 이미 저장되어 있어요. 잘못 저장했다면 선생님께 알려 주세요.",
+            "선생님의 비밀번호 재설정 허용이 필요해요. 허용받았다면 계정을 다시 찾아 주세요.",
         },
         { status: 409 }
       );

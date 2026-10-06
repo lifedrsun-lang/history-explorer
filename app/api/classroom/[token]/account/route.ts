@@ -71,6 +71,7 @@ export async function POST(
     ) {
       return jsonPrivate({
         account: {
+          ...account,
           classNumber: account.classNumber,
           nickname: account.nickname,
           accountId: account.accountId,
