@@ -82,6 +82,9 @@ const getAttendanceUrl = (school: ContractSchoolConfig) => {
   if (schoolLabel.includes("하늘빛초")) {
     return "https://AfterEdu.kr/C132700F4389EA";
   }
+  if (schoolLabel.includes("사우초")) {
+    return "https://AfterEdu.kr/C1283112B3845E";
+  }
   return "";
 };
 
