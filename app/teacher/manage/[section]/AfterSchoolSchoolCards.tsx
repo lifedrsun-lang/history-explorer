@@ -28,6 +28,12 @@ const STATUS_BUTTON_STYLES: Record<AfterSchoolStatus, string> = {
   completed: "border-slate-300 bg-slate-200 text-slate-700",
 };
 
+const ATTENDANCE_URLS: Record<string, string> = {
+  sau: "https://AfterEdu.kr/C1283112B3845E",
+  haneulbit: "https://AfterEdu.kr/C132700F4389EA",
+  saesol: "https://AfterEdu.kr/C134023C1579E7",
+};
+
 const DEFAULT_STATUSES: AfterSchoolStatusMap = Object.fromEntries(
   AFTER_SCHOOL_SCHOOLS.map((school) => [school.slug, school.status])
 );
@@ -152,6 +158,7 @@ export default function AfterSchoolSchoolCards() {
         {AFTER_SCHOOL_SCHOOLS.map((school, index) => {
           const currentStatus = statuses[school.slug] || school.status;
           const documents = documentSettings[school.slug];
+          const attendanceUrl = ATTENDANCE_URLS[school.slug];
 
           return (
             <article
@@ -204,6 +211,17 @@ export default function AfterSchoolSchoolCards() {
                 )}
                 <div className="mt-5 text-sm font-black">학교 관리 열기 →</div>
               </Link>
+
+              {attendanceUrl && (
+                <a
+                  href={attendanceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mx-5 mb-5 flex min-h-11 items-center justify-center rounded-xl border border-current/15 bg-white/85 px-4 py-2.5 text-sm font-black shadow-sm transition hover:bg-white sm:mx-6"
+                >
+                  📋 출석부 열기 ↗
+                </a>
+              )}
 
               <div className="border-t border-current/10 bg-white/45 p-3">
                 <div className="mb-2 text-[11px] font-black opacity-65">
