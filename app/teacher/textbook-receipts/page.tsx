@@ -69,6 +69,9 @@ export default function TextbookReceiptsPage() {
   const [receipts, setReceipts] = useState<Record<string, boolean[]>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportScope, setExportScope] = useState("selected");
+  const [academicYear, setAcademicYear] = useState(2026);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
@@ -109,6 +112,7 @@ export default function TextbookReceiptsPage() {
         ? next.find((item: School) => normalizeSchool(item.schoolName) === normalizeSchool(requestedSchool))
         : undefined;
       setSchools(next);
+      setAcademicYear(Number(data.academicYear) || 2026);
       setRecords(Array.isArray(data.records) ? data.records : []);
       setSchoolId((current) => {
         if (requestedSchool) return requested?.contractId || "";
@@ -185,7 +189,7 @@ export default function TextbookReceiptsPage() {
   );
 
   const save = async () => {
-    if (!scopedSchool) return;
+    if (!scopedSchool) return false;
     setSaving(true);
     setError("");
     setNotice("");
@@ -206,10 +210,73 @@ export default function TextbookReceiptsPage() {
         `${scopedSchool.schoolName} ${quarters.find((item) => item.key === quarter)?.label} 학생 ${rosterStudents.length}명의 교재 수령기록을 저장했습니다.`
       );
       await load();
+      return true;
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "저장하지 못했습니다.");
+      return false;
     } finally {
       setSaving(false);
+    }
+  };
+
+  const summaryRows = schools.map((school) => {
+    const students = school.students.filter((student) => isStudentEnrolledInQuarter(student, quarter, academicYear));
+    const record = records.find((item) => item.contractId === school.contractId && item.quarter === quarter);
+    const isSelected = school.contractId === scopedSchool?.contractId;
+    const checks = isSelected ? receipts : record?.receipts || {};
+    const counts = [0, 1, 2].map((term) => students.filter((student) => Boolean(checks[student.id]?.[term])).length);
+    const ready = isSelected || students.every((student) => Object.prototype.hasOwnProperty.call(checks, student.id));
+    return { contractId: school.contractId, schoolName: school.schoolName, title: school.title, counts, total: counts.reduce((sum, count) => sum + count, 0), ready, studentCount: students.length };
+  });
+  const exportRows = summaryRows.filter((row) => exportScope === "all" || row.contractId === scopedSchool?.contractId);
+  const reportFilename = `교재수령보고서_${academicYear}년_${quarters.find((item) => item.key === quarter)?.label}_${exportScope === "all" ? "전체학교" : scopedSchool?.schoolName || "학교"}`.replace(/[\\/:*?"<>|]/g, "-");
+  const download = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const exportReport = async (format: "pdf" | "csv") => {
+    if (!user || exporting || loading || !exportRows.length) return;
+    setExporting(true);
+    setError("");
+    try {
+      if (exportRows.some((row) => !row.ready)) throw new Error("미저장 학교의 해당 분기 교재 수령기록을 먼저 확인하고 저장해 주세요.");
+      // Keep the download and persisted checkboxes aligned, including edits just made.
+      if (!await save()) return;
+      const rows = exportRows.map(({ schoolName, title, counts }) => ({ schoolName, title, counts }));
+      if (format === "csv") {
+        const cell = (value: string | number) => `"${String(value).replace(/^[=+@-]/, "'$&").replace(/"/g, '\"\"')}"`;
+        const counts = rows.reduce((sums, row) => sums.map((sum, i) => sum + row.counts[i]), [0, 0, 0]);
+        const lines = [
+          ["SUN LAB 교재 수령 보고서", `${academicYear}년 ${quarters.find((item) => item.key === quarter)?.label}`],
+          ["학교", "수업", "1텀 수령 인원(명)", "2텀 수령 인원(명)", "3텀 수령 인원(명)", "총 교재 권수(권)"],
+          ...rows.map((row) => [row.schoolName, row.title, ...row.counts, row.counts.reduce((sum, count) => sum + count, 0)]),
+          ["합계", "", ...counts, counts.reduce((sum, count) => sum + count, 0)],
+          ["산정 기준", "텀별 1인 1권. 총 권수 = 1텀 인원 + 2텀 인원 + 3텀 인원."],
+        ];
+        download(new Blob(["\uFEFF", lines.map((line) => line.map(cell).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" }), `${reportFilename}.csv`);
+      } else {
+        const response = await fetch("/api/teacher/textbook-receipts/pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${await user.getIdToken()}` },
+          body: JSON.stringify({ academicYear, quarter, rows }),
+        });
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "PDF를 만들지 못했습니다.");
+        }
+        download(await response.blob(), `${reportFilename}.pdf`);
+      }
+      setNotice("교재 수령 보고서 파일을 내려받았습니다. 메일에 첨부해 보내세요.");
+    } catch (exportError) {
+      setError(exportError instanceof Error ? exportError.message : "파일을 내려받지 못했습니다.");
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -316,7 +383,7 @@ export default function TextbookReceiptsPage() {
             </div>
           </div>
           <div className="border-t border-slate-200 bg-slate-50 p-5">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
               <div className="rounded-2xl bg-white p-3 text-center">
                 <div className="text-[11px] font-black text-slate-400">분기 수강생</div>
                 <div className="mt-1 text-xl font-black">{rosterStudents.length}명</div>
@@ -332,14 +399,30 @@ export default function TextbookReceiptsPage() {
                 </div>
               ))}
             </div>
+            <div className="mt-3 rounded-2xl bg-indigo-50 p-3 text-center font-black text-indigo-800">총 교재 권수 {totals.reduce((sum, count) => sum + count, 0)}권 <span className="block text-xs">1텀 + 2텀 + 3텀 · 텀별 1인 1권</span></div>
             <button
               type="button"
               onClick={() => void save()}
-              disabled={!scopedSchool || saving}
+              disabled={!scopedSchool || saving || loading || exporting}
               className="mt-4 w-full rounded-2xl bg-indigo-600 py-3 text-sm font-black text-white disabled:opacity-50"
             >
               {saving ? "저장 중..." : "이 분기 교재 수령기록 저장"}
             </button>
+          </div>
+        </section>
+        <section className="mt-4 rounded-[28px] bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-black">메일 첨부용 교재 수령 보고서</h2>
+          <p className="mt-2 text-sm text-slate-500">3텀 수령 확인을 마친 뒤 내려받으세요. 현재 학교의 체크를 저장하고 파일을 만듭니다.</p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-center text-sm">
+              <thead><tr className="bg-slate-100"><th className="p-3">학교</th><th>1텀</th><th>2텀</th><th>3텀</th><th>총 권수</th></tr></thead>
+              <tbody>{summaryRows.map((row) => <tr key={row.contractId} className="border-b border-slate-100"><td className="p-3 font-bold">{row.schoolName}</td>{row.counts.map((count, index) => <td key={index}>{row.ready ? `${count}명` : "미저장"}</td>)}<td className="font-black">{row.ready ? `${row.total}권` : "확인 필요"}</td></tr>)}</tbody>
+            </table>
+          </div>
+          <label className="mt-4 block text-sm font-bold">다운로드 범위<select aria-label="다운로드 범위" value={exportScope} onChange={(event) => setExportScope(event.target.value)} className="ml-3 rounded-xl border p-2"><option value="selected">현재 학교</option><option value="all">전체 학교</option></select></label>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" disabled={!scopedSchool || loading || saving || exporting} onClick={() => void exportReport("pdf")} className="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-black text-white disabled:opacity-50">{exporting ? "파일 만드는 중..." : "PDF 다운로드"}</button>
+            <button type="button" disabled={!scopedSchool || loading || saving || exporting} onClick={() => void exportReport("csv")} className="rounded-xl border border-indigo-200 px-4 py-3 text-sm font-black text-indigo-700 disabled:opacity-50">엑셀용 CSV 다운로드</button>
           </div>
         </section>
       </div>

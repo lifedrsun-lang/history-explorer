@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
+    "/api/teacher/textbook-receipts/pdf": [
+      "./public/fonts/noto-sans-kr-400.woff2",
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+    ],
     "/api/teacher/haneulbit-reports{,/pdf}": [
       "./templates/haneulbit/result-report*.html",
       "./public/fonts/noto-sans-kr-*.woff2",
