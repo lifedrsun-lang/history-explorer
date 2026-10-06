@@ -74,20 +74,6 @@ const getErrorMessage = (code?: string) => {
 const classLabel = (classroom: ContractSchoolClassroom) =>
   `${classroom.grade}-${classroom.classNumber}`;
 
-const getAttendanceUrl = (school: ContractSchoolConfig) => {
-  const schoolLabel = `${school.schoolName} ${school.displayName}`.replace(/\s+/g, "");
-  if (schoolLabel.includes("새솔초")) {
-    return "https://AfterEdu.kr/C134023C1579E7";
-  }
-  if (schoolLabel.includes("하늘빛초")) {
-    return "https://AfterEdu.kr/C132700F4389EA";
-  }
-  if (schoolLabel.includes("사우초")) {
-    return "https://AfterEdu.kr/C1283112B3845E";
-  }
-  return "";
-};
-
 export default function ContractSchoolsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
@@ -664,7 +650,6 @@ export default function ContractSchoolsPage() {
             <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {orderedSchools.map((school) => {
                 const documentInfo = documentSettings[school.slug];
-                const attendanceUrl = getAttendanceUrl(school);
                 return (
                 <article
                   key={school.slug}
@@ -713,17 +698,7 @@ export default function ContractSchoolsPage() {
                       </div>
                     )}
                   </button>
-                  {attendanceUrl && (
-                    <a
-                      href={attendanceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-4 block rounded-xl bg-emerald-100 px-3 py-2 text-center text-xs font-black text-emerald-700"
-                    >
-                      📋 출석부 바로가기 ↗
-                    </a>
-                  )}
-                  <div className={`${attendanceUrl ? "mt-2" : "mt-4"} grid grid-cols-2 gap-2`}>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
                     <button type="button" onClick={() => selectSchool(school)} className="rounded-xl bg-sky-100 px-3 py-2 text-xs font-black text-sky-700">관리하기 →</button>
                     <button
                       type="button"
