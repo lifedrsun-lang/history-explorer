@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import ClassroomActivityLinks from "./ClassroomActivityLinks";
 import TeacherClassAccountFinder from "./TeacherClassAccountFinder";
 import type { SchoolClassroom } from "../data/classroomData";
+import { useClassroomLessons } from "../utils/useClassroomLessons";
 
 const HELLO_MAPLE_URL = "https://www.hellomaple.org/ko";
 
@@ -46,6 +47,12 @@ export default function ClassroomBoard({
   studentPreview = false,
   onBack,
 }: Props) {
+  const { lessons, ready, refreshing, errorMessage, refreshLessons } =
+    useClassroomLessons(classroom, studentPreview);
+  const currentClassroom = useMemo(
+    () => ({ ...classroom, lessons }),
+    [classroom, lessons]
+  );
   const initialLesson = useMemo(
     () => getInitialLesson(classroom),
     [classroom]
@@ -110,15 +117,38 @@ export default function ClassroomBoard({
         />
 
         <section className="rounded-[28px] border border-white/80 bg-white/90 p-4 shadow-sm">
-          <div className="mb-3">
-            <h2 className="text-xl font-black text-slate-800">📚 차시별 수업 안내</h2>
-            <p className="mt-1 text-xs font-bold text-slate-500">
-              지난 수업도 다시 펼쳐서 확인할 수 있어요.
-            </p>
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-black text-slate-800">📚 차시별 수업 안내</h2>
+              <p className="mt-1 text-xs font-bold text-slate-500">
+                지난 수업도 다시 펼쳐서 확인할 수 있어요.
+              </p>
+            </div>
+            {!studentPreview && (
+              <button
+                type="button"
+                onClick={() => void refreshLessons()}
+                disabled={refreshing}
+                className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-2 text-sm font-black text-sky-700 disabled:opacity-60"
+              >
+                {refreshing ? "차시 확인 중" : "차시 다시 확인"}
+              </button>
+            )}
           </div>
 
+          {errorMessage && (
+            <p role="alert" className="mb-3 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+              {errorMessage}
+            </p>
+          )}
+          {!ready && !errorMessage && (
+            <p role="status" className="py-4 text-sm font-bold text-slate-500">
+              현재 공개된 차시를 확인하고 있어요.
+            </p>
+          )}
+
           <div className="space-y-2">
-            {classroom.lessons.map((lesson) => {
+            {lessons.map((lesson) => {
               const isOpen =
                 !lesson.expandLocked && openLessons.includes(lesson.lesson);
 
@@ -176,7 +206,7 @@ export default function ClassroomBoard({
 
                       {lesson.links.length > 0 && (
                         <ClassroomActivityLinks
-                          classroom={classroom}
+                          classroom={currentClassroom}
                           lesson={lesson}
                           studentPreview={studentPreview}
                         />
