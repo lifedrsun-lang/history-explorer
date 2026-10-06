@@ -5,6 +5,10 @@ export type ClassroomAccount = {
   temporaryPassword: string;
   changedPassword?: string;
   passwordChangedAt?: string;
+  passwordResetAllowed?: boolean;
+  passwordResetGrantId?: string;
+  passwordResetGrantedAt?: string;
+  passwordChangeActor?: "teacher" | "student";
 };
 
 const MAX_ACCOUNT_COUNT = 60;

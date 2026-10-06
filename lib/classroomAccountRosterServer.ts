@@ -23,10 +23,38 @@ type ClassroomPasswordChangeRow = {
   account_id: string;
   changed_password: string;
   changed_at: string;
+  changed_by: string | null;
 };
 
 const TABLE_NAME = "classroom_account_rosters";
 const PASSWORD_CHANGE_TABLE_NAME = "classroom_account_password_changes";
+type PasswordState = {
+  student_number: number;
+  account_id: string;
+  reset_allowed: boolean;
+  reset_grant_id: string | null;
+  reset_granted_at: string | null;
+  password_changed_at: string | null;
+  password_change_actor: "teacher" | "student" | null;
+};
+const PASSWORD_STATE_TABLE = "classroom_account_password_state";
+const withPasswordState = (account: ClassroomAccount, state?: PasswordState): ClassroomAccount => ({
+  ...account,
+  passwordResetAllowed: Boolean(state?.reset_allowed),
+  passwordResetGrantId: state?.reset_grant_id || undefined,
+  passwordResetGrantedAt: state?.reset_granted_at || undefined,
+  passwordChangedAt: state?.password_changed_at || account.passwordChangedAt,
+  passwordChangeActor: state?.password_change_actor || account.passwordChangeActor,
+});
+
+const readPasswordStates = async (key: ClassroomAccountRosterKey) => {
+  const { data, error } = await getSupabaseServer().from(PASSWORD_STATE_TABLE)
+    .select("student_number,account_id,reset_allowed,reset_grant_id,reset_granted_at,password_changed_at,password_change_actor")
+    .eq("school", key.school).eq("grade", key.grade).eq("class_number", key.classNumber);
+  if (error) throw error;
+  return (data || []) as PasswordState[];
+};
+
 const WONJONG_GRADE1_CURRENT_PASSWORD = "12345";
 
 const toClassroomAccount = (
@@ -34,6 +62,15 @@ const toClassroomAccount = (
   passwordChange?: ClassroomPasswordChangeRow,
   wonjongGrade?: number
 ): ClassroomAccount => {
+  if (passwordChange && passwordChange.account_id === row.account_id) {
+    return {
+      classNumber: row.student_number, nickname: row.nickname, accountId: row.account_id,
+      temporaryPassword: wonjongGrade === 2 ? row.original_password || "" : row.temp_password,
+      changedPassword: passwordChange.changed_password,
+      passwordChangedAt: passwordChange.changed_at,
+      passwordChangeActor: passwordChange.changed_by === "student:self" ? "student" : passwordChange.changed_by ? "teacher" : undefined,
+    };
+  }
   if (wonjongGrade === 1) {
     return {
       classNumber: row.student_number,
@@ -59,12 +96,7 @@ const toClassroomAccount = (
     nickname: row.nickname,
     accountId: row.account_id,
     temporaryPassword: row.temp_password,
-    ...(passwordChange && passwordChange.account_id === row.account_id
-      ? {
-          changedPassword: passwordChange.changed_password,
-          passwordChangedAt: passwordChange.changed_at,
-        }
-      : {}),
+
   };
 };
 
@@ -90,13 +122,11 @@ export const getClassroomAccountRoster = async (
       ? key.grade
       : undefined;
 
-  if (key.school === WONJONG_SCHOOL_NAME || rows.length === 0) {
-    return rows.map((row) => toClassroomAccount(row, undefined, wonjongGrade));
-  }
+  if (rows.length === 0) return [];
 
   const { data: changedRows, error: changedError } = await supabase
     .from(PASSWORD_CHANGE_TABLE_NAME)
-    .select("student_number,account_id,changed_password,changed_at")
+    .select("student_number,account_id,changed_password,changed_at,changed_by")
     .eq("school", key.school)
     .eq("grade", key.grade)
     .eq("class_number", key.classNumber);
@@ -112,9 +142,11 @@ export const getClassroomAccountRoster = async (
     ])
   );
 
-  return rows.map((row) =>
-    toClassroomAccount(row, passwordChanges.get(row.student_number))
-  );
+  const states = await readPasswordStates(key);
+  return rows.map((row) => withPasswordState(
+    toClassroomAccount(row, passwordChanges.get(row.student_number), wonjongGrade),
+    states.find((state) => state.student_number === row.student_number && state.account_id === row.account_id)
+  ));
 };
 
 export const getClassroomAccount = async (
@@ -139,14 +171,9 @@ export const getClassroomAccount = async (
     return null;
   }
 
-  if (key.school === WONJONG_SCHOOL_NAME) {
-    const wonjongGrade = key.grade === 1 || key.grade === 2 ? key.grade : undefined;
-    return toClassroomAccount(data, undefined, wonjongGrade);
-  }
-
   const { data: changedPassword, error: changedError } = await supabase
     .from(PASSWORD_CHANGE_TABLE_NAME)
-    .select("student_number,account_id,changed_password,changed_at")
+    .select("student_number,account_id,changed_password,changed_at,changed_by")
     .eq("school", key.school)
     .eq("grade", key.grade)
     .eq("class_number", key.classNumber)
@@ -158,119 +185,46 @@ export const getClassroomAccount = async (
     throw changedError;
   }
 
-  return toClassroomAccount(data, changedPassword || undefined);
+  const states = await readPasswordStates(key);
+  const wonjongGrade = key.school === WONJONG_SCHOOL_NAME ? key.grade : undefined;
+  return withPasswordState(toClassroomAccount(data, changedPassword || undefined, wonjongGrade),
+    states.find((state) => state.student_number === studentNumber && state.account_id === data.account_id));
 };
 
-export const setClassroomAccountChangedPasswordOnce = async (
-  key: ClassroomAccountRosterKey,
-  studentNumber: number,
-  accountId: string,
-  changedPassword: string
+const managePassword = async (
+  key: ClassroomAccountRosterKey, studentNumber: number, accountId: string,
+  action: "student_change" | "teacher_change" | "grant_reset", password?: string,
+  actorId?: string, resetGrantId?: string
 ): Promise<ClassroomAccount> => {
-  if (key.school === WONJONG_SCHOOL_NAME) {
-    throw new Error("password_change_not_supported");
-  }
-
-  const normalizedAccountId = accountId.trim();
-  const normalizedPassword = changedPassword.trim();
-
-  if (!normalizedAccountId || normalizedAccountId.length > 256) {
-    throw new Error("account_identity_mismatch");
-  }
-
-  if (!normalizedPassword || normalizedPassword.length > 256) {
-    throw new Error("invalid_changed_password");
-  }
-
-  const currentAccount = await getClassroomAccount(key, studentNumber);
-
-  if (!currentAccount) {
-    throw new Error("classroom_account_not_found");
-  }
-
-  if (currentAccount.accountId !== normalizedAccountId) {
-    throw new Error("account_identity_mismatch");
-  }
-
-  if (currentAccount.changedPassword) {
-    throw new Error("password_already_saved");
-  }
-
-  const supabase = getSupabaseServer();
-  const changedAt = new Date().toISOString();
-  const { error } = await supabase.from(PASSWORD_CHANGE_TABLE_NAME).insert({
-    school: key.school,
-    grade: key.grade,
-    class_number: key.classNumber,
-    student_number: studentNumber,
-    account_id: currentAccount.accountId,
-    changed_password: normalizedPassword,
-    changed_by: "student:self",
-    changed_at: changedAt,
+  const current = await getClassroomAccount(key, studentNumber);
+  if (!current) throw new Error("classroom_account_not_found");
+  if (current.accountId !== accountId.trim()) throw new Error("account_identity_mismatch");
+  const { data, error } = await getSupabaseServer().rpc("manage_classroom_account_password", {
+    p_school: key.school, p_grade: key.grade, p_class_number: key.classNumber,
+    p_student_number: studentNumber, p_account_id: accountId.trim(), p_action: action,
+    p_password: password?.trim() || null, p_actor_id: actorId || null,
+    p_reset_grant_id: resetGrantId || null,
   });
-
-  if (error) {
-    if ((error as { code?: string }).code === "23505") {
-      throw new Error("password_already_saved");
-    }
-    throw error;
-  }
-
-  return {
-    ...currentAccount,
-    changedPassword: normalizedPassword,
-    passwordChangedAt: changedAt,
+  if (error) throw new Error(error.message);
+  const updated = action === "grant_reset" ? current : {
+    ...current, changedPassword: password!.trim(),
   };
+  return withPasswordState(updated, data as PasswordState);
 };
 
-export const setClassroomAccountChangedPassword = async (
-  key: ClassroomAccountRosterKey,
-  studentNumber: number,
-  changedPassword: string,
-  updatedBy: string
-): Promise<ClassroomAccount> => {
-  if (key.school === WONJONG_SCHOOL_NAME) {
-    throw new Error("password_change_not_supported");
-  }
+export const setClassroomAccountChangedPasswordOnce = (
+  key: ClassroomAccountRosterKey, studentNumber: number, accountId: string,
+  changedPassword: string, resetGrantId?: string
+) => managePassword(key, studentNumber, accountId, "student_change", changedPassword, undefined, resetGrantId);
 
-  const normalizedPassword = changedPassword.trim();
+export const setClassroomAccountChangedPassword = (
+  key: ClassroomAccountRosterKey, studentNumber: number, accountId: string,
+  changedPassword: string, updatedBy: string
+) => managePassword(key, studentNumber, accountId, "teacher_change", changedPassword, updatedBy);
 
-  if (!normalizedPassword || normalizedPassword.length > 256) {
-    throw new Error("invalid_changed_password");
-  }
-
-  const currentAccount = await getClassroomAccount(key, studentNumber);
-
-  if (!currentAccount) {
-    throw new Error("classroom_account_not_found");
-  }
-
-  const supabase = getSupabaseServer();
-  const changedAt = new Date().toISOString();
-  const { error } = await supabase.from(PASSWORD_CHANGE_TABLE_NAME).upsert(
-    {
-      school: key.school,
-      grade: key.grade,
-      class_number: key.classNumber,
-      student_number: studentNumber,
-      account_id: currentAccount.accountId,
-      changed_password: normalizedPassword,
-      changed_by: updatedBy,
-      changed_at: changedAt,
-    },
-    { onConflict: "school,grade,class_number,student_number" }
-  );
-
-  if (error) {
-    throw error;
-  }
-
-  return {
-    ...currentAccount,
-    changedPassword: normalizedPassword,
-    passwordChangedAt: changedAt,
-  };
-};
+export const grantClassroomAccountPasswordReset = (
+  key: ClassroomAccountRosterKey, studentNumber: number, accountId: string, updatedBy: string
+) => managePassword(key, studentNumber, accountId, "grant_reset", undefined, updatedBy);
 
 export const replaceClassroomAccountRoster = async (
   key: ClassroomAccountRosterKey,
@@ -383,4 +337,8 @@ export const deleteClassroomAccount = async (
     .eq("class_number", key.classNumber)
     .eq("student_number", studentNumber);
   if (passwordError) throw passwordError;
+  const { error: stateError } = await supabase.from(PASSWORD_STATE_TABLE).delete()
+    .eq("school", key.school).eq("grade", key.grade).eq("class_number", key.classNumber)
+    .eq("student_number", studentNumber);
+  if (stateError) throw stateError;
 };

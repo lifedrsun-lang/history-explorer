@@ -47,6 +47,8 @@ const formatChangedAt = (value?: string) => {
   if (Number.isNaN(date.getTime())) return "";
 
   return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
     month: "numeric",
     day: "numeric",
     hour: "2-digit",
@@ -80,7 +82,7 @@ export default function TeacherClassAccountFinder({
   const school = normalizeSchoolName(classroom.schoolName);
   const schoolLabel = classroom.schoolDisplayName || "서울 개봉초";
   const isWonjongGrade2 = school === WONJONG_SCHOOL_NAME && (classroom.grade === 1 || classroom.grade === 2);
-  const passwordChangeEnabled = Boolean(school && school !== WONJONG_SCHOOL_NAME);
+  const passwordChangeEnabled = Boolean(school);
   const rosterUrl = useMemo(
     () => getRosterUrl(school, classroom.grade, classroom.classNumber),
     [classroom.classNumber, classroom.grade, school]
@@ -246,13 +248,13 @@ export default function TeacherClassAccountFinder({
 
   const startPasswordEdit = (account: ClassroomAccount) => {
     setEditingPasswordNumber(account.classNumber);
-    setChangedPasswordInput(account.changedPassword || "");
+    setChangedPasswordInput("");
     setErrorMessage("");
     setNotice("");
   };
 
   const saveChangedPassword = async (account: ClassroomAccount) => {
-    if (!user || !school || !passwordChangeEnabled || isTemporaryRoster) return;
+    if (!user || !school || !passwordChangeEnabled || isTemporaryRoster || savingPassword) return;
 
     const changedPassword = changedPasswordInput.trim();
     if (!changedPassword) {
@@ -278,6 +280,8 @@ export default function TeacherClassAccountFinder({
           classNumber: classroom.classNumber,
           studentNumber: account.classNumber,
           changedPassword,
+          accountId: account.accountId,
+          action: "teacher_change",
         }),
       });
 
@@ -299,12 +303,53 @@ export default function TeacherClassAccountFinder({
       );
       setEditingPasswordNumber(null);
       setChangedPasswordInput("");
-      setNotice(`${account.classNumber}번 변경 후 비밀번호를 저장했어요.`);
+      setNotice("비밀번호가 변경되었습니다.");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "변경 후 비밀번호를 저장하지 못했습니다.");
     } finally {
       setSavingPassword(false);
     }
+  };
+
+  const grantPasswordReset = async (account: ClassroomAccount) => {
+    if (!user || !school || isTemporaryRoster || savingPassword) return;
+    setSavingPassword(true);
+    setErrorMessage("");
+    setNotice("");
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/teacher/class-account-password", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ school, grade: classroom.grade, classNumber: classroom.classNumber,
+          studentNumber: account.classNumber, accountId: account.accountId, action: "grant_reset" }),
+      });
+      const body = await readResponseBody(response);
+      if (!response.ok || !body.account) throw new Error(body.error || "재설정 권한을 저장하지 못했습니다.");
+      const updated = body.account;
+      setAccounts((current) => current.map((item) => item.classNumber === updated.classNumber ? updated : item));
+      setNotice(`${account.classNumber}번 학생에게 비밀번호 재설정을 1회 허용했습니다.`);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "재설정 권한을 저장하지 못했습니다.");
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  const refreshPasswordStatus = async () => {
+    if (!user || savingPassword) return;
+    setSavingPassword(true);
+    setErrorMessage("");
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(rosterUrl, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+      const body = await readResponseBody(response);
+      if (!response.ok) throw new Error(body.error || "상태를 확인하지 못했습니다.");
+      setAccounts(body.accounts || []);
+      setNotice("비밀번호 상태를 확인했습니다.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "상태를 확인하지 못했습니다.");
+    } finally { setSavingPassword(false); }
   };
 
   const saveAccount = async () => {
@@ -497,16 +542,24 @@ export default function TeacherClassAccountFinder({
                   <div className="mt-2">
                     {isEditingPassword ? (
                       <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-2">
-                        <div className="text-[9px] font-black text-emerald-700">변경 후 비밀번호 입력</div>
+                        <div className="text-[9px] font-black text-emerald-700">새 비밀번호</div><p className="mt-1 text-[9px] font-bold text-slate-500">선랩의 계정 안내에 저장됩니다. 헬로메이플에서 변경한 비밀번호와 같게 입력해 주세요.</p>
                         <div className="mt-1.5 flex gap-1.5">
-                          <input type="text" autoComplete="off" maxLength={256} value={changedPasswordInput} onChange={(event) => { setChangedPasswordInput(event.target.value); setErrorMessage(""); }} onKeyDown={(event) => { if (event.key === "Enter" && !savingPassword) void saveChangedPassword(account); }} placeholder="헬로메이플에서 바꾼 비밀번호" className="min-w-0 flex-1 rounded-xl border border-emerald-100 bg-white px-3 py-2 text-xs font-black text-slate-800 outline-none" />
+                          <input type="password" autoComplete="new-password" disabled={savingPassword} maxLength={256} value={changedPasswordInput} onChange={(event) => { setChangedPasswordInput(event.target.value); setErrorMessage(""); }} onKeyDown={(event) => { if (event.key === "Enter" && !savingPassword) void saveChangedPassword(account); }} placeholder="새 비밀번호" aria-label="새 비밀번호" className="min-w-0 flex-1 rounded-xl border border-emerald-100 bg-white px-3 py-2 text-xs font-black text-slate-800 outline-none" />
                           <button type="button" onClick={() => void saveChangedPassword(account)} disabled={savingPassword} className="shrink-0 rounded-xl bg-emerald-500 px-3 py-2 text-[10px] font-black text-white disabled:opacity-60">{savingPassword ? "저장 중" : "저장"}</button>
                           <button type="button" onClick={() => { setEditingPasswordNumber(null); setChangedPasswordInput(""); setErrorMessage(""); }} disabled={savingPassword} className="shrink-0 rounded-xl bg-white px-2.5 py-2 text-[10px] font-black text-slate-500">취소</button>
                         </div>
                       </div>
                     ) : (
-                      <button type="button" onClick={() => startPasswordEdit(account)} className="w-full rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[10px] font-black text-emerald-700">{account.changedPassword ? "변경 후 비밀번호 수정" : "변경 후 비밀번호 저장"}</button>
+                      <button type="button" onClick={() => startPasswordEdit(account)} disabled={savingPassword} className="w-full rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[10px] font-black text-emerald-700">비밀번호 직접 수정</button>
                     )}
+                    <button type="button" onClick={() => void grantPasswordReset(account)} disabled={savingPassword || account.passwordResetAllowed} className="mt-2 w-full rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-[10px] font-black text-sky-700 disabled:opacity-60">학생에게 비밀번호 재설정 1회 허용</button>
+                    <div className="mt-2 rounded-xl bg-slate-50 p-2 text-[10px] font-bold leading-5 text-slate-600">
+                      <div className={account.passwordResetAllowed ? "font-black text-sky-700" : ""}>{account.passwordResetAllowed ? "학생 재설정 허용 중" : "일반 상태"}</div>
+                      {account.passwordResetGrantedAt && <div>허용 시각: {formatChangedAt(account.passwordResetGrantedAt)}</div>}
+                      {account.passwordChangedAt && <div>변경 완료: {formatChangedAt(account.passwordChangedAt)}</div>}
+                      {account.passwordChangeActor && <div>변경 주체: {account.passwordChangeActor === "teacher" ? "교사 직접 변경" : "학생 재설정"}</div>}
+                      <button type="button" onClick={() => void refreshPasswordStatus()} disabled={savingPassword} className="font-black text-sky-700">비밀번호 상태 확인</button>
+                    </div>
                   </div>
                 )}
                 {!isTemporaryRoster && (
