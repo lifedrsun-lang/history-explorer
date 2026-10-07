@@ -16,6 +16,10 @@ import {
 } from "@/lib/sunLabMember";
 import { isQuarterManagedProgram } from "@/lib/programs";
 import { AFTER_SCHOOL_ACADEMIC_YEAR } from "@/lib/studentRoster";
+import {
+  hasConfirmedEmptyEnrollmentHistory,
+  isConfirmedNonEnrollment,
+} from "@/lib/studentEnrollmentAuditExceptions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -99,6 +103,7 @@ const buildAudit = (
   const q3Term = makeEnrollmentTerm(AFTER_SCHOOL_ACADEMIC_YEAR, 3);
   const missingQ3Students = students
     .filter((student) => isQuarterManagedProgram(student.data.program))
+    .filter((student) => !isConfirmedNonEnrollment(student.id, q3Term))
     .filter((student) => q3EvidenceIds.has(student.id))
     .filter((student) => !getEnrollmentTerms(student.data).includes(q3Term))
     .map((student) => ({
@@ -111,6 +116,7 @@ const buildAudit = (
     .sort();
   const missingTerms = students
     .filter((student) => isQuarterManagedProgram(student.data.program))
+    .filter((student) => !hasConfirmedEmptyEnrollmentHistory(student.id))
     .filter((student) => getEnrollmentTerms(student.data).length === 0)
     .map((student) => ({
       studentId: student.id,
