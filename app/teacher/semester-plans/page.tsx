@@ -43,6 +43,8 @@ export default function SemesterPlansPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [issueFilter, setIssueFilter] = useState("");
   const [sourceOpen, setSourceOpen] = useState(false);
+  const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
+  const [deletingWeekId, setDeletingWeekId] = useState<string | null>(null);
   const dirty = Boolean((editor || lessonEditor) && JSON.stringify(editor || lessonEditor) !== baseline);
   const current = useRef({ dirty, editor, lessonEditor, user });
   useEffect(() => { current.current = { dirty, editor, lessonEditor, user }; }, [dirty, editor, lessonEditor, user]);
@@ -71,6 +73,7 @@ export default function SemesterPlansPage() {
   useEffect(() => onAuthStateChanged(auth, u => {
     setUser(u); setChecked(true); setAllowed(false); setPlans([]); setLessons([]);
     setEditor(null); setLessonEditor(null);
+    setDeletingPlanId(null); setDeletingWeekId(null);
     if (u) void load();
     else setLoading(false);
   }), [load]);
@@ -115,6 +118,7 @@ export default function SemesterPlansPage() {
   const close = () => {
     if (!canLeave() || busy) return;
     setEditor(null); setLessonEditor(null); setPreview(false); setPicker(false); setError(""); setMessage("");
+    setDeletingWeekId(null);
   };
   const restore = <T extends SemesterPlan | CurriculumLesson>(value: T, kind: string): T => {
     try {
@@ -134,6 +138,7 @@ export default function SemesterPlansPage() {
     if (!canLeave() || busy) return;
     setBaseline(JSON.stringify(value)); setEditor(restore(value, "plan")); setLessonEditor(null);
     setExpanded(new Set(value.weeks.slice(0, 1).map(w => w.id))); setPreview(showPreview); setPicker(false); setSelected(new Set()); setError(""); setMessage("");
+    setDeletingPlanId(null); setDeletingWeekId(null);
   };
   const openLesson = (lesson: CurriculumLesson) => {
     if (!canLeave() || busy) return;
@@ -167,14 +172,21 @@ export default function SemesterPlansPage() {
     finally { setBusy(false); }
   };
   const remove = async (plan: SemesterPlan) => {
-    if (busy || !window.confirm(`“${plan.title}” 계획안을 삭제할까요?`)) return;
+    if (busy || deletingPlanId !== plan.id) return;
     setBusy(true); setError("");
     try { await api("DELETE", { id: plan.id, revision: plan.revision }); setPlans(p => p.filter(x => x.id !== plan.id));
+      setDeletingPlanId(null); setMessage("계획안을 삭제했습니다.");
       try { localStorage.removeItem(draftKey(plan.id)); } catch {} }
     catch (e) { setError(e instanceof Error ? e.message : "삭제하지 못했습니다."); }
     finally { setBusy(false); }
   };
   const editWeek = (id: string, updates: Partial<PlanWeek>) => setEditor(p => p && ({ ...p, weeks: p.weeks.map(w => w.id === id ? { ...w, ...updates } : w) }));
+  const removeWeek = (id: string) => {
+    if (busy || deletingWeekId !== id) return;
+    setEditor(p => p && ({ ...p, weeks: orderWeeks(p.weeks.filter(w => w.id !== id)) }));
+    setExpanded(previous => { const next = new Set(previous); next.delete(id); return next; });
+    setDeletingWeekId(null);
+  };
   const moveWeek = (index: number, step: number) => setEditor(p => {
     if (!p || index + step < 0 || index + step >= p.weeks.length) return p;
     const weeks = [...p.weeks]; [weeks[index], weeks[index + step]] = [weeks[index + step], weeks[index]];
@@ -210,7 +222,9 @@ export default function SemesterPlansPage() {
         <div className={styles.row}><h2>계획안 목록</h2><button className={styles.primary} onClick={() => openPlan(newPlan())} disabled={busy}>+ 새 계획안 만들기</button></div>
         <p className={styles.muted}>수업 기본자료에서 차시를 골라 주차별 계획에 넣을 수 있습니다. 제출 양식은 학기 시작 전 적용합니다.</p>
         {!plans.length && <p className={styles.empty}>아직 작성한 학기 계획안이 없습니다. 수업 기본자료에서 등록된 지도안을 먼저 확인할 수 있습니다.</p>}
-        <div className={styles.list}>{plans.map(p => <article key={p.id} className={styles.listItem}><div><h3>{p.title}</h3><p className={styles.muted}>{p.program} · {p.year}년 {p.operation} · {p.weeks.length}주</p></div><div className={styles.actions}><button onClick={() => openPlan(p)}>열기 / 수정</button><button onClick={() => openPlan(p, true)}>미리보기</button><button onClick={() => void duplicate(p)} disabled={busy}>복제</button><button onClick={() => void remove(p)} disabled={busy} className={styles.danger}>삭제</button></div></article>)}</div>
+        <div className={styles.list}>{plans.map(p => <article key={p.id} className={styles.listItem}><div><h3>{p.title}</h3><p className={styles.muted}>{p.program} · {p.year}년 {p.operation} · {p.weeks.length}주</p></div><div className={styles.actions}><button onClick={() => openPlan(p)} disabled={busy}>열기 / 수정</button><button onClick={() => openPlan(p, true)} disabled={busy}>미리보기</button><button onClick={() => void duplicate(p)} disabled={busy}>복제</button><button onClick={() => setDeletingPlanId(p.id)} disabled={busy} className={styles.danger}>삭제</button></div>
+          {deletingPlanId === p.id && <div className={styles.deleteConfirm} role="group" aria-label="계획안 삭제 확인"><p>“{p.title}” 계획안을 삭제할까요? 삭제한 계획안은 복구할 수 없습니다. 수업 기본자료는 유지됩니다.</p><div className={styles.actions}><button type="button" onClick={() => setDeletingPlanId(null)} disabled={busy}>취소</button><button type="button" className={styles.danger} onClick={() => void remove(p)} disabled={busy}>{busy ? "삭제 중…" : "삭제 확인"}</button></div></div>}
+        </article>)}</div>
       </section> : <section className={styles.panel}>
         <div className={styles.row}><h2>수업 기본자료</h2><label>교재 호수<select value={issueFilter} onChange={e => setIssueFilter(e.target.value)}><option value="">전체</option>{issues.map(i => <option key={i} value={i}>{i}호</option>)}</select></label></div>
         <label className={styles.importLabel}>수업자료 가져오기 (JSON)<input type="file" accept=".json,application/json" disabled={busy} onChange={e => { const file = e.target.files?.[0]; e.target.value = ""; if (file) void importFile(file); }} /></label>
@@ -250,7 +264,8 @@ export default function SemesterPlansPage() {
         </section>}
         {!editor.weeks.length && <p className={styles.empty}>빈 주차를 추가하거나 수업 기본자료를 불러오세요.</p>}
         {editor.weeks.map((w, index) => <article key={w.id} className={styles.week}>
-          <div className={styles.weekHeading}><button className={styles.weekToggle} aria-expanded={expanded.has(w.id)} onClick={() => setExpanded(s => { const n = new Set(s); if (n.has(w.id)) n.delete(w.id); else n.add(w.id); return n; })}>{expanded.has(w.id) ? "▾" : "▸"} {w.week_number}주차 · {w.topic || "학습주제 입력"}</button><div className={styles.actions}><button aria-label={`${w.week_number}주차 위로 이동`} disabled={busy || index === 0} onClick={() => moveWeek(index, -1)}>위</button><button aria-label={`${w.week_number}주차 아래로 이동`} disabled={busy || index === editor.weeks.length - 1} onClick={() => moveWeek(index, 1)}>아래</button><button className={styles.danger} disabled={busy} onClick={() => { if (window.confirm(`${w.week_number}주차를 삭제할까요?`)) setEditor({ ...editor, weeks: orderWeeks(editor.weeks.filter(x => x.id !== w.id)) }); }}>삭제</button></div></div>
+          <div className={styles.weekHeading}><button className={styles.weekToggle} aria-expanded={expanded.has(w.id)} onClick={() => setExpanded(s => { const n = new Set(s); if (n.has(w.id)) n.delete(w.id); else n.add(w.id); return n; })}>{expanded.has(w.id) ? "▾" : "▸"} {w.week_number}주차 · {w.topic || "학습주제 입력"}</button><div className={styles.actions}><button aria-label={`${w.week_number}주차 위로 이동`} disabled={busy || index === 0} onClick={() => moveWeek(index, -1)}>위</button><button aria-label={`${w.week_number}주차 아래로 이동`} disabled={busy || index === editor.weeks.length - 1} onClick={() => moveWeek(index, 1)}>아래</button><button className={styles.danger} disabled={busy} onClick={() => setDeletingWeekId(w.id)}>삭제</button></div></div>
+          {deletingWeekId === w.id && <div className={styles.deleteConfirm} role="group" aria-label={`${w.week_number}주차 삭제 확인`}><p>{w.week_number}주차를 계획안에서 삭제할까요? 변경사항은 [저장]을 눌러야 반영됩니다. 원본 수업자료는 유지됩니다.</p><div className={styles.actions}><button type="button" onClick={() => setDeletingWeekId(null)} disabled={busy}>취소</button><button type="button" className={styles.danger} onClick={() => removeWeek(w.id)} disabled={busy}>삭제 확인</button></div></div>}
           {expanded.has(w.id) && <fieldset disabled={busy} className={styles.weekBody}><div className={styles.row}><label>차시<input className={styles.smallInput} type="number" min={1} max={999} value={w.lesson_number} onChange={e => editWeek(w.id, { lesson_number: Number(e.target.value) })} /></label>{w.source_lesson_id && <span className={styles.muted}>수업 기본자료에서 가져온 사본</span>}</div><ContentFields value={w} onChange={(key, value) => editWeek(w.id, { [key]: value })} /></fieldset>}
         </article>)}
       </section>

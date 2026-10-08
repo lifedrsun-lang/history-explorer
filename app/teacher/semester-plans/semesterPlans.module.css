@@ -11,6 +11,8 @@
 .shell button:disabled { opacity:.5; cursor:default; }
 .shell button.primary { background:#3348b7; border-color:#3348b7; color:white; }
 .shell button.danger { color:#a31a29; }
+.deleteConfirm { flex-basis:100%; padding:16px; background:#fff2f3; border:1px solid #edb9be; border-radius:10px; color:#8b1423; overflow-wrap:anywhere; }
+.deleteConfirm p { margin:0 0 12px; }
 .shell :is(button,input,textarea,select,a):focus-visible { outline:3px solid #8097eb; outline-offset:3px; }
 .panel,.preview { background:white; border:1px solid #dce3ee; border-radius:20px; padding:24px; margin-top:18px; box-shadow:0 3px 12px #13223d05; }
 .actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
