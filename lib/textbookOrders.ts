@@ -6,11 +6,20 @@ export type OrderDelivery = { recipient: string; phone: string; mobile: string; 
 export type TextbookOrder = { id: string; revision: number; title: string; date: string; delivery: OrderDelivery; lines: OrderLine[]; createdAt: string; updatedAt: string };
 export type OrderInput = Pick<TextbookOrder, "title" | "date" | "delivery" | "lines">;
 export class OrderInputError extends Error {}
+export function textbookOrderTitle(quarter: string, round: string): string {
+  const q = Number(quarter), r = Number(round);
+  if (!Number.isInteger(q) || q < 1 || q > 4 || !Number.isInteger(r) || r < 1 || r > 999) return "";
+  return `이화선 // ${q}분기 ${r}차 교재 주문`;
+}
+export function parseTextbookOrderTitle(title: string) {
+  const match = title.match(/^이화선 \/\/ ([1-4])분기 ([1-9]\d{0,2})차 교재 주문$/);
+  return { quarter: match?.[1] || "", round: match?.[2] || "" };
+}
 export function newOrderLine(): OrderLine {
   return { id: crypto.randomUUID(), orderNumber: "", productNumber: "", productName: "별꼼역사 1호-고조선1", option: "스토리북", quantity: 1, unitPrice: null };
 }
 export function newTextbookOrder(): TextbookOrder {
-  return { id: "", revision: 0, title: "", date: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()),
+  return { id: "", revision: 0, title: textbookOrderTitle("1", "1"), date: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()),
     delivery: { recipient: "", phone: "", mobile: "", postalCode: "", address: "", message: "", shipping: "선결재", invoiceCount: 1, parcelSize: "" },
     lines: [newOrderLine()], createdAt: "", updatedAt: "" };
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { useCallback, useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
-import { newOrderLine, newTextbookOrder, ORDER_COLUMNS, ORDER_OPTIONS, orderAmount, orderRows, validateOrder, type OrderDelivery, type OrderLine, type TextbookOrder } from "@/lib/textbookOrders";
+import { newOrderLine, newTextbookOrder, ORDER_COLUMNS, ORDER_OPTIONS, orderAmount, orderRows, parseTextbookOrderTitle, textbookOrderTitle, validateOrder, type OrderDelivery, type OrderLine, type TextbookOrder } from "@/lib/textbookOrders";
 import styles from "./orders.module.css";
 
 const DELIVERY_FIELDS: [keyof OrderDelivery, string][] = [["recipient", "수령자"], ["phone", "전화"], ["mobile", "핸드폰"], ["postalCode", "우편번호"], ["address", "주소"], ["message", "배송메세지"], ["shipping", "배송비"], ["invoiceCount", "송장출력갯수"], ["parcelSize", "택배크기"]];
@@ -23,6 +23,8 @@ export default function TextbookOrdersPage() {
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [quarter, setQuarter] = useState("");
+  const [orderRound, setOrderRound] = useState("");
   const dirty = !!editor && JSON.stringify(editor) !== baseline;
   const api = useCallback(async (method: string, data?: unknown) => {
     if (!auth.currentUser) throw new Error("교사용 로그인이 필요합니다.");
@@ -59,7 +61,14 @@ export default function TextbookOrdersPage() {
   }, [dirty]);
   const open = (order: TextbookOrder) => {
     if (dirty && !window.confirm("저장하지 않은 주문 내용이 있습니다. 다른 주문을 열까요?")) return;
+    const period = parseTextbookOrderTitle(order.title);
+    setQuarter(period.quarter); setOrderRound(period.round);
     setEditor(order); setBaseline(JSON.stringify(order)); setPreview(false); setError(""); setMessage("");
+  };
+  const changeOrderPeriod = (nextQuarter: string, nextRound: string) => {
+    setQuarter(nextQuarter); setOrderRound(nextRound);
+    setEditor(e => e ? { ...e, title: textbookOrderTitle(nextQuarter, nextRound) } : e);
+    setMessage("");
   };
   const patch = <K extends keyof TextbookOrder>(key: K, value: TextbookOrder[K]) => { setEditor(e => e ? { ...e, [key]: value } : e); setMessage(""); };
   const patchLine = <K extends keyof OrderLine>(id: string, key: K, value: OrderLine[K]) => {
@@ -67,6 +76,7 @@ export default function TextbookOrdersPage() {
   };
   const save = async () => {
     if (!editor || busy) return;
+    if (!textbookOrderTitle(quarter, orderRound)) { setError("분기와 주문 차수를 선택해주세요."); return; }
     try { validateOrder(editor); } catch (e) { setError((e as Error).message); return; }
     const uid = user?.uid;
     setBusy(true); setError(""); setMessage("");
@@ -80,6 +90,7 @@ export default function TextbookOrdersPage() {
   };
   const download = async () => {
     if (!editor || busy) return;
+    if (!textbookOrderTitle(quarter, orderRound)) { setError("분기와 주문 차수를 선택해주세요."); return; }
     try { validateOrder(editor, true); } catch (e) { setError((e as Error).message); return; }
     setBusy(true); setError(""); setMessage("");
     try {
@@ -111,12 +122,14 @@ export default function TextbookOrdersPage() {
     <div className={styles.layout}>
       <aside className={styles.panel}><div className={styles.sectionHeader}><h2>저장한 주문</h2><button disabled={loading || busy} onClick={() => void load()}>{loading ? "불러오는 중" : "목록 새로고침"}</button></div>
         {!orders.length && <p className={styles.muted}>새 주문을 작성하고 저장해주세요.</p>}
-        <div className={styles.history}>{orders.map(order => <article key={order.id}><button disabled={busy} className={styles.orderTitle} onClick={() => open(order)}>{order.title}</button><p>{order.date} · {order.lines.length}개 항목</p><p>{order.delivery.recipient || "수령자 미입력"}</p><div className={styles.actions}><button disabled={busy} onClick={() => open({ ...order, id: "", revision: 0, title: `${order.title.slice(0, 144)} (복사)`, date: newTextbookOrder().date, createdAt: "", updatedAt: "" })}>복사하여 작성</button>{deleting === order.id ? <><button disabled={busy} className={styles.danger} onClick={() => void remove(order)}>삭제 확인</button><button disabled={busy} onClick={() => setDeleting(null)}>취소</button></> : <button disabled={busy} onClick={() => setDeleting(order.id)}>삭제</button>}</div></article>)}</div>
+        <div className={styles.history}>{orders.map(order => <article key={order.id}><button disabled={busy} className={styles.orderTitle} onClick={() => open(order)}>{order.title}</button><p>{order.date} · {order.lines.length}개 항목</p><p>{order.delivery.recipient || "수령자 미입력"}</p><div className={styles.actions}><button disabled={busy} onClick={() => open({ ...order, id: "", revision: 0, date: newTextbookOrder().date, createdAt: "", updatedAt: "" })}>복사하여 작성</button>{deleting === order.id ? <><button disabled={busy} className={styles.danger} onClick={() => void remove(order)}>삭제 확인</button><button disabled={busy} onClick={() => setDeleting(null)}>취소</button></> : <button disabled={busy} onClick={() => setDeleting(order.id)}>삭제</button>}</div></article>)}</div>
       </aside>
       {editor ? <section className={styles.panel}>
         <div className={styles.sectionHeader}><h2>{editor.id ? "주문 수정" : "새 주문 작성"}</h2><span className={styles.muted}>{dirty ? "저장 전 변경사항" : editor.id ? "저장됨" : "작성 중"}</span></div>
         <fieldset disabled={busy} className={styles.fields}>
-          <label className={styles.wide}>주문 제목 / 학교명<input value={editor.title} maxLength={150} placeholder="예: 하늘빛초 4분기 교재" onChange={e => patch("title", e.target.value)} /></label>
+          <label>분기<select value={quarter} onChange={e => changeOrderPeriod(e.target.value, orderRound)}><option value="">분기 선택</option>{[1, 2, 3, 4].map(q => <option key={q} value={q}>{q}분기</option>)}</select></label>
+          <label>주문 차수 (텀)<input type="number" min={1} max={999} step={1} value={orderRound} placeholder="예: 1" onChange={e => changeOrderPeriod(quarter, e.target.value)} /></label>
+          <label className={styles.wide}>주문 제목 (자동)<input value={editor.title} readOnly placeholder="분기와 주문 차수를 선택해주세요." /></label>
           <label>주문일<input type="date" value={editor.date} onChange={e => patch("date", e.target.value)} /></label>
         </fieldset>
         <h3>배송 정보</h3><p className={styles.muted}>아래 배송 정보가 모든 주문 항목에 반영됩니다. 배송지가 다르면 주문을 따로 작성해주세요.</p>
