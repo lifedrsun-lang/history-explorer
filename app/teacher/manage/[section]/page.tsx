@@ -82,6 +82,13 @@ const sections: Record<string, ManagementSection> = {
         description: "별꼼역사 주문서 작성·저장·엑셀 다운로드",
         className: "border-orange-200 bg-orange-50 text-orange-900",
       },
+      {
+        href: "/teacher/semester-plans",
+        icon: "📋",
+        title: "학기 계획안",
+        description: "공통 수업 기본자료 · 주차별 계획 작성 · 이전 계획안 복제",
+        className: "border-indigo-200 bg-indigo-50 text-indigo-950",
+      },
     ],
   },
   teaching: {
@@ -264,13 +271,6 @@ export default async function TeacherManagementSectionPage({
 
         {section === "after-school" && (
           <>
-            <Link href="/teacher/semester-plans" className="mt-4 flex items-center justify-between gap-4 rounded-[24px] border border-indigo-200 bg-indigo-50 p-5 text-indigo-950 shadow-sm sm:p-6">
-              <div>
-                <h2 className="text-xl font-black">📋 학기 계획안</h2>
-                <p className="mt-2 text-sm font-bold">공통 수업 기본자료 · 주차별 계획 작성 · 이전 계획안 복제</p>
-              </div>
-              <span className="shrink-0 text-sm font-black">열기</span>
-            </Link>
             <AfterSchoolAlerts />
             <section className="mt-4">
             <div className="mb-3 px-1">
