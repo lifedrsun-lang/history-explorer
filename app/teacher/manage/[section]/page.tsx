@@ -75,6 +75,13 @@ const sections: Record<string, ManagementSection> = {
         description: "학교별·분기별 1~3텀 교재 수령 학생과 인원 확인",
         className: "border-emerald-200 bg-emerald-50 text-emerald-900",
       },
+      {
+        href: "/teacher/textbook-orders",
+        icon: "📦",
+        title: "교재주문",
+        description: "별꼼역사 주문서 작성·저장·엑셀 다운로드",
+        className: "border-orange-200 bg-orange-50 text-orange-900",
+      },
     ],
   },
   teaching: {
