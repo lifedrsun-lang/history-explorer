@@ -6,18 +6,19 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 
 import { auth } from "@/lib/firebase";
 import { isStudentEnrolledInQuarter } from "@/lib/studentRoster";
+import {
+  calculateFeeSettlement,
+  changeFeeSettlement,
+  hasReceivedAmount,
+  resetFeeSettlement,
+  type FeeSettlement,
+  type SettlementInputField,
+  type SettlementManualField,
+} from "@/lib/feeSettlement";
 
 type FeeType = "afterschool" | "contract";
 type FeeTab = "summary" | "afterschool" | "contract" | "payments";
 type QuarterKey = "Q1" | "Q2" | "Q3" | "Q4";
-
-type FeeSettlement = {
-  receivedAmount?: number;
-  grossAmount?: number;
-  insuranceFee?: number;
-  taxAmount?: number;
-  receivedDate?: string;
-};
 
 type FeeContract = {
   id: string;
@@ -174,6 +175,7 @@ export default function TeacherFeesPage() {
   const [allowanceDraft, setAllowanceDraft] = useState({ ratePerSession: "", sessionCount: "" });
   const [savingAllowance, setSavingAllowance] = useState(false);
   const [allowanceMessage, setAllowanceMessage] = useState("");
+  const [editingSettlementKey, setEditingSettlementKey] = useState("");
 
   const [type, setType] = useState<FeeType>("afterschool");
   const [schoolName, setSchoolName] = useState("");
@@ -722,35 +724,34 @@ export default function TeacherFeesPage() {
       );
     }
 
-    return getContractMonthKeys(contract).map((monthKey) => ({
+    const monthKeys = getContractMonthKeys(contract);
+    return monthKeys.map((monthKey) => ({
       key: monthKey,
       label: formatMonthLabel(monthKey),
-      expectedAmount: getContractMonthGross(contract, monthKey),
+      expectedAmount: monthKeys.length === 1 && getContractWorkedSessions(contract) === 0
+        ? getContractGross(contract)
+        : getContractMonthGross(contract, monthKey),
     }));
   };
 
   const updateSettlement = async (
     contract: FeeContract,
     unitKey: string,
-    field: keyof FeeSettlement,
-    value: number | string
+    field: SettlementInputField | "reset" | "apply",
+    value: number | string = ""
   ) => {
-    const latest = contracts.find((item) => item.id === contract.id) || contract;
+    const latest = getLatestContract(contract);
     const settlements = { ...(latest.settlements || {}) };
-    const entry: FeeSettlement = { ...(settlements[unitKey] || {}) };
-    if (field === "receivedDate") entry.receivedDate = String(value || "");
-    else entry[field] = Math.max(0, Number(value || 0));
-
-    const empty =
-      !entry.receivedDate &&
-      !Number(entry.receivedAmount || 0) &&
-      !Number(entry.grossAmount || 0) &&
-      !Number(entry.insuranceFee || 0) &&
-      !Number(entry.taxAmount || 0);
-
-    if (empty) delete settlements[unitKey];
-    else settlements[unitKey] = entry;
-    await patchContract(contract.id, { settlements });
+    const unit = getSettlementUnits(latest).find((item) => item.key === unitKey);
+    if (!unit) return;
+    const previous = settlements[unitKey] || {};
+    settlements[unitKey] = field === "reset"
+      ? resetFeeSettlement(previous, unit.expectedAmount)
+      : field === "apply"
+      ? calculateFeeSettlement(previous, unit.expectedAmount)
+      : changeFeeSettlement(previous, unit.expectedAmount, field, value);
+    setError("");
+    return patchContract(contract.id, { settlements });
   };
 
   const getSettlementState = (entry: FeeSettlement, expectedAmount: number) => {
@@ -758,10 +759,10 @@ export default function TeacherFeesPage() {
     const statementGross = Number(entry.grossAmount || 0);
     const insurance = Number(entry.insuranceFee || 0);
     const tax = Number(entry.taxAmount || 0);
-    const hasReceived = received > 0 || Boolean(entry.receivedDate);
+    const hasReceived = hasReceivedAmount(entry) || (entry.calculationVersion !== 1 && Boolean(entry.receivedDate));
     const hasStatement = statementGross > 0 || insurance > 0 || tax > 0;
 
-    if (!hasReceived && !hasStatement) {
+    if (!hasReceived && (entry.calculationVersion === 1 || !hasStatement)) {
       return {
         label: "미수령",
         difference: expectedAmount,
@@ -800,7 +801,7 @@ export default function TeacherFeesPage() {
     }
 
     return {
-      label: "명세확정",
+        label: "정산 일치",
       difference: 0,
       tone: "emerald" as const,
       detail: "",
@@ -846,7 +847,11 @@ export default function TeacherFeesPage() {
 
   const getContractSettlementTotals = (contract: FeeContract) => {
     const units = getSettlementUnits(contract);
-    const entries = Object.values(contract.settlements || {});
+    const entries = Object.entries(contract.settlements || {}).map(([key, entry]) =>
+      entry.calculationVersion === 1
+        ? calculateFeeSettlement(entry, units.find((unit) => unit.key === key)?.expectedAmount ?? Number(entry.grossAmount || 0))
+        : entry
+    );
     const hasNewSettlements = entries.length > 0;
 
     const received = hasNewSettlements
@@ -860,16 +865,26 @@ export default function TeacherFeesPage() {
     const tax = hasNewSettlements
       ? entries.reduce((sum, entry) => sum + Number(entry.taxAmount || 0), 0)
       : Number(contract.taxAmount || 0);
+    const incomeTax = entries.reduce((sum, entry) => sum + Number(entry.incomeTax || 0), 0);
+    const residentTax = entries.reduce((sum, entry) => sum + Number(entry.residentTax || 0), 0);
+    const employmentInsurance = entries.reduce((sum, entry) => sum + Number(entry.employmentInsurance || 0), 0);
+    const industrialInsurance = entries.reduce((sum, entry) => sum + Number(entry.industrialInsurance || 0), 0);
+    const legacyTax = entries.filter((entry) => entry.calculationVersion !== 1)
+      .reduce((sum, entry) => sum + Number(entry.taxAmount || 0), 0)
+      + (hasNewSettlements ? 0 : Number(contract.taxAmount || 0));
+    const legacyInsurance = entries.filter((entry) => entry.calculationVersion !== 1)
+      .reduce((sum, entry) => sum + Number(entry.insuranceFee || 0), 0)
+      + (hasNewSettlements ? 0 : Number(contract.insuranceFee || 0));
     const statementGross = hasNewSettlements
       ? entries.reduce((sum, entry) => sum + Number(entry.grossAmount || 0), 0)
       : Number(contract.allowanceAmount || 0);
     const unpaid = units.reduce((sum, unit) => {
       const entry = contract.settlements?.[unit.key] || {};
-      const hasReceived = Number(entry.receivedAmount || 0) > 0 || Boolean(entry.receivedDate);
+      const hasReceived = hasReceivedAmount(entry) || (entry.calculationVersion !== 1 && Boolean(entry.receivedDate));
       return hasReceived ? sum : sum + unit.expectedAmount;
     }, 0);
 
-    return { received, insurance, tax, statementGross, unpaid };
+    return { received, insurance, tax, incomeTax, residentTax, employmentInsurance, industrialInsurance, legacyTax, legacyInsurance, statementGross, unpaid };
   };
 
   const paymentContracts = scopeContracts;
@@ -899,11 +914,17 @@ export default function TeacherFeesPage() {
       totals.received += current.received;
       totals.insurance += current.insurance;
       totals.tax += current.tax;
+      totals.incomeTax += current.incomeTax;
+      totals.residentTax += current.residentTax;
+      totals.employmentInsurance += current.employmentInsurance;
+      totals.industrialInsurance += current.industrialInsurance;
+      totals.legacyTax += current.legacyTax;
+      totals.legacyInsurance += current.legacyInsurance;
       totals.statementGross += current.statementGross;
       totals.unpaid += current.unpaid;
       return totals;
     },
-    { received: 0, insurance: 0, tax: 0, statementGross: 0, unpaid: 0 }
+    { received: 0, insurance: 0, tax: 0, incomeTax: 0, residentTax: 0, employmentInsurance: 0, industrialInsurance: 0, legacyTax: 0, legacyInsurance: 0, statementGross: 0, unpaid: 0 }
   );
 
   const calendarWeeks = useMemo(() => getCalendarWeeks(contractMonth), [contractMonth]);
@@ -1014,147 +1035,115 @@ export default function TeacherFeesPage() {
     const units = getSettlementUnits(contract);
     if (units.length === 0) {
       return (
-        <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-4 text-center text-xs font-bold text-slate-400">
+        <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-4 text-center text-sm font-bold text-slate-400">
           아직 수금 단위별 발생액이 없습니다.
         </div>
       );
     }
+    const autoFields: { key: SettlementManualField; label: string }[] = [
+      { key: "grossAmount", label: "수당금액" },
+      { key: "incomeTax", label: "소득세 (3%)" },
+      { key: "residentTax", label: "주민세 (0.3%)" },
+      { key: "employmentInsurance", label: "고용보험" },
+      { key: "industrialInsurance", label: "산재보험" },
+    ];
 
     return (
-      <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200">
-        <div className="hidden grid-cols-[120px_110px_1fr_142px_1fr_1fr_1fr] gap-2 bg-slate-50 px-3 py-2 text-[10px] font-black text-slate-500 lg:grid">
-          <div>구분</div>
-          <div>예상 발생액</div>
-          <div>받은 금액</div>
-          <div>수령일</div>
-          <div>수당금액</div>
-          <div>보험료</div>
-          <div>세금</div>
-        </div>
-
+      <div className="mt-3 space-y-3">
+        <p className="text-sm text-slate-500">
+          받은 금액을 입력하고 입력칸을 벗어나면 자동 계산·저장됩니다. 세금은 원 단위 반올림이며, 산재보험은 기본 0원입니다.
+        </p>
         {units.map((unit) => {
-          const entry = contract.settlements?.[unit.key] || {};
+          const stored = contract.settlements?.[unit.key] || {};
+          const entry = calculateFeeSettlement(stored, unit.expectedAmount);
+          const rowKey = `${contract.id}-${unit.key}`;
+          const manualEditing = editingSettlementKey === rowKey;
+          const legacy = Boolean(contract.settlements?.[unit.key]) && stored.calculationVersion !== 1;
           const state = getSettlementState(entry, unit.expectedAmount);
-          const toneClass =
-            state.tone === "emerald"
-              ? "bg-emerald-50 text-emerald-700"
-              : state.tone === "blue"
-                ? "bg-blue-50 text-blue-700"
-                : state.tone === "rose"
-                  ? "bg-rose-50 text-rose-700"
-                  : "bg-amber-50 text-amber-700";
+          const toneClass = state.tone === "emerald"
+            ? "bg-emerald-50 text-emerald-700"
+            : state.tone === "blue" ? "bg-blue-50 text-blue-700"
+            : state.tone === "rose" ? "bg-rose-50 text-rose-700"
+            : "bg-amber-50 text-amber-700";
 
           return (
-            <div key={unit.key} className="border-t border-slate-100 first:border-t-0">
-              <div className="grid gap-2 px-3 py-3 lg:grid-cols-[120px_110px_1fr_142px_1fr_1fr_1fr] lg:items-end">
-                <div>
-                  <div className="text-xs font-black text-slate-800">{unit.label}</div>
-                  <div className="mt-1 text-[10px] font-bold text-slate-400 lg:hidden">
-                    예상 {formatWon(unit.expectedAmount)}
-                  </div>
+            <div key={unit.key} className="rounded-2xl border border-slate-200 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm font-black text-slate-800">
+                  {unit.label}<span className="ml-2 font-bold text-slate-500">예상 {formatWon(unit.expectedAmount)}</span>
                 </div>
-                <div className="hidden text-xs font-black text-slate-700 lg:block">
-                  {formatWon(unit.expectedAmount)}
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setEditingSettlementKey(manualEditing ? "" : rowKey)}
+                    className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold text-slate-600">
+                    {manualEditing ? "수정 마침" : "직접 수정"}
+                  </button>
+                  <button type="button" onClick={() => void updateSettlement(contract, unit.key, legacy ? "apply" : "reset")}
+                    className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700">
+                    {legacy ? "자동 계산 적용" : "자동 계산으로 복원"}
+                  </button>
                 </div>
-                <label className="text-[10px] font-black text-slate-500">
-                  <span className="lg:hidden">받은 금액</span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-7">
+                <label className="text-sm font-bold text-slate-600">
+                  받은 금액
                   <input
+                    key={`${rowKey}-received-${stored.receivedAmount ?? "empty"}`}
                     inputMode="numeric"
-                    defaultValue={formatNumberInput(entry.receivedAmount)}
-                    onChange={(event) => {
-                      event.target.value = formatNumberInput(event.target.value);
-                    }}
-                    onBlur={(event) =>
-                      void updateSettlement(
-                        contract,
-                        unit.key,
-                        "receivedAmount",
-                        event.target.value.replace(/[^0-9]/g, "")
-                      )
-                    }
+                    defaultValue={formatNumberInput(stored.receivedAmount)}
+                    onChange={(event) => { event.target.value = formatNumberInput(event.target.value); }}
+                    onBlur={(event) => void updateSettlement(contract, unit.key, "receivedAmount", event.target.value.replace(/[^0-9]/g, ""))}
                     placeholder="입금액"
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-2 py-2 text-sm font-bold outline-none"
+                    className="mt-1 w-full rounded-xl border border-blue-200 bg-white px-2 py-2 text-base font-bold outline-none focus:ring-2 focus:ring-blue-200"
                   />
                 </label>
-                <label className="text-[10px] font-black text-slate-500">
-                  <span className="lg:hidden">수령일</span>
+                <label className="text-sm font-bold text-slate-600">
+                  수령일
                   <input
+                    key={`${rowKey}-date-${stored.receivedDate || "empty"}`}
                     type="date"
-                    defaultValue={entry.receivedDate || ""}
-                    onChange={(event) =>
-                      void updateSettlement(contract, unit.key, "receivedDate", event.target.value)
-                    }
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-2 py-2 text-xs font-bold outline-none"
+                    defaultValue={stored.receivedDate || ""}
+                    onChange={(event) => void updateSettlement(contract, unit.key, "receivedDate", event.target.value)}
+                    className="mt-1 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-2 py-2 text-sm font-bold outline-none"
                   />
                 </label>
-                <label className="text-[10px] font-black text-slate-500">
-                  <span className="lg:hidden">수당금액</span>
-                  <input
-                    inputMode="numeric"
-                    defaultValue={formatNumberInput(entry.grossAmount)}
-                    onChange={(event) => {
-                      event.target.value = formatNumberInput(event.target.value);
-                    }}
-                    onBlur={(event) =>
-                      void updateSettlement(
-                        contract,
-                        unit.key,
-                        "grossAmount",
-                        event.target.value.replace(/[^0-9]/g, "")
-                      )
-                    }
-                    placeholder="명세서 금액"
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-2 py-2 text-sm font-bold outline-none"
-                  />
-                </label>
-                <label className="text-[10px] font-black text-slate-500">
-                  <span className="lg:hidden">보험료</span>
-                  <input
-                    inputMode="numeric"
-                    defaultValue={formatNumberInput(entry.insuranceFee)}
-                    onChange={(event) => {
-                      event.target.value = formatNumberInput(event.target.value);
-                    }}
-                    onBlur={(event) =>
-                      void updateSettlement(
-                        contract,
-                        unit.key,
-                        "insuranceFee",
-                        event.target.value.replace(/[^0-9]/g, "")
-                      )
-                    }
-                    placeholder="0"
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-2 py-2 text-sm font-bold outline-none"
-                  />
-                </label>
-                <label className="text-[10px] font-black text-slate-500">
-                  <span className="lg:hidden">세금</span>
-                  <input
-                    inputMode="numeric"
-                    defaultValue={formatNumberInput(entry.taxAmount)}
-                    onChange={(event) => {
-                      event.target.value = formatNumberInput(event.target.value);
-                    }}
-                    onBlur={(event) =>
-                      void updateSettlement(
-                        contract,
-                        unit.key,
-                        "taxAmount",
-                        event.target.value.replace(/[^0-9]/g, "")
-                      )
-                    }
-                    placeholder="0"
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-2 py-2 text-sm font-bold outline-none"
-                  />
-                </label>
+                {autoFields.map((field) => (
+                  <label key={field.key} className="text-sm font-bold text-slate-600">
+                    {field.label}
+                    <input
+                      key={`${rowKey}-${field.key}-${entry[field.key] ?? 0}`}
+                      inputMode="numeric"
+                      readOnly={!manualEditing}
+                      defaultValue={formatNumberInput(entry[field.key] ?? 0)}
+                      onChange={(event) => { event.target.value = formatNumberInput(event.target.value); }}
+                      onBlur={(event) => {
+                        if (!manualEditing) return;
+                        const value = event.target.value.replace(/[^0-9]/g, "");
+                        if (Number(value || 0) !== Number(entry[field.key] || 0)) {
+                          void updateSettlement(contract, unit.key, field.key, value);
+                        }
+                      }}
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-2 py-2 text-base font-bold outline-none read-only:bg-slate-50 read-only:text-slate-500 focus:ring-2 focus:ring-blue-200"
+                    />
+                    <span className="mt-1 block text-xs font-normal text-slate-400">
+                      {entry.manualFields?.includes(field.key) ? "직접 입력" : field.key === "industrialInsurance" ? "기본 0원" : "자동 계산"}
+                    </span>
+                  </label>
+                ))}
               </div>
-              <div className={`mx-3 mb-3 rounded-lg px-3 py-1.5 text-[11px] font-black ${toneClass}`}>
-                {state.label}
-                {state.label === "명세서 대기" && (
-                  <span> · 임시 차액 {formatWon(state.difference)}</span>
-                )}
-                {state.detail && <span> · {state.detail}</span>}
+              {legacy && (
+                <p className="mt-3 text-sm text-amber-700">
+                  기존 기록: 세금 합계 {formatWon(Number(stored.taxAmount || 0))} · 보험료 {formatWon(Number(stored.insuranceFee || 0))}.
+                  위 분리 금액은 미리보기입니다. 받은 금액을 입력하거나 자동 계산 적용을 누르면 저장됩니다.
+                </p>
+              )}
+              <div className={`mt-3 rounded-lg px-3 py-2 text-sm font-bold ${toneClass}`} role="status">
+                {state.label}{state.detail && <span> · {state.detail}</span>}
               </div>
+              <p className="mt-2 text-sm text-slate-500">
+                고용보험 = 수당금액 − 받은 금액 − 소득세 − 주민세 − 산재보험.
+                차액이 음수이면 고용보험은 0원으로 표시하고 금액 확인을 안내합니다.
+                직접 수정한 항목은 자동 계산으로 복원하기 전까지 유지됩니다.
+              </p>
             </div>
           );
         })}
@@ -1447,11 +1436,21 @@ export default function TeacherFeesPage() {
           <div className="mt-1 text-xl font-black text-slate-900">
             {formatWon(settlementTotals.insurance)}
           </div>
+          <div className="mt-2 text-sm font-bold text-slate-500">
+            고용보험 {formatWon(settlementTotals.employmentInsurance)}<br />
+            산재보험 {formatWon(settlementTotals.industrialInsurance)}
+            {settlementTotals.legacyInsurance > 0 && <div>기존 합산 {formatWon(settlementTotals.legacyInsurance)}</div>}
+          </div>
         </div>
         <div className="rounded-3xl bg-white p-4 shadow-sm">
           <div className="text-xs font-black text-slate-500">세금 누적</div>
           <div className="mt-1 text-xl font-black text-slate-900">
             {formatWon(settlementTotals.tax)}
+          </div>
+          <div className="mt-2 text-sm font-bold text-slate-500">
+            소득세 {formatWon(settlementTotals.incomeTax)}<br />
+            주민세 {formatWon(settlementTotals.residentTax)}
+            {settlementTotals.legacyTax > 0 && <div>기존 합산 {formatWon(settlementTotals.legacyTax)}</div>}
           </div>
         </div>
       </section>

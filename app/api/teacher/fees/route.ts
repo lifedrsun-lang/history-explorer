@@ -6,6 +6,7 @@ import {
   verifyTeacherRequest,
 } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
+import { sanitizeFeeSettlement, type FeeSettlement } from "@/lib/feeSettlement";
 import {
   AFTER_SCHOOL_ACADEMIC_YEAR,
   isSameSchool,
@@ -269,45 +270,28 @@ const sanitizeWorkSessions = (value: unknown) => {
 const sanitizeSettlements = (value: unknown) => {
   if (!value || typeof value !== "object") return {};
 
-  const result: Record<
-    string,
-    {
-      receivedAmount: number;
-      grossAmount: number;
-      insuranceFee: number;
-      taxAmount: number;
-      receivedDate: string;
-    }
-  > = {};
+  const result: Record<string, FeeSettlement> = {};
 
   Object.entries(value as Record<string, unknown>).forEach(([key, entry]) => {
     const validKey = /^Q[1-4]-T[1-3](?:-[AB])?$/.test(key) || /^\d{4}-\d{2}$/.test(key);
     if (!validKey || !entry || typeof entry !== "object") return;
 
     const data = entry as Record<string, unknown>;
-    const receivedAmount = toNumber(data.receivedAmount);
-    const grossAmount = toNumber(data.grossAmount);
-    const insuranceFee = toNumber(data.insuranceFee);
-    const taxAmount = toNumber(data.taxAmount);
-    const receivedDate = normalizeDate(data.receivedDate);
+    const settlement = sanitizeFeeSettlement(data);
+    settlement.receivedDate = normalizeDate(data.receivedDate);
 
     if (
-      receivedAmount === 0 &&
-      grossAmount === 0 &&
-      insuranceFee === 0 &&
-      taxAmount === 0 &&
-      !receivedDate
+      !settlement.receivedAmount &&
+      !settlement.grossAmount &&
+      !settlement.insuranceFee &&
+      !settlement.taxAmount &&
+      !settlement.receivedDate &&
+      !(settlement.calculationVersion === 1 && settlement.receivedAmount !== undefined)
     ) {
       return;
     }
 
-    result[key] = {
-      receivedAmount,
-      grossAmount,
-      insuranceFee,
-      taxAmount,
-      receivedDate,
-    };
+    result[key] = settlement;
   });
 
   return result;
