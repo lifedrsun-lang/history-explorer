@@ -20,7 +20,9 @@ type PaymentRecord = {
   contractLabel: string;
   payerName: string;
   industryCode: string;
+  businessNumber: string;
   taxYear: number;
+  paymentMonth: number | null;
   receivedDate: string;
   grossAmount: number;
   incomeTax: number;
@@ -36,8 +38,16 @@ type ContractProfile = {
   label: string;
   payerName: string;
   industryCode: string;
+  businessNumber: string;
   profileSaved: boolean;
 };
+
+type MonthlyIncomeSourceKey =
+  | "woongjinThinkbig"
+  | "globalFinancialSales"
+  | "chamdasomEducation"
+  | "araCooperative"
+  | "chromaEducation";
 
 type Adjustments = {
   previousYearRevenue: number | null;
@@ -47,13 +57,7 @@ type Adjustments = {
   localTaxCredit: number;
   additionalPrepaidIncomeTax: number;
   additionalPrepaidLocalTax: number;
-  monthlyGrossAmounts: {
-    woongjinThinkbig: number[];
-    globalFinancialSales: number[];
-    chamdasomEducation: number[];
-    araCooperative: number[];
-    chromaEducation: number[];
-  };
+  monthlyGrossOverrides: Record<MonthlyIncomeSourceKey, Array<number | null>>;
   employmentGrossAmounts: number[];
   employmentWithheldIncomeTax: number;
   employmentWithheldLocalTax: number;
@@ -62,7 +66,7 @@ type Adjustments = {
 
 type NumericAdjustmentKey = Exclude<
   keyof Adjustments,
-  "monthlyGrossAmounts" | "employmentGrossAmounts" | "employmentResignationDate"
+  "monthlyGrossOverrides" | "employmentGrossAmounts" | "employmentResignationDate"
 >;
 
 const EMPTY_ADJUSTMENTS: Adjustments = {
@@ -73,12 +77,12 @@ const EMPTY_ADJUSTMENTS: Adjustments = {
   localTaxCredit: 0,
   additionalPrepaidIncomeTax: 0,
   additionalPrepaidLocalTax: 0,
-  monthlyGrossAmounts: {
-    woongjinThinkbig: Array(12).fill(0),
-    globalFinancialSales: Array(12).fill(0),
-    chamdasomEducation: Array(12).fill(0),
-    araCooperative: Array(12).fill(0),
-    chromaEducation: Array(12).fill(0),
+  monthlyGrossOverrides: {
+    woongjinThinkbig: Array(12).fill(null),
+    globalFinancialSales: Array(12).fill(null),
+    chamdasomEducation: Array(12).fill(null),
+    araCooperative: Array(12).fill(null),
+    chromaEducation: Array(12).fill(null),
   },
   employmentGrossAmounts: Array(12).fill(0),
   employmentWithheldIncomeTax: 0,
@@ -145,6 +149,12 @@ const inputNumber = (value: string) => {
   return Number.isFinite(number) ? number : 0;
 };
 
+const normalizePayerName = (value: string) =>
+  value
+    .replace(/\(주\)|㈜|주식회사/g, "")
+    .replace(/[\s·._-]/g, "")
+    .trim();
+
 export default function IncomeTaxPage() {
   const currentYear = new Date().getFullYear();
   const [user, setUser] = useState<User | null>(null);
@@ -201,18 +211,62 @@ export default function IncomeTaxPage() {
     return () => window.clearTimeout(timeout);
   }, [load]);
 
+  const monthlyAutoTotals = useMemo(() => {
+    const result = Object.fromEntries(
+      MONTHLY_INCOME_SOURCES.map((source) => [
+        source.key,
+        Array.from({ length: 12 }, () => ({
+          grossAmount: 0,
+          incomeTax: 0,
+          localTax: 0,
+          recordCount: 0,
+        })),
+      ])
+    ) as Record<MonthlyIncomeSourceKey, Array<{
+      grossAmount: number;
+      incomeTax: number;
+      localTax: number;
+      recordCount: number;
+    }>>;
+
+    records.forEach((record) => {
+      if (!record.paymentMonth || record.paymentMonth < 1 || record.paymentMonth > 12) return;
+      const source = MONTHLY_INCOME_SOURCES.find((item) =>
+        item.industryCode === record.industryCode &&
+        normalizePayerName(item.payerName) === normalizePayerName(record.payerName)
+      );
+      if (!source) return;
+      const month = result[source.key][record.paymentMonth - 1];
+      month.grossAmount += record.grossAmount;
+      month.incomeTax += record.incomeTax;
+      month.localTax += record.localTax;
+      month.recordCount += 1;
+    });
+    return result;
+  }, [records]);
+
+  const ungroupedRecords = useMemo(() => records.filter((record) => {
+    if (!record.paymentMonth || record.paymentMonth < 1 || record.paymentMonth > 12) return true;
+    return !MONTHLY_INCOME_SOURCES.some((source) =>
+      source.industryCode === record.industryCode &&
+      normalizePayerName(source.payerName) === normalizePayerName(record.payerName)
+    );
+  }), [records]);
+
+  const effectiveMonthlyRecords = useMemo(
+    () => MONTHLY_INCOME_SOURCES.flatMap((source) =>
+      adjustments.monthlyGrossOverrides[source.key].map((override, monthIndex) => ({
+        id: `monthly:${source.key}:${monthIndex + 1}`,
+        industryCode: source.industryCode,
+        grossAmount: override ?? monthlyAutoTotals[source.key][monthIndex].grossAmount,
+      }))
+    ),
+    [adjustments.monthlyGrossOverrides, monthlyAutoTotals]
+  );
+
   const industryCalculations = useMemo(
-    () => calculateIndustryIncome(year, [
-      ...records,
-      ...MONTHLY_INCOME_SOURCES.flatMap((source) =>
-        adjustments.monthlyGrossAmounts[source.key].map((grossAmount, index) => ({
-          id: `manual:${source.key}:${index + 1}`,
-          industryCode: source.industryCode,
-          grossAmount,
-        }))
-      ),
-    ]),
-    [adjustments.monthlyGrossAmounts, records, year]
+    () => calculateIndustryIncome(year, [...ungroupedRecords, ...effectiveMonthlyRecords]),
+    [effectiveMonthlyRecords, ungroupedRecords, year]
   );
   const employmentCalculation = useMemo(
     () => calculateEarnedIncome(
@@ -221,21 +275,29 @@ export default function IncomeTaxPage() {
     [adjustments.employmentGrossAmounts]
   );
   const totals = useMemo(() => {
-    const manualGross = MONTHLY_INCOME_SOURCES.reduce(
-      (sourceSum, source) =>
-        sourceSum + adjustments.monthlyGrossAmounts[source.key].reduce(
-          (monthSum, amount) => monthSum + amount,
-          0
-        ),
-      0
-    );
-    const manualMonthCount = MONTHLY_INCOME_SOURCES.reduce(
-      (sourceSum, source) =>
-        sourceSum + adjustments.monthlyGrossAmounts[source.key].filter((amount) => amount > 0).length,
-      0
-    );
-    const totalGross =
-      records.reduce((sum, record) => sum + record.grossAmount, 0) + manualGross;
+    let monthlyGross = 0;
+    let monthlyIncomeTax = 0;
+    let monthlyLocalTax = 0;
+    let automaticMonthCount = 0;
+    let overrideMonthCount = 0;
+    MONTHLY_INCOME_SOURCES.forEach((source) => {
+      adjustments.monthlyGrossOverrides[source.key].forEach((override, monthIndex) => {
+        const automatic = monthlyAutoTotals[source.key][monthIndex];
+        const effectiveGross = override ?? automatic.grossAmount;
+        monthlyGross += effectiveGross;
+        if (override === null) {
+          monthlyIncomeTax += automatic.incomeTax;
+          monthlyLocalTax += automatic.localTax;
+          if (automatic.grossAmount > 0) automaticMonthCount += 1;
+        } else {
+          monthlyIncomeTax += Math.round(effectiveGross * 0.03);
+          monthlyLocalTax += Math.round(effectiveGross * 0.003);
+          overrideMonthCount += 1;
+        }
+      });
+    });
+    const ungroupedGross = ungroupedRecords.reduce((sum, record) => sum + record.grossAmount, 0);
+    const totalGross = ungroupedGross + monthlyGross;
     const classifiedGross = industryCalculations.reduce(
       (sum, item) => sum + item.grossAmount,
       0
@@ -245,13 +307,13 @@ export default function IncomeTaxPage() {
       0
     );
     const prepaidIncomeTax =
-      records.reduce((sum, record) => sum + record.incomeTax, 0) +
-      Math.round(manualGross * 0.03) +
+      ungroupedRecords.reduce((sum, record) => sum + record.incomeTax, 0) +
+      monthlyIncomeTax +
       adjustments.employmentWithheldIncomeTax +
       adjustments.additionalPrepaidIncomeTax;
     const prepaidLocalTax =
-      records.reduce((sum, record) => sum + record.localTax, 0) +
-      Math.round(manualGross * 0.003) +
+      ungroupedRecords.reduce((sum, record) => sum + record.localTax, 0) +
+      monthlyLocalTax +
       adjustments.employmentWithheldLocalTax +
       adjustments.additionalPrepaidLocalTax;
     const employmentInsurance = records.reduce(
@@ -270,10 +332,10 @@ export default function IncomeTaxPage() {
       prepaidLocalTax,
       employmentInsurance,
       industrialInsurance,
-      manualGross,
-      manualMonthCount,
+      automaticMonthCount,
+      overrideMonthCount,
     };
-  }, [adjustments, industryCalculations, records]);
+  }, [adjustments, industryCalculations, monthlyAutoTotals, records, ungroupedRecords]);
   const estimate = useMemo(
     () => calculateTaxEstimate({
       businessIncome: totals.businessIncome,
@@ -296,16 +358,16 @@ export default function IncomeTaxPage() {
     setAdjustments((current) => ({ ...current, [key]: value }));
   };
 
-  const setMonthlyGross = (
-    sourceKey: keyof Adjustments["monthlyGrossAmounts"],
+  const setMonthlyGrossOverride = (
+    sourceKey: MonthlyIncomeSourceKey,
     monthIndex: number,
-    value: number
+    value: number | null
   ) => {
     setAdjustments((current) => ({
       ...current,
-      monthlyGrossAmounts: {
-        ...current.monthlyGrossAmounts,
-        [sourceKey]: current.monthlyGrossAmounts[sourceKey].map((amount, index) =>
+      monthlyGrossOverrides: {
+        ...current.monthlyGrossOverrides,
+        [sourceKey]: current.monthlyGrossOverrides[sourceKey].map((amount, index) =>
           index === monthIndex ? value : amount
         ),
       },
@@ -360,6 +422,7 @@ export default function IncomeTaxPage() {
           profile: {
             payerName: contract.payerName,
             industryCode: contract.industryCode,
+            businessNumber: contract.businessNumber,
           },
           applyToExisting,
         }),
@@ -391,6 +454,7 @@ export default function IncomeTaxPage() {
           settlementKey: record.settlementKey,
           payerName: record.payerName,
           industryCode: record.industryCode,
+          businessNumber: record.businessNumber,
           taxYear: record.taxYear,
         }),
       });
@@ -460,7 +524,7 @@ export default function IncomeTaxPage() {
           <>
             <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {[
-                ["사업 세전 총수입", won(totals.totalGross), `입금관리 ${records.length}건 · 직접입력 ${totals.manualMonthCount}개월`],
+                ["사업 세전 총수입", won(totals.totalGross), `입금관리 자동 ${totals.automaticMonthCount}개월 · 직접수정 ${totals.overrideMonthCount}개월`],
                 ["단순경비율 후 사업소득", won(totals.businessIncome), "보험료 중복 공제 없음"],
                 ["근로소득금액", won(employmentCalculation.earnedIncome), `총급여 ${won(employmentCalculation.grossSalary)} · 공제 ${won(employmentCalculation.earnedIncomeDeduction)}`],
                 ["기납부 원천세", won(totals.prepaidIncomeTax + totals.prepaidLocalTax), "사업 3.3% 추정 + 급여 원천징수 입력"],
@@ -557,17 +621,22 @@ export default function IncomeTaxPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-black">1월~12월 업체별 세전 금액</h2>
-                  <p className="mt-1 text-sm font-bold text-slate-500">각 달에 지급받은 세전 수입을 입력하면 해당 업종코드로 연간 합계에 반영됩니다.</p>
+                  <p className="mt-1 text-sm font-bold text-slate-500">입금관리에서 업체·월별 세전 금액을 자동으로 불러옵니다. 필요한 달만 직접 고칠 수 있습니다.</p>
                 </div>
-                <span className="rounded-full bg-amber-100 px-3 py-2 text-xs font-black text-amber-800">월 입력 원천세는 3.3% 추정</span>
+                <span className="rounded-full bg-emerald-100 px-3 py-2 text-xs font-black text-emerald-800">자동값 우선 · 직접수정 가능</span>
               </div>
-              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold leading-relaxed text-amber-900">
-                입금관리에도 같은 지급 건이 있으면 중복 집계됩니다. 아래에는 입금관리에 등록하지 않은 금액만 입력해 주세요.
+              <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold leading-relaxed text-emerald-900">
+                ‘자동’은 기존 입금관리 합계입니다. 금액을 바꾸면 그 달만 ‘직접수정’으로 계산되며, ‘자동값으로’ 버튼을 누르면 언제든 입금관리 금액으로 되돌아갑니다. 중복 합산하지 않습니다.
               </div>
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
                 {MONTHLY_INCOME_SOURCES.map((source) => {
-                  const months = adjustments.monthlyGrossAmounts[source.key];
-                  const sourceTotal = months.reduce((sum, amount) => sum + amount, 0);
+                  const overrides = adjustments.monthlyGrossOverrides[source.key];
+                  const automaticMonths = monthlyAutoTotals[source.key];
+                  const sourceTotal = overrides.reduce<number>(
+                    (sum, override, monthIndex) =>
+                      sum + (override ?? automaticMonths[monthIndex].grossAmount),
+                    0
+                  );
                   return (
                     <div key={source.key} className={`rounded-2xl border p-4 ${source.tone}`}>
                       <div className="flex items-center justify-between gap-3">
@@ -584,22 +653,41 @@ export default function IncomeTaxPage() {
                         </div>
                       </div>
                       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        {MONTH_LABELS.map((label, monthIndex) => (
+                        {MONTH_LABELS.map((label, monthIndex) => {
+                          const override = overrides[monthIndex];
+                          const automatic = automaticMonths[monthIndex];
+                          const effectiveGross = override ?? automatic.grossAmount;
+                          return (
                           <label key={label} className="text-xs font-black text-slate-600">
-                            {label}
+                            <span className="flex items-center justify-between gap-1">
+                              <span>{label}</span>
+                              <span className={`rounded-full px-1.5 py-0.5 text-[9px] ${override === null ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                                {override === null ? (automatic.recordCount > 0 ? `자동 ${automatic.recordCount}건` : "자동") : "직접수정"}
+                              </span>
+                            </span>
                             <div className="mt-1 flex items-center rounded-xl border border-white bg-white px-2 shadow-sm focus-within:border-emerald-500">
                               <input
                                 inputMode="numeric"
-                                value={months[monthIndex] ? months[monthIndex].toLocaleString("ko-KR") : ""}
+                                value={effectiveGross ? effectiveGross.toLocaleString("ko-KR") : ""}
                                 placeholder="0"
-                                onChange={(event) => setMonthlyGross(source.key, monthIndex, inputNumber(event.target.value))}
+                                onChange={(event) => setMonthlyGrossOverride(source.key, monthIndex, inputNumber(event.target.value))}
                                 className="min-w-0 flex-1 bg-transparent py-2 text-right text-sm font-black outline-none"
                                 aria-label={`${source.payerName} ${label} 세전 금액`}
                               />
                               <span className="ml-1 text-[11px] text-slate-400">원</span>
                             </div>
+                            {override !== null && (
+                              <button
+                                type="button"
+                                onClick={() => setMonthlyGrossOverride(source.key, monthIndex, null)}
+                                className="mt-1 w-full text-[10px] font-black text-emerald-700 underline"
+                              >
+                                자동값으로 ({won(automatic.grossAmount)})
+                              </button>
+                            )}
                           </label>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -705,13 +793,41 @@ export default function IncomeTaxPage() {
 
             <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
               <h2 className="text-xl font-black">업체별 업종 설정</h2>
-              <p className="mt-1 text-sm font-bold text-slate-500">설정 저장 후 새 입금 기록에는 자동 연결됩니다. 기존 기록 반영은 별도 버튼으로 확인 후 실행합니다.</p>
+              <p className="mt-1 text-sm font-bold text-slate-500">업체/직종을 선택하면 월별 금액과 연결됩니다. 하늘빛초·새솔초는 참다솜교육, 사우초는 아라로 자동 제안합니다.</p>
               <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                {contracts.map((contract) => (
+                {contracts.map((contract) => {
+                  const selectedPreset = MONTHLY_INCOME_SOURCES.find((source) =>
+                    source.industryCode === contract.industryCode &&
+                    normalizePayerName(source.payerName) === normalizePayerName(contract.payerName)
+                  );
+                  return (
                   <div key={contract.id} className="rounded-2xl border border-slate-200 p-4">
                     <div className="text-sm font-black text-slate-800">{contract.label || "이름 없는 업체"}</div>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1.2fr]">
+                    <select
+                      value={selectedPreset?.key || ""}
+                      onChange={(event) => {
+                        const preset = MONTHLY_INCOME_SOURCES.find((source) => source.key === event.target.value);
+                        if (preset) {
+                          updateContract(contract.id, {
+                            payerName: preset.payerName,
+                            industryCode: preset.industryCode,
+                            businessNumber: preset.businessNumber,
+                          });
+                        }
+                      }}
+                      className="mt-3 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-900"
+                      aria-label={`${contract.label} 업체·직종 간편 선택`}
+                    >
+                      <option value="">업체 / 직종 간편 선택</option>
+                      {MONTHLY_INCOME_SOURCES.map((source) => (
+                        <option key={source.key} value={source.key}>
+                          {source.payerName} / {source.industryCode === "940925" ? "방과후교사" : source.industryCode === "940908" ? "방문판매원" : "보험설계사"} ({source.industryCode})
+                        </option>
+                      ))}
+                    </select>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_1.2fr]">
                       <input value={contract.payerName} onChange={(event) => updateContract(contract.id, { payerName: event.target.value })} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" aria-label={`${contract.label} 지급처명`} />
+                      <input value={contract.businessNumber} onChange={(event) => updateContract(contract.id, { businessNumber: event.target.value })} placeholder="사업자번호" className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" aria-label={`${contract.label} 사업자번호`} />
                       <select value={contract.industryCode} onChange={(event) => updateContract(contract.id, { industryCode: event.target.value })} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold">
                         <option value="">업종 미확정</option>
                         {INDUSTRIES.map((industry) => <option key={industry.code} value={industry.code}>{industry.label}</option>)}
@@ -722,7 +838,8 @@ export default function IncomeTaxPage() {
                       <button type="button" disabled={!contract.industryCode || saving === `profile:${contract.id}`} onClick={() => void saveProfile(contract, true)} className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white disabled:opacity-40">기존 기록도 반영</button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
 

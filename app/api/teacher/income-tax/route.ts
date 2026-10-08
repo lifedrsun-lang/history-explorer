@@ -28,6 +28,7 @@ const validYear = (value: unknown) => {
 type TaxProfile = {
   payerName: string;
   industryCode: string;
+  businessNumber: string;
 };
 
 const sanitizeProfile = (value: unknown): TaxProfile | null => {
@@ -36,26 +37,52 @@ const sanitizeProfile = (value: unknown): TaxProfile | null => {
   const payerName = normalize(data.payerName);
   const industryCode = normalize(data.industryCode);
   if (!payerName || !isSupportedIndustryCode(industryCode)) return null;
-  return { payerName, industryCode };
+  return {
+    payerName,
+    industryCode,
+    businessNumber: normalize(data.businessNumber),
+  };
 };
 
 const inferProfile = (contract: Record<string, unknown>): TaxProfile => {
   const saved = sanitizeProfile(contract.incomeTaxProfile);
-  if (saved) return saved;
-
+  if (saved?.businessNumber) return saved;
   const payerName =
     normalize(contract.schoolName) || normalize(contract.title) || "업체 미지정";
   const searchable = `${payerName} ${normalize(contract.title)}`;
+  if (/하늘빛|새솔/.test(searchable)) {
+    return {
+      payerName: "참다솜교육 사회적협동조합",
+      industryCode: "940925",
+      businessNumber: "506-82-20645",
+    };
+  }
+  if (/사우/.test(searchable)) {
+    return {
+      payerName: "아라 사회적협동조합",
+      industryCode: "940925",
+      businessNumber: "345-82-00175",
+    };
+  }
+  if (saved) return saved;
   if (/웅진|씽크빅/.test(searchable)) {
-    return { payerName, industryCode: "940908" };
+    return {
+      payerName: "웅진씽크빅",
+      industryCode: "940908",
+      businessNumber: "141-81-09131",
+    };
   }
   if (/글로벌금융판매/.test(searchable)) {
-    return { payerName, industryCode: "940906" };
+    return {
+      payerName: "(주)글로벌금융판매",
+      industryCode: "940906",
+      businessNumber: "131-86-16703",
+    };
   }
   if (contract.type === "afterschool") {
-    return { payerName, industryCode: "940925" };
+    return { payerName, industryCode: "940925", businessNumber: "" };
   }
-  return { payerName, industryCode: "" };
+  return { payerName, industryCode: "", businessNumber: "" };
 };
 
 const inferYear = (entry: FeeSettlement, key: string) => {
@@ -65,6 +92,24 @@ const inferYear = (entry: FeeSettlement, key: string) => {
   }
   if (/^\d{4}-\d{2}$/.test(key)) return Number(key.slice(0, 4));
   return AFTER_SCHOOL_ACADEMIC_YEAR;
+};
+
+const inferMonth = (entry: FeeSettlement, key: string) => {
+  if (/^\d{4}-\d{2}$/.test(key)) return Number(key.slice(5, 7));
+  const quarterMatch = key.match(/^Q([1-4])-T([1-3])/i);
+  if (quarterMatch) {
+    const quarterMonths: Record<string, number[]> = {
+      "1": [3, 4, 5],
+      "2": [6, 7, 8],
+      "3": [9, 10, 11],
+      "4": [12, 1, 2],
+    };
+    return quarterMonths[quarterMatch[1]]?.[Number(quarterMatch[2]) - 1] || null;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(entry.receivedDate || "")) {
+    return Number(entry.receivedDate!.slice(5, 7));
+  }
+  return null;
 };
 
 const hasPayment = (entry: FeeSettlement) =>
@@ -94,6 +139,8 @@ const createRecord = (
     (legacyTax ? Math.round(legacyTax / 1.1) : Math.round(grossAmount * 0.03));
   const localTax = storedLocalTax ||
     (legacyTax ? Math.max(0, legacyTax - incomeTax) : Math.round(grossAmount * 0.003));
+  const contractSearchable = `${normalize(contract.schoolName)} ${normalize(contract.title)}`;
+  const usesFixedSchoolMapping = /하늘빛|새솔|사우/.test(contractSearchable);
 
   return {
     id: `${contractId}:${key}`,
@@ -102,9 +149,15 @@ const createRecord = (
     contractLabel: [normalize(contract.schoolName), normalize(contract.title)]
       .filter(Boolean)
       .join(" · "),
-    payerName: normalize(entry.payerName) || profile.payerName,
-    industryCode: normalize(entry.industryCode) || profile.industryCode,
+    payerName: usesFixedSchoolMapping
+      ? profile.payerName
+      : normalize(entry.payerName) || profile.payerName,
+    industryCode: usesFixedSchoolMapping
+      ? profile.industryCode
+      : normalize(entry.industryCode) || profile.industryCode,
+    businessNumber: profile.businessNumber,
     taxYear: inferYear(entry, key),
+    paymentMonth: inferMonth(entry, key),
     receivedDate: normalize(entry.receivedDate),
     grossAmount,
     incomeTax,
@@ -120,14 +173,26 @@ const createRecord = (
 const sanitizeAdjustments = (value: unknown) => {
   const data = value && typeof value === "object" ? value as Record<string, unknown> : {};
   const previousYearRaw = data.previousYearRevenue;
-  const monthlySource =
-    data.monthlyGrossAmounts && typeof data.monthlyGrossAmounts === "object"
+  const hasOverrides =
+    data.monthlyGrossOverrides && typeof data.monthlyGrossOverrides === "object";
+  const monthlySource = hasOverrides
+    ? data.monthlyGrossOverrides as Record<string, unknown>
+    : data.monthlyGrossAmounts && typeof data.monthlyGrossAmounts === "object"
       ? data.monthlyGrossAmounts as Record<string, unknown>
       : {};
   const sanitizeMonths = (months: unknown) =>
     Array.from({ length: 12 }, (_, index) =>
       amount(Array.isArray(months) ? months[index] : 0)
     );
+  const sanitizeOverrides = (months: unknown) =>
+    Array.from({ length: 12 }, (_, index) => {
+      const value = Array.isArray(months) ? months[index] : null;
+      if (hasOverrides) {
+        return value === null || value === undefined || value === "" ? null : amount(value);
+      }
+      const legacyAmount = amount(value);
+      return legacyAmount > 0 ? legacyAmount : null;
+    });
   const resignationDate = normalize(data.employmentResignationDate);
   return {
     previousYearRevenue:
@@ -140,12 +205,12 @@ const sanitizeAdjustments = (value: unknown) => {
     localTaxCredit: amount(data.localTaxCredit),
     additionalPrepaidIncomeTax: amount(data.additionalPrepaidIncomeTax),
     additionalPrepaidLocalTax: amount(data.additionalPrepaidLocalTax),
-    monthlyGrossAmounts: {
-      woongjinThinkbig: sanitizeMonths(monthlySource.woongjinThinkbig),
-      globalFinancialSales: sanitizeMonths(monthlySource.globalFinancialSales),
-      chamdasomEducation: sanitizeMonths(monthlySource.chamdasomEducation),
-      araCooperative: sanitizeMonths(monthlySource.araCooperative),
-      chromaEducation: sanitizeMonths(monthlySource.chromaEducation),
+    monthlyGrossOverrides: {
+      woongjinThinkbig: sanitizeOverrides(monthlySource.woongjinThinkbig),
+      globalFinancialSales: sanitizeOverrides(monthlySource.globalFinancialSales),
+      chamdasomEducation: sanitizeOverrides(monthlySource.chamdasomEducation),
+      araCooperative: sanitizeOverrides(monthlySource.araCooperative),
+      chromaEducation: sanitizeOverrides(monthlySource.chromaEducation),
     },
     employmentGrossAmounts: sanitizeMonths(data.employmentGrossAmounts),
     employmentWithheldIncomeTax: amount(data.employmentWithheldIncomeTax),
@@ -215,6 +280,7 @@ export async function GET(request: Request) {
           .join(" · "),
         payerName: inferredProfile.payerName,
         industryCode: inferredProfile.industryCode,
+        businessNumber: inferredProfile.businessNumber,
         profileSaved: Boolean(savedProfile),
       };
     });
@@ -304,6 +370,7 @@ export async function PATCH(request: Request) {
       const profile = sanitizeProfile({
         payerName: body.payerName,
         industryCode: body.industryCode,
+        businessNumber: body.businessNumber,
       });
       const taxYear = validYear(body.taxYear);
       if (!profile || !settlementKey) {
