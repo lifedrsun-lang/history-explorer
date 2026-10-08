@@ -69,6 +69,14 @@ const supportingSections = [
     description: "교사일정·자료실·수입·정산 관리",
     className: "border-rose-200 bg-rose-50 text-rose-900",
   },
+  {
+    key: "income-tax",
+    href: "/teacher/income-tax",
+    icon: "💰",
+    title: "종합소득세",
+    description: "입금·원천징수 내역을 모아 예상 납부·환급액 계산",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+  },
 ] as const;
 
 type ManagementSection =
@@ -266,7 +274,7 @@ export default function TeacherDashboardGate() {
         <div className="mt-5 text-sm font-black text-slate-500 sm:mt-6 sm:text-base">
           기타 관리
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-3 sm:gap-4">
+        <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
           {supportingSections.map(renderManagementSection)}
         </div>
 

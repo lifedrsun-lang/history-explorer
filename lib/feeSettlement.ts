@@ -17,11 +17,26 @@ export type FeeSettlement = {
   receivedDate?: string;
   calculationVersion?: 1;
   manualFields?: SettlementManualField[];
+  taxYear?: number;
+  industryCode?: string;
+  payerName?: string;
+  taxMetaConfirmed?: boolean;
 };
 
 const amount = (value: unknown) => {
   const result = Number(value);
   return Number.isFinite(result) && result >= 0 ? Math.round(result) : 0;
+};
+
+const preserveTaxMetadata = (target: FeeSettlement, source: Record<string, unknown> | FeeSettlement) => {
+  const taxYear = Number(source.taxYear);
+  const industryCode = String(source.industryCode || "").trim();
+  const payerName = String(source.payerName || "").trim();
+  if (taxYear) target.taxYear = taxYear;
+  if (industryCode) target.industryCode = industryCode;
+  if (payerName) target.payerName = payerName;
+  if (source.taxMetaConfirmed === true) target.taxMetaConfirmed = true;
+  return target;
 };
 
 export const hasReceivedAmount = (entry: FeeSettlement) =>
@@ -59,6 +74,7 @@ export function calculateFeeSettlement(entry: FeeSettlement, expectedAmount: num
     insuranceFee: employmentInsurance + industrialInsurance,
     receivedDate: entry.receivedDate || "",
   };
+  preserveTaxMetadata(result, entry);
   if (hasReceivedAmount(entry)) result.receivedAmount = amount(entry.receivedAmount);
   return result;
 }
@@ -94,13 +110,13 @@ export function sanitizeFeeSettlement(data: Record<string, unknown>): FeeSettlem
       const result = Number(value || 0);
       return Number.isFinite(result) && result >= 0 ? result : 0;
     };
-    return {
+    return preserveTaxMetadata({
       receivedAmount: legacyAmount(data.receivedAmount),
       grossAmount: legacyAmount(data.grossAmount),
       insuranceFee: legacyAmount(data.insuranceFee),
       taxAmount: legacyAmount(data.taxAmount),
       receivedDate: String(data.receivedDate || ""),
-    };
+    }, data);
   }
   const entry: FeeSettlement = {
     calculationVersion: 1,
@@ -113,6 +129,7 @@ export function sanitizeFeeSettlement(data: Record<string, unknown>): FeeSettlem
     industrialInsurance: amount(data.industrialInsurance),
     receivedDate: String(data.receivedDate || ""),
   };
+  preserveTaxMetadata(entry, data);
   if (data.receivedAmount !== undefined && data.receivedAmount !== null && data.receivedAmount !== "") {
     entry.receivedAmount = amount(data.receivedAmount);
   }

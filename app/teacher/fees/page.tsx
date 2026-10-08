@@ -41,6 +41,10 @@ type FeeContract = {
   taxAmount?: number;
   allowanceAmount?: number;
   receivedDate?: string;
+  incomeTaxProfile?: {
+    payerName: string;
+    industryCode: string;
+  };
 };
 
 type FeeStudent = {
@@ -744,7 +748,15 @@ export default function TeacherFeesPage() {
     const settlements = { ...(latest.settlements || {}) };
     const unit = getSettlementUnits(latest).find((item) => item.key === unitKey);
     if (!unit) return;
-    const previous = settlements[unitKey] || {};
+    const stored = settlements[unitKey] || {};
+    const previous: FeeSettlement = stored.taxMetaConfirmed || !latest.incomeTaxProfile
+      ? stored
+      : {
+          ...stored,
+          payerName: latest.incomeTaxProfile.payerName,
+          industryCode: latest.incomeTaxProfile.industryCode,
+          taxMetaConfirmed: true,
+        };
     settlements[unitKey] = field === "reset"
       ? resetFeeSettlement(previous, unit.expectedAmount)
       : field === "apply"
