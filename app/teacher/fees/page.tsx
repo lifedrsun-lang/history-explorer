@@ -170,6 +170,10 @@ export default function TeacherFeesPage() {
   const [expandedContractId, setExpandedContractId] = useState("");
   const [contractMonth, setContractMonth] = useState(currentMonthKey());
   const [summaryDetailsOpen, setSummaryDetailsOpen] = useState(false);
+  const [editingAllowanceId, setEditingAllowanceId] = useState("");
+  const [allowanceDraft, setAllowanceDraft] = useState({ ratePerSession: "", sessionCount: "" });
+  const [savingAllowance, setSavingAllowance] = useState(false);
+  const [allowanceMessage, setAllowanceMessage] = useState("");
 
   const [type, setType] = useState<FeeType>("afterschool");
   const [schoolName, setSchoolName] = useState("");
@@ -270,9 +274,11 @@ export default function TeacherFeesPage() {
 
     try {
       await task;
+      return true;
     } catch (patchError) {
-      setError(patchError instanceof Error ? patchError.message : "저장하지 못했습니다.");
       await loadData();
+      setError(patchError instanceof Error ? patchError.message : "저장하지 못했습니다.");
+      return false;
     } finally {
       if (patchQueueRef.current[id] === task) {
         delete patchQueueRef.current[id];
@@ -282,6 +288,43 @@ export default function TeacherFeesPage() {
 
   const getLatestContract = (contract: FeeContract) =>
     contractsRef.current.find((item) => item.id === contract.id) || contract;
+
+  const startAllowanceEdit = (contract: FeeContract) => {
+    setAllowanceDraft({
+      ratePerSession: formatNumberInput(contract.ratePerSession ?? 0),
+      sessionCount: String(contract.sessionCount ?? 0),
+    });
+    setEditingAllowanceId(contract.id);
+    setAllowanceMessage("");
+    setError("");
+  };
+
+  const saveAllowance = async (contract: FeeContract, event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (savingAllowance) return;
+    const rate = Number(allowanceDraft.ratePerSession.replace(/,/g, ""));
+    const count = Number(allowanceDraft.sessionCount);
+    if (
+      !allowanceDraft.ratePerSession.trim() ||
+      !allowanceDraft.sessionCount.trim() ||
+      !Number.isSafeInteger(rate) || rate < 0 ||
+      !Number.isSafeInteger(count) || count < 0
+    ) {
+      setError("차시당 수당과 계약 차시 수는 0 이상의 정수로 입력해 주세요.");
+      return;
+    }
+    setSavingAllowance(true);
+    setError("");
+    try {
+      const saved = await patchContract(contract.id, { ratePerSession: rate, sessionCount: count });
+      if (saved) {
+        setEditingAllowanceId("");
+        setAllowanceMessage(`${contract.schoolName} 수당을 수정했습니다.`);
+      }
+    } finally {
+      setSavingAllowance(false);
+    }
+  };
   const getMatchingStudents = (
     contract: FeeContract,
     quarterKey: QuarterKey = quarter
@@ -1421,6 +1464,11 @@ export default function TeacherFeesPage() {
       </section>
 
       <section className="mt-3 space-y-3">
+        {allowanceMessage && (
+          <p role="status" className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
+            {allowanceMessage}
+          </p>
+        )}
         {paymentContracts.map((contract) => (
           <div key={contract.id} className="rounded-[28px] bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
@@ -1443,8 +1491,83 @@ export default function TeacherFeesPage() {
               <div className="text-right">
                 <div className="text-[10px] font-bold text-slate-400">합계 발생액</div>
                 <div className="text-xl font-black text-slate-900">{formatWon(getGross(contract))}</div>
+                {contract.type === "contract" && (
+                  <button
+                    type="button"
+                    disabled={savingAllowance}
+                    onClick={() => startAllowanceEdit(contract)}
+                    className="mt-2 rounded-xl bg-blue-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
+                  >
+                    수당 수정
+                  </button>
+                )}
               </div>
             </div>
+            {contract.type === "contract" && (
+              <div className="mt-3 text-sm font-bold text-slate-500">
+                차시당 {formatWon(Number(contract.ratePerSession || 0))} · 계약 {Number(contract.sessionCount || 0)}차시 · 근무내역 {getContractWorkedSessions(contract)}차시
+              </div>
+            )}
+            {contract.type === "contract" && editingAllowanceId === contract.id && (
+              <form
+                onSubmit={(event) => void saveAllowance(contract, event)}
+                className="mt-3 rounded-2xl border border-blue-100 bg-blue-50/60 p-4"
+              >
+                <fieldset disabled={savingAllowance}>
+                  <legend className="text-sm font-black text-blue-700">출강 수당 수정</legend>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <label className="text-sm font-bold text-slate-600">
+                      차시당 수당 (원)
+                      <input
+                        inputMode="numeric"
+                        required
+                        value={allowanceDraft.ratePerSession}
+                        onChange={(event) => setAllowanceDraft((draft) => ({
+                          ...draft, ratePerSession: formatNumberInput(event.target.value),
+                        }))}
+                        className="mt-1 w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-base text-slate-900"
+                      />
+                    </label>
+                    <label className="text-sm font-bold text-slate-600">
+                      계약 차시 수
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        required
+                        value={allowanceDraft.sessionCount}
+                        onChange={(event) => setAllowanceDraft((draft) => ({
+                          ...draft, sessionCount: event.target.value,
+                        }))}
+                        className="mt-1 w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-base text-slate-900"
+                      />
+                    </label>
+                  </div>
+                  <p className="mt-3 text-sm text-slate-600">
+                    근무내역이 있으면 실제 입력한 차시 수 × 차시당 수당으로 발생액을 계산합니다. 수업 차시가 달라졌다면 근무내역도 수정해 주세요.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="submit" className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+                      {savingAllowance ? "저장 중…" : "저장"}
+                    </button>
+                    <button type="button" onClick={() => setEditingAllowanceId("")} className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-600">
+                      취소
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingAllowanceId("");
+                        setContractMonth(contract.contractStartDate?.slice(0, 7) || currentMonthKey());
+                        setTab("contract");
+                      }}
+                      className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-blue-700"
+                    >
+                      근무내역 수정
+                    </button>
+                  </div>
+                </fieldset>
+              </form>
+            )}
             {renderSettlementRows(contract)}
           </div>
         ))}
