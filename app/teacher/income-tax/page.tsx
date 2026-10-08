@@ -803,36 +803,35 @@ export default function IncomeTaxPage() {
                   return (
                   <div key={contract.id} className="rounded-2xl border border-slate-200 p-4">
                     <div className="text-sm font-black text-slate-800">{contract.label || "이름 없는 업체"}</div>
-                    <select
-                      value={selectedPreset?.key || ""}
-                      onChange={(event) => {
-                        const preset = MONTHLY_INCOME_SOURCES.find((source) => source.key === event.target.value);
-                        if (preset) {
-                          updateContract(contract.id, {
+                    <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1.5fr]">
+                      <input value={contract.payerName} onChange={(event) => updateContract(contract.id, { payerName: event.target.value })} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" aria-label={`${contract.label} 지급처명`} />
+                      <select
+                        value={selectedPreset?.key || ""}
+                        onChange={(event) => {
+                          const preset = MONTHLY_INCOME_SOURCES.find((source) => source.key === event.target.value);
+                          updateContract(contract.id, preset ? {
                             payerName: preset.payerName,
                             industryCode: preset.industryCode,
                             businessNumber: preset.businessNumber,
+                          } : {
+                            industryCode: "",
+                            businessNumber: "",
                           });
-                        }
-                      }}
-                      className="mt-3 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-900"
-                      aria-label={`${contract.label} 업체·직종 간편 선택`}
-                    >
-                      <option value="">업체 / 직종 간편 선택</option>
-                      {MONTHLY_INCOME_SOURCES.map((source) => (
-                        <option key={source.key} value={source.key}>
-                          {source.payerName} / {source.industryCode === "940925" ? "방과후교사" : source.industryCode === "940908" ? "방문판매원" : "보험설계사"} ({source.industryCode})
-                        </option>
-                      ))}
-                    </select>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_1.2fr]">
-                      <input value={contract.payerName} onChange={(event) => updateContract(contract.id, { payerName: event.target.value })} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" aria-label={`${contract.label} 지급처명`} />
-                      <input value={contract.businessNumber} onChange={(event) => updateContract(contract.id, { businessNumber: event.target.value })} placeholder="사업자번호" className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" aria-label={`${contract.label} 사업자번호`} />
-                      <select value={contract.industryCode} onChange={(event) => updateContract(contract.id, { industryCode: event.target.value })} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold">
-                        <option value="">업종 미확정</option>
-                        {INDUSTRIES.map((industry) => <option key={industry.code} value={industry.code}>{industry.label}</option>)}
+                        }}
+                        className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold"
+                        aria-label={`${contract.label} 업체·업종 선택`}
+                      >
+                        <option value="">업체·업종 미확정</option>
+                        {MONTHLY_INCOME_SOURCES.map((source) => (
+                          <option key={source.key} value={source.key}>
+                            {source.payerName} · {source.industryCode === "940925" ? "방과후교사" : source.industryCode === "940908" ? "방문판매원" : "보험설계사"} ({source.industryCode})
+                          </option>
+                        ))}
                       </select>
                     </div>
+                    {contract.businessNumber && (
+                      <div className="mt-2 text-xs font-bold text-slate-400">사업자번호 {contract.businessNumber}</div>
+                    )}
                     <div className="mt-3 flex gap-2">
                       <button type="button" disabled={!contract.industryCode || saving === `profile:${contract.id}`} onClick={() => void saveProfile(contract, false)} className="flex-1 rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 disabled:opacity-40">앞으로 적용</button>
                       <button type="button" disabled={!contract.industryCode || saving === `profile:${contract.id}`} onClick={() => void saveProfile(contract, true)} className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white disabled:opacity-40">기존 기록도 반영</button>
