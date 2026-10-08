@@ -49,6 +49,9 @@ const inferProfile = (contract: Record<string, unknown>): TaxProfile => {
   if (/웅진|씽크빅/.test(searchable)) {
     return { payerName, industryCode: "940908" };
   }
+  if (/글로벌금융판매/.test(searchable)) {
+    return { payerName, industryCode: "940906" };
+  }
   if (contract.type === "afterschool") {
     return { payerName, industryCode: "940925" };
   }
@@ -117,6 +120,14 @@ const createRecord = (
 const sanitizeAdjustments = (value: unknown) => {
   const data = value && typeof value === "object" ? value as Record<string, unknown> : {};
   const previousYearRaw = data.previousYearRevenue;
+  const monthlySource =
+    data.monthlyGrossAmounts && typeof data.monthlyGrossAmounts === "object"
+      ? data.monthlyGrossAmounts as Record<string, unknown>
+      : {};
+  const sanitizeMonths = (months: unknown) =>
+    Array.from({ length: 12 }, (_, index) =>
+      amount(Array.isArray(months) ? months[index] : 0)
+    );
   return {
     previousYearRevenue:
       previousYearRaw === null || previousYearRaw === "" || previousYearRaw === undefined
@@ -128,6 +139,10 @@ const sanitizeAdjustments = (value: unknown) => {
     localTaxCredit: amount(data.localTaxCredit),
     additionalPrepaidIncomeTax: amount(data.additionalPrepaidIncomeTax),
     additionalPrepaidLocalTax: amount(data.additionalPrepaidLocalTax),
+    monthlyGrossAmounts: {
+      woongjinThinkbig: sanitizeMonths(monthlySource.woongjinThinkbig),
+      globalFinancialSales: sanitizeMonths(monthlySource.globalFinancialSales),
+    },
   };
 };
 

@@ -46,7 +46,13 @@ type Adjustments = {
   localTaxCredit: number;
   additionalPrepaidIncomeTax: number;
   additionalPrepaidLocalTax: number;
+  monthlyGrossAmounts: {
+    woongjinThinkbig: number[];
+    globalFinancialSales: number[];
+  };
 };
+
+type NumericAdjustmentKey = Exclude<keyof Adjustments, "monthlyGrossAmounts">;
 
 const EMPTY_ADJUSTMENTS: Adjustments = {
   previousYearRevenue: null,
@@ -56,12 +62,34 @@ const EMPTY_ADJUSTMENTS: Adjustments = {
   localTaxCredit: 0,
   additionalPrepaidIncomeTax: 0,
   additionalPrepaidLocalTax: 0,
+  monthlyGrossAmounts: {
+    woongjinThinkbig: Array(12).fill(0),
+    globalFinancialSales: Array(12).fill(0),
+  },
 };
 
 const INDUSTRIES = [
   { code: "940925", label: "방과후강사 (940925)" },
   { code: "940908", label: "웅진씽크빅·방문판매원 (940908)" },
+  { code: "940906", label: "(주)글로벌금융판매·보험설계사 (940906)" },
 ] as const;
+
+const MONTHLY_INCOME_SOURCES = [
+  {
+    key: "woongjinThinkbig" as const,
+    payerName: "웅진씽크빅",
+    industryCode: "940908",
+    tone: "border-blue-200 bg-blue-50/60",
+  },
+  {
+    key: "globalFinancialSales" as const,
+    payerName: "(주)글로벌금융판매",
+    industryCode: "940906",
+    tone: "border-violet-200 bg-violet-50/60",
+  },
+] as const;
+
+const MONTH_LABELS = Array.from({ length: 12 }, (_, index) => `${index + 1}월`);
 
 const won = (value: number) => `${Math.round(value).toLocaleString("ko-KR")}원`;
 const signedWon = (value: number) =>
@@ -128,11 +156,34 @@ export default function IncomeTaxPage() {
   }, [load]);
 
   const industryCalculations = useMemo(
-    () => calculateIndustryIncome(year, records),
-    [records, year]
+    () => calculateIndustryIncome(year, [
+      ...records,
+      ...MONTHLY_INCOME_SOURCES.flatMap((source) =>
+        adjustments.monthlyGrossAmounts[source.key].map((grossAmount, index) => ({
+          id: `manual:${source.key}:${index + 1}`,
+          industryCode: source.industryCode,
+          grossAmount,
+        }))
+      ),
+    ]),
+    [adjustments.monthlyGrossAmounts, records, year]
   );
   const totals = useMemo(() => {
-    const totalGross = records.reduce((sum, record) => sum + record.grossAmount, 0);
+    const manualGross = MONTHLY_INCOME_SOURCES.reduce(
+      (sourceSum, source) =>
+        sourceSum + adjustments.monthlyGrossAmounts[source.key].reduce(
+          (monthSum, amount) => monthSum + amount,
+          0
+        ),
+      0
+    );
+    const manualMonthCount = MONTHLY_INCOME_SOURCES.reduce(
+      (sourceSum, source) =>
+        sourceSum + adjustments.monthlyGrossAmounts[source.key].filter((amount) => amount > 0).length,
+      0
+    );
+    const totalGross =
+      records.reduce((sum, record) => sum + record.grossAmount, 0) + manualGross;
     const classifiedGross = industryCalculations.reduce(
       (sum, item) => sum + item.grossAmount,
       0
@@ -143,9 +194,11 @@ export default function IncomeTaxPage() {
     );
     const prepaidIncomeTax =
       records.reduce((sum, record) => sum + record.incomeTax, 0) +
+      Math.round(manualGross * 0.03) +
       adjustments.additionalPrepaidIncomeTax;
     const prepaidLocalTax =
       records.reduce((sum, record) => sum + record.localTax, 0) +
+      Math.round(manualGross * 0.003) +
       adjustments.additionalPrepaidLocalTax;
     const employmentInsurance = records.reduce(
       (sum, record) => sum + record.employmentInsurance,
@@ -163,6 +216,8 @@ export default function IncomeTaxPage() {
       prepaidLocalTax,
       employmentInsurance,
       industrialInsurance,
+      manualGross,
+      manualMonthCount,
     };
   }, [adjustments, industryCalculations, records]);
   const estimate = useMemo(
@@ -182,8 +237,24 @@ export default function IncomeTaxPage() {
     adjustments.previousYearRevenue
   );
 
-  const setAdjustment = (key: keyof Adjustments, value: number | null) => {
+  const setAdjustment = (key: NumericAdjustmentKey, value: number | null) => {
     setAdjustments((current) => ({ ...current, [key]: value }));
+  };
+
+  const setMonthlyGross = (
+    sourceKey: keyof Adjustments["monthlyGrossAmounts"],
+    monthIndex: number,
+    value: number
+  ) => {
+    setAdjustments((current) => ({
+      ...current,
+      monthlyGrossAmounts: {
+        ...current.monthlyGrossAmounts,
+        [sourceKey]: current.monthlyGrossAmounts[sourceKey].map((amount, index) =>
+          index === monthIndex ? value : amount
+        ),
+      },
+    }));
   };
 
   const saveAdjustments = async () => {
@@ -325,9 +396,9 @@ export default function IncomeTaxPage() {
           <>
             <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[
-                ["세전 총수입", won(totals.totalGross), `${records.length}건`],
+                ["세전 총수입", won(totals.totalGross), `입금관리 ${records.length}건 · 직접입력 ${totals.manualMonthCount}개월`],
                 ["단순경비율 후 사업소득", won(totals.businessIncome), "보험료 중복 공제 없음"],
-                ["기납부 원천세", won(totals.prepaidIncomeTax + totals.prepaidLocalTax), "소득세 + 지방소득세"],
+                ["기납부 원천세", won(totals.prepaidIncomeTax + totals.prepaidLocalTax), "입금관리 실제값 + 월 입력액 3.3% 추정"],
                 ["보험료 별도 합계", won(totals.employmentInsurance + totals.industrialInsurance), `고용 ${won(totals.employmentInsurance)} · 산재 ${won(totals.industrialInsurance)}`],
               ].map(([label, value, detail]) => (
                 <div key={label} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -336,6 +407,60 @@ export default function IncomeTaxPage() {
                   <div className="mt-2 text-xs font-bold text-slate-400">{detail}</div>
                 </div>
               ))}
+            </section>
+
+            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-black">1월~12월 업체별 세전 금액</h2>
+                  <p className="mt-1 text-sm font-bold text-slate-500">각 달에 지급받은 세전 수입을 입력하면 해당 업종코드로 연간 합계에 반영됩니다.</p>
+                </div>
+                <span className="rounded-full bg-amber-100 px-3 py-2 text-xs font-black text-amber-800">월 입력 원천세는 3.3% 추정</span>
+              </div>
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold leading-relaxed text-amber-900">
+                입금관리에도 같은 지급 건이 있으면 중복 집계됩니다. 아래에는 입금관리에 등록하지 않은 금액만 입력해 주세요.
+              </div>
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                {MONTHLY_INCOME_SOURCES.map((source) => {
+                  const months = adjustments.monthlyGrossAmounts[source.key];
+                  const sourceTotal = months.reduce((sum, amount) => sum + amount, 0);
+                  return (
+                    <div key={source.key} className={`rounded-2xl border p-4 ${source.tone}`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="font-black text-slate-900">{source.payerName}</div>
+                          <div className="mt-1 text-xs font-bold text-slate-500">업종코드 {source.industryCode}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[11px] font-black text-slate-500">연간 합계</div>
+                          <div className="font-black text-slate-900">{won(sourceTotal)}</div>
+                        </div>
+                      </div>
+                      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {MONTH_LABELS.map((label, monthIndex) => (
+                          <label key={label} className="text-xs font-black text-slate-600">
+                            {label}
+                            <div className="mt-1 flex items-center rounded-xl border border-white bg-white px-2 shadow-sm focus-within:border-emerald-500">
+                              <input
+                                inputMode="numeric"
+                                value={months[monthIndex] ? months[monthIndex].toLocaleString("ko-KR") : ""}
+                                placeholder="0"
+                                onChange={(event) => setMonthlyGross(source.key, monthIndex, inputNumber(event.target.value))}
+                                className="min-w-0 flex-1 bg-transparent py-2 text-right text-sm font-black outline-none"
+                                aria-label={`${source.payerName} ${label} 세전 금액`}
+                              />
+                              <span className="ml-1 text-[11px] text-slate-400">원</span>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <button type="button" disabled={saving === "adjustments"} onClick={() => void saveAdjustments()} className="mt-5 w-full rounded-2xl bg-emerald-600 px-5 py-3 font-black text-white disabled:opacity-50">
+                {saving === "adjustments" ? "저장 중…" : "월별 금액 저장"}
+              </button>
             </section>
 
             <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
@@ -396,7 +521,7 @@ export default function IncomeTaxPage() {
                           inputMode="numeric"
                           value={value === null ? "" : Number(value).toLocaleString("ko-KR")}
                           placeholder={key === "previousYearRevenue" ? "확인 후 입력" : "0"}
-                          onChange={(event) => setAdjustment(key as keyof Adjustments, event.target.value ? inputNumber(event.target.value) : key === "previousYearRevenue" ? null : 0)}
+                          onChange={(event) => setAdjustment(key as NumericAdjustmentKey, event.target.value ? inputNumber(event.target.value) : key === "previousYearRevenue" ? null : 0)}
                           className="min-w-0 flex-1 bg-transparent py-3 text-right font-black outline-none"
                         />
                         <span className="ml-2 text-slate-400">원</span>

@@ -2,7 +2,7 @@ export const PERSONAL_SERVICE_BASIC_BAND = 40_000_000;
 export const PERSONAL_SERVICE_PREVIOUS_YEAR_LIMIT = 36_000_000;
 export const PERSONAL_SERVICE_CURRENT_YEAR_LIMIT = 75_000_000;
 
-export type SupportedIndustryCode = "940925" | "940908";
+export type SupportedIndustryCode = "940925" | "940908" | "940906";
 
 export type IndustryRate = {
   code: SupportedIndustryCode;
@@ -31,15 +31,17 @@ const RATE_TABLE: Record<2024 | 2025, Record<SupportedIndustryCode, Omit<Industr
   2024: {
     "940925": { label: "방과후강사", generalRate: 69.3, excessRate: 57.0 },
     "940908": { label: "방문판매원 · 웅진씽크빅", generalRate: 75.0, excessRate: 65.0 },
+    "940906": { label: "보험설계사 · (주)글로벌금융판매", generalRate: 77.6, excessRate: 68.6 },
   },
   2025: {
     "940925": { label: "방과후강사", generalRate: 69.3, excessRate: 57.0 },
     "940908": { label: "방문판매원 · 웅진씽크빅", generalRate: 75.0, excessRate: 65.0 },
+    "940906": { label: "보험설계사 · (주)글로벌금융판매", generalRate: 77.6, excessRate: 68.6 },
   },
 };
 
 export const isSupportedIndustryCode = (value: unknown): value is SupportedIndustryCode =>
-  value === "940925" || value === "940908";
+  value === "940925" || value === "940908" || value === "940906";
 
 export const getIndustryRate = (year: number, code: SupportedIndustryCode): IndustryRate => {
   const sourceYear: 2024 | 2025 = year <= 2024 ? 2024 : 2025;
