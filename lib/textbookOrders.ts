@@ -1,9 +1,33 @@
+import { HISTORY_BOOKS } from "@/lib/presentations/catalog";
 // Column names and defaults follow the supplied 드림잇 물류(교재) 주문서.xls.
+export const ORDER_SUBJECTS = ["별꼼역사", "모나르떼", "헤르메스"] as const;
+export const ORDER_BOOKS = Array.from({ length: 24 }, (_, i) => {
+  const number = i + 1;
+  const book = HISTORY_BOOKS.find(b => b.number === number);
+  const topic = number === 24 ? "연대표(복습)" : book?.shortTitle.replace(/(\D)(\d+)$/, "$1 $2") || "";
+  return { number, productName: `별꼼역사 ${String(number).padStart(2, "0")}호${topic ? ` ${topic}` : ""}`, confirmed: !!book || number === 24 };
+});
+export function orderBookNumber(productName: string): number | null {
+  const match = productName.match(/^별꼼역사\s+(\d{1,2})호/);
+  const number = Number(match?.[1]);
+  return number >= 1 && number <= 24 ? number : null;
+}
+export function selectOrderBooks(lines: OrderLine[], numbers: number[], options: readonly string[], quantity: number): OrderLine[] {
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100000) throw new OrderInputError("주문 수량은 1~100000으로 입력해주세요.");
+  return numbers.flatMap(number => {
+    const book = ORDER_BOOKS.find(b => b.number === number);
+    if (!book) throw new OrderInputError("교재 호수를 확인해주세요.");
+    return options.map(option => {
+      if (!ORDER_OPTIONS.some(o => o === option)) throw new OrderInputError("구성품을 확인해주세요.");
+      return lines.find(l => orderBookNumber(l.productName) === number && l.option === option) || { ...newOrderLine(), productName: book.productName, option, quantity };
+    });
+  });
+}
 export const ORDER_COLUMNS = ["주문번호", "상품번호", "상품명", "옵션명", "수량", "판매단가", "판매금액", "수령자", "전화", "핸드폰", "우편번호", "주소", "배송메세지", "배송비", "송장출력갯수", "택배크기"];
 export const ORDER_OPTIONS = ["스토리북", "워크북", "체험물"] as const;
 export type OrderLine = { id: string; orderNumber: string; productNumber: string; productName: string; option: string; quantity: number; unitPrice: number | null };
 export type OrderDelivery = { recipient: string; phone: string; mobile: string; postalCode: string; address: string; message: string; shipping: string; invoiceCount: number; parcelSize: string };
-export type TextbookOrder = { id: string; revision: number; title: string; date: string; delivery: OrderDelivery; lines: OrderLine[]; createdAt: string; updatedAt: string };
+export type TextbookOrder = { id: string; revision: number; title: string; date: string; delivery: OrderDelivery; lines: OrderLine[]; createdAt: string; updatedAt: string; mailStatus?: "sending" | "sent" | "failed" | "unknown"; mailSentAt?: string };
 export type OrderInput = Pick<TextbookOrder, "title" | "date" | "delivery" | "lines">;
 export class OrderInputError extends Error {}
 export function textbookOrderTitle(quarter: string, round: string): string {
@@ -16,7 +40,7 @@ export function parseTextbookOrderTitle(title: string) {
   return { quarter: match?.[1] || "", round: match?.[2] || "" };
 }
 export function newOrderLine(): OrderLine {
-  return { id: crypto.randomUUID(), orderNumber: "", productNumber: "", productName: "별꼼역사 1호-고조선1", option: "스토리북", quantity: 1, unitPrice: null };
+  return { id: crypto.randomUUID(), orderNumber: "", productNumber: "", productName: ORDER_BOOKS[0].productName, option: "스토리북", quantity: 1, unitPrice: null };
 }
 export function newTextbookOrder(): TextbookOrder {
   return { id: "", revision: 0, title: textbookOrderTitle("1", "1"), date: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()),

@@ -40,7 +40,7 @@ export async function GET(request: Request) {
   try {
     const teacher = await authorize(request);
     const snapshot = await getFirebaseAdmin().db.collection(COLLECTION).where("teacherUid", "==", teacher.uid).get();
-    const orders = snapshot.docs.map(d => { const data = d.data(); return { id: d.id, revision: data.revision, title: data.title, date: data.date, delivery: data.delivery, lines: data.lines, createdAt: data.createdAt, updatedAt: data.updatedAt } as TextbookOrder; });
+    const orders = snapshot.docs.map(d => { const data = d.data(); return { id: d.id, revision: data.revision, title: data.title, date: data.date, delivery: data.delivery, lines: data.lines, createdAt: data.createdAt, updatedAt: data.updatedAt, ...(data.mailStatus ? { mailStatus: data.mailStatus } : {}), ...(data.mailSentAt ? { mailSentAt: data.mailSentAt } : {}) } as TextbookOrder; });
     orders.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     return json({ orders });
   } catch (error) { return failure(error); }
@@ -75,6 +75,7 @@ async function mutate(request: Request, deleting: boolean) {
       const current = snapshot.data();
       if (!snapshot.exists || current?.teacherUid !== teacher.uid) throw new OrderNotFoundError();
       if (current.revision !== data.revision) throw new OrderConflictError();
+      if (["sending", "unknown", "sent"].includes(current.mailStatus)) throw new OrderInputError("발송 중이거나 이미 발송한 주문은 수정·삭제할 수 없습니다. 다음 주문은 복사하여 작성해주세요.");
       if (deleting) { tx.delete(ref); return null; }
       const updated: TextbookOrder = { ...input!, id: orderId, revision: current.revision + 1, createdAt: current.createdAt, updatedAt: new Date().toISOString() };
       tx.set(ref, { ...updated, teacherUid: teacher.uid });

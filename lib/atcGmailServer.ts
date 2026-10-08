@@ -146,7 +146,8 @@ const encodedSubject = (subject: string) => {
   return words.join("\r\n ");
 };
 
-export function buildAtcGmailRaw(info: { to: string; bcc: string; subject: string; body: string; filename: string }, pdf: Buffer) {
+export type GmailAttachmentType = "application/pdf" | "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+export function buildAtcGmailRaw(info: { to: string; bcc: string; subject: string; body: string; filename: string }, pdf: Buffer, contentType: GmailAttachmentType = "application/pdf") {
   const boundary = `atc_${randomBytes(18).toString("hex")}`;
   const filename = encodeURIComponent(info.filename).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
   const lines76 = (data: Buffer) => data.toString("base64").match(/.{1,76}/g)?.join("\r\n") || "";
@@ -156,25 +157,27 @@ export function buildAtcGmailRaw(info: { to: string; bcc: string; subject: strin
     `Content-Type: multipart/mixed; boundary="${boundary}"`, "",
     `--${boundary}`, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64", "",
     lines76(Buffer.from(info.body, "utf8")),
-    `--${boundary}`, `Content-Type: application/pdf; name*=UTF-8''${filename}`,
+    `--${boundary}`, `Content-Type: ${contentType}; name*=UTF-8''${filename}`,
     `Content-Disposition: attachment; filename*=UTF-8''${filename}`,
     "Content-Transfer-Encoding: base64", "", lines76(pdf), `--${boundary}--`, "",
   ].join("\r\n");
   return Buffer.from(mime, "utf8").toString("base64url");
 }
 
-export async function sendAtcGmail(uid: string, info: Parameters<typeof buildAtcGmailRaw>[0], pdf: Buffer) {
+export async function sendAtcGmail(uid: string, info: Parameters<typeof buildAtcGmailRaw>[0], pdf: Buffer, contentType: GmailAttachmentType = "application/pdf") {
   const accessToken = await getAccessToken(uid);
   let response: Response;
   try {
     response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
       method: "POST", cache: "no-store",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ raw: buildAtcGmailRaw(info, pdf) }),
+      body: JSON.stringify({ raw: buildAtcGmailRaw(info, pdf, contentType) }),
     });
   } catch { throw new Error("atc_gmail_send_unconfirmed"); }
   if (!response.ok) throw new Error("atc_gmail_send_failed");
-  const result = await response.json() as { id?: string };
+  let result: { id?: string };
+  try { result = await response.json() as { id?: string }; }
+  catch { throw new Error("atc_gmail_send_unconfirmed"); }
   if (!result.id) throw new Error("atc_gmail_send_unconfirmed");
   return result.id;
 }
