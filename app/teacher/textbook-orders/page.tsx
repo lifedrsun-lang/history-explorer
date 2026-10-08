@@ -76,7 +76,7 @@ export default function TextbookOrdersPage() {
   };
   const save = async () => {
     if (!editor || busy) return;
-    if (!textbookOrderTitle(quarter, orderRound)) { setError("분기와 주문 차수를 선택해주세요."); return; }
+    if (!textbookOrderTitle(quarter, orderRound) || !["1", "2", "3"].includes(orderRound)) { setError("분기와 텀을 선택해주세요."); return; }
     try { validateOrder(editor); } catch (e) { setError((e as Error).message); return; }
     const uid = user?.uid;
     setBusy(true); setError(""); setMessage("");
@@ -90,7 +90,7 @@ export default function TextbookOrdersPage() {
   };
   const download = async () => {
     if (!editor || busy) return;
-    if (!textbookOrderTitle(quarter, orderRound)) { setError("분기와 주문 차수를 선택해주세요."); return; }
+    if (!textbookOrderTitle(quarter, orderRound) || !["1", "2", "3"].includes(orderRound)) { setError("분기와 텀을 선택해주세요."); return; }
     try { validateOrder(editor, true); } catch (e) { setError((e as Error).message); return; }
     setBusy(true); setError(""); setMessage("");
     try {
@@ -127,12 +127,12 @@ export default function TextbookOrdersPage() {
       {editor ? <section className={styles.panel}>
         <div className={styles.sectionHeader}><h2>{editor.id ? "주문 수정" : "새 주문 작성"}</h2><span className={styles.muted}>{dirty ? "저장 전 변경사항" : editor.id ? "저장됨" : "작성 중"}</span></div>
         <fieldset disabled={busy} className={styles.fields}>
-          <label>분기<select value={quarter} onChange={e => changeOrderPeriod(e.target.value, orderRound)}><option value="">분기 선택</option>{[1, 2, 3, 4].map(q => <option key={q} value={q}>{q}분기</option>)}</select></label>
-          <label>주문 차수 (텀)<input type="number" min={1} max={999} step={1} value={orderRound} placeholder="예: 1" onChange={e => changeOrderPeriod(quarter, e.target.value)} /></label>
-          <label className={styles.wide}>주문 제목 (자동)<input value={editor.title} readOnly placeholder="분기와 주문 차수를 선택해주세요." /></label>
+          <div className={`${styles.periodField} ${styles.wide}`}><span id="order-quarter-label">분기</span><div className={styles.periodButtons} role="group" aria-labelledby="order-quarter-label">{[1, 2, 3, 4].map(q => <button type="button" key={q} aria-pressed={quarter === String(q)} className={quarter === String(q) ? styles.periodSelected : undefined} onClick={() => changeOrderPeriod(String(q), orderRound)}>{q}분기</button>)}</div></div>
+          <div className={`${styles.periodField} ${styles.wide}`}><span id="order-term-label">텀</span><div className={`${styles.periodButtons} ${styles.termButtons}`} role="group" aria-labelledby="order-term-label">{[1, 2, 3].map(term => <button type="button" key={term} aria-pressed={orderRound === String(term)} className={orderRound === String(term) ? styles.periodSelected : undefined} onClick={() => changeOrderPeriod(quarter, String(term))}>{term}텀</button>)}</div></div>
+          <label className={styles.wide}>주문 제목 (자동)<input value={editor.title} readOnly placeholder="분기와 텀을 선택해주세요." /></label>
           <label>주문일<input type="date" value={editor.date} onChange={e => patch("date", e.target.value)} /></label>
         </fieldset>
-        <h3>배송 정보</h3><p className={styles.muted}>아래 배송 정보가 모든 주문 항목에 반영됩니다. 배송지가 다르면 주문을 따로 작성해주세요.</p>
+        <h3>배송 정보</h3><p className={styles.muted}>모든 교재에 같은 배송 정보가 반영됩니다.</p>
         <fieldset disabled={busy} className={styles.fields}>{DELIVERY_FIELDS.map(([key, label]) => <label key={key} className={key === "address" || key === "message" ? styles.wide : ""}>{label}<input type={key === "invoiceCount" ? "number" : key === "phone" || key === "mobile" ? "tel" : "text"} min={key === "invoiceCount" ? 1 : undefined} max={key === "invoiceCount" ? 100 : undefined} maxLength={key === "address" || key === "message" ? 500 : key === "phone" || key === "mobile" ? 40 : key === "postalCode" ? 20 : key === "shipping" || key === "parcelSize" ? 100 : 300} value={editor.delivery[key]} onChange={e => patch("delivery", { ...editor.delivery, [key]: key === "invoiceCount" ? Number(e.target.value) : e.target.value })} /></label>)}</fieldset>
         <div className={styles.sectionHeader}><h3>주문 항목</h3><button disabled={busy || editor.lines.length >= 200} onClick={() => patch("lines", [...editor.lines, newOrderLine()])}>항목 추가</button></div>
         <p className={styles.muted}>상품명을 주문할 호수에 맞게 수정해주세요. 판매금액 = 수량 × 판매단가. 단가를 비우면 금액도 비워집니다.</p>

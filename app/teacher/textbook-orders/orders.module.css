@@ -19,6 +19,11 @@
 .fields input,.fields select,.fields output { min-height:44px; font-size:16px; border:1px solid #cbd5e3; border-radius:10px; padding:10px; width:100%; min-width:0; background:white; }
 .fields output { background:#f3f6fa; }
 .wide { grid-column:1/-1; }
+.periodField { display:flex; flex-direction:column; gap:7px; font-size:14px; font-weight:700; min-width:0; }
+.periodButtons { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.termButtons { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.shell .periodButtons button { padding:11px 6px; min-height:44px; }
+.shell .periodSelected { color:white; background:#334cb0; border-color:#334cb0; }
 .muted { color:#5e6b82; font-size:14px; line-height:1.6; }
 .history { display:grid; gap:14px; }
 .history article { border-top:1px solid #e4e9f1; padding-top:16px; }
