@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { auth } from "@/lib/firebase";
 import {
+  calculateEarnedIncome,
   calculateIndustryIncome,
   calculateTaxEstimate,
   getSimpleExpenseEligibility,
@@ -49,10 +50,20 @@ type Adjustments = {
   monthlyGrossAmounts: {
     woongjinThinkbig: number[];
     globalFinancialSales: number[];
+    chamdasomEducation: number[];
+    araCooperative: number[];
+    chromaEducation: number[];
   };
+  employmentGrossAmounts: number[];
+  employmentWithheldIncomeTax: number;
+  employmentWithheldLocalTax: number;
+  employmentResignationDate: string;
 };
 
-type NumericAdjustmentKey = Exclude<keyof Adjustments, "monthlyGrossAmounts">;
+type NumericAdjustmentKey = Exclude<
+  keyof Adjustments,
+  "monthlyGrossAmounts" | "employmentGrossAmounts" | "employmentResignationDate"
+>;
 
 const EMPTY_ADJUSTMENTS: Adjustments = {
   previousYearRevenue: null,
@@ -65,7 +76,14 @@ const EMPTY_ADJUSTMENTS: Adjustments = {
   monthlyGrossAmounts: {
     woongjinThinkbig: Array(12).fill(0),
     globalFinancialSales: Array(12).fill(0),
+    chamdasomEducation: Array(12).fill(0),
+    araCooperative: Array(12).fill(0),
+    chromaEducation: Array(12).fill(0),
   },
+  employmentGrossAmounts: Array(12).fill(0),
+  employmentWithheldIncomeTax: 0,
+  employmentWithheldLocalTax: 0,
+  employmentResignationDate: "2026-05-22",
 };
 
 const INDUSTRIES = [
@@ -79,15 +97,43 @@ const MONTHLY_INCOME_SOURCES = [
     key: "woongjinThinkbig" as const,
     payerName: "웅진씽크빅",
     industryCode: "940908",
+    businessNumber: "141-81-09131",
     tone: "border-blue-200 bg-blue-50/60",
   },
   {
     key: "globalFinancialSales" as const,
     payerName: "(주)글로벌금융판매",
     industryCode: "940906",
+    businessNumber: "131-86-16703",
     tone: "border-violet-200 bg-violet-50/60",
   },
+  {
+    key: "chamdasomEducation" as const,
+    payerName: "참다솜교육 사회적협동조합",
+    industryCode: "940925",
+    businessNumber: "506-82-20645",
+    tone: "border-emerald-200 bg-emerald-50/60",
+  },
+  {
+    key: "araCooperative" as const,
+    payerName: "아라 사회적협동조합",
+    industryCode: "940925",
+    businessNumber: "345-82-00175",
+    tone: "border-amber-200 bg-amber-50/60",
+  },
+  {
+    key: "chromaEducation" as const,
+    payerName: "주식회사 크로마에듀케이션",
+    industryCode: "940925",
+    businessNumber: "451-88-02863",
+    tone: "border-rose-200 bg-rose-50/60",
+  },
 ] as const;
+
+const EMPLOYMENT_SOURCE = {
+  payerName: "(주)케어링 방문요양센터 서울 양천점",
+  businessNumber: "846-85-02702",
+} as const;
 
 const MONTH_LABELS = Array.from({ length: 12 }, (_, index) => `${index + 1}월`);
 
@@ -168,6 +214,12 @@ export default function IncomeTaxPage() {
     ]),
     [adjustments.monthlyGrossAmounts, records, year]
   );
+  const employmentCalculation = useMemo(
+    () => calculateEarnedIncome(
+      adjustments.employmentGrossAmounts.reduce((sum, amount) => sum + amount, 0)
+    ),
+    [adjustments.employmentGrossAmounts]
+  );
   const totals = useMemo(() => {
     const manualGross = MONTHLY_INCOME_SOURCES.reduce(
       (sourceSum, source) =>
@@ -195,10 +247,12 @@ export default function IncomeTaxPage() {
     const prepaidIncomeTax =
       records.reduce((sum, record) => sum + record.incomeTax, 0) +
       Math.round(manualGross * 0.03) +
+      adjustments.employmentWithheldIncomeTax +
       adjustments.additionalPrepaidIncomeTax;
     const prepaidLocalTax =
       records.reduce((sum, record) => sum + record.localTax, 0) +
       Math.round(manualGross * 0.003) +
+      adjustments.employmentWithheldLocalTax +
       adjustments.additionalPrepaidLocalTax;
     const employmentInsurance = records.reduce(
       (sum, record) => sum + record.employmentInsurance,
@@ -223,6 +277,7 @@ export default function IncomeTaxPage() {
   const estimate = useMemo(
     () => calculateTaxEstimate({
       businessIncome: totals.businessIncome,
+      earnedIncome: employmentCalculation.earnedIncome,
       otherIncome: adjustments.otherIncome,
       incomeDeduction: adjustments.incomeDeduction,
       taxCredit: adjustments.taxCredit,
@@ -230,7 +285,7 @@ export default function IncomeTaxPage() {
       prepaidIncomeTax: totals.prepaidIncomeTax,
       prepaidLocalTax: totals.prepaidLocalTax,
     }),
-    [adjustments, totals]
+    [adjustments, employmentCalculation.earnedIncome, totals]
   );
   const eligibility = getSimpleExpenseEligibility(
     totals.totalGross,
@@ -254,6 +309,15 @@ export default function IncomeTaxPage() {
           index === monthIndex ? value : amount
         ),
       },
+    }));
+  };
+
+  const setEmploymentGross = (monthIndex: number, value: number) => {
+    setAdjustments((current) => ({
+      ...current,
+      employmentGrossAmounts: current.employmentGrossAmounts.map((amount, index) =>
+        index === monthIndex ? value : amount
+      ),
     }));
   };
 
@@ -360,7 +424,7 @@ export default function IncomeTaxPage() {
               <Link href="/teacher" className="text-sm font-black text-emerald-100">← 교사용 홈</Link>
               <h1 className="mt-3 text-3xl font-black sm:text-4xl">💰 종합소득세 예상 계산</h1>
               <p className="mt-2 max-w-3xl text-sm font-bold leading-relaxed text-emerald-50">
-                입금관리의 세전 수당과 원천징수액을 자동 집계하고, 업종별 단순경비율과 직접 입력한 공제액으로 예상 세액을 계산합니다.
+                입금관리와 월별 사업·근로소득, 원천징수액을 합산하고 업종별 단순경비율과 직접 입력한 공제로 예상 세액을 계산합니다.
               </p>
             </div>
             <label className="rounded-2xl bg-white/15 p-3 text-sm font-black">
@@ -394,11 +458,12 @@ export default function IncomeTaxPage() {
           <div className="rounded-3xl bg-white p-10 text-center font-black text-slate-400 shadow-sm">입금 기록을 집계하는 중입니다…</div>
         ) : (
           <>
-            <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {[
-                ["세전 총수입", won(totals.totalGross), `입금관리 ${records.length}건 · 직접입력 ${totals.manualMonthCount}개월`],
+                ["사업 세전 총수입", won(totals.totalGross), `입금관리 ${records.length}건 · 직접입력 ${totals.manualMonthCount}개월`],
                 ["단순경비율 후 사업소득", won(totals.businessIncome), "보험료 중복 공제 없음"],
-                ["기납부 원천세", won(totals.prepaidIncomeTax + totals.prepaidLocalTax), "입금관리 실제값 + 월 입력액 3.3% 추정"],
+                ["근로소득금액", won(employmentCalculation.earnedIncome), `총급여 ${won(employmentCalculation.grossSalary)} · 공제 ${won(employmentCalculation.earnedIncomeDeduction)}`],
+                ["기납부 원천세", won(totals.prepaidIncomeTax + totals.prepaidLocalTax), "사업 3.3% 추정 + 급여 원천징수 입력"],
                 ["보험료 별도 합계", won(totals.employmentInsurance + totals.industrialInsurance), `고용 ${won(totals.employmentInsurance)} · 산재 ${won(totals.industrialInsurance)}`],
               ].map(([label, value, detail]) => (
                 <div key={label} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -407,6 +472,85 @@ export default function IncomeTaxPage() {
                   <div className="mt-2 text-xs font-bold text-slate-400">{detail}</div>
                 </div>
               ))}
+            </section>
+
+            <section className="rounded-3xl border border-sky-200 bg-sky-50/50 p-5 shadow-sm sm:p-7">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="text-xs font-black text-sky-700">근로소득 · 중도퇴사</div>
+                  <h2 className="mt-1 text-xl font-black text-slate-900">{EMPLOYMENT_SOURCE.payerName}</h2>
+                  <p className="mt-1 text-xs font-bold text-slate-500">사업자번호 {EMPLOYMENT_SOURCE.businessNumber}</p>
+                </div>
+                <label className="text-xs font-black text-slate-600">
+                  퇴사일
+                  <input
+                    type="date"
+                    value={adjustments.employmentResignationDate}
+                    onChange={(event) => setAdjustments((current) => ({ ...current, employmentResignationDate: event.target.value }))}
+                    className="ml-2 rounded-xl border border-sky-200 bg-white px-3 py-2 text-sm font-black text-slate-800"
+                  />
+                </label>
+              </div>
+              <div className="mt-4 rounded-2xl border border-sky-200 bg-white/80 px-4 py-3 text-xs font-bold leading-relaxed text-slate-600">
+                1~5월 원천징수영수증의 과세대상 총급여를 월별로 입력하세요. 퇴직금은 퇴직소득이므로 아래 급여와 종합소득에 합산하지 않습니다.
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                {MONTH_LABELS.slice(0, 5).map((label, monthIndex) => (
+                  <label key={label} className="text-xs font-black text-slate-600">
+                    {label} 총급여
+                    <div className="mt-1 flex items-center rounded-xl border border-white bg-white px-2 shadow-sm focus-within:border-sky-500">
+                      <input
+                        inputMode="numeric"
+                        value={adjustments.employmentGrossAmounts[monthIndex] ? adjustments.employmentGrossAmounts[monthIndex].toLocaleString("ko-KR") : ""}
+                        placeholder="0"
+                        onChange={(event) => setEmploymentGross(monthIndex, inputNumber(event.target.value))}
+                        className="min-w-0 flex-1 bg-transparent py-2 text-right text-sm font-black outline-none"
+                        aria-label={`${EMPLOYMENT_SOURCE.payerName} ${label} 총급여`}
+                      />
+                      <span className="ml-1 text-[11px] text-slate-400">원</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl bg-white p-4">
+                  <div className="text-xs font-black text-slate-500">총급여 → 근로소득금액</div>
+                  <div className="mt-2 font-black text-slate-900">{won(employmentCalculation.grossSalary)} → {won(employmentCalculation.earnedIncome)}</div>
+                  <div className="mt-1 text-xs font-bold text-slate-400">근로소득공제 {won(employmentCalculation.earnedIncomeDeduction)}</div>
+                </div>
+                <label className="rounded-2xl bg-white p-4 text-xs font-black text-slate-600">
+                  급여에서 낸 소득세
+                  <div className="mt-2 flex items-center rounded-xl border border-slate-200 px-2">
+                    <input
+                      inputMode="numeric"
+                      value={adjustments.employmentWithheldIncomeTax ? adjustments.employmentWithheldIncomeTax.toLocaleString("ko-KR") : ""}
+                      placeholder="원천징수영수증 확인"
+                      onChange={(event) => setAdjustment("employmentWithheldIncomeTax", inputNumber(event.target.value))}
+                      className="min-w-0 flex-1 py-2 text-right text-sm font-black outline-none"
+                    />
+                    <span className="ml-1 text-slate-400">원</span>
+                  </div>
+                </label>
+                <label className="rounded-2xl bg-white p-4 text-xs font-black text-slate-600">
+                  급여에서 낸 지방소득세
+                  <div className="mt-2 flex items-center rounded-xl border border-slate-200 px-2">
+                    <input
+                      inputMode="numeric"
+                      value={adjustments.employmentWithheldLocalTax ? adjustments.employmentWithheldLocalTax.toLocaleString("ko-KR") : ""}
+                      placeholder="원천징수영수증 확인"
+                      onChange={(event) => setAdjustment("employmentWithheldLocalTax", inputNumber(event.target.value))}
+                      className="min-w-0 flex-1 py-2 text-right text-sm font-black outline-none"
+                    />
+                    <span className="ml-1 text-slate-400">원</span>
+                  </div>
+                </label>
+              </div>
+              <p className="mt-4 text-xs font-bold leading-relaxed text-slate-500">
+                근로소득 세액공제·보험료·신용카드·의료비 등은 원천징수영수증과 공제자료를 확인해 아래 ‘소득공제 합계’와 ‘소득세 세액공제’에 반영하세요.
+              </p>
+              <button type="button" disabled={saving === "adjustments"} onClick={() => void saveAdjustments()} className="mt-4 w-full rounded-2xl bg-sky-700 px-5 py-3 font-black text-white disabled:opacity-50">
+                {saving === "adjustments" ? "저장 중…" : "근로소득 저장"}
+              </button>
             </section>
 
             <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
@@ -429,7 +573,10 @@ export default function IncomeTaxPage() {
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <div className="font-black text-slate-900">{source.payerName}</div>
-                          <div className="mt-1 text-xs font-bold text-slate-500">업종코드 {source.industryCode}</div>
+                          <div className="mt-1 text-xs font-bold text-slate-500">
+                            {source.industryCode === "940925" ? "방과후교사" : source.industryCode === "940908" ? "방문판매원" : "보험설계사"} ({source.industryCode})
+                          </div>
+                          <div className="mt-1 text-[11px] font-bold text-slate-400">사업자번호 {source.businessNumber}</div>
                         </div>
                         <div className="text-right">
                           <div className="text-[11px] font-black text-slate-500">연간 합계</div>
@@ -618,6 +765,7 @@ export default function IncomeTaxPage() {
                 <a className="text-emerald-700 underline" href="https://www.nts.go.kr/nts/na/ntt/selectNttInfo.do?mi=2207&nttSn=1350751" target="_blank" rel="noreferrer">국세청 2025년 귀속 경비율</a>
                 <a className="text-emerald-700 underline" href="https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7667&mi=2201" target="_blank" rel="noreferrer">종합소득세 세율</a>
                 <a className="text-emerald-700 underline" href="https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7664&mi=2231" target="_blank" rel="noreferrer">소득금액 계산 안내</a>
+                <a className="text-emerald-700 underline" href="https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7871&mi=6594" target="_blank" rel="noreferrer">근로소득공제 안내</a>
               </div>
             </section>
           </>

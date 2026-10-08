@@ -128,6 +128,7 @@ const sanitizeAdjustments = (value: unknown) => {
     Array.from({ length: 12 }, (_, index) =>
       amount(Array.isArray(months) ? months[index] : 0)
     );
+  const resignationDate = normalize(data.employmentResignationDate);
   return {
     previousYearRevenue:
       previousYearRaw === null || previousYearRaw === "" || previousYearRaw === undefined
@@ -142,7 +143,15 @@ const sanitizeAdjustments = (value: unknown) => {
     monthlyGrossAmounts: {
       woongjinThinkbig: sanitizeMonths(monthlySource.woongjinThinkbig),
       globalFinancialSales: sanitizeMonths(monthlySource.globalFinancialSales),
+      chamdasomEducation: sanitizeMonths(monthlySource.chamdasomEducation),
+      araCooperative: sanitizeMonths(monthlySource.araCooperative),
+      chromaEducation: sanitizeMonths(monthlySource.chromaEducation),
     },
+    employmentGrossAmounts: sanitizeMonths(data.employmentGrossAmounts),
+    employmentWithheldIncomeTax: amount(data.employmentWithheldIncomeTax),
+    employmentWithheldLocalTax: amount(data.employmentWithheldLocalTax),
+    employmentResignationDate:
+      /^\d{4}-\d{2}-\d{2}$/.test(resignationDate) ? resignationDate : "2026-05-22",
   };
 };
 

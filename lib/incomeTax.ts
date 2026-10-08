@@ -103,8 +103,27 @@ export const calculateProgressiveIncomeTax = (taxBase: number) => {
   return Math.max(0, Math.floor((roundedBase * bracket.rate - bracket.deduction) / 10) * 10);
 };
 
+export const calculateEarnedIncome = (grossSalary: number) => {
+  const gross = Math.max(0, Math.round(Number(grossSalary) || 0));
+  let deduction = 0;
+
+  if (gross <= 5_000_000) deduction = gross * 0.7;
+  else if (gross <= 15_000_000) deduction = 3_500_000 + (gross - 5_000_000) * 0.4;
+  else if (gross <= 45_000_000) deduction = 7_500_000 + (gross - 15_000_000) * 0.15;
+  else if (gross <= 100_000_000) deduction = 12_000_000 + (gross - 45_000_000) * 0.05;
+  else deduction = 14_750_000 + (gross - 100_000_000) * 0.02;
+
+  const earnedIncomeDeduction = Math.min(20_000_000, Math.round(deduction));
+  return {
+    grossSalary: gross,
+    earnedIncomeDeduction,
+    earnedIncome: Math.max(0, gross - earnedIncomeDeduction),
+  };
+};
+
 export type TaxEstimateInput = {
   businessIncome: number;
+  earnedIncome?: number;
   otherIncome: number;
   incomeDeduction: number;
   taxCredit: number;
@@ -116,7 +135,7 @@ export type TaxEstimateInput = {
 export const calculateTaxEstimate = (input: TaxEstimateInput) => {
   const taxBase = Math.max(
     0,
-    Math.floor((input.businessIncome + input.otherIncome - input.incomeDeduction) / 10) * 10
+    Math.floor((input.businessIncome + (input.earnedIncome || 0) + input.otherIncome - input.incomeDeduction) / 10) * 10
   );
   const calculatedIncomeTax = calculateProgressiveIncomeTax(taxBase);
   const determinedIncomeTax = Math.max(0, calculatedIncomeTax - input.taxCredit);
