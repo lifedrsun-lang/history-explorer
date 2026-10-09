@@ -537,18 +537,23 @@ export default function IncomeTaxPage() {
           <div className="rounded-3xl bg-white p-10 text-center font-black text-slate-400 shadow-sm">입금 기록을 집계하는 중입니다…</div>
         ) : (
           <>
-            <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <section className="grid grid-cols-2 gap-2 sm:gap-3">
               {[
-                ["사업 세전 총수입", won(totals.totalGross), `입금관리 자동 ${totals.automaticMonthCount}개월 · 직접수정 ${totals.overrideMonthCount}개월`],
+                ["사업 세전 총수입", won(totals.totalGross), `월별 금액: 자동 ${totals.automaticMonthCount}건 · 직접 입력 ${totals.overrideMonthCount}건`],
                 ["단순경비율 후 사업소득", won(totals.businessIncome), "보험료 중복 공제 없음"],
                 ["근로소득금액", won(employmentCalculation.earnedIncome), `총급여 ${won(employmentCalculation.grossSalary)} · 공제 ${won(employmentCalculation.earnedIncomeDeduction)}`],
                 ["기납부 원천세", won(totals.prepaidIncomeTax + totals.prepaidLocalTax), "사업 3.3% 추정 + 급여 원천징수 입력"],
                 ["보험료 별도 합계", won(totals.employmentInsurance + totals.industrialInsurance), `고용 ${won(totals.employmentInsurance)} · 산재 ${won(totals.industrialInsurance)}`],
-              ].map(([label, value, detail]) => (
-                <div key={label} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <div className="text-xs font-black text-slate-500">{label}</div>
-                  <div className="mt-2 text-xl font-black text-slate-900">{value}</div>
-                  <div className="mt-2 text-xs font-bold text-slate-400">{detail}</div>
+              ].map(([label, value, detail], index) => (
+                <div key={label} className={`min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-3xl sm:p-5 ${index === 4 ? "col-span-2" : ""}`}>
+                  <div className={index === 4 ? "flex flex-wrap items-center justify-between gap-x-3 gap-y-1" : ""}>
+                    <div className="text-xs font-black text-slate-500">{label}</div>
+                    <div className={`break-words text-base font-black text-slate-900 sm:text-xl ${index === 4 ? "" : "mt-2"}`}>{value}</div>
+                  </div>
+                  <div className="mt-2 text-xs font-bold leading-relaxed text-slate-400">{detail}</div>
+                  {index === 0 && (
+                    <div className="mt-1 text-[11px] font-bold leading-relaxed text-slate-400">업체별 월 입력칸 기준 · 직접 입력한 0원도 포함</div>
+                  )}
                 </div>
               ))}
             </section>
