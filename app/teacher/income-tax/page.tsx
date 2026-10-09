@@ -47,7 +47,9 @@ type MonthlyIncomeSourceKey =
   | "globalFinancialSales"
   | "chamdasomEducation"
   | "araCooperative"
-  | "chromaEducation";
+  | "chromaEducation"
+  | "classForEdu"
+  | "computingTeachersAssociation";
 
 type Adjustments = {
   previousYearRevenue: number | null;
@@ -87,6 +89,8 @@ const EMPTY_ADJUSTMENTS: Adjustments = {
     chamdasomEducation: Array(12).fill(null),
     araCooperative: Array(12).fill(null),
     chromaEducation: Array(12).fill(null),
+    classForEdu: Array(12).fill(null),
+    computingTeachersAssociation: Array(12).fill(null),
   },
   employmentGrossAmounts: Array(12).fill(0),
   employmentWithheldIncomeTax: 0,
@@ -136,7 +140,26 @@ const MONTHLY_INCOME_SOURCES = [
     businessNumber: "451-88-02863",
     tone: "border-rose-200 bg-rose-50/60",
   },
+  {
+    key: "classForEdu" as const,
+    payerName: "클래스포에듀",
+    industryCode: "",
+    businessNumber: "370-81-02906",
+    tone: "border-cyan-200 bg-cyan-50/60",
+  },
+  {
+    key: "computingTeachersAssociation" as const,
+    payerName: "컴퓨팅교사협회(ATC)",
+    industryCode: "",
+    businessNumber: "105-82-22590",
+    tone: "border-indigo-200 bg-indigo-50/60",
+  },
 ] as const;
+
+const sourceIndustryLabel = (code: string) =>
+  code === "940925" ? "방과후교사 (940925)" :
+  code === "940908" ? "방문판매원 (940908)" :
+  code === "940906" ? "보험설계사 (940906)" : "사업소득 · 업종코드 미확정";
 
 const EMPLOYMENT_SOURCE = {
   payerName: "(주)케어링 방문요양센터 서울 양천점",
@@ -202,7 +225,14 @@ export default function IncomeTaxPage() {
       const data = await requestJson(`/api/teacher/income-tax?year=${year}`);
       setRecords(Array.isArray(data.records) ? data.records : []);
       setContracts(Array.isArray(data.contracts) ? data.contracts : []);
-      setAdjustments({ ...EMPTY_ADJUSTMENTS, ...(data.adjustments || {}) });
+      setAdjustments({
+        ...EMPTY_ADJUSTMENTS,
+        ...(data.adjustments || {}),
+        monthlyGrossOverrides: {
+          ...EMPTY_ADJUSTMENTS.monthlyGrossOverrides,
+          ...(data.adjustments?.monthlyGrossOverrides || {}),
+        },
+      });
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "자료를 불러오지 못했습니다.");
     } finally {
@@ -809,7 +839,7 @@ export default function IncomeTaxPage() {
                         <option value="">업체·업종 미확정</option>
                         {MONTHLY_INCOME_SOURCES.map((source) => (
                           <option key={source.key} value={source.key}>
-                            {source.payerName} · {source.industryCode === "940925" ? "방과후교사" : source.industryCode === "940908" ? "방문판매원" : "보험설계사"} ({source.industryCode})
+                            {source.payerName} · {sourceIndustryLabel(source.industryCode)}
                           </option>
                         ))}
                       </select>
@@ -818,8 +848,8 @@ export default function IncomeTaxPage() {
                       <div className="mt-2 text-xs font-bold text-slate-400">사업자번호 {contract.businessNumber}</div>
                     )}
                     <div className="mt-3 flex gap-2">
-                      <button type="button" disabled={!contract.industryCode || saving === `profile:${contract.id}`} onClick={() => void saveProfile(contract, false)} className="flex-1 rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 disabled:opacity-40">앞으로 적용</button>
-                      <button type="button" disabled={!contract.industryCode || saving === `profile:${contract.id}`} onClick={() => void saveProfile(contract, true)} className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white disabled:opacity-40">기존 기록도 반영</button>
+                      <button type="button" disabled={(!contract.industryCode && !contract.businessNumber) || saving === `profile:${contract.id}`} onClick={() => void saveProfile(contract, false)} className="flex-1 rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 disabled:opacity-40">앞으로 적용</button>
+                      <button type="button" disabled={(!contract.industryCode && !contract.businessNumber) || saving === `profile:${contract.id}`} onClick={() => void saveProfile(contract, true)} className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white disabled:opacity-40">기존 기록도 반영</button>
                     </div>
                   </div>
                   );
@@ -932,7 +962,7 @@ export default function IncomeTaxPage() {
                         <div>
                           <div className="font-black text-slate-900">{source.payerName}</div>
                           <div className="mt-1 text-xs font-bold text-slate-500">
-                            {source.industryCode === "940925" ? "방과후교사" : source.industryCode === "940908" ? "방문판매원" : "보험설계사"} ({source.industryCode})
+                            {sourceIndustryLabel(source.industryCode)}
                           </div>
                           <div className="mt-1 text-[11px] font-bold text-slate-400">사업자번호 {source.businessNumber}</div>
                         </div>
