@@ -194,6 +194,7 @@ const sanitizeAdjustments = (value: unknown) => {
       return legacyAmount > 0 ? legacyAmount : null;
     });
   const resignationDate = normalize(data.employmentResignationDate);
+  const hasSavedValue = (key: string) => Object.prototype.hasOwnProperty.call(data, key);
   return {
     previousYearRevenue:
       previousYearRaw === null || previousYearRaw === "" || previousYearRaw === undefined
@@ -201,7 +202,16 @@ const sanitizeAdjustments = (value: unknown) => {
         : amount(previousYearRaw),
     otherIncome: amount(data.otherIncome),
     incomeDeduction: amount(data.incomeDeduction),
+    dependentDeductionCount: hasSavedValue("dependentDeductionCount")
+      ? Math.min(10, Math.max(0, Math.floor(amount(data.dependentDeductionCount))))
+      : 1,
+    disabledDeductionCount: hasSavedValue("disabledDeductionCount")
+      ? Math.min(2, Math.max(0, Math.floor(amount(data.disabledDeductionCount))))
+      : 1,
     womanDeduction: data.womanDeduction === true,
+    electronicFilingTaxCredit: hasSavedValue("electronicFilingTaxCredit")
+      ? data.electronicFilingTaxCredit === true
+      : true,
     taxCredit: amount(data.taxCredit),
     localTaxCredit: amount(data.localTaxCredit),
     additionalPrepaidIncomeTax: amount(data.additionalPrepaidIncomeTax),

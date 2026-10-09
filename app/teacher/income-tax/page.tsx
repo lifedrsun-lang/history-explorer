@@ -53,7 +53,10 @@ type Adjustments = {
   previousYearRevenue: number | null;
   otherIncome: number;
   incomeDeduction: number;
+  dependentDeductionCount: number;
+  disabledDeductionCount: number;
   womanDeduction: boolean;
+  electronicFilingTaxCredit: boolean;
   taxCredit: number;
   localTaxCredit: number;
   additionalPrepaidIncomeTax: number;
@@ -67,14 +70,17 @@ type Adjustments = {
 
 type NumericAdjustmentKey = Exclude<
   keyof Adjustments,
-  "monthlyGrossOverrides" | "employmentGrossAmounts" | "employmentResignationDate" | "womanDeduction"
+  "monthlyGrossOverrides" | "employmentGrossAmounts" | "employmentResignationDate" | "womanDeduction" | "electronicFilingTaxCredit"
 >;
 
 const EMPTY_ADJUSTMENTS: Adjustments = {
   previousYearRevenue: null,
   otherIncome: 0,
   incomeDeduction: 0,
+  dependentDeductionCount: 1,
+  disabledDeductionCount: 1,
   womanDeduction: false,
+  electronicFilingTaxCredit: true,
   taxCredit: 0,
   localTaxCredit: 0,
   additionalPrepaidIncomeTax: 0,
@@ -338,18 +344,24 @@ export default function IncomeTaxPage() {
       overrideMonthCount,
     };
   }, [adjustments, industryCalculations, monthlyAutoTotals, records, ungroupedRecords]);
+  const personalIncomeDeduction =
+    1_500_000 +
+    adjustments.dependentDeductionCount * 1_500_000 +
+    adjustments.disabledDeductionCount * 2_000_000 +
+    (adjustments.womanDeduction ? 500_000 : 0);
+  const automaticTaxCredit = adjustments.electronicFilingTaxCredit ? 10_000 : 0;
   const estimate = useMemo(
     () => calculateTaxEstimate({
       businessIncome: totals.businessIncome,
       earnedIncome: employmentCalculation.earnedIncome,
       otherIncome: adjustments.otherIncome,
-      incomeDeduction: adjustments.incomeDeduction + (adjustments.womanDeduction ? 500_000 : 0),
-      taxCredit: adjustments.taxCredit,
+      incomeDeduction: adjustments.incomeDeduction + personalIncomeDeduction,
+      taxCredit: adjustments.taxCredit + automaticTaxCredit,
       localTaxCredit: adjustments.localTaxCredit,
       prepaidIncomeTax: totals.prepaidIncomeTax,
       prepaidLocalTax: totals.prepaidLocalTax,
     }),
-    [adjustments, employmentCalculation.earnedIncome, totals]
+    [adjustments, automaticTaxCredit, employmentCalculation.earnedIncome, personalIncomeDeduction, totals]
   );
   const eligibility = getSimpleExpenseEligibility(
     totals.totalGross,
@@ -769,21 +781,85 @@ export default function IncomeTaxPage() {
             <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
               <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
                 <h2 className="text-xl font-black">공제 설정</h2>
-                <p className="mt-1 text-sm font-bold text-slate-500">해당되는 항목만 선택하면 예상 세액에 자동 반영합니다.</p>
-                <label className={`mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${adjustments.womanDeduction ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white"}`}>
-                  <input
-                    type="checkbox"
-                    checked={adjustments.womanDeduction}
-                    onChange={(event) => setAdjustments((current) => ({ ...current, womanDeduction: event.target.checked }))}
-                    className="mt-1 h-5 w-5 accent-emerald-600"
-                  />
-                  <span>
-                    <span className="block font-black text-slate-900">부녀자공제 50만원 적용</span>
-                    <span className="mt-1 block text-xs font-bold leading-relaxed text-slate-500">
-                      종합소득금액 3,000만원 이하이며 배우자가 있거나, 배우자 없이 기본공제 대상 부양가족이 있는 여성 세대주인 경우 선택하세요.
+                <p className="mt-1 text-sm font-bold text-slate-500">지난해 신고 내역을 기본값으로 넣었습니다. 올해 달라진 인원만 바꾸세요.</p>
+                <div className="mt-5 space-y-3">
+                  <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                    <div>
+                      <div className="font-black text-slate-900">본인 기본공제</div>
+                      <div className="mt-1 text-xs font-bold text-slate-500">자동 적용</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-black text-emerald-800">1명</div>
+                      <div className="text-xs font-bold text-emerald-700">1,500,000원</div>
+                    </div>
+                  </div>
+
+                  <label className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4">
+                    <span>
+                      <span className="block font-black text-slate-900">부양가족 기본공제</span>
+                      <span className="mt-1 block text-xs font-bold text-slate-500">1명당 150만원 · 지난해 1명</span>
                     </span>
-                  </span>
-                </label>
+                    <select
+                      value={adjustments.dependentDeductionCount}
+                      onChange={(event) => setAdjustments((current) => ({ ...current, dependentDeductionCount: Number(event.target.value) }))}
+                      className="rounded-xl border border-slate-300 bg-white px-3 py-2 font-black text-slate-900 outline-none focus:border-emerald-500"
+                    >
+                      {Array.from({ length: 11 }, (_, count) => <option key={count} value={count}>{count}명</option>)}
+                    </select>
+                  </label>
+
+                  <label className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4">
+                    <span>
+                      <span className="block font-black text-slate-900">장애인 추가공제</span>
+                      <span className="mt-1 block text-xs font-bold text-slate-500">1명당 200만원 · 지난해 1명</span>
+                    </span>
+                    <select
+                      value={adjustments.disabledDeductionCount}
+                      onChange={(event) => setAdjustments((current) => ({ ...current, disabledDeductionCount: Number(event.target.value) }))}
+                      className="rounded-xl border border-slate-300 bg-white px-3 py-2 font-black text-slate-900 outline-none focus:border-emerald-500"
+                    >
+                      {[0, 1, 2].map((count) => <option key={count} value={count}>{count}명</option>)}
+                    </select>
+                  </label>
+
+                  <label className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${adjustments.womanDeduction ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white"}`}>
+                    <input
+                      type="checkbox"
+                      checked={adjustments.womanDeduction}
+                      onChange={(event) => setAdjustments((current) => ({ ...current, womanDeduction: event.target.checked }))}
+                      className="mt-1 h-5 w-5 accent-emerald-600"
+                    />
+                    <span>
+                      <span className="block font-black text-slate-900">부녀자공제 50만원</span>
+                      <span className="mt-1 block text-xs font-bold leading-relaxed text-slate-500">지난해 0원 · 조건에 해당할 때만 선택</span>
+                    </span>
+                  </label>
+
+                  <label className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${adjustments.electronicFilingTaxCredit ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white"}`}>
+                    <input
+                      type="checkbox"
+                      checked={adjustments.electronicFilingTaxCredit}
+                      onChange={(event) => setAdjustments((current) => ({ ...current, electronicFilingTaxCredit: event.target.checked }))}
+                      className="mt-1 h-5 w-5 accent-blue-600"
+                    />
+                    <span>
+                      <span className="block font-black text-slate-900">전자신고 세액공제 1만원</span>
+                      <span className="mt-1 block text-xs font-bold leading-relaxed text-slate-500">지난해 신고서와 같이 기본 적용</span>
+                    </span>
+                  </label>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl bg-slate-100 p-4">
+                    <div className="text-xs font-black text-slate-500">인적공제 합계</div>
+                    <div className="mt-1 font-black text-slate-900">{won(personalIncomeDeduction)}</div>
+                  </div>
+                  <div className="rounded-2xl bg-blue-50 p-4">
+                    <div className="text-xs font-black text-blue-600">세액공제 합계</div>
+                    <div className="mt-1 font-black text-blue-950">{won(adjustments.taxCredit + automaticTaxCredit)}</div>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs font-bold leading-relaxed text-slate-500">장애인이 기본공제 대상 부양가족이면 부양가족 기본공제와 장애인 추가공제를 함께 반영합니다.</p>
                 <details className="mt-4 rounded-2xl border border-slate-200 bg-slate-50">
                   <summary className="cursor-pointer px-4 py-3 text-sm font-black text-slate-600">
                     다른 공제·소득이 있을 때만 펼치기
