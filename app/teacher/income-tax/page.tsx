@@ -928,8 +928,7 @@ export default function IncomeTaxPage() {
                   return (
                   <div key={contract.id} className="rounded-2xl border border-slate-200 p-4">
                     <div className="text-sm font-black text-slate-800">{contract.label || "이름 없는 업체"}</div>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1.5fr]">
-                      <input value={contract.payerName} onChange={(event) => updateContract(contract.id, { payerName: event.target.value })} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" aria-label={`${contract.label} 지급처명`} />
+                    <div className="mt-3">
                       <select
                         value={selectedPreset?.key || ""}
                         onChange={(event) => {
@@ -943,7 +942,7 @@ export default function IncomeTaxPage() {
                             businessNumber: "",
                           });
                         }}
-                        className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold"
+                        className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm font-bold"
                         aria-label={`${contract.label} 업체·업종 선택`}
                       >
                         <option value="">업체·업종 미확정</option>
