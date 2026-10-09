@@ -55,8 +55,6 @@ type Adjustments = {
   incomeDeduction: number;
   dependentDeductionCount: number;
   disabledDeductionCount: number;
-  womanDeduction: boolean;
-  electronicFilingTaxCredit: boolean;
   taxCredit: number;
   localTaxCredit: number;
   additionalPrepaidIncomeTax: number;
@@ -70,7 +68,7 @@ type Adjustments = {
 
 type NumericAdjustmentKey = Exclude<
   keyof Adjustments,
-  "monthlyGrossOverrides" | "employmentGrossAmounts" | "employmentResignationDate" | "womanDeduction" | "electronicFilingTaxCredit"
+  "monthlyGrossOverrides" | "employmentGrossAmounts" | "employmentResignationDate"
 >;
 
 const EMPTY_ADJUSTMENTS: Adjustments = {
@@ -79,8 +77,6 @@ const EMPTY_ADJUSTMENTS: Adjustments = {
   incomeDeduction: 0,
   dependentDeductionCount: 1,
   disabledDeductionCount: 1,
-  womanDeduction: false,
-  electronicFilingTaxCredit: true,
   taxCredit: 0,
   localTaxCredit: 0,
   additionalPrepaidIncomeTax: 0,
@@ -344,12 +340,17 @@ export default function IncomeTaxPage() {
       overrideMonthCount,
     };
   }, [adjustments, industryCalculations, monthlyAutoTotals, records, ungroupedRecords]);
+  // 이전 신고에서 제외했더라도 올해 소득 기준에 따라 다시 판단한다.
+  // 인적공제·연금보험료 등 소득공제를 차감하기 전 소득금액 기준이다.
+  const comprehensiveIncome =
+    totals.businessIncome + employmentCalculation.earnedIncome + adjustments.otherIncome;
+  const womanDeductionApplied = comprehensiveIncome <= 30_000_000;
   const personalIncomeDeduction =
     1_500_000 +
     adjustments.dependentDeductionCount * 1_500_000 +
     adjustments.disabledDeductionCount * 2_000_000 +
-    (adjustments.womanDeduction ? 500_000 : 0);
-  const automaticTaxCredit = adjustments.electronicFilingTaxCredit ? 10_000 : 0;
+    (womanDeductionApplied ? 500_000 : 0);
+  const automaticTaxCredit = 10_000;
   const estimate = useMemo(
     () => calculateTaxEstimate({
       businessIncome: totals.businessIncome,
@@ -781,7 +782,7 @@ export default function IncomeTaxPage() {
             <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
               <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
                 <h2 className="text-xl font-black">공제 설정</h2>
-                <p className="mt-1 text-sm font-bold text-slate-500">지난해 신고 내역을 기본값으로 넣었습니다. 올해 달라진 인원만 바꾸세요.</p>
+                <p className="mt-1 text-sm font-bold text-slate-500">부양가족·장애인 인원은 지난해 신고 내역을 기본값으로 넣었습니다. 부녀자 공제는 올해 소득금액에 따라 자동 반영합니다.</p>
                 <div className="mt-5 space-y-3">
                   <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                     <div>
@@ -822,31 +823,30 @@ export default function IncomeTaxPage() {
                     </select>
                   </label>
 
-                  <label className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${adjustments.womanDeduction ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white"}`}>
+                  <label className={`flex items-start gap-3 rounded-2xl border p-4 ${womanDeductionApplied ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
                     <input
                       type="checkbox"
-                      checked={adjustments.womanDeduction}
-                      onChange={(event) => setAdjustments((current) => ({ ...current, womanDeduction: event.target.checked }))}
+                      checked={womanDeductionApplied}
+                      disabled
                       className="mt-1 h-5 w-5 accent-emerald-600"
                     />
                     <span>
                       <span className="block font-black text-slate-900">부녀자공제 50만원</span>
-                      <span className="mt-1 block text-xs font-bold leading-relaxed text-slate-500">지난해 0원 · 조건에 해당할 때만 선택</span>
+                      <span className="mt-1 block text-xs font-bold leading-relaxed text-slate-500">
+                        {womanDeductionApplied ? "종합소득금액 3천만원 이하 · 자동 적용" : "종합소득금액 3천만원 초과 · 적용 불가 · 선택 잠금"}
+                        <br />현재 종합소득금액 {won(comprehensiveIncome)} · 필요경비·근로소득공제 차감 후, 인적공제 차감 전
+                        <br />배우자가 있는 여성 또는 배우자 없이 기본공제 대상 부양가족이 있는 여성 세대주가 대상입니다.
+                      </span>
                     </span>
                   </label>
 
-                  <label className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${adjustments.electronicFilingTaxCredit ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white"}`}>
-                    <input
-                      type="checkbox"
-                      checked={adjustments.electronicFilingTaxCredit}
-                      onChange={(event) => setAdjustments((current) => ({ ...current, electronicFilingTaxCredit: event.target.checked }))}
-                      className="mt-1 h-5 w-5 accent-blue-600"
-                    />
-                    <span>
-                      <span className="block font-black text-slate-900">전자신고 세액공제 1만원</span>
-                      <span className="mt-1 block text-xs font-bold leading-relaxed text-slate-500">지난해 신고서와 같이 기본 적용</span>
-                    </span>
-                  </label>
+                  <div className="flex items-center justify-between gap-4 rounded-2xl border border-blue-300 bg-blue-50 p-4">
+                    <div>
+                      <div className="font-black text-slate-900">전자신고 세액공제</div>
+                      <div className="mt-1 text-xs font-bold leading-relaxed text-slate-500">전자신고 기준으로 자동 적용</div>
+                    </div>
+                    <div className="shrink-0 text-right font-black text-blue-800">{won(automaticTaxCredit)}</div>
+                  </div>
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-3">
@@ -859,7 +859,7 @@ export default function IncomeTaxPage() {
                     <div className="mt-1 font-black text-blue-950">{won(adjustments.taxCredit + automaticTaxCredit)}</div>
                   </div>
                 </div>
-                <p className="mt-3 text-xs font-bold leading-relaxed text-slate-500">장애인이 기본공제 대상 부양가족이면 부양가족 기본공제와 장애인 추가공제를 함께 반영합니다.</p>
+                <p className="mt-3 text-xs font-bold leading-relaxed text-slate-500">부양가족 기본공제와 부녀자 공제는 함께 적용할 수 있습니다. 장애인이 기본공제 대상 부양가족이면 장애인 추가공제도 함께 반영합니다. 부녀자 공제와 한부모 공제는 중복 적용할 수 없습니다.</p>
                 <details className="mt-4 rounded-2xl border border-slate-200 bg-slate-50">
                   <summary className="cursor-pointer px-4 py-3 text-sm font-black text-slate-600">
                     다른 공제·소득이 있을 때만 펼치기
