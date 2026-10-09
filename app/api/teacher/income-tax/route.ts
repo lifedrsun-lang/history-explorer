@@ -46,7 +46,13 @@ const sanitizeProfile = (value: unknown): TaxProfile | null => {
 
 const inferProfile = (contract: Record<string, unknown>): TaxProfile => {
   const saved = sanitizeProfile(contract.incomeTaxProfile);
-  if (saved?.businessNumber) return saved;
+  if (saved?.businessNumber) {
+    const isNewTeachingPayer =
+      saved.businessNumber === "370-81-02906" || saved.businessNumber === "105-82-22590";
+    return isNewTeachingPayer && !saved.industryCode
+      ? { ...saved, industryCode: "940925" }
+      : saved;
+  }
   const payerName =
     normalize(contract.schoolName) || normalize(contract.title) || "업체 미지정";
   const searchable = `${payerName} ${normalize(contract.title)}`;
@@ -82,14 +88,14 @@ const inferProfile = (contract: Record<string, unknown>): TaxProfile => {
   if (/클래스포에듀/.test(searchable)) {
     return {
       payerName: "클래스포에듀",
-      industryCode: "",
+      industryCode: "940925",
       businessNumber: "370-81-02906",
     };
   }
   if (/컴퓨팅교사협회|\bATC\b/i.test(searchable)) {
     return {
       payerName: "컴퓨팅교사협회(ATC)",
-      industryCode: "",
+      industryCode: "940925",
       businessNumber: "105-82-22590",
     };
   }
