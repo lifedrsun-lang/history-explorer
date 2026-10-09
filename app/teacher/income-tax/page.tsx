@@ -9,6 +9,8 @@ import {
   calculateEarnedIncome,
   calculateIndustryIncome,
   calculateTaxEstimate,
+  estimateBusinessWithholding,
+  reverseBusinessReceivedAmount,
   getSimpleExpenseEligibility,
   PERSONAL_SERVICE_BASIC_BAND,
 } from "@/lib/incomeTax";
@@ -62,6 +64,7 @@ type Adjustments = {
   localTaxCredit: number;
   additionalPrepaidIncomeTax: number;
   additionalPrepaidLocalTax: number;
+  otherSelfEmploymentInputMode: "gross" | "net";
   otherSelfEmploymentWithheldIncomeTax: number | null;
   otherSelfEmploymentWithheldLocalTax: number | null;
   monthlyGrossOverrides: Record<MonthlyIncomeSourceKey, Array<number | null>>;
@@ -73,7 +76,7 @@ type Adjustments = {
 
 type NumericAdjustmentKey = Exclude<
   keyof Adjustments,
-  "monthlyGrossOverrides" | "employmentGrossAmounts" | "employmentResignationDate"
+  "monthlyGrossOverrides" | "employmentGrossAmounts" | "employmentResignationDate" | "otherSelfEmploymentInputMode"
 >;
 
 const EMPTY_ADJUSTMENTS: Adjustments = {
@@ -86,6 +89,7 @@ const EMPTY_ADJUSTMENTS: Adjustments = {
   localTaxCredit: 0,
   additionalPrepaidIncomeTax: 0,
   additionalPrepaidLocalTax: 0,
+  otherSelfEmploymentInputMode: "gross",
   otherSelfEmploymentWithheldIncomeTax: null,
   otherSelfEmploymentWithheldLocalTax: null,
   monthlyGrossOverrides: {
@@ -345,8 +349,9 @@ export default function IncomeTaxPage() {
           sourceLocalTax += automatic.localTax;
           if (automatic.grossAmount > 0) automaticMonthCount += 1;
         } else {
-          sourceIncomeTax += Math.round(effectiveGross * 0.03);
-          sourceLocalTax += Math.round(effectiveGross * 0.003);
+          const withheld = estimateBusinessWithholding(effectiveGross);
+          sourceIncomeTax += withheld.incomeTax;
+          sourceLocalTax += withheld.localTax;
           overrideMonthCount += 1;
         }
       });
@@ -978,6 +983,7 @@ export default function IncomeTaxPage() {
                 {MONTHLY_INCOME_SOURCES.map((source) => {
                   const overrides = adjustments.monthlyGrossOverrides[source.key];
                   const automaticMonths = monthlyAutoTotals[source.key];
+                  const isNetInput = source.key === "otherSelfEmployment" && adjustments.otherSelfEmploymentInputMode === "net";
                   const sourceTotal = overrides.reduce<number>(
                     (sum, override, monthIndex) =>
                       sum + (override ?? automaticMonths[monthIndex].grossAmount),
@@ -996,15 +1002,46 @@ export default function IncomeTaxPage() {
                           )}
                         </div>
                         <div className="text-right">
-                          <div className="text-[11px] font-black text-slate-500">연간 합계</div>
+                          <div className="text-[11px] font-black text-slate-500">{source.key === "otherSelfEmployment" ? "연간 세전 합계" : "연간 합계"}</div>
                           <div className="font-black text-slate-900">{won(sourceTotal)}</div>
                         </div>
                       </div>
+                      {source.key === "otherSelfEmployment" && (
+                        <fieldset className="mt-4">
+                          <legend className="text-xs font-black text-slate-600">입력할 금액</legend>
+                          <div className="mt-2 flex gap-2">
+                            {([
+                              ["gross", "세전금액"],
+                              ["net", "수령금액"],
+                            ] as const).map(([mode, label]) => (
+                              <label key={mode} className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-black ${adjustments.otherSelfEmploymentInputMode === mode ? "border-orange-400 bg-orange-100 text-orange-900" : "border-orange-200 bg-white text-slate-600"}`}>
+                                <input
+                                  type="radio"
+                                  name="other-self-employment-input-mode"
+                                  value={mode}
+                                  checked={adjustments.otherSelfEmploymentInputMode === mode}
+                                  onChange={() => setAdjustments((current) => ({ ...current, otherSelfEmploymentInputMode: mode }))}
+                                  className="accent-orange-600"
+                                />
+                                {label}
+                              </label>
+                            ))}
+                          </div>
+                          {isNetInput && (
+                            <p className="mt-2 text-[11px] font-bold text-slate-500">3.3% 원천징수 기준으로 세전금액을 역산합니다. 보험료 등 다른 공제는 포함하지 않습니다.</p>
+                          )}
+                        </fieldset>
+                      )}
                       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
                         {MONTH_LABELS.map((label, monthIndex) => {
                           const override = overrides[monthIndex];
                           const automatic = automaticMonths[monthIndex];
                           const effectiveGross = override ?? automatic.grossAmount;
+                          const inputAmount = isNetInput
+                            ? override === null
+                              ? Math.max(0, automatic.grossAmount - automatic.incomeTax - automatic.localTax)
+                              : estimateBusinessWithholding(effectiveGross).receivedAmount
+                            : effectiveGross;
                           return (
                           <label key={label} className="text-xs font-black text-slate-600">
                             <span className="flex items-center justify-between gap-1">
@@ -1016,21 +1053,27 @@ export default function IncomeTaxPage() {
                             <div className="mt-1 flex items-center rounded-xl border border-white bg-white px-2 shadow-sm focus-within:border-emerald-500">
                               <input
                                 inputMode="numeric"
-                                value={effectiveGross ? effectiveGross.toLocaleString("ko-KR") : ""}
+                                value={inputAmount ? inputAmount.toLocaleString("ko-KR") : ""}
                                 placeholder="0"
-                                onChange={(event) => setMonthlyGrossOverride(source.key, monthIndex, inputNumber(event.target.value))}
+                                onChange={(event) => {
+                                  const amount = inputNumber(event.target.value);
+                                  setMonthlyGrossOverride(source.key, monthIndex, isNetInput ? reverseBusinessReceivedAmount(amount).grossAmount : amount);
+                                }}
                                 className="min-w-0 flex-1 bg-transparent py-2 text-right text-sm font-black outline-none"
-                                aria-label={`${source.payerName} ${label} 세전 금액`}
+                                aria-label={`${source.payerName} ${label} ${isNetInput ? "수령 금액" : "세전 금액"}`}
                               />
                               <span className="ml-1 text-[11px] text-slate-400">원</span>
                             </div>
+                            {isNetInput && (
+                              <span className="mt-1 block text-right text-[10px] text-slate-500">세전 {won(effectiveGross)}</span>
+                            )}
                             {override !== null && (
                               <button
                                 type="button"
                                 onClick={() => setMonthlyGrossOverride(source.key, monthIndex, null)}
                                 className="mt-1 w-full text-[10px] font-black text-emerald-700 underline"
                               >
-                                자동값으로 ({won(automatic.grossAmount)})
+                                자동값으로 ({won(isNetInput ? Math.max(0, automatic.grossAmount - automatic.incomeTax - automatic.localTax) : automatic.grossAmount)})
                               </button>
                             )}
                           </label>

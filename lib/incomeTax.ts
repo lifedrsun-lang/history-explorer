@@ -2,6 +2,25 @@ export const PERSONAL_SERVICE_BASIC_BAND = 40_000_000;
 export const PERSONAL_SERVICE_PREVIOUS_YEAR_LIMIT = 36_000_000;
 export const PERSONAL_SERVICE_CURRENT_YEAR_LIMIT = 75_000_000;
 
+// Estimates use the same won rounding as directly entered business income.
+export const estimateBusinessWithholding = (grossAmount: number) => {
+  const gross = Number.isFinite(grossAmount) ? Math.max(0, Math.round(grossAmount)) : 0;
+  const incomeTax = Math.round(gross * 0.03);
+  const localTax = Math.round(gross * 0.003);
+  return { grossAmount: gross, incomeTax, localTax, receivedAmount: gross - incomeTax - localTax };
+};
+
+export const reverseBusinessReceivedAmount = (receivedAmount: number) => {
+  const received = Number.isFinite(receivedAmount) ? Math.max(0, Math.round(receivedAmount)) : 0;
+  const estimatedGross = Math.round(received / 0.967);
+  // Keep the entered net amount stable through mode changes and reloads.
+  for (const offset of [0, -1, 1, -2, 2]) {
+    const estimate = estimateBusinessWithholding(estimatedGross + offset);
+    if (estimate.receivedAmount === received) return estimate;
+  }
+  return estimateBusinessWithholding(estimatedGross);
+};
+
 export type SupportedIndustryCode = "940925" | "940908" | "940906" | "940921" | "940903" | "940909";
 
 export type IndustryRate = {

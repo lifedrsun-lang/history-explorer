@@ -239,6 +239,7 @@ const sanitizeAdjustments = (value: unknown) => {
     localTaxCredit: amount(data.localTaxCredit),
     additionalPrepaidIncomeTax: amount(data.additionalPrepaidIncomeTax),
     additionalPrepaidLocalTax: amount(data.additionalPrepaidLocalTax),
+    otherSelfEmploymentInputMode: data.otherSelfEmploymentInputMode === "net" ? "net" : "gross",
     otherSelfEmploymentWithheldIncomeTax:
       data.otherSelfEmploymentWithheldIncomeTax === null || data.otherSelfEmploymentWithheldIncomeTax === undefined || data.otherSelfEmploymentWithheldIncomeTax === ""
         ? null : amount(data.otherSelfEmploymentWithheldIncomeTax),
