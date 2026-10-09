@@ -38,6 +38,8 @@ export async function GET(request: Request) {
       if (getStudentProgramValue(raw.program) !== "byeolkkum_history") continue;
       const student = toStudentRosterRecord(doc.id, raw);
       if (!student.name || !student.school) continue;
+      // Order only for current attendees; quarter application history is retained for paused/ended students.
+      if (student.enrollmentStatus !== "active") continue;
       const school = schoolNames.find(name => isSameSchool(name, student.school));
       if (!school) continue;
       const teachingClass = student.teachingClass || "반 미지정";

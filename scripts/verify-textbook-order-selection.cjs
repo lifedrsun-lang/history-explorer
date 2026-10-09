@@ -11,6 +11,7 @@ function load(file,realGmail=false){
  const src=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
  new Function('require','module','exports',src)(name=>{
   if(name==='server-only')return {};
+  if(name==='firebase-admin/firestore')return {FieldValue:{arrayUnion:(...values)=>values}};
   if(name==='@/lib/firebaseAdmin')return {getFirebaseAdmin:()=>({db})};
   if(name==='@/lib/assignmentServer')return {verifyTeacherRequest:async request=>{const h=request.headers.get('Authorization');if(!h)throw Error('teacher_auth_required');const uid=h.slice(7);return {uid,role:uid==='student'?'student':undefined,firebase:{sign_in_provider:uid==='custom'?'custom':'password'}};}};
   if(name==='@/lib/atcGmailServer'&&!realGmail)return {ATC_GMAIL_FROM:'fixture@example.com',getAtcGmailStatus:async()=>({configured:true,connected}),sendAtcGmail:async(uid,info,bytes,type)=>{sendCount++;sentInfo={uid,info,bytes,type};if(sendError)throw Error(sendError);return 'fixture-message';}};
@@ -30,7 +31,13 @@ const request=(method,data,uid='teacher-a',url='http://local/api/teacher/textboo
  records.set('students/s2',{name:'검증2',school:'검증초',grade:'2',program:'byeolkkum_history',enrollmentTerms:['2026-Q3','2025-Q3']});
  records.set('students/s3',{name:'검증3',school:'검증초',grade:'3',program:'byeolkkum_history',enrollmentTerms:['2026-Q3']});
  records.set('students/s4',{name:'검증4',school:'검증초',grade:'2',program:'boardgame',enrollmentTerms:['2026-Q3']});
+ // Quarter application history alone must not include paused, ended, or legacy hidden students.
+ for(const [id,status] of [['paused','paused'],['ended','ended']])records.set(`students/${id}`,{name:id,school:'검증초',grade:'1',program:'byeolkkum_history',enrollmentStatus:status,enrollmentTerms:['2026-Q3']});
+ records.set('students/legacy-hidden',{name:'숨김 검증',school:'검증초',grade:'1',program:'byeolkkum_history',isActive:false,enrollmentTerms:['2026-Q3']});
  const data=await (await setup.GET(request('GET'))).json();assert.equal(data.groups.length,2);assert.equal(data.groups.find(g=>g.teachingClass==='A반').counts.Q3,2);assert.equal(data.groups.find(g=>g.teachingClass==='B반').counts.Q3,1);assert(!JSON.stringify(data.groups).includes('검증1'));
+ for(const key of [...records.keys()])if(key.startsWith('students/'))records.delete(key);
+ for(let i=0;i<14;i++)records.set(`students/roster-${i}`,{name:`인원 검증${i}`,school:'검증초',grade:'1',program:'byeolkkum_history',enrollmentStatus:i<10?'active':'paused',enrollmentTerms:['2026-Q3']});
+ const activeRoster=await (await setup.GET(request('GET'))).json();assert.equal(activeRoster.groups.find(g=>g.teachingClass==='A반').counts.Q3,10,'14 quarter applicants minus 4 paused students = 10 order recipients');
  assert.equal((await setup.PUT(request('PUT',{delivery:order.delivery}))).status,200);assert.equal((await (await setup.GET(request('GET'))).json()).delivery.address,'검증 주소');
  const body={id:'order-a',revision:1};
  for(const uid of [null,'student','custom']){assert.equal((await setup.GET(request('GET',null,uid))).status,401);assert.equal((await mail.POST(request('POST',body,uid))).status,401);}
@@ -42,5 +49,5 @@ const request=(method,data,uid='teacher-a',url='http://local/api/teacher/textboo
  records.set('teacher_textbook_orders/order-a',{...order});sendError='atc_gmail_send_unconfirmed';assert.equal((await mail.POST(request('POST',body))).status,502);assert.equal(records.get('teacher_textbook_orders/order-a').mailStatus,'unknown');const unknownCount=sendCount;assert.equal((await mail.POST(request('POST',body))).status,409);assert.equal(sendCount,unknownCount);
  const real=load('lib/atcGmailServer.ts',true),info={to:'fixture@example.com',bcc:'copy@example.com',subject:'검증 제목',body:'검증 본문',filename:'검증.xlsx'};
  const mime=Buffer.from(real.buildAtcGmailRaw(info,Buffer.from('fixture'),sentInfo.type),'base64url').toString();assert(mime.includes('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;'));assert(mime.includes('Bcc: copy@example.com'));assert(Buffer.from(real.buildAtcGmailRaw({...info,filename:'fixture.pdf'},Buffer.from('fixture')),'base64url').toString().includes('Content-Type: application/pdf;'));
- console.log('PASS: 24 book names, legacy matching, selected-book components, quantity preservation, quarter/year/program counts, duplicate school contracts, private defaults, auth/ownership/revisions, XLSX email MIME, PDF compatibility, failed retry, sent/unknown deduplication and mutation lock. No real email sent.');
+ console.log('PASS: 24 book names, legacy matching, selected-book components, quantity preservation, quarter/year/program counts, paused/ended/legacy-hidden exclusions, 14 applicants minus 4 paused = 10, duplicate school contracts, private defaults, auth/ownership/revisions, XLSX email MIME, PDF compatibility, failed retry, sent/unknown deduplication and mutation lock. No real email sent.');
 })().catch(e=>{console.error(e);process.exit(1)});
