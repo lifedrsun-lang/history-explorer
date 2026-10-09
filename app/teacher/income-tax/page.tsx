@@ -391,7 +391,7 @@ export default function IncomeTaxPage() {
         method: "PATCH",
         body: JSON.stringify({ action: "saveAdjustments", year, adjustments }),
       });
-      setMessage("공제·세액 입력값을 저장했습니다.");
+      setMessage("종합소득세 입력값을 저장했습니다.");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "저장하지 못했습니다.");
     } finally {
@@ -708,6 +708,35 @@ export default function IncomeTaxPage() {
                   {eligibility.eligible === true ? "적용 가능 범위" : eligibility.eligible === false ? "적용요건 재확인 필요" : "직전연도 입력 필요"}
                 </span>
               </div>
+              <div className={`mt-4 rounded-2xl border p-4 ${adjustments.previousYearRevenue === null ? "border-amber-300 bg-amber-50" : "border-emerald-200 bg-emerald-50/60"}`}>
+                <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                  <label className="text-sm font-black text-slate-700">
+                    {year - 1}년 인적용역 세전 총수입
+                    <div className="mt-2 flex items-center rounded-xl border border-white bg-white px-3 shadow-sm focus-within:border-emerald-500">
+                      <input
+                        inputMode="numeric"
+                        value={adjustments.previousYearRevenue === null ? "" : adjustments.previousYearRevenue.toLocaleString("ko-KR")}
+                        placeholder={`${year - 1}년 총수입 입력`}
+                        onChange={(event) => setAdjustment("previousYearRevenue", event.target.value ? inputNumber(event.target.value) : null)}
+                        className="min-w-0 flex-1 bg-transparent py-3 text-right font-black outline-none"
+                        aria-label={`${year - 1}년 인적용역 세전 총수입`}
+                      />
+                      <span className="ml-2 text-slate-400">원</span>
+                    </div>
+                  </label>
+                  <button
+                    type="button"
+                    disabled={saving === "adjustments" || adjustments.previousYearRevenue === null}
+                    onClick={() => void saveAdjustments()}
+                    className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white disabled:opacity-40"
+                  >
+                    {saving === "adjustments" ? "저장 중…" : "직전연도 수입 저장"}
+                  </button>
+                </div>
+                <p className="mt-2 text-xs font-bold leading-relaxed text-slate-500">
+                  방과후교사·웅진씽크빅·글로벌금융판매 등 {year - 1}년 사업소득의 경비 차감 전 금액을 합산해 입력하세요. 근로소득은 제외합니다.
+                </p>
+              </div>
               <p className="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">{eligibility.reason}</p>
               {totals.unclassifiedGross > 0 && (
                 <p className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-black text-red-700">
@@ -741,7 +770,6 @@ export default function IncomeTaxPage() {
                 <p className="mt-1 text-sm font-bold text-slate-500">증빙과 실제 신고 조건에 맞는 금액만 입력하세요.</p>
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                   {[
-                    ["previousYearRevenue", "직전연도 인적용역 수입", adjustments.previousYearRevenue],
                     ["otherIncome", "기타 소득금액", adjustments.otherIncome],
                     ["incomeDeduction", "소득공제 합계", adjustments.incomeDeduction],
                     ["taxCredit", "소득세 세액공제", adjustments.taxCredit],
@@ -755,8 +783,8 @@ export default function IncomeTaxPage() {
                         <input
                           inputMode="numeric"
                           value={value === null ? "" : Number(value).toLocaleString("ko-KR")}
-                          placeholder={key === "previousYearRevenue" ? "확인 후 입력" : "0"}
-                          onChange={(event) => setAdjustment(key as NumericAdjustmentKey, event.target.value ? inputNumber(event.target.value) : key === "previousYearRevenue" ? null : 0)}
+                          placeholder="0"
+                          onChange={(event) => setAdjustment(key as NumericAdjustmentKey, event.target.value ? inputNumber(event.target.value) : 0)}
                           className="min-w-0 flex-1 bg-transparent py-3 text-right font-black outline-none"
                         />
                         <span className="ml-2 text-slate-400">원</span>
