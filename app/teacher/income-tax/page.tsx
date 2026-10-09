@@ -99,6 +99,7 @@ const EMPTY_ADJUSTMENTS: Adjustments = {
 };
 
 const INDUSTRIES = [
+  { code: "940903", label: "학원강사 (940903)" },
   { code: "940921", label: "교육교구방문강사 (940921)" },
   { code: "940925", label: "방과후강사 (940925)" },
   { code: "940908", label: "웅진씽크빅·방문판매원 (940908)" },
@@ -144,20 +145,21 @@ const MONTHLY_INCOME_SOURCES = [
   {
     key: "classForEdu" as const,
     payerName: "클래스포에듀",
-    industryCode: "940921",
+    industryCode: "940903",
     businessNumber: "370-81-02906",
     tone: "border-cyan-200 bg-cyan-50/60",
   },
   {
     key: "computingTeachersAssociation" as const,
     payerName: "컴퓨팅교사협회(ATC)",
-    industryCode: "940921",
+    industryCode: "940903",
     businessNumber: "105-82-22590",
     tone: "border-indigo-200 bg-indigo-50/60",
   },
 ] as const;
 
 const sourceIndustryLabel = (code: string) =>
+  code === "940903" ? "학원강사 (940903)" :
   code === "940921" ? "교육교구방문강사 (940921)" :
   code === "940925" ? "방과후교사 (940925)" :
   code === "940908" ? "방문판매원 (940908)" :

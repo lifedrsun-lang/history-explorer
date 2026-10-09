@@ -7,7 +7,7 @@ import {
 } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { sanitizeFeeSettlement, type FeeSettlement } from "@/lib/feeSettlement";
-import { isSupportedIndustryCode, resolveEducationKitIndustryCode } from "@/lib/incomeTax";
+import { isSupportedIndustryCode, resolveTeachingPayerIndustryCode } from "@/lib/incomeTax";
 import { AFTER_SCHOOL_ACADEMIC_YEAR } from "@/lib/studentRoster";
 
 export const runtime = "nodejs";
@@ -35,7 +35,7 @@ const sanitizeProfile = (value: unknown): TaxProfile | null => {
   if (!value || typeof value !== "object") return null;
   const data = value as Record<string, unknown>;
   const payerName = normalize(data.payerName);
-  const industryCode = resolveEducationKitIndustryCode(
+  const industryCode = resolveTeachingPayerIndustryCode(
     normalize(data.industryCode), payerName, normalize(data.businessNumber)
   );
   if (!payerName || (industryCode && !isSupportedIndustryCode(industryCode))) return null;
@@ -84,14 +84,14 @@ const inferProfile = (contract: Record<string, unknown>): TaxProfile => {
   if (/클래스포에듀/.test(searchable)) {
     return {
       payerName: "클래스포에듀",
-      industryCode: "940921",
+      industryCode: "940903",
       businessNumber: "370-81-02906",
     };
   }
   if (/컴퓨팅교사협회|\bATC\b/i.test(searchable)) {
     return {
       payerName: "컴퓨팅교사협회(ATC)",
-      industryCode: "940921",
+      industryCode: "940903",
       businessNumber: "105-82-22590",
     };
   }
@@ -163,7 +163,7 @@ const createRecord = (
   const businessNumber = usesFixedSchoolMapping
     ? profile.businessNumber
     : normalize(entry.businessNumber) || profile.businessNumber;
-  const industryCode = resolveEducationKitIndustryCode(
+  const industryCode = resolveTeachingPayerIndustryCode(
     usesFixedSchoolMapping ? profile.industryCode : normalize(entry.industryCode) || profile.industryCode,
     payerName,
     businessNumber
