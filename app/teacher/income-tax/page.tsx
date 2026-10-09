@@ -49,7 +49,8 @@ type MonthlyIncomeSourceKey =
   | "araCooperative"
   | "chromaEducation"
   | "classForEdu"
-  | "computingTeachersAssociation";
+  | "computingTeachersAssociation"
+  | "otherSelfEmployment";
 
 type Adjustments = {
   previousYearRevenue: number | null;
@@ -61,6 +62,8 @@ type Adjustments = {
   localTaxCredit: number;
   additionalPrepaidIncomeTax: number;
   additionalPrepaidLocalTax: number;
+  otherSelfEmploymentWithheldIncomeTax: number | null;
+  otherSelfEmploymentWithheldLocalTax: number | null;
   monthlyGrossOverrides: Record<MonthlyIncomeSourceKey, Array<number | null>>;
   employmentGrossAmounts: number[];
   employmentWithheldIncomeTax: number;
@@ -83,6 +86,8 @@ const EMPTY_ADJUSTMENTS: Adjustments = {
   localTaxCredit: 0,
   additionalPrepaidIncomeTax: 0,
   additionalPrepaidLocalTax: 0,
+  otherSelfEmploymentWithheldIncomeTax: null,
+  otherSelfEmploymentWithheldLocalTax: null,
   monthlyGrossOverrides: {
     woongjinThinkbig: Array(12).fill(null),
     globalFinancialSales: Array(12).fill(null),
@@ -91,6 +96,7 @@ const EMPTY_ADJUSTMENTS: Adjustments = {
     chromaEducation: Array(12).fill(null),
     classForEdu: Array(12).fill(null),
     computingTeachersAssociation: Array(12).fill(null),
+    otherSelfEmployment: Array(12).fill(null),
   },
   employmentGrossAmounts: Array(12).fill(0),
   employmentWithheldIncomeTax: 0,
@@ -99,6 +105,7 @@ const EMPTY_ADJUSTMENTS: Adjustments = {
 };
 
 const INDUSTRIES = [
+  { code: "940909", label: "기타자영업 (940909)" },
   { code: "940903", label: "학원강사 (940903)" },
   { code: "940921", label: "교육교구방문강사 (940921)" },
   { code: "940925", label: "방과후강사 (940925)" },
@@ -156,9 +163,17 @@ const MONTHLY_INCOME_SOURCES = [
     businessNumber: "105-82-22590",
     tone: "border-indigo-200 bg-indigo-50/60",
   },
+  {
+    key: "otherSelfEmployment" as const,
+    payerName: "추가 수입",
+    industryCode: "940909",
+    businessNumber: "",
+    tone: "border-orange-200 bg-orange-50/60",
+  },
 ] as const;
 
 const sourceIndustryLabel = (code: string) =>
+  code === "940909" ? "기타자영업 (940909)" :
   code === "940903" ? "학원강사 (940903)" :
   code === "940921" ? "교육교구방문강사 (940921)" :
   code === "940925" ? "방과후교사 (940925)" :
@@ -319,20 +334,28 @@ export default function IncomeTaxPage() {
     let automaticMonthCount = 0;
     let overrideMonthCount = 0;
     MONTHLY_INCOME_SOURCES.forEach((source) => {
+      let sourceIncomeTax = 0;
+      let sourceLocalTax = 0;
       adjustments.monthlyGrossOverrides[source.key].forEach((override, monthIndex) => {
         const automatic = monthlyAutoTotals[source.key][monthIndex];
         const effectiveGross = override ?? automatic.grossAmount;
         monthlyGross += effectiveGross;
         if (override === null) {
-          monthlyIncomeTax += automatic.incomeTax;
-          monthlyLocalTax += automatic.localTax;
+          sourceIncomeTax += automatic.incomeTax;
+          sourceLocalTax += automatic.localTax;
           if (automatic.grossAmount > 0) automaticMonthCount += 1;
         } else {
-          monthlyIncomeTax += Math.round(effectiveGross * 0.03);
-          monthlyLocalTax += Math.round(effectiveGross * 0.003);
+          sourceIncomeTax += Math.round(effectiveGross * 0.03);
+          sourceLocalTax += Math.round(effectiveGross * 0.003);
           overrideMonthCount += 1;
         }
       });
+      monthlyIncomeTax += source.key === "otherSelfEmployment"
+        ? adjustments.otherSelfEmploymentWithheldIncomeTax ?? sourceIncomeTax
+        : sourceIncomeTax;
+      monthlyLocalTax += source.key === "otherSelfEmployment"
+        ? adjustments.otherSelfEmploymentWithheldLocalTax ?? sourceLocalTax
+        : sourceLocalTax;
     });
     const ungroupedGross = ungroupedRecords.reduce((sum, record) => sum + record.grossAmount, 0);
     const totalGross = ungroupedGross + monthlyGross;
@@ -968,7 +991,9 @@ export default function IncomeTaxPage() {
                           <div className="mt-1 text-xs font-bold text-slate-500">
                             {sourceIndustryLabel(source.industryCode)}
                           </div>
-                          <div className="mt-1 text-[11px] font-bold text-slate-400">사업자번호 {source.businessNumber}</div>
+                          {source.businessNumber && (
+                            <div className="mt-1 text-[11px] font-bold text-slate-400">사업자번호 {source.businessNumber}</div>
+                          )}
                         </div>
                         <div className="text-right">
                           <div className="text-[11px] font-black text-slate-500">연간 합계</div>
@@ -1012,6 +1037,40 @@ export default function IncomeTaxPage() {
                           );
                         })}
                       </div>
+                      {source.key === "otherSelfEmployment" && (
+                        <details className="mt-4 rounded-xl border border-orange-200 bg-white/70 p-3">
+                          <summary className="cursor-pointer text-xs font-black text-slate-700">실제 낸 세금 입력 (선택)</summary>
+                          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                            {[
+                              ["otherSelfEmploymentWithheldIncomeTax", "소득세 (연간 합계)"],
+                              ["otherSelfEmploymentWithheldLocalTax", "지방소득세 (연간 합계)"],
+                            ].map(([key, label]) => {
+                              const field = key as "otherSelfEmploymentWithheldIncomeTax" | "otherSelfEmploymentWithheldLocalTax";
+                              const value = adjustments[field];
+                              return (
+                                <label key={field} className="text-xs font-black text-slate-600">
+                                  {label}
+                                  <div className="mt-1 flex items-center rounded-xl border border-slate-200 bg-white px-2">
+                                    <input
+                                      inputMode="numeric"
+                                      value={value === null ? "" : value.toLocaleString("ko-KR")}
+                                      placeholder="자동 추정"
+                                      aria-label={`추가 수입 ${label}`}
+                                      onChange={(event) => {
+                                        const amount = event.target.value === "" ? null : inputNumber(event.target.value);
+                                        setAdjustments((current) => ({ ...current, [field]: amount }));
+                                      }}
+                                      className="min-w-0 flex-1 bg-transparent py-2 text-right font-black outline-none"
+                                    />
+                                    <span className="ml-1 text-slate-400">원</span>
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                          <p className="mt-2 text-[11px] font-bold leading-relaxed text-slate-500">비워두면 기존 입금관리 세액과 직접 입력액의 소득세 3%·지방소득세 0.3% 추정값을 사용합니다. 세금을 떼지 않았다면 각각 0원을 입력하세요.</p>
+                        </details>
+                      )}
                     </div>
                   );
                 })}

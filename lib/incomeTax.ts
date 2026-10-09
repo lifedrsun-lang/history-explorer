@@ -2,7 +2,7 @@ export const PERSONAL_SERVICE_BASIC_BAND = 40_000_000;
 export const PERSONAL_SERVICE_PREVIOUS_YEAR_LIMIT = 36_000_000;
 export const PERSONAL_SERVICE_CURRENT_YEAR_LIMIT = 75_000_000;
 
-export type SupportedIndustryCode = "940925" | "940908" | "940906" | "940921" | "940903";
+export type SupportedIndustryCode = "940925" | "940908" | "940906" | "940921" | "940903" | "940909";
 
 export type IndustryRate = {
   code: SupportedIndustryCode;
@@ -29,6 +29,7 @@ export type IndustryCalculation = IndustryRate & {
 
 const RATE_TABLE: Record<2024 | 2025, Record<SupportedIndustryCode, Omit<IndustryRate, "code" | "sourceYear" | "provisional">>> = {
   2024: {
+    "940909": { label: "기타자영업", generalRate: 64.1, excessRate: 49.7 },
     "940903": { label: "학원강사", generalRate: 61.7, excessRate: 46.4 },
     "940921": { label: "교육교구방문강사", generalRate: 75.6, excessRate: 65.8 },
     "940925": { label: "방과후강사", generalRate: 69.3, excessRate: 57.0 },
@@ -36,6 +37,7 @@ const RATE_TABLE: Record<2024 | 2025, Record<SupportedIndustryCode, Omit<Industr
     "940906": { label: "보험설계사 · (주)글로벌금융판매", generalRate: 77.6, excessRate: 68.6 },
   },
   2025: {
+    "940909": { label: "기타자영업", generalRate: 64.1, excessRate: 49.7 },
     "940903": { label: "학원강사", generalRate: 61.7, excessRate: 46.4 },
     "940921": { label: "교육교구방문강사", generalRate: 75.6, excessRate: 65.8 },
     "940925": { label: "방과후강사", generalRate: 69.3, excessRate: 57.0 },
@@ -45,7 +47,7 @@ const RATE_TABLE: Record<2024 | 2025, Record<SupportedIndustryCode, Omit<Industr
 };
 
 export const isSupportedIndustryCode = (value: unknown): value is SupportedIndustryCode =>
-  value === "940925" || value === "940908" || value === "940906" || value === "940921" || value === "940903";
+  value === "940925" || value === "940908" || value === "940906" || value === "940921" || value === "940903" || value === "940909";
 
 // Apply the corrected code to these payers, including their earlier saved defaults.
 export const resolveTeachingPayerIndustryCode = (

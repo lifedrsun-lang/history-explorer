@@ -239,6 +239,12 @@ const sanitizeAdjustments = (value: unknown) => {
     localTaxCredit: amount(data.localTaxCredit),
     additionalPrepaidIncomeTax: amount(data.additionalPrepaidIncomeTax),
     additionalPrepaidLocalTax: amount(data.additionalPrepaidLocalTax),
+    otherSelfEmploymentWithheldIncomeTax:
+      data.otherSelfEmploymentWithheldIncomeTax === null || data.otherSelfEmploymentWithheldIncomeTax === undefined || data.otherSelfEmploymentWithheldIncomeTax === ""
+        ? null : amount(data.otherSelfEmploymentWithheldIncomeTax),
+    otherSelfEmploymentWithheldLocalTax:
+      data.otherSelfEmploymentWithheldLocalTax === null || data.otherSelfEmploymentWithheldLocalTax === undefined || data.otherSelfEmploymentWithheldLocalTax === ""
+        ? null : amount(data.otherSelfEmploymentWithheldLocalTax),
     monthlyGrossOverrides: {
       woongjinThinkbig: sanitizeOverrides(monthlySource.woongjinThinkbig),
       globalFinancialSales: sanitizeOverrides(monthlySource.globalFinancialSales),
@@ -247,6 +253,7 @@ const sanitizeAdjustments = (value: unknown) => {
       chromaEducation: sanitizeOverrides(monthlySource.chromaEducation),
       classForEdu: sanitizeOverrides(monthlySource.classForEdu),
       computingTeachersAssociation: sanitizeOverrides(monthlySource.computingTeachersAssociation),
+      otherSelfEmployment: sanitizeOverrides(monthlySource.otherSelfEmployment),
     },
     employmentGrossAmounts: sanitizeMonths(data.employmentGrossAmounts),
     employmentWithheldIncomeTax: amount(data.employmentWithheldIncomeTax),
