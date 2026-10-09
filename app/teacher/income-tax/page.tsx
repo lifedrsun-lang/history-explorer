@@ -916,8 +916,14 @@ export default function IncomeTaxPage() {
               </div>
             </section>
 
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-              <h2 className="text-xl font-black">업체별 업종 설정</h2>
+            <details className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-600 [&::-webkit-details-marker]:hidden">
+                <h2 className="text-xl font-black">업체별 업종 설정</h2>
+                <span className="shrink-0 text-sm font-bold text-slate-500">
+                  <span className="group-open:hidden">펼치기 ▾</span>
+                  <span className="hidden group-open:inline">접기 ▴</span>
+                </span>
+              </summary>
               <p className="mt-1 text-sm font-bold text-slate-500">업체/직종을 선택하면 월별 금액과 연결됩니다. 하늘빛초·새솔초는 참다솜교육, 사우초는 아라로 자동 제안합니다.</p>
               <div className="mt-4 grid gap-3 lg:grid-cols-2">
                 {contracts.map((contract) => {
@@ -964,10 +970,16 @@ export default function IncomeTaxPage() {
                   );
                 })}
               </div>
-            </section>
+            </details>
 
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-              <h2 className="text-xl font-black">입금관리 연동 내역</h2>
+            <details className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-600 [&::-webkit-details-marker]:hidden">
+                <h2 className="text-xl font-black">입금관리 연동 내역</h2>
+                <span className="shrink-0 text-sm font-bold text-slate-500">
+                  <span className="group-open:hidden">펼치기 ▾</span>
+                  <span className="hidden group-open:inline">접기 ▴</span>
+                </span>
+              </summary>
               <p className="mt-1 text-sm font-bold text-slate-500">세전 수당·원천징수·보험료는 입금관리 값을 사용합니다. 귀속연도와 업종만 여기서 확인·보정합니다.</p>
               <div className="mt-4 space-y-3">
                 {records.length === 0 ? (
@@ -997,7 +1009,7 @@ export default function IncomeTaxPage() {
                   </div>
                 ))}
               </div>
-            </section>
+            </details>
 
             <section className="rounded-3xl border border-slate-200 bg-white p-5 text-xs font-bold leading-relaxed text-slate-500 shadow-sm">
               <div className="font-black text-slate-700">확인 자료</div>
