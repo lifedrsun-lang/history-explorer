@@ -2,7 +2,7 @@ export const PERSONAL_SERVICE_BASIC_BAND = 40_000_000;
 export const PERSONAL_SERVICE_PREVIOUS_YEAR_LIMIT = 36_000_000;
 export const PERSONAL_SERVICE_CURRENT_YEAR_LIMIT = 75_000_000;
 
-export type SupportedIndustryCode = "940925" | "940908" | "940906";
+export type SupportedIndustryCode = "940925" | "940908" | "940906" | "940921";
 
 export type IndustryRate = {
   code: SupportedIndustryCode;
@@ -29,11 +29,13 @@ export type IndustryCalculation = IndustryRate & {
 
 const RATE_TABLE: Record<2024 | 2025, Record<SupportedIndustryCode, Omit<IndustryRate, "code" | "sourceYear" | "provisional">>> = {
   2024: {
+    "940921": { label: "교육교구방문강사", generalRate: 75.6, excessRate: 65.8 },
     "940925": { label: "방과후강사", generalRate: 69.3, excessRate: 57.0 },
     "940908": { label: "방문판매원 · 웅진씽크빅", generalRate: 75.0, excessRate: 65.0 },
     "940906": { label: "보험설계사 · (주)글로벌금융판매", generalRate: 77.6, excessRate: 68.6 },
   },
   2025: {
+    "940921": { label: "교육교구방문강사", generalRate: 75.6, excessRate: 65.8 },
     "940925": { label: "방과후강사", generalRate: 69.3, excessRate: 57.0 },
     "940908": { label: "방문판매원 · 웅진씽크빅", generalRate: 75.0, excessRate: 65.0 },
     "940906": { label: "보험설계사 · (주)글로벌금융판매", generalRate: 77.6, excessRate: 68.6 },
@@ -41,7 +43,23 @@ const RATE_TABLE: Record<2024 | 2025, Record<SupportedIndustryCode, Omit<Industr
 };
 
 export const isSupportedIndustryCode = (value: unknown): value is SupportedIndustryCode =>
-  value === "940925" || value === "940908" || value === "940906";
+  value === "940925" || value === "940908" || value === "940906" || value === "940921";
+
+// These two payers were initially registered as after-school teaching income.
+export const resolveEducationKitIndustryCode = (
+  industryCode: string,
+  payerName: string,
+  businessNumber: string
+) => {
+  const normalizedName = payerName.replace(/\s/g, "");
+  const normalizedNumber = businessNumber.replace(/\D/g, "");
+  const isEducationKitPayer =
+    normalizedNumber === "3708102906" || normalizedNumber === "1058222590" ||
+    /클래스포에듀|컴퓨팅교사협회|\bATC\b/i.test(normalizedName);
+  return isEducationKitPayer && (!industryCode || industryCode === "940925")
+    ? "940921"
+    : industryCode;
+};
 
 export const getIndustryRate = (year: number, code: SupportedIndustryCode): IndustryRate => {
   const sourceYear: 2024 | 2025 = year <= 2024 ? 2024 : 2025;

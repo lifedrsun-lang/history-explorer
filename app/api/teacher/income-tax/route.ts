@@ -7,7 +7,7 @@ import {
 } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { sanitizeFeeSettlement, type FeeSettlement } from "@/lib/feeSettlement";
-import { isSupportedIndustryCode } from "@/lib/incomeTax";
+import { isSupportedIndustryCode, resolveEducationKitIndustryCode } from "@/lib/incomeTax";
 import { AFTER_SCHOOL_ACADEMIC_YEAR } from "@/lib/studentRoster";
 
 export const runtime = "nodejs";
@@ -35,7 +35,9 @@ const sanitizeProfile = (value: unknown): TaxProfile | null => {
   if (!value || typeof value !== "object") return null;
   const data = value as Record<string, unknown>;
   const payerName = normalize(data.payerName);
-  const industryCode = normalize(data.industryCode);
+  const industryCode = resolveEducationKitIndustryCode(
+    normalize(data.industryCode), payerName, normalize(data.businessNumber)
+  );
   if (!payerName || (industryCode && !isSupportedIndustryCode(industryCode))) return null;
   return {
     payerName,
@@ -46,13 +48,7 @@ const sanitizeProfile = (value: unknown): TaxProfile | null => {
 
 const inferProfile = (contract: Record<string, unknown>): TaxProfile => {
   const saved = sanitizeProfile(contract.incomeTaxProfile);
-  if (saved?.businessNumber) {
-    const isNewTeachingPayer =
-      saved.businessNumber === "370-81-02906" || saved.businessNumber === "105-82-22590";
-    return isNewTeachingPayer && !saved.industryCode
-      ? { ...saved, industryCode: "940925" }
-      : saved;
-  }
+  if (saved?.businessNumber) return saved;
   const payerName =
     normalize(contract.schoolName) || normalize(contract.title) || "업체 미지정";
   const searchable = `${payerName} ${normalize(contract.title)}`;
@@ -88,14 +84,14 @@ const inferProfile = (contract: Record<string, unknown>): TaxProfile => {
   if (/클래스포에듀/.test(searchable)) {
     return {
       payerName: "클래스포에듀",
-      industryCode: "940925",
+      industryCode: "940921",
       businessNumber: "370-81-02906",
     };
   }
   if (/컴퓨팅교사협회|\bATC\b/i.test(searchable)) {
     return {
       payerName: "컴퓨팅교사협회(ATC)",
-      industryCode: "940925",
+      industryCode: "940921",
       businessNumber: "105-82-22590",
     };
   }
@@ -161,6 +157,17 @@ const createRecord = (
     (legacyTax ? Math.max(0, legacyTax - incomeTax) : Math.round(grossAmount * 0.003));
   const contractSearchable = `${normalize(contract.schoolName)} ${normalize(contract.title)}`;
   const usesFixedSchoolMapping = /하늘빛|새솔|사우/.test(contractSearchable);
+  const payerName = usesFixedSchoolMapping
+    ? profile.payerName
+    : normalize(entry.payerName) || profile.payerName;
+  const businessNumber = usesFixedSchoolMapping
+    ? profile.businessNumber
+    : normalize(entry.businessNumber) || profile.businessNumber;
+  const industryCode = resolveEducationKitIndustryCode(
+    usesFixedSchoolMapping ? profile.industryCode : normalize(entry.industryCode) || profile.industryCode,
+    payerName,
+    businessNumber
+  );
 
   return {
     id: `${contractId}:${key}`,
@@ -169,15 +176,9 @@ const createRecord = (
     contractLabel: [normalize(contract.schoolName), normalize(contract.title)]
       .filter(Boolean)
       .join(" · "),
-    payerName: usesFixedSchoolMapping
-      ? profile.payerName
-      : normalize(entry.payerName) || profile.payerName,
-    industryCode: usesFixedSchoolMapping
-      ? profile.industryCode
-      : normalize(entry.industryCode) || profile.industryCode,
-    businessNumber: usesFixedSchoolMapping
-      ? profile.businessNumber
-      : normalize(entry.businessNumber) || profile.businessNumber,
+    payerName,
+    industryCode,
+    businessNumber,
     taxYear: inferYear(entry, key),
     paymentMonth: inferMonth(entry, key),
     receivedDate: normalize(entry.receivedDate),
