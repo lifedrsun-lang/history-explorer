@@ -539,7 +539,7 @@ export default function IncomeTaxPage() {
           <>
             <section className="grid grid-cols-2 gap-2 sm:gap-3">
               {[
-                ["사업 세전 총수입", won(totals.totalGross), ""],
+                ["사업 세전 총수입", won(totals.totalGross), `입금관리 자동 ${totals.automaticMonthCount}개월`],
                 ["단순경비율 후 사업소득", won(totals.businessIncome), "보험료 중복 공제 없음"],
                 ["근로소득금액", won(employmentCalculation.earnedIncome), `총급여 ${won(employmentCalculation.grossSalary)} · 공제 ${won(employmentCalculation.earnedIncomeDeduction)}`],
                 ["기납부 원천세", won(totals.prepaidIncomeTax + totals.prepaidLocalTax), "사업 3.3% 추정 + 급여 원천징수 입력"],
