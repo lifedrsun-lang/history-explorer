@@ -143,14 +143,14 @@ const MONTHLY_INCOME_SOURCES = [
   {
     key: "classForEdu" as const,
     payerName: "클래스포에듀",
-    industryCode: "",
+    industryCode: "940925",
     businessNumber: "370-81-02906",
     tone: "border-cyan-200 bg-cyan-50/60",
   },
   {
     key: "computingTeachersAssociation" as const,
     payerName: "컴퓨팅교사협회(ATC)",
-    industryCode: "",
+    industryCode: "940925",
     businessNumber: "105-82-22590",
     tone: "border-indigo-200 bg-indigo-50/60",
   },
