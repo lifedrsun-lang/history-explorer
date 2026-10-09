@@ -141,6 +141,13 @@ const sections: Record<string, ManagementSection> = {
         description: "모럴머신 참여 현황과 반별·학년별 결과 관리",
         className: "border-indigo-200 bg-indigo-50 text-indigo-900",
       },
+      {
+        href: "/teacher/mind-maps",
+        icon: "💡",
+        title: "마인드맵 활동",
+        description: "반별 주제·가지 만들기와 학생 의견 모아 보기",
+        className: "border-violet-200 bg-violet-50 text-violet-900",
+      },
     ],
   },
   care: {
