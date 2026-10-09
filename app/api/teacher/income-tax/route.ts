@@ -36,7 +36,7 @@ const sanitizeProfile = (value: unknown): TaxProfile | null => {
   const data = value as Record<string, unknown>;
   const payerName = normalize(data.payerName);
   const industryCode = normalize(data.industryCode);
-  if (!payerName || !isSupportedIndustryCode(industryCode)) return null;
+  if (!payerName || (industryCode && !isSupportedIndustryCode(industryCode))) return null;
   return {
     payerName,
     industryCode,
@@ -77,6 +77,20 @@ const inferProfile = (contract: Record<string, unknown>): TaxProfile => {
       payerName: "(주)글로벌금융판매",
       industryCode: "940906",
       businessNumber: "131-86-16703",
+    };
+  }
+  if (/클래스포에듀/.test(searchable)) {
+    return {
+      payerName: "클래스포에듀",
+      industryCode: "",
+      businessNumber: "370-81-02906",
+    };
+  }
+  if (/컴퓨팅교사협회|\bATC\b/i.test(searchable)) {
+    return {
+      payerName: "컴퓨팅교사협회(ATC)",
+      industryCode: "",
+      businessNumber: "105-82-22590",
     };
   }
   if (contract.type === "afterschool") {
@@ -222,6 +236,8 @@ const sanitizeAdjustments = (value: unknown) => {
       chamdasomEducation: sanitizeOverrides(monthlySource.chamdasomEducation),
       araCooperative: sanitizeOverrides(monthlySource.araCooperative),
       chromaEducation: sanitizeOverrides(monthlySource.chromaEducation),
+      classForEdu: sanitizeOverrides(monthlySource.classForEdu),
+      computingTeachersAssociation: sanitizeOverrides(monthlySource.computingTeachersAssociation),
     },
     employmentGrossAmounts: sanitizeMonths(data.employmentGrossAmounts),
     employmentWithheldIncomeTax: amount(data.employmentWithheldIncomeTax),
@@ -347,7 +363,7 @@ export async function PATCH(request: Request) {
     if (action === "saveProfile") {
       const profile = sanitizeProfile(body.profile);
       if (!profile) {
-        return jsonError("업체명과 업종코드를 확인해 주세요.", 400, "invalid_profile");
+        return jsonError("업체명과 입력한 업종코드를 확인해 주세요.", 400, "invalid_profile");
       }
       const applyToExisting = body.applyToExisting === true;
       const updates: Record<string, unknown> = {
@@ -367,7 +383,7 @@ export async function PATCH(request: Request) {
             payerName: profile.payerName,
             industryCode: profile.industryCode,
             taxYear: inferYear(entry, key),
-            taxMetaConfirmed: true,
+            taxMetaConfirmed: Boolean(profile.industryCode),
           };
         });
         updates.settlements = settlements;
@@ -391,7 +407,7 @@ export async function PATCH(request: Request) {
         await docRef.update({
           incomeTaxProfile: profile,
           incomeTaxLegacyYear: taxYear,
-          incomeTaxLegacyConfirmed: true,
+          incomeTaxLegacyConfirmed: Boolean(profile.industryCode),
           updatedAt: FieldValue.serverTimestamp(),
         });
       } else {
@@ -410,7 +426,7 @@ export async function PATCH(request: Request) {
             payerName: profile.payerName,
             industryCode: profile.industryCode,
             taxYear,
-            taxMetaConfirmed: true,
+            taxMetaConfirmed: Boolean(profile.industryCode),
           },
           updatedAt: FieldValue.serverTimestamp(),
         });
