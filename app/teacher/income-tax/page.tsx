@@ -1148,8 +1148,7 @@ export default function IncomeTaxPage() {
                         {!record.metadataConfirmed && <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">업종 자동분류</span>}
                       </div>
                     </div>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_120px_1.4fr_auto]">
-                      <input value={record.payerName} onChange={(event) => updateRecord(record.id, { payerName: event.target.value })} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" aria-label="지급처명" />
+                    <div className="mt-3 grid gap-2 sm:grid-cols-[120px_minmax(0,1fr)_auto]">
                       <input type="number" value={record.taxYear} min={2020} max={2100} onChange={(event) => updateRecord(record.id, { taxYear: Number(event.target.value) })} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" aria-label="귀속연도" />
                       <select
                         value={MONTHLY_INCOME_SOURCES.find((source) =>
@@ -1165,9 +1164,9 @@ export default function IncomeTaxPage() {
                           } : { industryCode: event.target.value });
                         }}
                         aria-label={`${record.contractLabel || record.payerName} 지급업체·업종 선택`}
-                        className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold"
+                        className="min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold"
                       >
-                        <option value="">업종 미확정</option>
+                        <option value="">{record.payerName ? `${record.payerName} · 업종 미확정` : "업종 미확정"}</option>
                         <optgroup label="지급업체 선택">
                           {MONTHLY_INCOME_SOURCES.map((source) => (
                             <option key={source.key} value={source.key}>
@@ -1176,7 +1175,11 @@ export default function IncomeTaxPage() {
                           ))}
                         </optgroup>
                         <optgroup label="업종만 선택">
-                        {INDUSTRIES.map((industry) => <option key={industry.code} value={industry.code}>{industry.label}</option>)}
+                        {INDUSTRIES.map((industry) => (
+                          <option key={industry.code} value={industry.code}>
+                            {industry.code === record.industryCode && record.payerName ? `${record.payerName} · ${industry.label}` : industry.label}
+                          </option>
+                        ))}
                         </optgroup>
                       </select>
                       <button type="button" disabled={!record.industryCode || saving === `record:${record.id}`} onClick={() => void saveRecord(record)} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-black text-white disabled:opacity-40">확인 저장</button>
