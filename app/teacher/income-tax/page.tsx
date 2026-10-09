@@ -1025,7 +1025,7 @@ export default function IncomeTaxPage() {
                   <span className="hidden group-open:inline">접기 ▴</span>
                 </span>
               </summary>
-              <p className="mt-1 text-sm font-bold text-slate-500">세전 수당·원천징수·보험료는 입금관리 값을 사용합니다. 귀속연도와 업종만 여기서 확인·보정합니다.</p>
+              <p className="mt-1 text-sm font-bold text-slate-500">세전 수당·원천징수·보험료는 입금관리 값을 사용합니다. 지급업체·귀속연도·업종은 여기서 확인·보정합니다.</p>
               <div className="mt-4 space-y-3">
                 {records.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm font-bold text-slate-500">{year}년 수령 처리된 입금 기록이 없습니다.</div>
@@ -1045,9 +1045,33 @@ export default function IncomeTaxPage() {
                     <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_120px_1.4fr_auto]">
                       <input value={record.payerName} onChange={(event) => updateRecord(record.id, { payerName: event.target.value })} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" aria-label="지급처명" />
                       <input type="number" value={record.taxYear} min={2020} max={2100} onChange={(event) => updateRecord(record.id, { taxYear: Number(event.target.value) })} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" aria-label="귀속연도" />
-                      <select value={record.industryCode} onChange={(event) => updateRecord(record.id, { industryCode: event.target.value })} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold">
+                      <select
+                        value={MONTHLY_INCOME_SOURCES.find((source) =>
+                          source.industryCode === record.industryCode &&
+                          normalizePayerName(source.payerName) === normalizePayerName(record.payerName)
+                        )?.key || record.industryCode}
+                        onChange={(event) => {
+                          const source = MONTHLY_INCOME_SOURCES.find((item) => item.key === event.target.value);
+                          updateRecord(record.id, source ? {
+                            payerName: source.payerName,
+                            industryCode: source.industryCode,
+                            businessNumber: source.businessNumber,
+                          } : { industryCode: event.target.value });
+                        }}
+                        aria-label={`${record.contractLabel || record.payerName} 지급업체·업종 선택`}
+                        className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold"
+                      >
                         <option value="">업종 미확정</option>
+                        <optgroup label="지급업체 선택">
+                          {MONTHLY_INCOME_SOURCES.map((source) => (
+                            <option key={source.key} value={source.key}>
+                              {source.payerName} · {sourceIndustryLabel(source.industryCode)}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="업종만 선택">
                         {INDUSTRIES.map((industry) => <option key={industry.code} value={industry.code}>{industry.label}</option>)}
+                        </optgroup>
                       </select>
                       <button type="button" disabled={!record.industryCode || saving === `record:${record.id}`} onClick={() => void saveRecord(record)} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-black text-white disabled:opacity-40">확인 저장</button>
                     </div>

@@ -20,6 +20,7 @@ export type FeeSettlement = {
   taxYear?: number;
   industryCode?: string;
   payerName?: string;
+  businessNumber?: string;
   taxMetaConfirmed?: boolean;
 };
 
@@ -32,9 +33,11 @@ const preserveTaxMetadata = (target: FeeSettlement, source: Record<string, unkno
   const taxYear = Number(source.taxYear);
   const industryCode = String(source.industryCode || "").trim();
   const payerName = String(source.payerName || "").trim();
+  const businessNumber = String(source.businessNumber || "").trim();
   if (taxYear) target.taxYear = taxYear;
   if (industryCode) target.industryCode = industryCode;
   if (payerName) target.payerName = payerName;
+  if (businessNumber) target.businessNumber = businessNumber;
   if (source.taxMetaConfirmed === true) target.taxMetaConfirmed = true;
   return target;
 };

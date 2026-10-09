@@ -175,7 +175,9 @@ const createRecord = (
     industryCode: usesFixedSchoolMapping
       ? profile.industryCode
       : normalize(entry.industryCode) || profile.industryCode,
-    businessNumber: profile.businessNumber,
+    businessNumber: usesFixedSchoolMapping
+      ? profile.businessNumber
+      : normalize(entry.businessNumber) || profile.businessNumber,
     taxYear: inferYear(entry, key),
     paymentMonth: inferMonth(entry, key),
     receivedDate: normalize(entry.receivedDate),
@@ -388,6 +390,7 @@ export async function PATCH(request: Request) {
             ...entry,
             payerName: profile.payerName,
             industryCode: profile.industryCode,
+            businessNumber: profile.businessNumber,
             taxYear: inferYear(entry, key),
             taxMetaConfirmed: Boolean(profile.industryCode),
           };
@@ -431,6 +434,7 @@ export async function PATCH(request: Request) {
             ...entry,
             payerName: profile.payerName,
             industryCode: profile.industryCode,
+            businessNumber: profile.businessNumber,
             taxYear,
             taxMetaConfirmed: Boolean(profile.industryCode),
           },
