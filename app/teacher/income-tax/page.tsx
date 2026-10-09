@@ -557,6 +557,276 @@ export default function IncomeTaxPage() {
               ))}
             </section>
 
+            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-black">단순경비율 검증</h2>
+                  <p className="mt-1 text-sm font-bold text-slate-500">업종코드별 총수입에 4,000만원 기본·초과 구간을 각각 적용합니다.</p>
+                </div>
+                <span className={`rounded-full px-4 py-2 text-xs font-black ${eligibility.eligible === true ? "bg-emerald-100 text-emerald-800" : eligibility.eligible === false ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800"}`}>
+                  {eligibility.eligible === true ? "적용 가능 범위" : eligibility.eligible === false ? "적용요건 재확인 필요" : "직전연도 입력 필요"}
+                </span>
+              </div>
+              <div className={`mt-4 rounded-2xl border p-4 ${adjustments.previousYearRevenue === null ? "border-amber-300 bg-amber-50" : "border-emerald-200 bg-emerald-50/60"}`}>
+                <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                  <label className="text-sm font-black text-slate-700">
+                    {year - 1}년 인적용역 세전 총수입
+                    <div className="mt-2 flex items-center rounded-xl border border-white bg-white px-3 shadow-sm focus-within:border-emerald-500">
+                      <input
+                        inputMode="numeric"
+                        value={adjustments.previousYearRevenue === null ? "" : adjustments.previousYearRevenue.toLocaleString("ko-KR")}
+                        placeholder={`${year - 1}년 총수입 입력`}
+                        onChange={(event) => setAdjustment("previousYearRevenue", event.target.value ? inputNumber(event.target.value) : null)}
+                        className="min-w-0 flex-1 bg-transparent py-3 text-right font-black outline-none"
+                        aria-label={`${year - 1}년 인적용역 세전 총수입`}
+                      />
+                      <span className="ml-2 text-slate-400">원</span>
+                    </div>
+                  </label>
+                  <button
+                    type="button"
+                    disabled={saving === "adjustments" || adjustments.previousYearRevenue === null}
+                    onClick={() => void saveAdjustments()}
+                    className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white disabled:opacity-40"
+                  >
+                    {saving === "adjustments" ? "저장 중…" : "직전연도 수입 저장"}
+                  </button>
+                </div>
+                <p className="mt-2 text-xs font-bold leading-relaxed text-slate-500">
+                  방과후교사·웅진씽크빅·글로벌금융판매 등 {year - 1}년 사업소득의 경비 차감 전 금액을 합산해 입력하세요. 근로소득은 제외합니다.
+                </p>
+              </div>
+              <p className="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">{eligibility.reason}</p>
+              {totals.unclassifiedGross > 0 && (
+                <p className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-black text-red-700">
+                  업종 미확정 수입 {won(totals.unclassifiedGross)}은 사업소득 계산에서 제외했습니다. 아래 지급 기록에서 업종코드를 확인해 주세요.
+                </p>
+              )}
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {industryCalculations.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-slate-300 p-5 text-sm font-bold text-slate-500">확정된 업종코드의 수입 기록이 없습니다.</div>
+                ) : industryCalculations.map((item) => (
+                  <div key={item.code} className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5">
+                    <div className="font-black text-emerald-950">{item.label} · {item.code}</div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm font-bold text-slate-600">
+                      <span>총수입 {won(item.grossAmount)}</span>
+                      <span>필요경비 {won(item.expenseAmount)}</span>
+                      <span>기본 {won(item.basicBandAmount)} × {item.generalRate}%</span>
+                      <span>초과 {won(item.excessBandAmount)} × {item.excessRate}%</span>
+                    </div>
+                    <div className="mt-3 border-t border-emerald-200 pt-3 text-right font-black text-emerald-900">사업소득 {won(item.businessIncome)}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 text-xs font-bold leading-relaxed text-slate-500">
+                기준: 국세청 2024·2025년 귀속 경비율 고시. 서로 다른 업종은 코드별 수입과 경비율을 분리 계산하고, 단순경비율 적용요건의 수입 기준은 합산해 확인합니다. 기본구간은 코드별 {won(PERSONAL_SERVICE_BASIC_BAND)}입니다.
+              </div>
+            </section>
+
+            <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+                <h2 className="text-xl font-black">공제 설정</h2>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl bg-slate-100 p-4">
+                    <div className="text-xs font-black text-slate-500">인적공제 합계</div>
+                    <div className="mt-1 font-black text-slate-900">{won(personalIncomeDeduction)}</div>
+                  </div>
+                  <div className="rounded-2xl bg-blue-50 p-4">
+                    <div className="text-xs font-black text-blue-600">세액공제 합계</div>
+                    <div className="mt-1 font-black text-blue-950">{won(adjustments.taxCredit + automaticTaxCredit)}</div>
+                  </div>
+                </div>
+                <details className="group mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg text-sm font-black text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-600 [&::-webkit-details-marker]:hidden">
+                    <span>공제 상세내역</span>
+                    <span className="shrink-0 text-slate-500">
+                      <span className="group-open:hidden">펼치기 ▾</span>
+                      <span className="hidden group-open:inline">접기 ▴</span>
+                    </span>
+                  </summary>
+                  <div className="mt-4 border-t border-slate-200 pt-4">
+                    <p className="mt-1 text-sm font-bold text-slate-500">부양가족·장애인 인원은 지난해 신고 내역을 기본값으로 넣었습니다. 부녀자 공제는 올해 소득금액에 따라 자동 반영합니다.</p>
+                    <div className="mt-5 space-y-3">
+                      <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                        <div>
+                          <div className="font-black text-slate-900">본인 기본공제</div>
+                          <div className="mt-1 text-xs font-bold text-slate-500">자동 적용</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-black text-emerald-800">1명</div>
+                          <div className="text-xs font-bold text-emerald-700">1,500,000원</div>
+                        </div>
+                      </div>
+
+                      <label className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4">
+                        <span>
+                          <span className="block font-black text-slate-900">부양가족 기본공제</span>
+                          <span className="mt-1 block text-xs font-bold text-slate-500">1명당 150만원 · 지난해 1명</span>
+                        </span>
+                        <select
+                          value={adjustments.dependentDeductionCount}
+                          onChange={(event) => setAdjustments((current) => ({ ...current, dependentDeductionCount: Number(event.target.value) }))}
+                          className="rounded-xl border border-slate-300 bg-white px-3 py-2 font-black text-slate-900 outline-none focus:border-emerald-500"
+                        >
+                          {Array.from({ length: 11 }, (_, count) => <option key={count} value={count}>{count}명</option>)}
+                        </select>
+                      </label>
+
+                      <label className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4">
+                        <span>
+                          <span className="block font-black text-slate-900">장애인 추가공제</span>
+                          <span className="mt-1 block text-xs font-bold text-slate-500">1명당 200만원 · 지난해 1명</span>
+                        </span>
+                        <select
+                          value={adjustments.disabledDeductionCount}
+                          onChange={(event) => setAdjustments((current) => ({ ...current, disabledDeductionCount: Number(event.target.value) }))}
+                          className="rounded-xl border border-slate-300 bg-white px-3 py-2 font-black text-slate-900 outline-none focus:border-emerald-500"
+                        >
+                          {[0, 1, 2].map((count) => <option key={count} value={count}>{count}명</option>)}
+                        </select>
+                      </label>
+
+                      <label className={`flex items-start gap-3 rounded-2xl border p-4 ${womanDeductionApplied ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
+                        <input
+                          type="checkbox"
+                          checked={womanDeductionApplied}
+                          disabled
+                          className="mt-1 h-5 w-5 accent-emerald-600"
+                        />
+                        <span>
+                          <span className="block font-black text-slate-900">부녀자공제 50만원</span>
+                          <span className="mt-1 block text-xs font-bold leading-relaxed text-slate-500">
+                            {womanDeductionApplied ? "종합소득금액 3천만원 이하 · 자동 적용" : "종합소득금액 3천만원 초과 · 적용 불가 · 선택 잠금"}
+                            <br />현재 종합소득금액 {won(comprehensiveIncome)} · 필요경비·근로소득공제 차감 후, 인적공제 차감 전
+                            <br />배우자가 있는 여성 또는 배우자 없이 기본공제 대상 부양가족이 있는 여성 세대주가 대상입니다.
+                          </span>
+                        </span>
+                      </label>
+
+                      <div className="flex items-center justify-between gap-4 rounded-2xl border border-blue-300 bg-blue-50 p-4">
+                        <div>
+                          <div className="font-black text-slate-900">전자신고 세액공제</div>
+                          <div className="mt-1 text-xs font-bold leading-relaxed text-slate-500">전자신고 기준으로 자동 적용</div>
+                        </div>
+                        <div className="shrink-0 text-right font-black text-blue-800">{won(automaticTaxCredit)}</div>
+                      </div>
+                    </div>
+
+                    <p className="mt-3 text-xs font-bold leading-relaxed text-slate-500">부양가족 기본공제와 부녀자 공제는 함께 적용할 수 있습니다. 장애인이 기본공제 대상 부양가족이면 장애인 추가공제도 함께 반영합니다. 부녀자 공제와 한부모 공제는 중복 적용할 수 없습니다.</p>
+                    <details className="mt-4 rounded-2xl border border-slate-200 bg-slate-50">
+                      <summary className="cursor-pointer px-4 py-3 text-sm font-black text-slate-600">
+                        다른 공제·소득이 있을 때만 펼치기
+                      </summary>
+                      <div className="grid gap-4 border-t border-slate-200 p-4 sm:grid-cols-2">
+                        {[
+                        ["incomeDeduction", "기타 소득공제 합계", adjustments.incomeDeduction],
+                        ["otherIncome", "기타 소득금액", adjustments.otherIncome],
+                        ["taxCredit", "소득세 세액공제", adjustments.taxCredit],
+                        ["localTaxCredit", "지방소득세 세액공제", adjustments.localTaxCredit],
+                        ["additionalPrepaidIncomeTax", "추가 기납부 소득세", adjustments.additionalPrepaidIncomeTax],
+                        ["additionalPrepaidLocalTax", "추가 기납부 지방소득세", adjustments.additionalPrepaidLocalTax],
+                      ].map(([key, label, value]) => (
+                        <label key={String(key)} className="text-sm font-black text-slate-700">
+                          {label}
+                          <div className="mt-2 flex items-center rounded-xl border border-slate-200 bg-white px-3 focus-within:border-emerald-500">
+                            <input
+                              inputMode="numeric"
+                              value={value === null ? "" : Number(value).toLocaleString("ko-KR")}
+                              placeholder="0"
+                              onChange={(event) => setAdjustment(key as NumericAdjustmentKey, event.target.value ? inputNumber(event.target.value) : 0)}
+                              className="min-w-0 flex-1 bg-transparent py-3 text-right font-black outline-none"
+                            />
+                            <span className="ml-2 text-slate-400">원</span>
+                          </div>
+                        </label>
+                      ))}
+                      </div>
+                    </details>
+                    <button type="button" disabled={saving === "adjustments"} onClick={() => void saveAdjustments()} className="mt-5 w-full rounded-2xl bg-slate-900 px-5 py-3 font-black text-white disabled:opacity-50">
+                      {saving === "adjustments" ? "저장 중…" : "공제 설정 저장"}
+                    </button>
+                  </div>
+                </details>
+              </div>
+
+              <div className="rounded-3xl bg-slate-900 p-5 text-white shadow-xl sm:p-7">
+                <h2 className="text-xl font-black">예상 납부·환급</h2>
+                <div className="mt-5 space-y-3 text-sm font-bold">
+                  <div className="flex justify-between"><span className="text-slate-400">과세표준</span><span>{won(estimate.taxBase)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">산출 소득세</span><span>{won(estimate.calculatedIncomeTax)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">결정 소득세</span><span>{won(estimate.determinedIncomeTax)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">결정 지방소득세</span><span>{won(estimate.determinedLocalTax)}</span></div>
+                </div>
+                <div className="mt-6 space-y-3 border-t border-slate-700 pt-5">
+                  <div className={`rounded-2xl p-4 ${estimate.incomeTaxBalance > 0 ? "bg-amber-400 text-slate-950" : "bg-emerald-500"}`}>
+                    <div className="text-xs font-black opacity-75">국세</div>
+                    <div className="mt-1 text-xl font-black">{signedWon(estimate.incomeTaxBalance)}</div>
+                  </div>
+                  <div className={`rounded-2xl p-4 ${estimate.localTaxBalance > 0 ? "bg-amber-400 text-slate-950" : "bg-emerald-500"}`}>
+                    <div className="text-xs font-black opacity-75">지방소득세</div>
+                    <div className="mt-1 text-xl font-black">{signedWon(estimate.localTaxBalance)}</div>
+                  </div>
+                </div>
+                <p className="mt-5 text-xs font-bold leading-relaxed text-slate-400">이 결과는 단순 추정치이며 신고서가 아닙니다. 인적공제, 연금·보험·기부금, 타 소득, 중간예납 등 실제 신고 항목에 따라 달라집니다.</p>
+              </div>
+            </section>
+
+            <details className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-600 [&::-webkit-details-marker]:hidden">
+                <h2 className="text-xl font-black">업체별 업종 설정</h2>
+                <span className="shrink-0 text-sm font-bold text-slate-500">
+                  <span className="group-open:hidden">펼치기 ▾</span>
+                  <span className="hidden group-open:inline">접기 ▴</span>
+                </span>
+              </summary>
+              <p className="mt-1 text-sm font-bold text-slate-500">업체/직종을 선택하면 월별 금액과 연결됩니다. 하늘빛초·새솔초는 참다솜교육, 사우초는 아라로 자동 제안합니다.</p>
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                {contracts.map((contract) => {
+                  const selectedPreset = MONTHLY_INCOME_SOURCES.find((source) =>
+                    source.industryCode === contract.industryCode &&
+                    normalizePayerName(source.payerName) === normalizePayerName(contract.payerName)
+                  );
+                  return (
+                  <div key={contract.id} className="rounded-2xl border border-slate-200 p-4">
+                    <div className="text-sm font-black text-slate-800">{contract.label || "이름 없는 업체"}</div>
+                    <div className="mt-3">
+                      <select
+                        value={selectedPreset?.key || ""}
+                        onChange={(event) => {
+                          const preset = MONTHLY_INCOME_SOURCES.find((source) => source.key === event.target.value);
+                          updateContract(contract.id, preset ? {
+                            payerName: preset.payerName,
+                            industryCode: preset.industryCode,
+                            businessNumber: preset.businessNumber,
+                          } : {
+                            industryCode: "",
+                            businessNumber: "",
+                          });
+                        }}
+                        className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm font-bold"
+                        aria-label={`${contract.label} 업체·업종 선택`}
+                      >
+                        <option value="">업체·업종 미확정</option>
+                        {MONTHLY_INCOME_SOURCES.map((source) => (
+                          <option key={source.key} value={source.key}>
+                            {source.payerName} · {source.industryCode === "940925" ? "방과후교사" : source.industryCode === "940908" ? "방문판매원" : "보험설계사"} ({source.industryCode})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {contract.businessNumber && (
+                      <div className="mt-2 text-xs font-bold text-slate-400">사업자번호 {contract.businessNumber}</div>
+                    )}
+                    <div className="mt-3 flex gap-2">
+                      <button type="button" disabled={!contract.industryCode || saving === `profile:${contract.id}`} onClick={() => void saveProfile(contract, false)} className="flex-1 rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 disabled:opacity-40">앞으로 적용</button>
+                      <button type="button" disabled={!contract.industryCode || saving === `profile:${contract.id}`} onClick={() => void saveProfile(contract, true)} className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white disabled:opacity-40">기존 기록도 반영</button>
+                    </div>
+                  </div>
+                  );
+                })}
+              </div>
+            </details>
+
             <section className="rounded-3xl border border-sky-200 bg-sky-50/50 p-5 shadow-sm sm:p-7">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -716,265 +986,6 @@ export default function IncomeTaxPage() {
                 {saving === "adjustments" ? "저장 중…" : "월별 금액 저장"}
               </button>
             </section>
-
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-black">단순경비율 검증</h2>
-                  <p className="mt-1 text-sm font-bold text-slate-500">업종코드별 총수입에 4,000만원 기본·초과 구간을 각각 적용합니다.</p>
-                </div>
-                <span className={`rounded-full px-4 py-2 text-xs font-black ${eligibility.eligible === true ? "bg-emerald-100 text-emerald-800" : eligibility.eligible === false ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800"}`}>
-                  {eligibility.eligible === true ? "적용 가능 범위" : eligibility.eligible === false ? "적용요건 재확인 필요" : "직전연도 입력 필요"}
-                </span>
-              </div>
-              <div className={`mt-4 rounded-2xl border p-4 ${adjustments.previousYearRevenue === null ? "border-amber-300 bg-amber-50" : "border-emerald-200 bg-emerald-50/60"}`}>
-                <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-                  <label className="text-sm font-black text-slate-700">
-                    {year - 1}년 인적용역 세전 총수입
-                    <div className="mt-2 flex items-center rounded-xl border border-white bg-white px-3 shadow-sm focus-within:border-emerald-500">
-                      <input
-                        inputMode="numeric"
-                        value={adjustments.previousYearRevenue === null ? "" : adjustments.previousYearRevenue.toLocaleString("ko-KR")}
-                        placeholder={`${year - 1}년 총수입 입력`}
-                        onChange={(event) => setAdjustment("previousYearRevenue", event.target.value ? inputNumber(event.target.value) : null)}
-                        className="min-w-0 flex-1 bg-transparent py-3 text-right font-black outline-none"
-                        aria-label={`${year - 1}년 인적용역 세전 총수입`}
-                      />
-                      <span className="ml-2 text-slate-400">원</span>
-                    </div>
-                  </label>
-                  <button
-                    type="button"
-                    disabled={saving === "adjustments" || adjustments.previousYearRevenue === null}
-                    onClick={() => void saveAdjustments()}
-                    className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white disabled:opacity-40"
-                  >
-                    {saving === "adjustments" ? "저장 중…" : "직전연도 수입 저장"}
-                  </button>
-                </div>
-                <p className="mt-2 text-xs font-bold leading-relaxed text-slate-500">
-                  방과후교사·웅진씽크빅·글로벌금융판매 등 {year - 1}년 사업소득의 경비 차감 전 금액을 합산해 입력하세요. 근로소득은 제외합니다.
-                </p>
-              </div>
-              <p className="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">{eligibility.reason}</p>
-              {totals.unclassifiedGross > 0 && (
-                <p className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-black text-red-700">
-                  업종 미확정 수입 {won(totals.unclassifiedGross)}은 사업소득 계산에서 제외했습니다. 아래 지급 기록에서 업종코드를 확인해 주세요.
-                </p>
-              )}
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                {industryCalculations.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-slate-300 p-5 text-sm font-bold text-slate-500">확정된 업종코드의 수입 기록이 없습니다.</div>
-                ) : industryCalculations.map((item) => (
-                  <div key={item.code} className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5">
-                    <div className="font-black text-emerald-950">{item.label} · {item.code}</div>
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm font-bold text-slate-600">
-                      <span>총수입 {won(item.grossAmount)}</span>
-                      <span>필요경비 {won(item.expenseAmount)}</span>
-                      <span>기본 {won(item.basicBandAmount)} × {item.generalRate}%</span>
-                      <span>초과 {won(item.excessBandAmount)} × {item.excessRate}%</span>
-                    </div>
-                    <div className="mt-3 border-t border-emerald-200 pt-3 text-right font-black text-emerald-900">사업소득 {won(item.businessIncome)}</div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 text-xs font-bold leading-relaxed text-slate-500">
-                기준: 국세청 2024·2025년 귀속 경비율 고시. 서로 다른 업종은 코드별 수입과 경비율을 분리 계산하고, 단순경비율 적용요건의 수입 기준은 합산해 확인합니다. 기본구간은 코드별 {won(PERSONAL_SERVICE_BASIC_BAND)}입니다.
-              </div>
-            </section>
-
-            <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-                <h2 className="text-xl font-black">공제 설정</h2>
-                <p className="mt-1 text-sm font-bold text-slate-500">부양가족·장애인 인원은 지난해 신고 내역을 기본값으로 넣었습니다. 부녀자 공제는 올해 소득금액에 따라 자동 반영합니다.</p>
-                <div className="mt-5 space-y-3">
-                  <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                    <div>
-                      <div className="font-black text-slate-900">본인 기본공제</div>
-                      <div className="mt-1 text-xs font-bold text-slate-500">자동 적용</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-black text-emerald-800">1명</div>
-                      <div className="text-xs font-bold text-emerald-700">1,500,000원</div>
-                    </div>
-                  </div>
-
-                  <label className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4">
-                    <span>
-                      <span className="block font-black text-slate-900">부양가족 기본공제</span>
-                      <span className="mt-1 block text-xs font-bold text-slate-500">1명당 150만원 · 지난해 1명</span>
-                    </span>
-                    <select
-                      value={adjustments.dependentDeductionCount}
-                      onChange={(event) => setAdjustments((current) => ({ ...current, dependentDeductionCount: Number(event.target.value) }))}
-                      className="rounded-xl border border-slate-300 bg-white px-3 py-2 font-black text-slate-900 outline-none focus:border-emerald-500"
-                    >
-                      {Array.from({ length: 11 }, (_, count) => <option key={count} value={count}>{count}명</option>)}
-                    </select>
-                  </label>
-
-                  <label className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4">
-                    <span>
-                      <span className="block font-black text-slate-900">장애인 추가공제</span>
-                      <span className="mt-1 block text-xs font-bold text-slate-500">1명당 200만원 · 지난해 1명</span>
-                    </span>
-                    <select
-                      value={adjustments.disabledDeductionCount}
-                      onChange={(event) => setAdjustments((current) => ({ ...current, disabledDeductionCount: Number(event.target.value) }))}
-                      className="rounded-xl border border-slate-300 bg-white px-3 py-2 font-black text-slate-900 outline-none focus:border-emerald-500"
-                    >
-                      {[0, 1, 2].map((count) => <option key={count} value={count}>{count}명</option>)}
-                    </select>
-                  </label>
-
-                  <label className={`flex items-start gap-3 rounded-2xl border p-4 ${womanDeductionApplied ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
-                    <input
-                      type="checkbox"
-                      checked={womanDeductionApplied}
-                      disabled
-                      className="mt-1 h-5 w-5 accent-emerald-600"
-                    />
-                    <span>
-                      <span className="block font-black text-slate-900">부녀자공제 50만원</span>
-                      <span className="mt-1 block text-xs font-bold leading-relaxed text-slate-500">
-                        {womanDeductionApplied ? "종합소득금액 3천만원 이하 · 자동 적용" : "종합소득금액 3천만원 초과 · 적용 불가 · 선택 잠금"}
-                        <br />현재 종합소득금액 {won(comprehensiveIncome)} · 필요경비·근로소득공제 차감 후, 인적공제 차감 전
-                        <br />배우자가 있는 여성 또는 배우자 없이 기본공제 대상 부양가족이 있는 여성 세대주가 대상입니다.
-                      </span>
-                    </span>
-                  </label>
-
-                  <div className="flex items-center justify-between gap-4 rounded-2xl border border-blue-300 bg-blue-50 p-4">
-                    <div>
-                      <div className="font-black text-slate-900">전자신고 세액공제</div>
-                      <div className="mt-1 text-xs font-bold leading-relaxed text-slate-500">전자신고 기준으로 자동 적용</div>
-                    </div>
-                    <div className="shrink-0 text-right font-black text-blue-800">{won(automaticTaxCredit)}</div>
-                  </div>
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl bg-slate-100 p-4">
-                    <div className="text-xs font-black text-slate-500">인적공제 합계</div>
-                    <div className="mt-1 font-black text-slate-900">{won(personalIncomeDeduction)}</div>
-                  </div>
-                  <div className="rounded-2xl bg-blue-50 p-4">
-                    <div className="text-xs font-black text-blue-600">세액공제 합계</div>
-                    <div className="mt-1 font-black text-blue-950">{won(adjustments.taxCredit + automaticTaxCredit)}</div>
-                  </div>
-                </div>
-                <p className="mt-3 text-xs font-bold leading-relaxed text-slate-500">부양가족 기본공제와 부녀자 공제는 함께 적용할 수 있습니다. 장애인이 기본공제 대상 부양가족이면 장애인 추가공제도 함께 반영합니다. 부녀자 공제와 한부모 공제는 중복 적용할 수 없습니다.</p>
-                <details className="mt-4 rounded-2xl border border-slate-200 bg-slate-50">
-                  <summary className="cursor-pointer px-4 py-3 text-sm font-black text-slate-600">
-                    다른 공제·소득이 있을 때만 펼치기
-                  </summary>
-                  <div className="grid gap-4 border-t border-slate-200 p-4 sm:grid-cols-2">
-                    {[
-                    ["incomeDeduction", "기타 소득공제 합계", adjustments.incomeDeduction],
-                    ["otherIncome", "기타 소득금액", adjustments.otherIncome],
-                    ["taxCredit", "소득세 세액공제", adjustments.taxCredit],
-                    ["localTaxCredit", "지방소득세 세액공제", adjustments.localTaxCredit],
-                    ["additionalPrepaidIncomeTax", "추가 기납부 소득세", adjustments.additionalPrepaidIncomeTax],
-                    ["additionalPrepaidLocalTax", "추가 기납부 지방소득세", adjustments.additionalPrepaidLocalTax],
-                  ].map(([key, label, value]) => (
-                    <label key={String(key)} className="text-sm font-black text-slate-700">
-                      {label}
-                      <div className="mt-2 flex items-center rounded-xl border border-slate-200 bg-white px-3 focus-within:border-emerald-500">
-                        <input
-                          inputMode="numeric"
-                          value={value === null ? "" : Number(value).toLocaleString("ko-KR")}
-                          placeholder="0"
-                          onChange={(event) => setAdjustment(key as NumericAdjustmentKey, event.target.value ? inputNumber(event.target.value) : 0)}
-                          className="min-w-0 flex-1 bg-transparent py-3 text-right font-black outline-none"
-                        />
-                        <span className="ml-2 text-slate-400">원</span>
-                      </div>
-                    </label>
-                  ))}
-                  </div>
-                </details>
-                <button type="button" disabled={saving === "adjustments"} onClick={() => void saveAdjustments()} className="mt-5 w-full rounded-2xl bg-slate-900 px-5 py-3 font-black text-white disabled:opacity-50">
-                  {saving === "adjustments" ? "저장 중…" : "공제 설정 저장"}
-                </button>
-              </div>
-
-              <div className="rounded-3xl bg-slate-900 p-5 text-white shadow-xl sm:p-7">
-                <h2 className="text-xl font-black">예상 납부·환급</h2>
-                <div className="mt-5 space-y-3 text-sm font-bold">
-                  <div className="flex justify-between"><span className="text-slate-400">과세표준</span><span>{won(estimate.taxBase)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">산출 소득세</span><span>{won(estimate.calculatedIncomeTax)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">결정 소득세</span><span>{won(estimate.determinedIncomeTax)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">결정 지방소득세</span><span>{won(estimate.determinedLocalTax)}</span></div>
-                </div>
-                <div className="mt-6 space-y-3 border-t border-slate-700 pt-5">
-                  <div className={`rounded-2xl p-4 ${estimate.incomeTaxBalance > 0 ? "bg-amber-400 text-slate-950" : "bg-emerald-500"}`}>
-                    <div className="text-xs font-black opacity-75">국세</div>
-                    <div className="mt-1 text-xl font-black">{signedWon(estimate.incomeTaxBalance)}</div>
-                  </div>
-                  <div className={`rounded-2xl p-4 ${estimate.localTaxBalance > 0 ? "bg-amber-400 text-slate-950" : "bg-emerald-500"}`}>
-                    <div className="text-xs font-black opacity-75">지방소득세</div>
-                    <div className="mt-1 text-xl font-black">{signedWon(estimate.localTaxBalance)}</div>
-                  </div>
-                </div>
-                <p className="mt-5 text-xs font-bold leading-relaxed text-slate-400">이 결과는 단순 추정치이며 신고서가 아닙니다. 인적공제, 연금·보험·기부금, 타 소득, 중간예납 등 실제 신고 항목에 따라 달라집니다.</p>
-              </div>
-            </section>
-
-            <details className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-600 [&::-webkit-details-marker]:hidden">
-                <h2 className="text-xl font-black">업체별 업종 설정</h2>
-                <span className="shrink-0 text-sm font-bold text-slate-500">
-                  <span className="group-open:hidden">펼치기 ▾</span>
-                  <span className="hidden group-open:inline">접기 ▴</span>
-                </span>
-              </summary>
-              <p className="mt-1 text-sm font-bold text-slate-500">업체/직종을 선택하면 월별 금액과 연결됩니다. 하늘빛초·새솔초는 참다솜교육, 사우초는 아라로 자동 제안합니다.</p>
-              <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                {contracts.map((contract) => {
-                  const selectedPreset = MONTHLY_INCOME_SOURCES.find((source) =>
-                    source.industryCode === contract.industryCode &&
-                    normalizePayerName(source.payerName) === normalizePayerName(contract.payerName)
-                  );
-                  return (
-                  <div key={contract.id} className="rounded-2xl border border-slate-200 p-4">
-                    <div className="text-sm font-black text-slate-800">{contract.label || "이름 없는 업체"}</div>
-                    <div className="mt-3">
-                      <select
-                        value={selectedPreset?.key || ""}
-                        onChange={(event) => {
-                          const preset = MONTHLY_INCOME_SOURCES.find((source) => source.key === event.target.value);
-                          updateContract(contract.id, preset ? {
-                            payerName: preset.payerName,
-                            industryCode: preset.industryCode,
-                            businessNumber: preset.businessNumber,
-                          } : {
-                            industryCode: "",
-                            businessNumber: "",
-                          });
-                        }}
-                        className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm font-bold"
-                        aria-label={`${contract.label} 업체·업종 선택`}
-                      >
-                        <option value="">업체·업종 미확정</option>
-                        {MONTHLY_INCOME_SOURCES.map((source) => (
-                          <option key={source.key} value={source.key}>
-                            {source.payerName} · {source.industryCode === "940925" ? "방과후교사" : source.industryCode === "940908" ? "방문판매원" : "보험설계사"} ({source.industryCode})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {contract.businessNumber && (
-                      <div className="mt-2 text-xs font-bold text-slate-400">사업자번호 {contract.businessNumber}</div>
-                    )}
-                    <div className="mt-3 flex gap-2">
-                      <button type="button" disabled={!contract.industryCode || saving === `profile:${contract.id}`} onClick={() => void saveProfile(contract, false)} className="flex-1 rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 disabled:opacity-40">앞으로 적용</button>
-                      <button type="button" disabled={!contract.industryCode || saving === `profile:${contract.id}`} onClick={() => void saveProfile(contract, true)} className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white disabled:opacity-40">기존 기록도 반영</button>
-                    </div>
-                  </div>
-                  );
-                })}
-              </div>
-            </details>
 
             <details className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-600 [&::-webkit-details-marker]:hidden">
