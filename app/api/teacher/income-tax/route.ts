@@ -201,6 +201,7 @@ const sanitizeAdjustments = (value: unknown) => {
         : amount(previousYearRaw),
     otherIncome: amount(data.otherIncome),
     incomeDeduction: amount(data.incomeDeduction),
+    womanDeduction: data.womanDeduction === true,
     taxCredit: amount(data.taxCredit),
     localTaxCredit: amount(data.localTaxCredit),
     additionalPrepaidIncomeTax: amount(data.additionalPrepaidIncomeTax),

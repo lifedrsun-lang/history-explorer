@@ -53,6 +53,7 @@ type Adjustments = {
   previousYearRevenue: number | null;
   otherIncome: number;
   incomeDeduction: number;
+  womanDeduction: boolean;
   taxCredit: number;
   localTaxCredit: number;
   additionalPrepaidIncomeTax: number;
@@ -66,13 +67,14 @@ type Adjustments = {
 
 type NumericAdjustmentKey = Exclude<
   keyof Adjustments,
-  "monthlyGrossOverrides" | "employmentGrossAmounts" | "employmentResignationDate"
+  "monthlyGrossOverrides" | "employmentGrossAmounts" | "employmentResignationDate" | "womanDeduction"
 >;
 
 const EMPTY_ADJUSTMENTS: Adjustments = {
   previousYearRevenue: null,
   otherIncome: 0,
   incomeDeduction: 0,
+  womanDeduction: false,
   taxCredit: 0,
   localTaxCredit: 0,
   additionalPrepaidIncomeTax: 0,
@@ -341,7 +343,7 @@ export default function IncomeTaxPage() {
       businessIncome: totals.businessIncome,
       earnedIncome: employmentCalculation.earnedIncome,
       otherIncome: adjustments.otherIncome,
-      incomeDeduction: adjustments.incomeDeduction,
+      incomeDeduction: adjustments.incomeDeduction + (adjustments.womanDeduction ? 500_000 : 0),
       taxCredit: adjustments.taxCredit,
       localTaxCredit: adjustments.localTaxCredit,
       prepaidIncomeTax: totals.prepaidIncomeTax,
@@ -766,12 +768,30 @@ export default function IncomeTaxPage() {
 
             <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
               <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-                <h2 className="text-xl font-black">공제·추가소득 직접 입력</h2>
-                <p className="mt-1 text-sm font-bold text-slate-500">증빙과 실제 신고 조건에 맞는 금액만 입력하세요.</p>
-                <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                  {[
+                <h2 className="text-xl font-black">공제 설정</h2>
+                <p className="mt-1 text-sm font-bold text-slate-500">해당되는 항목만 선택하면 예상 세액에 자동 반영합니다.</p>
+                <label className={`mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${adjustments.womanDeduction ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white"}`}>
+                  <input
+                    type="checkbox"
+                    checked={adjustments.womanDeduction}
+                    onChange={(event) => setAdjustments((current) => ({ ...current, womanDeduction: event.target.checked }))}
+                    className="mt-1 h-5 w-5 accent-emerald-600"
+                  />
+                  <span>
+                    <span className="block font-black text-slate-900">부녀자공제 50만원 적용</span>
+                    <span className="mt-1 block text-xs font-bold leading-relaxed text-slate-500">
+                      종합소득금액 3,000만원 이하이며 배우자가 있거나, 배우자 없이 기본공제 대상 부양가족이 있는 여성 세대주인 경우 선택하세요.
+                    </span>
+                  </span>
+                </label>
+                <details className="mt-4 rounded-2xl border border-slate-200 bg-slate-50">
+                  <summary className="cursor-pointer px-4 py-3 text-sm font-black text-slate-600">
+                    다른 공제·소득이 있을 때만 펼치기
+                  </summary>
+                  <div className="grid gap-4 border-t border-slate-200 p-4 sm:grid-cols-2">
+                    {[
+                    ["incomeDeduction", "기타 소득공제 합계", adjustments.incomeDeduction],
                     ["otherIncome", "기타 소득금액", adjustments.otherIncome],
-                    ["incomeDeduction", "소득공제 합계", adjustments.incomeDeduction],
                     ["taxCredit", "소득세 세액공제", adjustments.taxCredit],
                     ["localTaxCredit", "지방소득세 세액공제", adjustments.localTaxCredit],
                     ["additionalPrepaidIncomeTax", "추가 기납부 소득세", adjustments.additionalPrepaidIncomeTax],
@@ -791,9 +811,10 @@ export default function IncomeTaxPage() {
                       </div>
                     </label>
                   ))}
-                </div>
+                  </div>
+                </details>
                 <button type="button" disabled={saving === "adjustments"} onClick={() => void saveAdjustments()} className="mt-5 w-full rounded-2xl bg-slate-900 px-5 py-3 font-black text-white disabled:opacity-50">
-                  {saving === "adjustments" ? "저장 중…" : "입력값 저장"}
+                  {saving === "adjustments" ? "저장 중…" : "공제 설정 저장"}
                 </button>
               </div>
 
