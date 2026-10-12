@@ -2,8 +2,7 @@ import type { VoteChoice, VoteView } from "@/lib/liveVote";
 import styles from "./VoteLayout.module.css";
 
 function optionLabel(value: string, number: VoteChoice) {
-  const label = value.replace(new RegExp("^\\s*" + number + "\\s*번\\s*"), "").trim();
-  return label === "인공지능" ? "AI영상" : label;
+  return value.replace(new RegExp("^\\s*" + number + "\\s*번\\s*"), "").trim();
 }
 export default function VotePhotoGrid({
   vote, choices = {}, disabled = false, onSelect, compact = false, fitScreen = false,

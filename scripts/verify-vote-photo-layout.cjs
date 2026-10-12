@@ -53,7 +53,7 @@ async function main() {
       assert.equal(metrics.cards.length, 4);
       assert.equal(metrics.buttons.length, 8);
       const labels = await page.$$eval('[aria-label="문항별 실시간 투표 결과"] button', buttons => buttons.map(button => button.textContent.trim()));
-      assert.deepEqual(labels, Array.from({ length: 4 }, () => ['1번 AI영상', '2번 실제영상']).flat());
+      assert.deepEqual(labels, Array.from({ length: 4 }, () => ['1번 인공지능', '2번 실제영상']).flat());
       assert.equal(await page.$$eval('[aria-label="문항별 실시간 투표 결과"] button', buttons => buttons.every(button => button.parentElement.lastElementChild === button)), true);
       assert.equal(metrics.imagesLoaded, true);
       assert.ok(metrics.document.height <= metrics.viewport.height + 1, JSON.stringify(metrics));
