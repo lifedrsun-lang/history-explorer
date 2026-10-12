@@ -54,14 +54,6 @@ const managementSections = [
 
 const supportingSections = [
   {
-    key: "live-opinion",
-    href: "/teacher/opinion",
-    icon: "💬",
-    title: "실시간 의견 모으기",
-    description: "학생 의견을 모아 중앙 주제 주변에 실시간으로 공유",
-    className: "border-violet-200 bg-violet-50 text-violet-900",
-  },
-  {
     key: "application-documents",
     href: "/teacher/application-documents",
     icon: "📄",
