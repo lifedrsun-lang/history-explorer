@@ -13,11 +13,11 @@ export default function VotePhotoGrid({
       const counts = vote.countsByItem[item.id] || [0, 0];
       const total = Math.max(1, counts[0] + counts[1]);
       return <section key={item.id} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-        <h3 className="mb-3 text-lg font-black text-slate-800">{index + 1}번 사진</h3>
+        <h3 className="mb-3 text-lg font-black text-slate-800">{index + 1}번 {item.imageUrl ? "사진" : "문항"}</h3>
         {item.imageUrl ? <div className={(compact ? "h-[18vh] min-h-[100px]" : "aspect-video") + " overflow-hidden rounded-xl bg-slate-100"}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={item.imageUrl} alt={(index + 1) + "번 투표 사진"} className="h-full w-full object-contain" />
-        </div> : <div className={"flex items-center justify-center rounded-xl bg-slate-100 font-bold text-slate-400 " + (compact ? "h-[18vh] min-h-[100px]" : "aspect-video")}>사진을 등록하지 않았습니다</div>}
+        </div> : null}
         <div className="mt-4 grid grid-cols-2 gap-3">
           {([1, 2] as const).map(number => {
             const count = counts[number - 1];
