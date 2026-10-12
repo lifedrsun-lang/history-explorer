@@ -4,6 +4,7 @@ import type { VoteChoice, VoteSlot } from "@/lib/liveVote";
 import VoteBars from "./VoteBars";
 import VotePhotoGrid from "./VotePhotoGrid";
 import { useVoteStream } from "./useVoteStream";
+import styles from "./VoteLayout.module.css";
 const STORAGE_KEY = "sunlab:live-vote:browser";
 async function getBrowserId() {
   const read = () => {
@@ -66,18 +67,19 @@ export default function VoteClient({ slot }: { slot: VoteSlot }) {
     finally { busyRef.current = false; setBusy(false); }
   };
   const message = ended ? "투표가 종료되었습니다" : vote && !vote.active ? "현재 진행 중인 투표가 없습니다" : !vote ? "투표를 확인하고 있어요" : "";
-  return <main className="min-h-screen bg-slate-50 px-4 py-8 sm:py-12">
-    <div className="mx-auto max-w-5xl rounded-3xl bg-white p-5 shadow-sm sm:p-10">
+  const fitScreen = !message && vote?.items.length === 4;
+  return <main className={"min-h-screen bg-slate-50 px-4 py-8 sm:py-12 " + (fitScreen ? styles.screenPage : "")}>
+    <div className={"mx-auto max-w-5xl rounded-3xl bg-white p-5 shadow-sm sm:p-10 " + (fitScreen ? styles.screenPanel : "")}>
       {message ? <div className="py-20 text-center"><h1 className="text-2xl font-black text-slate-800">{message}</h1>
         {ended && <p className="mt-4 font-bold text-slate-500">다음 투표는 선생님 안내 후 새로고침해주세요.</p>}
         {!vote && !connected && <p className="mt-4 text-sm text-slate-500">연결 중입니다.</p>}
       </div> : vote && <>
-        <h1 className="text-center text-2xl font-black text-slate-900 sm:text-3xl">{vote.title}</h1>
-        <p className="mt-5 whitespace-pre-wrap break-words text-center text-lg font-bold text-slate-600">{vote.question}</p>
-        <div className="mt-6">{vote.items.length === 1 && !vote.items[0].imageUrl
+        <h1 className={"text-center text-2xl font-black text-slate-900 sm:text-3xl " + (fitScreen ? styles.screenTitle : "")}>{vote.title}</h1>
+        <p className={"mt-5 whitespace-pre-wrap break-words text-center text-lg font-bold text-slate-600 " + (fitScreen ? styles.screenQuestion : "")}>{vote.question}</p>
+        <div className={"mt-6 " + (fitScreen ? styles.screenGrid : "")}>{vote.items.length === 1 && !vote.items[0].imageUrl
           ? <VoteBars vote={vote} choice={choices["1"] || null} disabled={!ready || !connected || busy || ended} onSelect={next => void select("1", next)} />
-          : <VotePhotoGrid vote={vote} choices={choices} disabled={!ready || !connected || busy || ended} onSelect={(id, next) => void select(id, next)} />}</div>
-        <p className="mt-6 text-center text-sm font-bold text-slate-500" role="status">
+          : <VotePhotoGrid vote={vote} choices={choices} disabled={!ready || !connected || busy || ended} onSelect={(id, next) => void select(id, next)} fitScreen={fitScreen} />}</div>
+        <p className={"mt-6 text-center text-sm font-bold text-slate-500 " + (fitScreen ? styles.screenStatus : "")} role="status">
           {!connected ? "연결을 다시 확인하고 있어요. 잠시 기다려주세요." : busy ? "선택을 반영하고 있어요." : "사진마다 1번 또는 2번을 선택해주세요. 선택을 바꿀 수 있어요."}
         </p>
       </>}
@@ -85,3 +87,4 @@ export default function VoteClient({ slot }: { slot: VoteSlot }) {
     </div>
   </main>;
 }
+
