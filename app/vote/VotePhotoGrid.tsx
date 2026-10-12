@@ -1,5 +1,9 @@
 import type { VoteChoice, VoteView } from "@/lib/liveVote";
 import styles from "./VoteLayout.module.css";
+
+function optionLabel(value: string, number: VoteChoice) {
+  return value.replace(new RegExp("^\\s*" + number + "\\s*번\\s*"), "").trim();
+}
 export default function VotePhotoGrid({
   vote, choices = {}, disabled = false, onSelect, compact = false, fitScreen = false,
 }: {
@@ -24,6 +28,9 @@ export default function VotePhotoGrid({
           {([1, 2] as const).map(number => {
             const count = counts[number - 1];
             const selected = choices[item.id] === number;
+            const label = optionLabel(number === 1 ? vote.option1 : vote.option2, number);
+            const choiceClass = styles.choice + " mt-2 w-full break-words rounded-xl border-2 px-2 py-3 text-base font-black " +
+              (selected ? "border-slate-900 bg-slate-900 text-white" : number === 1 ? "border-blue-200 bg-blue-50 text-blue-800" : "border-orange-200 bg-orange-50 text-orange-800");
             return <div key={number} className="min-w-0 text-center">
               <p className={styles.count + " text-2xl font-black text-slate-800 sm:text-3xl"}>{count}명</p>
               <div className={styles.bar + " mt-1 flex items-end justify-center rounded-lg bg-slate-100 " + (compact ? "h-9" : "h-14")}>
@@ -32,11 +39,9 @@ export default function VotePhotoGrid({
               </div>
               {onSelect ? <button type="button" disabled={disabled} aria-pressed={selected}
                 onClick={() => onSelect(item.id, number)}
-                className={styles.choice + " mt-2 w-full rounded-xl border-2 px-2 py-3 text-base font-black disabled:opacity-50 " +
-                  (selected ? "border-slate-900 bg-slate-900 text-white" : number === 1 ? "border-blue-200 bg-blue-50 text-blue-800" : "border-orange-200 bg-orange-50 text-orange-800")}>
-                {number}번 {selected ? "✓" : ""}
-              </button> : <p className={styles.choice + " mt-2 text-base font-black text-slate-700"}>{number}번</p>}
-              <p className={styles.caption + " mt-1 break-words text-xs font-medium text-slate-500"}>{number === 1 ? vote.option1 : vote.option2}</p>
+                className={choiceClass + " disabled:opacity-50"}>
+                {number}번 {label} {selected ? "✓" : ""}
+              </button> : <p className={choiceClass}>{number}번 {label}</p>}
             </div>;
           })}
         </div>
