@@ -25,7 +25,8 @@ export default function TeacherOpinionPage() {
   const [error,setError]=useState("");
   const [connected,setConnected]=useState(false);
   const [notice,setNotice]=useState("");
-  const [link,setLink]=useState("");
+  const [origin,setOrigin]=useState("");
+  const link=origin+opinionPath(slot);
   const [listMode,setListMode]=useState(false);
   const [fallback,setFallback]=useState(false);
   const [selected,setSelected]=useState<Opinion|null>(null);
@@ -34,10 +35,9 @@ export default function TeacherOpinionPage() {
   const dialog=useRef<HTMLDialogElement>(null);
   const resetDialog=useRef<HTMLDialogElement>(null);
   useEffect(()=>onAuthStateChanged(auth,current=>{
-    userRef.current=current;setUser(current);setChecking(false);
+    userRef.current=current;setUser(current);setChecking(false);setOrigin(window.location.origin);
     if(!current) {stateRef.current=null;setState(null);setConnected(false);}
   }),[]);
-  useEffect(()=>{setLink(`${window.location.origin}${opinionPath(slot)}`);},[slot]);
   function selectSlot(next: OpinionSlot) {
     if (next === slot || busy || imageBusy || dirty.current && !window.confirm("저장하지 않은 변경 사항이 있습니다. 다른 활동으로 이동할까요?")) return;
     slotRef.current=next;stateRef.current=null;dirty.current=false;
@@ -96,8 +96,8 @@ export default function TeacherOpinionPage() {
   }
   useEffect(()=>{if(selected && !dialog.current?.open) dialog.current?.showModal();if(!selected && dialog.current?.open) dialog.current.close();},[selected]);
   useEffect(()=>{if(confirmReset && !resetDialog.current?.open) resetDialog.current?.showModal();if(!confirmReset && resetDialog.current?.open) resetDialog.current.close();},[confirmReset]);
-  const handleFallback=useCallback((value:boolean)=>setFallback(value),[]);
-  const selectOpinion=useCallback((opinion:Opinion)=>setSelected(opinion),[]);
+  const handleFallback=useCallback((value:boolean)=>setFallback(value),[setFallback]);
+  const selectOpinion=useCallback((opinion:Opinion)=>setSelected(opinion),[setSelected]);
   if(checking) return <main className={styles.teacherPage}>로그인 확인 중…</main>;
   if(!user) return <main className={styles.teacherPage}><h1>실시간 의견 모으기</h1><p>교사 로그인이 필요합니다.</p><Link href="/teacher">교사 로그인으로 이동 →</Link></main>;
   return <main className={styles.teacherPage}>
