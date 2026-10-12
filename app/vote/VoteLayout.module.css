@@ -1,0 +1,115 @@
+/* Four-photo activities reserve two equal rows within the available screen. */
+.screenPage {
+  height: 100svh;
+  min-height: 640px;
+  padding: 12px;
+}
+
+.screenPanel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 12px;
+}
+
+.screenTitle {
+  flex-shrink: 0;
+  font-size: clamp(20px, 2.6vw, 28px);
+  line-height: 1.2;
+  max-height: 2.4em;
+  overflow: auto;
+}
+
+.screenQuestion {
+  flex-shrink: 0;
+  margin-top: 6px;
+  font-size: 15px;
+  line-height: 20px;
+  max-height: 40px;
+  overflow: auto;
+}
+
+.screenGrid {
+  flex: 1;
+  min-height: 0;
+  margin-top: 10px;
+}
+
+.screenStatus {
+  flex-shrink: 0;
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.fitGrid {
+  height: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fitGrid .photoCard {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 8px;
+}
+
+.fitGrid .photoTitle {
+  flex-shrink: 0;
+  margin-bottom: 4px;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.fitGrid .photo {
+  flex: 1;
+  height: auto;
+  min-height: 56px;
+  aspect-ratio: auto;
+  font-size: 12px;
+  text-align: center;
+}
+
+.fitGrid .results {
+  flex-shrink: 0;
+  margin-top: 6px;
+  gap: 6px;
+}
+
+.fitGrid .count {
+  font-size: 22px;
+  line-height: 26px;
+}
+
+.fitGrid .bar {
+  height: 20px;
+  margin-top: 2px;
+}
+
+.fitGrid .choice {
+  margin-top: 4px;
+  padding: 6px 2px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.fitGrid button.choice {
+  min-height: 44px;
+}
+
+.fitGrid .caption {
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 14px;
+  max-height: 28px;
+  overflow: auto;
+}
+
+@media (max-width: 480px) {
+  .screenPage { padding: 6px; }
+  .screenPanel { padding: 8px; }
+  .fitGrid { gap: 6px; }
+  .fitGrid .photoCard { padding: 6px; }
+}
