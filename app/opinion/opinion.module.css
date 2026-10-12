@@ -71,3 +71,8 @@
 .zoomText{font-size:30px;font-weight:800;overflow-wrap:anywhere;white-space:pre-wrap;margin:20px 0}
 @media(max-width:640px){.teacherPage{padding:16px}.teacherHeading h1{font-size:24px}.teacherHeading{align-items:flex-start}.controls{padding:16px}.studentCard{padding:26px 22px}.studentCard h1{font-size:24px}.boardToolbar{padding:4px 0 12px;gap:10px}.boardTools{gap:8px}.centre{padding:12px 10px;border-radius:18px}.centre h2{font-size:16px}.centre span,.centre>div{display:none}.zoomText{font-size:24px}.linkRow input{width:100%;flex-basis:100%}}
 @media(prefers-reduced-motion:reduce){.placed{transition:none}}
+
+.slotTabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 16px}
+.slotTabs button{padding:17px 12px;background:white;border:2px solid #dbe3f0;border-radius:16px;font-size:16px;font-weight:900}
+.slotTabs .slotSelected{background:#eef2ff;border-color:#4f46e5;color:#3730a3}
+@media(max-width:640px){.slotTabs{gap:7px}.slotTabs button{font-size:12px;padding:12px 5px}}

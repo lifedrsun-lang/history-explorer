@@ -15,3 +15,13 @@ export function cleanOpinion(value: unknown) {
   if (!text || Array.from(text).length > 60) throw new Error("invalid_text");
   return text;
 }
+
+export type OpinionSlot = 1 | 2 | 3;
+export function opinionSlot(value: unknown): OpinionSlot {
+  if (value == null) return 1;
+  if (value !== "1" && value !== "2" && value !== "3" && value !== 1 && value !== 2 && value !== 3) throw new Error("invalid_slot");
+  return Number(value) as OpinionSlot;
+}
+export function opinionPath(slot: OpinionSlot) {
+  return slot === 1 ? OPINION_PATH : OPINION_PATH + "/" + slot;
+}

@@ -2,7 +2,7 @@ import "server-only";
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabaseServer";
-import type { OpinionState, Opinion } from "@/lib/opinions";
+import type { OpinionState, Opinion, OpinionSlot } from "@/lib/opinions";
 
 const COOKIE = "sunlab_opinion_browser";
 type Row = { topic: string; instruction: string; active: boolean; round_id: string | null; revision: number;
@@ -31,8 +31,9 @@ export function checkOpinionOrigin(request: Request) {
   const origin = request.headers.get("origin");
   if (origin && origin !== new URL(request.url).origin) throw new Error("invalid_origin");
 }
-export async function readOpinionRow(): Promise<Row> {
-  const { data, error } = await getSupabaseServer().from("opinion_activity").select("topic,instruction,active,round_id,revision,responses").eq("id", true).single();
+export async function readOpinionRow(slot: OpinionSlot = 1): Promise<Row> {
+  const table = slot === 1 ? "opinion_activity" : "opinion_activity_slots";
+  const { data, error } = await getSupabaseServer().from(table).select("topic,instruction,active,round_id,revision,responses").eq(slot === 1 ? "id" : "slot", slot === 1 ? true : slot).single();
   if (error) throw new Error("opinion_storage");
   return data as Row;
 }
@@ -47,11 +48,12 @@ export function studentOpinionState(row: Row, participant: string) {
   return { topic: row.topic, instruction: row.instruction, active: row.active, round: row.round_id,
     revision: row.revision, submitted: Boolean(own), opinion: own?.text ? { id: own.id, text: own.text, createdAt: own.createdAt } : null };
 }
-export async function mutateOpinion(action: string, args: { round?: unknown; participant?: string; text?: string; instruction?: string; id?: unknown } = {}) {
-  const { data, error } = await getSupabaseServer().rpc("opinion_mutate", {
-    p_action: action, p_round: args.round ?? null, p_participant: args.participant ?? null,
-    p_text: args.text ?? null, p_instruction: args.instruction ?? null, p_id: args.id ?? null,
-  });
+export async function mutateOpinion(action: string, args: { slot?: OpinionSlot; round?: unknown; participant?: string; text?: string; instruction?: string; id?: unknown } = {}) {
+  const slot = args.slot ?? 1;
+  const params = { p_action: action, p_round: args.round ?? null, p_participant: args.participant ?? null,
+    p_text: args.text ?? null, p_instruction: args.instruction ?? null, p_id: args.id ?? null };
+  const { data, error } = slot === 1 ? await getSupabaseServer().rpc("opinion_mutate", params)
+    : await getSupabaseServer().rpc("opinion_slot_mutate", { ...params, p_slot: slot });
   if (error) {
     for (const code of ["round_closed", "invalid_text", "invalid_topic", "activity_full", "invalid_action"]) {
       if (error.message.includes(code)) throw new Error(code);
@@ -64,6 +66,7 @@ export function opinionError(error: unknown) {
   const code = error instanceof Error ? error.message : "unknown";
   const messages: Record<string, [number,string]> = {
     round_closed: [409,"활동이 종료되었거나 새 활동으로 변경되었습니다."],
+    invalid_slot: [400,"활동 번호는 1~3번 중에서 선택해 주세요."],
     invalid_text: [400,"공백을 제외한 의견을 60자 이내로 입력해 주세요."],
     invalid_topic: [400,"주제는 1~80자, 안내 문구는 300자 이내로 입력해 주세요."],
     browser_required: [401,"학생 링크를 다시 열어 주세요."],
