@@ -54,14 +54,6 @@ const managementSections = [
 
 const supportingSections = [
   {
-    key: "live-vote",
-    href: "/teacher/live-vote",
-    icon: "📊",
-    title: "실시간 투표",
-    description: "고정 링크로 1번·2번 투표를 열고 실시간 결과 확인",
-    className: "border-orange-200 bg-orange-50 text-orange-900",
-  },
-  {
     key: "application-documents",
     href: "/teacher/application-documents",
     icon: "📄",

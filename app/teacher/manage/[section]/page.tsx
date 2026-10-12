@@ -98,6 +98,13 @@ const sections: Record<string, ManagementSection> = {
     description: "출강 일정과 건별계약 수금, 참여확인서와 수업 운영 기능을 관리합니다.",
     items: [
       {
+        href: "/teacher/live-vote",
+        icon: "📊",
+        title: "실시간 투표",
+        description: "고정 링크로 1번·2번 투표를 열고 실시간 결과 확인",
+        className: "border-orange-200 bg-orange-50 text-orange-900",
+      },
+      {
         href: "/teacher/contract-schools",
         icon: "🏫",
         title: "건별 수업 관리",
