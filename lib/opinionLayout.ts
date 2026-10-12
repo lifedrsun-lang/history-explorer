@@ -15,7 +15,7 @@ function subtract(free: Rect[], used: Rect) {
   return next.filter((r,i) => r.width>0 && r.height>0 && !next.some((other,j) => i!==j && contains(other,r) && (!contains(r,other) || j<i)));
 }
 // MaxRects packing using measured DOM sizes. Centre and padding are obstacles.
-export function placeOpinions(width: number, height: number, centre: Rect, measured: MeasuredOpinion[], previous: PlacedOpinion[] = [], gap = 12): PlacedOpinion[] | null {
+function pack(width: number, height: number, centre: Rect, measured: MeasuredOpinion[], previous: PlacedOpinion[], gap: number, compact: boolean): PlacedOpinion[] | null {
   let free = subtract([{x:gap,y:gap,width:width-2*gap,height:height-2*gap}], {x:centre.x-gap,y:centre.y-gap,width:centre.width+2*gap,height:centre.height+2*gap});
   const placed: PlacedOpinion[] = [];
   const ordered = [...measured].sort((a,b) => b.height-a.height || b.width-a.width || a.id.localeCompare(b.id));
@@ -28,12 +28,13 @@ export function placeOpinions(width: number, height: number, centre: Rect, measu
     let best: {x:number;y:number;score:number}|null=null;
     for(const r of free) {
       if(r.width<w || r.height<h) continue;
-      const candidates = [
+      const candidates = compact ? [{x:r.x,y:r.y}] : [
         {x:r.x,y:r.y},{x:r.x+r.width-w,y:r.y},{x:r.x,y:r.y+r.height-h},{x:r.x+r.width-w,y:r.y+r.height-h},
         {x:Math.max(r.x,Math.min(desired.x,r.x+r.width-w)),y:Math.max(r.y,Math.min(desired.y,r.y+r.height-h))},
       ];
       for(const c of candidates) {
-        const score = (c.x-desired.x)**2+(c.y-desired.y)**2 + Math.min(r.width-w,r.height-h)*20;
+        const score = compact ? Math.min(r.width-w,r.height-h)*100000 + Math.max(r.width-w,r.height-h)*100 + r.y+r.x :
+          (c.x-desired.x)**2+(c.y-desired.y)**2 + Math.min(r.width-w,r.height-h)*20;
         if(!best || score<best.score) best={...c,score};
       }
     }
@@ -42,4 +43,7 @@ export function placeOpinions(width: number, height: number, centre: Rect, measu
     free = subtract(free,{x:best.x,y:best.y,width:w,height:h});
   }
   return placed;
+}
+export function placeOpinions(width: number, height: number, centre: Rect, measured: MeasuredOpinion[], previous: PlacedOpinion[] = [], gap = 12): PlacedOpinion[] | null {
+  return pack(width,height,centre,measured,previous,gap,false) || pack(width,height,centre,measured,previous,gap,true);
 }
