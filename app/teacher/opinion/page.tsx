@@ -3,13 +3,17 @@ import Link from "next/link";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { auth } from "@/lib/firebase";
-import { Opinion, OpinionState, OPINION_PATH } from "@/lib/opinions";
+import { Opinion, OpinionState, opinionPath, type OpinionSlot } from "@/lib/opinions";
+import { saveOpinionPng, shareOpinionPng } from "./opinionImage";
 import { useOpinionPolling } from "@/app/opinion/useOpinionPolling";
 import styles from "@/app/opinion/opinion.module.css";
 import OpinionBoard from "./OpinionBoard";
 
 export default function TeacherOpinionPage() {
   const [user,setUser]=useState<User|null>(null);
+  const [slot,setSlot]=useState<OpinionSlot>(1);
+  const slotRef=useRef<OpinionSlot>(1);
+  const [imageBusy,setImageBusy]=useState(false);
   const [checking,setChecking]=useState(true);
   const [state,setState]=useState<OpinionState|null>(null);
   const stateRef=useRef<OpinionState|null>(null);
@@ -21,7 +25,7 @@ export default function TeacherOpinionPage() {
   const [error,setError]=useState("");
   const [connected,setConnected]=useState(false);
   const [notice,setNotice]=useState("");
-  const [link,setLink]=useState(OPINION_PATH);
+  const [link,setLink]=useState("");
   const [listMode,setListMode]=useState(false);
   const [fallback,setFallback]=useState(false);
   const [selected,setSelected]=useState<Opinion|null>(null);
@@ -33,7 +37,13 @@ export default function TeacherOpinionPage() {
     userRef.current=current;setUser(current);setChecking(false);
     if(!current) {stateRef.current=null;setState(null);setConnected(false);}
   }),[]);
-  useEffect(()=>{setLink(`${window.location.origin}${OPINION_PATH}`);},[]);
+  useEffect(()=>{setLink(`${window.location.origin}${opinionPath(slot)}`);},[slot]);
+  function selectSlot(next: OpinionSlot) {
+    if (next === slot || busy || imageBusy || dirty.current && !window.confirm("저장하지 않은 변경 사항이 있습니다. 다른 활동으로 이동할까요?")) return;
+    slotRef.current=next;stateRef.current=null;dirty.current=false;
+    setSlot(next);setState(null);setTopic("");setInstruction("");setSelected(null);
+    setConnected(false);setError("");setNotice("");setListMode(false);setFallback(false);
+  }
   function accept(next: OpinionState) {
     if(stateRef.current && next.revision<stateRef.current.revision) return;
     if(next.revision===stateRef.current?.revision) {setConnected(true);return;}
@@ -46,10 +56,11 @@ export default function TeacherOpinionPage() {
     if(!current) return;
     try {
       const token=await current.getIdToken();
-      const response=await fetch("/api/teacher/opinion",{cache:"no-store",signal,headers:{Authorization:`Bearer ${token}`}});
+      const requestSlot=slotRef.current;
+      const response=await fetch("/api/teacher/opinion?slot="+requestSlot,{cache:"no-store",signal,headers:{Authorization:`Bearer ${token}`}});
       const data=await response.json();
       if(!response.ok) throw new Error(data.error);
-      if(!signal.aborted && current===userRef.current) accept(data);
+      if(!signal.aborted && current===userRef.current && requestSlot===slotRef.current) accept(data);
     } catch(e) {if(!signal.aborted) {setConnected(false);setError(e instanceof Error?e.message:"연결을 확인해 주세요.");}}
   },Boolean(user));
   async function action(name:string,id?:string) {
@@ -57,7 +68,7 @@ export default function TeacherOpinionPage() {
     setBusy(true);setError("");setNotice("");
     try {
       const token=await user.getIdToken();
-      const response=await fetch("/api/teacher/opinion",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({action:name,round:state.round,id,topic,instruction})});
+      const response=await fetch("/api/teacher/opinion?slot="+slotRef.current,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({action:name,round:state.round,id,topic,instruction})});
       const data=await response.json();
       if(!response.ok) throw new Error(data.error);
       if(name==="save") dirty.current=false;
@@ -67,6 +78,17 @@ export default function TeacherOpinionPage() {
       if(name==="start") setNotice("활동을 시작했습니다. 학생 링크를 공유해 주세요.");
     } catch(e) {setError(e instanceof Error?e.message:"요청에 실패했습니다.");}
     finally {setBusy(false);}
+  }
+  async function exportImage(mode:"save"|"share") {
+    if(!state || !state.opinions.length || imageBusy) return;
+    setImageBusy(true);setError("");setNotice("");
+    try {
+      if(mode==="save") {await saveOpinionPng(state.topic,state.opinions);setNotice("모든 의견을 담은 PNG 저장을 요청했습니다. 브라우저 다운로드를 확인해 주세요.");}
+      else {await shareOpinionPng(state.topic,state.opinions);setNotice("이미지 공유 요청을 완료했습니다.");}
+    } catch(e) {
+      if(e instanceof Error && e.name==="AbortError") return;
+      setError(e instanceof Error?e.message:"이미지를 만들지 못했습니다.");
+    } finally {setImageBusy(false);}
   }
   async function fullScreen() {
     try {if(document.fullscreenElement) await document.exitFullscreen();else await projector.current?.requestFullscreen();}
@@ -81,6 +103,9 @@ export default function TeacherOpinionPage() {
   return <main className={styles.teacherPage}>
     <Link href="/teacher" className={styles.back}>← 교사 관리실</Link>
     <header className={styles.teacherHeading}><div><div className={styles.eyebrow}>SUN LAB · 함께 생각하기</div><h1>실시간 의견 모으기</h1><p>한 문장씩 모아, 함께 생각해요.</p></div><span className={state?.active?styles.activeBadge:styles.idleBadge}>{state?.active?"활동 진행 중":"활동 대기"}</span></header>
+    <nav className={styles.slotTabs} aria-label="저장된 의견 모으기 활동">
+      {([1,2,3] as const).map(number=><button type="button" key={number} disabled={busy || imageBusy} aria-current={slot===number?"page":undefined} className={slot===number?styles.slotSelected:undefined} onClick={()=>selectSlot(number)}>의견 활동 {number}</button>)}
+    </nav>
     <section className={styles.controls} aria-label="활동 관리">
       <label htmlFor="opinion-topic-input">활동 주제</label>
       <input id="opinion-topic-input" value={topic} maxLength={80} onChange={e=>{dirty.current=true;setTopic(e.target.value);}} placeholder="활동 주제를 입력해 주세요."/>
@@ -91,7 +116,7 @@ export default function TeacherOpinionPage() {
         <button className={styles.primary} onClick={()=>void action("start")} disabled={busy || !state || state.active}>활동 시작</button>
         <button className={styles.danger} onClick={()=>setConfirmReset(true)} disabled={busy || !state}>활동 리셋</button>
       </div>
-      <div className={styles.linkRow}><label htmlFor="student-opinion-link">학생용 고정 링크</label><input id="student-opinion-link" readOnly value={link}/><button onClick={()=>void navigator.clipboard.writeText(link).then(()=>setNotice("학생 링크를 복사했습니다.")).catch(()=>setError("링크를 선택해 직접 복사해 주세요."))}>링크 복사</button></div>
+      <div className={styles.linkRow}><label htmlFor="student-opinion-link">활동 {slot} 학생용 고정 링크</label><input id="student-opinion-link" readOnly value={link}/><button onClick={()=>void navigator.clipboard.writeText(link).then(()=>setNotice("학생 링크를 복사했습니다.")).catch(()=>setError("링크를 선택해 직접 복사해 주세요."))}>링크 복사</button></div>
       {dirty.current && <p className={styles.small}>변경한 주제와 안내 문구는 [주제 저장] 후 반영됩니다.</p>}
     </section>
     {error && <p className={styles.error} role="alert">{error}</p>}{notice && <p className={styles.success} role="status">{notice}</p>}
@@ -99,6 +124,8 @@ export default function TeacherOpinionPage() {
       <div className={styles.boardToolbar}><span className={styles.boardStatus}>{connected?state?.active?"● 함께 모으는 중":"○ 활동 대기":"연결 확인 중…"}</span><div className={styles.boardTools}>
         <strong data-testid="participant-count">참여 {state?.participantCount || 0}명</strong>
         <button onClick={()=>setListMode(!listMode)}>{listMode?"주변 배치 보기":"전체 목록 보기"}</button>
+        <button onClick={()=>void exportImage("save")} disabled={imageBusy || !state?.opinions.length}>PNG 저장</button>
+        <button onClick={()=>void exportImage("share")} disabled={imageBusy || !state?.opinions.length}>사진 공유</button>
         <button onClick={()=>void fullScreen()}>전체 화면 보기</button>
       </div></div>
       {state && <OpinionBoard topic={state.topic} opinions={state.opinions} onSelect={selectOpinion} listMode={listMode} onFallback={handleFallback}/>}
@@ -106,6 +133,6 @@ export default function TeacherOpinionPage() {
       <dialog className={styles.dialog} ref={dialog} onCancel={()=>setSelected(null)} onClose={()=>setSelected(null)}><div className={styles.eyebrow}>친구의 생각</div><p className={styles.zoomText}>{selected?.text}</p><div className={styles.actions}><button onClick={()=>setSelected(null)}>닫기</button><button className={styles.danger} disabled={busy} onClick={()=>void action("delete",selected?.id)}>이 의견 삭제</button></div></dialog>
     </div>
     <section className={styles.opinionList}><h2>등록된 의견 {state?.opinions.length || 0}개</h2><p className={styles.small}>참여 인원은 이번 활동에 의견을 제출한 고유 참여자 수입니다. 삭제된 의견의 참여자도 포함됩니다.</p><div className={styles.listGrid}>{state?.opinions.map((o,index)=><div key={o.id} className={styles.listItem}><span className={styles.opinionNumber}>{index+1}</span><p>{o.text}</p><button aria-label={`${index+1}번 의견 삭제`} className={styles.deleteSmall} disabled={busy} onClick={()=>void action("delete",o.id)}>삭제</button></div>)}</div></section>
-    <dialog className={styles.dialog} ref={resetDialog} onCancel={()=>setConfirmReset(false)} onClose={()=>setConfirmReset(false)}><h2>활동을 리셋할까요?</h2><p>활동을 종료하고 모든 의견과 기존 참여권한을 삭제합니다. 주제와 학생 링크는 유지됩니다.</p><div className={styles.actions}><button onClick={()=>setConfirmReset(false)}>취소</button><button className={styles.danger} disabled={busy} onClick={()=>void action("reset")}>활동 리셋</button></div></dialog>
+    <dialog className={styles.dialog} ref={resetDialog} onCancel={()=>setConfirmReset(false)} onClose={()=>setConfirmReset(false)}><h2>활동 {slot}을 리셋할까요?</h2><p>이 활동의 모든 의견과 학생 접속권한이 삭제됩니다. 삭제 후 복구할 수 없으므로 반드시 먼저 [PNG 저장] 또는 [사진 공유]로 아이들의 의견을 보관해 주세요. 다른 활동과 주제·링크는 유지됩니다.</p><div className={styles.actions}><button onClick={()=>setConfirmReset(false)}>취소</button><button className={styles.danger} disabled={busy} onClick={()=>void action("reset")}>활동 리셋</button></div></dialog>
   </main>;
 }
