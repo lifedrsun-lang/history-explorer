@@ -21,6 +21,7 @@ export default function TeacherOpinionPage() {
   const [topic,setTopic]=useState("");
   const [instruction,setInstruction]=useState("");
   const dirty=useRef(false);
+  const [hasChanges,setHasChanges]=useState(false);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const [connected,setConnected]=useState(false);
@@ -40,7 +41,7 @@ export default function TeacherOpinionPage() {
   }),[]);
   function selectSlot(next: OpinionSlot) {
     if (next === slot || busy || imageBusy || dirty.current && !window.confirm("저장하지 않은 변경 사항이 있습니다. 다른 활동으로 이동할까요?")) return;
-    slotRef.current=next;stateRef.current=null;dirty.current=false;
+    slotRef.current=next;stateRef.current=null;dirty.current=false;setHasChanges(false);
     setSlot(next);setState(null);setTopic("");setInstruction("");setSelected(null);
     setConnected(false);setError("");setNotice("");setListMode(false);setFallback(false);
   }
@@ -71,7 +72,7 @@ export default function TeacherOpinionPage() {
       const response=await fetch("/api/teacher/opinion?slot="+slotRef.current,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({action:name,round:state.round,id,topic,instruction})});
       const data=await response.json();
       if(!response.ok) throw new Error(data.error);
-      if(name==="save") dirty.current=false;
+      if(name==="save") {dirty.current=false;setHasChanges(false);}
       accept(data);
       if(name==="save") {setTopic(data.topic);setInstruction(data.instruction);setNotice("주제와 안내 문구를 저장했습니다.");}
       if(name==="reset") {setConfirmReset(false);setSelected(null);setNotice("활동을 종료하고 의견과 참여권한을 초기화했습니다.");}
@@ -108,16 +109,16 @@ export default function TeacherOpinionPage() {
     </nav>
     <section className={styles.controls} aria-label="활동 관리">
       <label htmlFor="opinion-topic-input">활동 주제</label>
-      <input id="opinion-topic-input" value={topic} maxLength={80} onChange={e=>{dirty.current=true;setTopic(e.target.value);}} placeholder="활동 주제를 입력해 주세요."/>
+      <input id="opinion-topic-input" value={topic} maxLength={80} onChange={e=>{dirty.current=true;setHasChanges(true);setTopic(e.target.value);}} placeholder="활동 주제를 입력해 주세요."/>
       <label htmlFor="opinion-instruction">학생 안내 문구</label>
-      <textarea id="opinion-instruction" value={instruction} maxLength={300} rows={2} onChange={e=>{dirty.current=true;setInstruction(e.target.value);}}/>
+      <textarea id="opinion-instruction" value={instruction} maxLength={300} rows={2} onChange={e=>{dirty.current=true;setHasChanges(true);setInstruction(e.target.value);}}/>
       <div className={styles.actions}>
         <button onClick={()=>void action("save")} disabled={busy || !state || !topic.trim()}>주제 저장</button>
         <button className={styles.primary} onClick={()=>void action("start")} disabled={busy || !state || state.active}>활동 시작</button>
         <button className={styles.danger} onClick={()=>setConfirmReset(true)} disabled={busy || !state}>활동 리셋</button>
       </div>
       <div className={styles.linkRow}><label htmlFor="student-opinion-link">활동 {slot} 학생용 고정 링크</label><input id="student-opinion-link" readOnly value={link}/><button onClick={()=>void navigator.clipboard.writeText(link).then(()=>setNotice("학생 링크를 복사했습니다.")).catch(()=>setError("링크를 선택해 직접 복사해 주세요."))}>링크 복사</button></div>
-      {dirty.current && <p className={styles.small}>변경한 주제와 안내 문구는 [주제 저장] 후 반영됩니다.</p>}
+      {hasChanges && <p className={styles.small}>변경한 주제와 안내 문구는 [주제 저장] 후 반영됩니다.</p>}
     </section>
     {error && <p className={styles.error} role="alert">{error}</p>}{notice && <p className={styles.success} role="status">{notice}</p>}
     <div className={styles.projector} ref={projector}>
