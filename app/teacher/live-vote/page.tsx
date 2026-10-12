@@ -7,6 +7,7 @@ import { DEFAULT_ITEMS, EMPTY_VOTE, type VoteSettings, type VoteSlot, type VoteV
 import VoteBars from "@/app/vote/VoteBars";
 import VotePhotoGrid from "@/app/vote/VotePhotoGrid";
 import { useVoteStream } from "@/app/vote/useVoteStream";
+import { VOTE_IMAGE_MAX_BYTES, VOTE_IMAGE_TYPES } from "@/lib/liveVoteImages";
 
 const form = (vote: VoteSettings): VoteSettings => ({
   title: vote.title, question: vote.question, option1: vote.option1, option2: vote.option2,
@@ -87,6 +88,9 @@ export default function TeacherLiveVotePage() {
   };
   const upload = async (index: number, file?: File) => {
     if (!user || !file) return;
+    if (!file.size || file.size > VOTE_IMAGE_MAX_BYTES || !VOTE_IMAGE_TYPES.includes(file.type)) {
+      setError("JPG, PNG, WEBP 사진(4MB 이하)만 등록할 수 있습니다."); return;
+    }
     setUploading(true); setError(""); setMessage("");
     try {
       const body = new FormData();
@@ -95,8 +99,9 @@ export default function TeacherLiveVotePage() {
       const response = await fetch("/api/teacher/live-vote/image", {
         method: "POST", headers: { Authorization: "Bearer " + await user.getIdToken() }, body,
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error || (response.status === 413 ? "사진은 4MB 이하로 올려주세요." : "사진을 업로드하지 못했습니다. 다시 시도해주세요."));
+      if (typeof data?.imageUrl !== "string") throw new Error("사진 저장 결과를 확인하지 못했습니다. 다시 시도해주세요.");
       setDraft(previous => ({
         ...previous, items: previous.items.map((item, i) => i === index ? { ...item, imageUrl: data.imageUrl } : item),
       }));
@@ -150,7 +155,7 @@ export default function TeacherLiveVotePage() {
               <h3 className="font-black">사진 및 문항 번호</h3>
               <span className="text-xs text-slate-500">{draft.items.length}/8개</span>
             </div>
-            <p className="mt-2 text-sm text-slate-500">사진이 필요 없으면 1개 문항 그대로 사용하세요. 사진 4개를 등록하면 2×2로 표시됩니다.</p>
+            <p className="mt-2 text-sm text-slate-500">JPG·PNG·WEBP, 사진당 4MB 이하. 사진 4개를 등록하면 2×2로 표시됩니다. 등록 후 문항·사진 저장을 눌러주세요.</p>
             <div className="mt-3 grid grid-cols-2 gap-3">
               {draft.items.map((item, index) => <div key={item.id} className="rounded-xl border border-slate-200 p-3">
                 <p className="mb-2 font-black">{index + 1}번 사진</p>
@@ -214,3 +219,4 @@ export default function TeacherLiveVotePage() {
     {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 font-bold text-red-700">{error}</p>}
   </div></main>;
 }
+
