@@ -6,13 +6,11 @@ export async function GET(request: Request) {
     const initial = await readVote();
     const { state } = voteRefs();
     const encoder = new TextEncoder();
-    let cleanup = (_close = true) => {};
+    let cleanup: (close?: boolean) => void = () => {};
     const stream = new ReadableStream({
       start(controller) {
         let finished = false;
         let unsubscribe = () => {};
-        let heartbeat: ReturnType<typeof setInterval> | undefined;
-        let deadline: ReturnType<typeof setTimeout> | undefined;
         let chain = Promise.resolve();
         const send = (event: string, data: unknown) => {
           if (!finished) controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
@@ -27,6 +25,9 @@ export async function GET(request: Request) {
           request.signal.removeEventListener("abort", abort);
           if (close) controller.close();
         };
+        const heartbeat = setInterval(() => { if (!finished) controller.enqueue(encoder.encode(": heartbeat\n\n")); }, 15000);
+        // Transport reconnect only; this never closes the classroom vote.
+        const deadline = setTimeout(() => cleanup(), 55000);
         send("vote", initial);
         unsubscribe = state.onSnapshot(() => {
           // Serialize asynchronous reads so an older snapshot can never follow a reset.
@@ -38,9 +39,6 @@ export async function GET(request: Request) {
           console.error("live-vote stream failed", error.message);
           send("unavailable", {}); cleanup();
         });
-        heartbeat = setInterval(() => { if (!finished) controller.enqueue(encoder.encode(": heartbeat\n\n")); }, 15000);
-        // Transport reconnect only; this never closes the classroom vote.
-        deadline = setTimeout(cleanup, 55000);
         request.signal.addEventListener("abort", abort, { once: true });
         if (request.signal.aborted) cleanup();
       },

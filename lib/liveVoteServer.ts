@@ -2,7 +2,7 @@ import "server-only";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { verifyTeacherRequest } from "@/lib/assignmentServer";
-import { EMPTY_VOTE, VoteError, validateVoteSettings, type VoteChoice, type VoteSettings, type VoteView } from "@/lib/liveVote";
+import { VoteError, validateVoteSettings, type VoteChoice, type VoteSettings, type VoteView } from "@/lib/liveVote";
 
 // Isolate Preview tests from the live classroom. No browser writes to this collection.
 export function voteNamespace() {

@@ -24,19 +24,21 @@ export default function VotePage() {
   const [busy, setBusy] = useState(false);
   const [choice, setChoice] = useState<VoteChoice | null>(null);
   const [error, setError] = useState("");
+  const active = vote?.active;
+  const currentGeneration = vote?.generation;
   const end = () => { endedRef.current = true; token.current = null; setReady(false); setChoice(null); setEnded(true); setError(""); };
   useEffect(() => {
-    if (!vote || endedRef.current) return;
-    if (generation.current && (!vote.active || vote.generation !== generation.current)) { end(); return; }
-    if (!vote.active || joining.current || token.current) return;
-    generation.current = vote.generation;
+    if (active === undefined || endedRef.current) return;
+    if (generation.current && (!active || currentGeneration !== generation.current)) { end(); return; }
+    if (!active || !currentGeneration || joining.current || token.current) return;
+    generation.current = currentGeneration;
     joining.current = true;
     void (async () => {
       try {
         const browserId = await getBrowserId();
-        const response = await fetch("/api/vote/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ generation: vote.generation, browserId }) });
+        const response = await fetch("/api/vote/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ generation: currentGeneration, browserId }) });
         const data = await response.json();
-        if (endedRef.current || generation.current !== vote.generation) return;
+        if (endedRef.current || generation.current !== currentGeneration) return;
         if (data.code === "vote_ended") { end(); return; }
         if (!response.ok) throw new Error(data.error);
         token.current = data.token; setChoice(data.choice); setReady(true); setError("");
@@ -44,7 +46,7 @@ export default function VotePage() {
         if (!endedRef.current) setError(cause instanceof Error ? cause.message : "브라우저 저장 기능과 연결을 확인해주세요.");
       } finally { joining.current = false; }
     })();
-  }, [vote?.active, vote?.generation]);
+  }, [active, currentGeneration]);
   const select = async (next: VoteChoice) => {
     if (!token.current || !ready || !connected || busyRef.current || endedRef.current) return;
     busyRef.current = true; setBusy(true); setError("");

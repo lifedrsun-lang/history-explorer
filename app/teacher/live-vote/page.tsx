@@ -19,7 +19,7 @@ export default function TeacherLiveVotePage() {
   const [error, setError] = useState("");
   const [url, setUrl] = useState("");
   const { vote, connected, setVote } = useVoteStream();
-  useEffect(() => { setUrl(`${window.location.origin}/vote`); return onAuthStateChanged(auth, current => { setUser(current); setChecking(false); }); }, []);
+  useEffect(() => onAuthStateChanged(auth, current => { setUrl(`${window.location.origin}/vote`); setUser(current); setChecking(false); }), []);
   useEffect(() => {
     if (!user) return;
     let alive = true;
