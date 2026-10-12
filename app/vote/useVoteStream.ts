@@ -6,12 +6,10 @@ export function useVoteStream(slot: VoteSlot = 1) {
   const [connected, setConnected] = useState(false);
   useEffect(() => {
     let alive = true;
-    setVote(null);
-    setConnected(false);
     const query = "?slot=" + slot;
     const apply = (next: VoteView) => {
       if (!alive || next.slot !== slot) return;
-      setVote(previous => !previous || next.revision >= previous.revision ? next : previous);
+      setVote(previous => !previous || previous.slot !== slot || next.revision >= previous.revision ? next : previous);
       setConnected(true);
     };
     const refresh = async () => {
@@ -37,5 +35,5 @@ export function useVoteStream(slot: VoteSlot = 1) {
     window.addEventListener("focus", refresh);
     return () => { alive = false; events.close(); clearInterval(fallback); window.removeEventListener("online", refresh); window.removeEventListener("focus", refresh); };
   }, [slot]);
-  return { vote, connected, setVote };
+  return { vote: vote?.slot === slot ? vote : null, connected: vote?.slot === slot && connected, setVote };
 }
