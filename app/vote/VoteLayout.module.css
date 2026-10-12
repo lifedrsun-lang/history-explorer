@@ -99,14 +99,6 @@
   min-height: 44px;
 }
 
-.fitGrid .caption {
-  margin-top: 2px;
-  font-size: 11px;
-  line-height: 14px;
-  max-height: 28px;
-  overflow: auto;
-}
-
 @media (max-width: 480px) {
   .screenPage { padding: 6px; }
   .screenPanel { padding: 8px; }

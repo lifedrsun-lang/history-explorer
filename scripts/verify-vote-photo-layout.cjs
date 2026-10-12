@@ -52,6 +52,9 @@ async function main() {
       });
       assert.equal(metrics.cards.length, 4);
       assert.equal(metrics.buttons.length, 8);
+      const labels = await page.$$eval('[aria-label="문항별 실시간 투표 결과"] button', buttons => buttons.map(button => button.textContent.trim()));
+      assert.deepEqual(labels, Array.from({ length: 4 }, () => ['1번 AI영상', '2번 실제영상']).flat());
+      assert.equal(await page.$$eval('[aria-label="문항별 실시간 투표 결과"] button', buttons => buttons.every(button => button.parentElement.lastElementChild === button)), true);
       assert.equal(metrics.imagesLoaded, true);
       assert.ok(metrics.document.height <= metrics.viewport.height + 1, JSON.stringify(metrics));
       assert.ok(metrics.document.width <= metrics.viewport.width + 1, JSON.stringify(metrics));
@@ -68,7 +71,7 @@ async function main() {
       assert.equal(selected.itemId, '4');
       assert.equal(selected.choice, 1);
       assert.deepEqual(errors, []);
-      results.push({ width, height, fourCardsVisible: true, twoRows: true, noPageScroll: true, photoHeight: Math.round(metrics.photos[0].height), choiceWorks: true });
+      results.push({ width, height, fourCardsVisible: true, twoRows: true, noPageScroll: true, photoHeight: Math.round(metrics.photos[0].height), labelsInsideButtons: true, choiceWorks: true });
       await page.close();
     }
     console.log('Vote photo layout verification:', JSON.stringify(results));
