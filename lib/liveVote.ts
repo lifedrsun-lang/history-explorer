@@ -1,3 +1,4 @@
+import { voteImagePathFromUrl } from "@/lib/liveVoteImages";
 export type VoteChoice = 1 | 2;
 export type VoteSlot = 1 | 2 | 3;
 export type VoteItem = { id: string; imageUrl: string };
@@ -23,7 +24,7 @@ export function validateVoteSettings(input: Record<string, unknown>): VoteSettin
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) throw new VoteError("사진 문항을 확인해주세요.");
     const imageUrl = (entry as Record<string, unknown>).imageUrl;
     if (typeof imageUrl !== "string" || imageUrl.length > 1200) throw new VoteError("사진 주소를 확인해주세요.");
-    if (imageUrl) {
+    if (imageUrl && !voteImagePathFromUrl(imageUrl)) {
       try {
         const url = new URL(imageUrl);
         if (url.protocol !== "https:" || url.hostname !== "firebasestorage.googleapis.com" ||
@@ -35,3 +36,4 @@ export function validateVoteSettings(input: Record<string, unknown>): VoteSettin
   });
   return { title: text("title", "제목", 120), question: text("question", "질문", 2000), option1: text("option1", "1번 선택지", 200), option2: text("option2", "2번 선택지", 200), items };
 }
+
