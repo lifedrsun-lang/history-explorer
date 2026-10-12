@@ -9,12 +9,13 @@ export default function OpinionStudentPage() {
   const stateRef=useRef<StudentOpinionState|null>(null);
   const [draft,setDraft]=useState("");
   const [error,setError]=useState("");
+  const [connectionError,setConnectionError]=useState("");
   const [connected,setConnected]=useState(false);
   const [busy,setBusy]=useState(false);
   function accept(next: StudentOpinionState) {
     if(stateRef.current && next.revision < stateRef.current.revision) return;
     if(stateRef.current?.round !== next.round) setDraft("");
-    stateRef.current=next; setState(next); setConnected(true);
+    stateRef.current=next; setState(next); setConnected(true); setConnectionError("");
   }
   useOpinionPolling(async signal => {
     try {
@@ -22,7 +23,7 @@ export default function OpinionStudentPage() {
       const data=await response.json();
       if(!response.ok) throw new Error(data.error);
       if(!signal.aborted) accept(data);
-    } catch(e) { if(!signal.aborted) {setConnected(false);setError(e instanceof Error?e.message:"연결을 확인해 주세요.");} }
+    } catch { if(!signal.aborted) {setConnected(false);setConnectionError("연결이 끊겼어요. 연결되면 다시 참여할 수 있어요.");} }
   });
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -50,7 +51,7 @@ export default function OpinionStudentPage() {
       <div className={styles.characterCount}>{Array.from(draft).length} / 60자</div>
       <button className={styles.primary} disabled={busy || !connected || !draft.trim()}>{busy?"등록 중…":"의견 등록하기"}</button>
     </form>}
-    {(!connected || error) && <p role="alert" className={styles.error}>{!connected?error || "연결을 확인하고 있어요. 연결되면 다시 참여할 수 있어요.":error}</p>}
+    {(!connected || error) && <p role="alert" className={styles.error}>{!connected?connectionError || "연결을 확인하고 있어요. 연결되면 다시 참여할 수 있어요.":error}</p>}
     <div className={styles.studentFoot}>서로의 생각을 존중해 주세요 🌱</div>
   </section></main>;
 }
