@@ -105,6 +105,13 @@ const sections: Record<string, ManagementSection> = {
         className: "border-orange-200 bg-orange-50 text-orange-900",
       },
       {
+        href: "/teacher/opinion",
+        icon: "💬",
+        title: "실시간 의견 모으기",
+        description: "의견 활동 3개를 저장하고 학생 의견을 실시간 공유·PNG 보관",
+        className: "border-violet-200 bg-violet-50 text-violet-900",
+      },
+      {
         href: "/teacher/contract-schools",
         icon: "🏫",
         title: "건별 수업 관리",
