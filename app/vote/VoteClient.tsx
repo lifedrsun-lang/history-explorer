@@ -78,7 +78,7 @@ export default function VoteClient({ slot }: { slot: VoteSlot }) {
           ? <VoteBars vote={vote} choice={choices["1"] || null} disabled={!ready || !connected || busy || ended} onSelect={next => void select("1", next)} />
           : <VotePhotoGrid vote={vote} choices={choices} disabled={!ready || !connected || busy || ended} onSelect={(id, next) => void select(id, next)} />}</div>
         <p className="mt-6 text-center text-sm font-bold text-slate-500" role="status">
-          {!connected ? "연결을 다시 확인하고 있어요. 잠시 기다려주세요." : busy ? "선택을 반영하고 있어요." : "사진마다 1번 또는 2번을 선택해주세요. 선택을 바꿀 수 있어요."}
+          {!connected ? "연결을 다시 확인하고 있어요. 잠시 기다려주세요." : busy ? "선택을 반영하고 있어요." : "각 문항에서 1번 또는 2번을 선택해주세요. 선택을 바꿀 수 있어요."}
         </p>
       </>}
       {error && <p className="mt-4 text-center font-bold text-red-600" role="alert">{error} <button type="button" onClick={() => window.location.reload()} className="underline">새로고침</button></p>}
