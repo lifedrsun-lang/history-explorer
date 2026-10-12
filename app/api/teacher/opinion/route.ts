@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     await verifyTeacherRequest(request);
-    return opinionResponse(teacherOpinionState(await readOpinionRow(opinionSlot(new URL(request.url).searchParams.get("slot"))));
+    return opinionResponse(teacherOpinionState(await readOpinionRow(opinionSlot(new URL(request.url).searchParams.get("slot")))));
   } catch(error) { return opinionError(error); }
 }
 export async function POST(request: Request) {
