@@ -27,6 +27,7 @@ export default function TeacherLiveVotePage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [origin, setOrigin] = useState("");
+  const [fullscreen, setFullscreen] = useState(false);
   const { vote, connected, setVote } = useVoteStream(slot);
   useEffect(() => onAuthStateChanged(auth, current => {
     setOrigin(window.location.origin); setUser(current); setChecking(false);
@@ -58,6 +59,7 @@ export default function TeacherLiveVotePage() {
 
   const switchSlot = (next: VoteSlot) => {
     setSlot(next);
+    setFullscreen(false);
     setDraft(form(votes.find(item => item.slot === next) || EMPTY_VOTE));
     setError(""); setMessage("");
   };
@@ -190,7 +192,7 @@ export default function TeacherLiveVotePage() {
         <p className="mt-4 text-sm leading-relaxed text-slate-500">리셋하면 해당 투표의 모든 응답과 기존 접속권한이 삭제됩니다. 저장한 문항·사진·링크와 다른 투표는 유지됩니다.</p>
       </section>
       <section className="rounded-3xl bg-white p-5 shadow-sm sm:p-6">
-        <h2 className="text-xl font-black">투표 {slot} · 실시간 결과</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-black">투표 {slot} · 실시간 결과</h2><button type="button" onClick={() => setFullscreen(true)} className="rounded-xl bg-blue-50 px-4 py-2 text-sm font-bold text-blue-800">결과 크게 보기</button></div>
         <p className="mt-2 text-sm font-bold text-slate-500">{connected ? "실시간 연결됨" : "연결 확인 중"}</p>
         {vote && <><h3 className="mt-6 text-center text-xl font-black">{vote.title}</h3>
           <p className="mt-3 whitespace-pre-wrap break-words text-center font-bold text-slate-600">{vote.question}</p>
@@ -198,6 +200,16 @@ export default function TeacherLiveVotePage() {
         </>}
       </section>
     </div>
+    {fullscreen && vote && <div role="dialog" aria-modal="true" aria-label="실시간 투표 전체 화면" className="fixed inset-0 z-50 overflow-auto bg-slate-50 p-4 sm:p-6">
+      <div className="mx-auto max-w-7xl">
+        <header className="mb-3 flex items-center justify-between gap-3">
+          <div className="min-w-0"><h2 className="truncate text-xl font-black sm:text-3xl">{vote.title || "실시간 투표 결과"}</h2>
+            <p className="mt-1 truncate text-sm font-bold text-slate-500">{vote.question}</p></div>
+          <button type="button" onClick={() => setFullscreen(false)} className="shrink-0 rounded-xl bg-slate-900 px-5 py-3 font-bold text-white">닫기 ✕</button>
+        </header>
+        {vote.items.length === 1 && !vote.items[0].imageUrl ? <div className="mx-auto max-w-2xl"><VoteBars vote={vote}/></div> : <VotePhotoGrid vote={vote} compact />}
+      </div>
+    </div>}
     {message && <p role="status" className="mt-4 rounded-xl bg-green-50 p-4 font-bold text-green-800">{message}</p>}
     {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 font-bold text-red-700">{error}</p>}
   </div></main>;
