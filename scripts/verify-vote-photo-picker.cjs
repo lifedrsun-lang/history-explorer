@@ -6,7 +6,8 @@ const path = require('node:path');
 const os = require('node:os');
 const ts = require('typescript');
 const puppeteer = require('puppeteer-core');
-const chromium = require('@sparticuz/chromium');
+const chromiumModule = require('@sparticuz/chromium');
+const chromium = chromiumModule.default || chromiumModule;
 
 async function main() {
   const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'vote-picker-'));
