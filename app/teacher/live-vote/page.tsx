@@ -8,6 +8,7 @@ import VoteBars from "@/app/vote/VoteBars";
 import VotePhotoGrid from "@/app/vote/VotePhotoGrid";
 import { useVoteStream } from "@/app/vote/useVoteStream";
 import { VOTE_IMAGE_MAX_BYTES, VOTE_IMAGE_TYPES } from "@/lib/liveVoteImages";
+import { openVotePhotoPicker } from "@/lib/votePhotoPicker";
 
 const form = (vote: VoteSettings): VoteSettings => ({
   title: vote.title, question: vote.question, option1: vote.option1, option2: vote.option2,
@@ -25,6 +26,7 @@ export default function TeacherLiveVotePage() {
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const busyRef = useRef(false);
+  const photoInputs = useRef<Record<string, HTMLInputElement | null>>({});
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [origin, setOrigin] = useState("");
@@ -56,6 +58,7 @@ export default function TeacherLiveVotePage() {
   const saved = form(stored);
   const changed = JSON.stringify(draft) !== JSON.stringify(saved);
   const activeVote = vote?.slot === slot ? vote : stored;
+  const editDisabled = !loaded || busy || uploading || activeVote.active;
   const url = origin + studentPath(slot);
 
   const switchSlot = (next: VoteSlot) => {
@@ -142,7 +145,10 @@ export default function TeacherLiveVotePage() {
             {activeVote.active ? "진행 중" : "닫힘"}
           </span>
         </div>
-        <fieldset disabled={!loaded || busy || uploading || activeVote.active} className="mt-5 space-y-4 disabled:opacity-70">
+        {activeVote.active && <p id="vote-photo-lock-reason" role="status" className="mt-4 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-900">
+          투표 진행 중에는 문항과 사진이 잠겨 있습니다. 사진을 수정하려면 아래 ‘이 투표만 리셋’을 눌러주세요. 리셋하면 기존 응답이 삭제됩니다.
+        </p>}
+        <fieldset disabled={editDisabled} className="mt-5 space-y-4 disabled:opacity-70">
           {([["title", "투표 제목", 120], ["question", "투표 질문", 2000], ["option1", "1번 선택지", 200], ["option2", "2번 선택지", 200]] as const).map(([key, label, max]) =>
             <label key={key} className="block text-sm font-bold text-slate-700">{label}
               {key === "question" ? <textarea value={draft[key]} maxLength={max} onChange={e => update(key, e.target.value)}
@@ -163,10 +169,17 @@ export default function TeacherLiveVotePage() {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={item.imageUrl} alt={(index + 1) + "번 사진 미리보기"} className="aspect-video w-full rounded-lg bg-slate-100 object-contain" /> :
                   <div className="flex aspect-video items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-slate-400">사진 없음</div>}
-                <label className="mt-2 block cursor-pointer rounded-lg bg-blue-50 p-2 text-center text-sm font-bold text-blue-800">
-                  사진 등록<input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only"
-                    onChange={e => { void upload(index, e.target.files?.[0]); e.currentTarget.value = ""; }} />
-                </label>
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={editDisabled}
+                  aria-label={(index + 1) + "번 사진 선택"}
+                  ref={input => { photoInputs.current[slot + ":" + item.id] = input; }}
+                  onChange={e => { void upload(index, e.target.files?.[0]); e.currentTarget.value = ""; }} />
+                <button type="button" disabled={editDisabled}
+                  aria-label={(index + 1) + "번 사진 등록"}
+                  aria-describedby={activeVote.active ? "vote-photo-lock-reason" : undefined}
+                  onClick={() => openVotePhotoPicker(photoInputs.current[slot + ":" + item.id], editDisabled)}
+                  className="mt-2 block w-full rounded-lg bg-blue-50 p-2 text-center text-sm font-bold text-blue-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500">
+                  {activeVote.active ? "진행 중 · 사진 잠김" : uploading ? "사진 올리는 중…" : busy ? "처리 중…" : !loaded ? "사진 설정 불러오는 중…" : item.imageUrl ? "사진 변경" : "사진 등록"}
+                </button>
                 <div className="mt-2 flex gap-2">
                   <button type="button" onClick={() => setDraft(v => ({ ...v, items: v.items.map((x, i) => i === index ? { ...x, imageUrl: "" } : x) }))}
                     className="flex-1 rounded-lg bg-slate-100 p-2 text-xs font-bold" disabled={!item.imageUrl}>사진 제거</button>
