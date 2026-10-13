@@ -4,7 +4,8 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { auth } from "@/lib/firebase";
 import { Opinion, OpinionState, opinionPath, type OpinionSlot } from "@/lib/opinions";
-import { saveOpinionPng, shareOpinionPng } from "./opinionImage";
+import { makeOpinionPng, shareOpinionPng } from "./opinionImage";
+import OpinionSaveDialog,{type OpinionImageCapture} from "./OpinionSaveDialog";
 import { useOpinionPolling } from "@/app/opinion/useOpinionPolling";
 import styles from "@/app/opinion/opinion.module.css";
 import OpinionBoard from "./OpinionBoard";
@@ -14,6 +15,7 @@ export default function TeacherOpinionPage() {
   const [slot,setSlot]=useState<OpinionSlot>(1);
   const slotRef=useRef<OpinionSlot>(1);
   const [imageBusy,setImageBusy]=useState(false);
+  const [imageCapture,setImageCapture]=useState<OpinionImageCapture|null>(null);
   const [checking,setChecking]=useState(true);
   const [state,setState]=useState<OpinionState|null>(null);
   const stateRef=useRef<OpinionState|null>(null);
@@ -40,7 +42,7 @@ export default function TeacherOpinionPage() {
     if(!current) {stateRef.current=null;setState(null);setConnected(false);}
   }),[]);
   function selectSlot(next: OpinionSlot) {
-    if (next === slot || busy || imageBusy || dirty.current && !window.confirm("저장하지 않은 변경 사항이 있습니다. 다른 활동으로 이동할까요?")) return;
+    if (next === slot || busy || imageBusy || imageCapture || dirty.current && !window.confirm("저장하지 않은 변경 사항이 있습니다. 다른 활동으로 이동할까요?")) return;
     slotRef.current=next;stateRef.current=null;dirty.current=false;setHasChanges(false);
     setSlot(next);setState(null);setTopic("");setInstruction("");setSelected(null);
     setConnected(false);setError("");setNotice("");setListMode(false);setFallback(false);
@@ -84,8 +86,9 @@ export default function TeacherOpinionPage() {
     if(!state || !state.opinions.length || imageBusy) return;
     setImageBusy(true);setError("");setNotice("");
     try {
-      if(mode==="save") {await saveOpinionPng(state.topic,state.opinions);setNotice("모든 의견을 담은 PNG 저장을 요청했습니다. 브라우저 다운로드를 확인해 주세요.");}
-      else {await shareOpinionPng(state.topic,state.opinions);setNotice("이미지 공유 요청을 완료했습니다.");}
+      const board=projector.current?.querySelector<HTMLDivElement>('[data-testid="opinion-board"]');
+      if(mode==="save") {const blob=await makeOpinionPng(state.topic,state.opinions,board);setImageCapture({id:crypto.randomUUID(),blob,topic:state.topic,opinionCount:state.opinions.length});}
+      else {await shareOpinionPng(state.topic,state.opinions,board);setNotice("이미지 공유 요청을 완료했습니다.");}
     } catch(e) {
       if(e instanceof Error && e.name==="AbortError") return;
       setError(e instanceof Error?e.message:"이미지를 만들지 못했습니다.");
@@ -125,15 +128,16 @@ export default function TeacherOpinionPage() {
       <div className={styles.boardToolbar}><span className={styles.boardStatus}>{connected?state?.active?"● 함께 모으는 중":"○ 활동 대기":"연결 확인 중…"}</span><div className={styles.boardTools}>
         <strong data-testid="participant-count">참여 {state?.participantCount || 0}명</strong>
         <button onClick={()=>setListMode(!listMode)}>{listMode?"주변 배치 보기":"전체 목록 보기"}</button>
-        <button onClick={()=>void exportImage("save")} disabled={imageBusy || !state?.opinions.length}>PNG 저장</button>
+        <button onClick={()=>void exportImage("save")} disabled={imageBusy || !state?.opinions.length}>저장</button>
         <button onClick={()=>void exportImage("share")} disabled={imageBusy || !state?.opinions.length}>사진 공유</button>
         <button onClick={()=>void fullScreen()}>전체 화면 보기</button>
       </div></div>
       {state && <OpinionBoard topic={state.topic} opinions={state.opinions} onSelect={selectOpinion} listMode={listMode} onFallback={handleFallback}/>}
       {fallback && !listMode && <p className={styles.small}>화면 공간이 부족합니다. 전체 화면 또는 전체 목록 보기를 이용해 주세요.</p>}
       <dialog className={styles.dialog} ref={dialog} onCancel={()=>setSelected(null)} onClose={()=>setSelected(null)}><div className={styles.eyebrow}>친구의 생각</div><p className={styles.zoomText}>{selected?.text}</p><div className={styles.actions}><button onClick={()=>setSelected(null)}>닫기</button><button className={styles.danger} disabled={busy} onClick={()=>void action("delete",selected?.id)}>이 의견 삭제</button></div></dialog>
+      {imageCapture && <OpinionSaveDialog capture={imageCapture} user={user} onClose={()=>setImageCapture(null)} onSaved={message=>{setNotice(message);setImageCapture(null);}}/>}
     </div>
     <section className={styles.opinionList}><h2>등록된 의견 {state?.opinions.length || 0}개</h2><p className={styles.small}>참여 인원은 이번 활동에 의견을 제출한 고유 참여자 수입니다. 삭제된 의견의 참여자도 포함됩니다.</p><div className={styles.listGrid}>{state?.opinions.map((o,index)=><div key={o.id} className={styles.listItem}><span className={styles.opinionNumber}>{index+1}</span><p>{o.text}</p><button aria-label={`${index+1}번 의견 삭제`} className={styles.deleteSmall} disabled={busy} onClick={()=>void action("delete",o.id)}>삭제</button></div>)}</div></section>
-    <dialog className={styles.dialog} ref={resetDialog} onCancel={()=>setConfirmReset(false)} onClose={()=>setConfirmReset(false)}><h2>활동 {slot}을 리셋할까요?</h2><p>이 활동의 모든 의견과 학생 접속권한이 삭제됩니다. 삭제 후 복구할 수 없으므로 반드시 먼저 [PNG 저장] 또는 [사진 공유]로 아이들의 의견을 보관해 주세요. 다른 활동과 주제·링크는 유지됩니다.</p><div className={styles.actions}><button onClick={()=>setConfirmReset(false)}>취소</button><button className={styles.danger} disabled={busy} onClick={()=>void action("reset")}>활동 리셋</button></div></dialog>
+    <dialog className={styles.dialog} ref={resetDialog} onCancel={()=>setConfirmReset(false)} onClose={()=>setConfirmReset(false)}><h2>활동 {slot}을 리셋할까요?</h2><p>이 활동의 모든 의견과 학생 접속권한이 삭제됩니다. 삭제 후 복구할 수 없으므로 반드시 먼저 [저장] 또는 [사진 공유]로 아이들의 의견을 보관해 주세요. 이미 학교 차시에 저장한 사진과 다른 활동·주제·링크는 유지됩니다.</p><div className={styles.actions}><button onClick={()=>setConfirmReset(false)}>취소</button><button className={styles.danger} disabled={busy} onClick={()=>void action("reset")}>활동 리셋</button></div></dialog>
   </main>;
 }

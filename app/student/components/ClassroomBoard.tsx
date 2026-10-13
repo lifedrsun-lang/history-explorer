@@ -204,6 +204,15 @@ export default function ClassroomBoard({
                         {lesson.message}
                       </p>
 
+                      {lesson.opinionImages?.length ? <div className="mt-4 space-y-4" aria-label="우리 반 의견 모으기 사진">
+                        {lesson.opinionImages.map(image=><a key={image.id} href={image.href} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-2xl border border-indigo-100 bg-white">
+                          {/* Authenticated storage is served through the class-scoped image route. */}
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={image.href} alt={image.topic} loading="lazy" className="h-auto w-full" />
+                          <span className="block px-4 py-3 text-sm font-bold text-indigo-700">📸 {image.topic} · 크게 보기</span>
+                        </a>)}
+                      </div> : null}
+
                       {lesson.links.length > 0 && (
                         <ClassroomActivityLinks
                           classroom={currentClassroom}
