@@ -4,7 +4,7 @@ export const VOTE_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 // Only immutable vote JPEGs may be served. Never accept another bucket path.
 export function isVoteImagePath(value: unknown): value is string {
-  return typeof value === "string" && /^sunlab-vote\/(production|preview|local)\/[123]\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.jpg$/.test(value);
+  return typeof value === "string" && /^sunlab-vote\/(production|preview|local)\/[1-8]\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.jpg$/.test(value);
 }
 export function voteImageUrl(path: string) {
   if (!isVoteImagePath(path)) throw new Error("invalid_vote_image_path");

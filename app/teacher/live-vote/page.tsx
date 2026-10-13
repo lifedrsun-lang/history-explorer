@@ -3,7 +3,7 @@ import Link from "next/link";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { useEffect, useRef, useState } from "react";
 import { auth } from "@/lib/firebase";
-import { DEFAULT_ITEMS, EMPTY_VOTE, type VoteSettings, type VoteSlot, type VoteView } from "@/lib/liveVote";
+import { DEFAULT_ITEMS, EMPTY_VOTE, VOTE_SLOTS, type VoteSettings, type VoteSlot, type VoteView } from "@/lib/liveVote";
 import VoteBars from "@/app/vote/VoteBars";
 import VotePhotoGrid from "@/app/vote/VotePhotoGrid";
 import { useVoteStream } from "@/app/vote/useVoteStream";
@@ -124,10 +124,10 @@ export default function TeacherLiveVotePage() {
     <Link href="/teacher" className="text-sm font-bold text-slate-600">← 교사 관리실</Link>
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
       <h1 className="text-3xl font-black text-slate-900">실시간 투표</h1>
-      <span className="rounded-full bg-slate-200 px-4 py-2 text-sm font-black text-slate-600">최대 3개 저장 · 투표별 고정 링크</span>
+      <span className="rounded-full bg-slate-200 px-4 py-2 text-sm font-black text-slate-600">최대 {VOTE_SLOTS.length}개 저장 · 투표별 고정 링크</span>
     </div>
-    <nav aria-label="저장된 투표" className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-      {([1, 2, 3] as const).map(number => {
+    <nav aria-label="저장된 투표" className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {VOTE_SLOTS.map(number => {
         const item = votes.find(v => v.slot === number);
         return <button type="button" key={number} onClick={() => switchSlot(number)} disabled={!loaded || busy || uploading}
           aria-current={slot === number ? "page" : undefined}
