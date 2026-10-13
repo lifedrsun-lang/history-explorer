@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { startVisiblePolling } from "@/lib/visiblePolling";
 
 import type { ContractSchoolSummary } from "@/lib/contractSchools";
 import type { SchoolClassroom } from "../data/classroomData";
@@ -19,7 +20,7 @@ type Props = {
   fallbackClassrooms?: SchoolClassroom[];
 };
 
-const REFRESH_MS = 10_000;
+const REFRESH_MS = 60_000;
 
 export default function ManagedSchoolClassroomEntry({
   schoolSlug,
@@ -84,21 +85,26 @@ export default function ManagedSchoolClassroomEntry({
   );
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => void loadSchool(), 0);
-    return () => window.clearTimeout(timeout);
+    let started = false;
+    const loadWhenVisible = () => {
+      if (started || document.visibilityState === "hidden" || !navigator.onLine) return;
+      started = true;
+      void loadSchool();
+    };
+    const timeout = window.setTimeout(loadWhenVisible, 0);
+    document.addEventListener("visibilitychange", loadWhenVisible);
+    window.addEventListener("online", loadWhenVisible);
+    return () => {
+      window.clearTimeout(timeout);
+      document.removeEventListener("visibilitychange", loadWhenVisible);
+      window.removeEventListener("online", loadWhenVisible);
+    };
   }, [loadSchool]);
 
   useEffect(() => {
     if (loading || requiresPassword || classrooms.length === 0) return;
 
-    const interval = window.setInterval(() => void loadSchool(true), REFRESH_MS);
-    const handleFocus = () => void loadSchool(true);
-    window.addEventListener("focus", handleFocus);
-
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("focus", handleFocus);
-    };
+    return startVisiblePolling(() => loadSchool(true), REFRESH_MS, false);
   }, [classrooms.length, loadSchool, loading, requiresPassword]);
 
   const unlockSchool = async () => {
