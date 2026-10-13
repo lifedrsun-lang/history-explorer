@@ -28,7 +28,7 @@ export async function GET(request: Request) {
           if (close) controller.close();
         };
         const heartbeat = setInterval(() => { if (!finished) controller.enqueue(encoder.encode(": heartbeat\n\n")); }, 15000);
-        const deadline = setTimeout(() => cleanup(), 55000);
+        const deadline = setTimeout(() => { send("reconnect", {}); cleanup(); }, 55000);
         send("vote", initial);
         unsubscribe = state.onSnapshot(() => {
           chain = chain.then(async () => { if (!finished) send("vote", await readVote(slot)); }).catch(error => {

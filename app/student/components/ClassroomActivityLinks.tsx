@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 
 import { auth } from "@/lib/firebase";
+import { startVisiblePolling } from "@/lib/visiblePolling";
 import {
   GAEBONG_SCHOOL_NAME,
   type ClassroomLesson,
@@ -74,23 +75,7 @@ export default function ClassroomActivityLinks({
   }, []);
 
   useEffect(() => {
-    const initialRefresh = window.setTimeout(() => void refreshState(), 0);
-
-    const interval = window.setInterval(() => {
-      void refreshState();
-    }, REFRESH_MS);
-
-    const handleFocus = () => {
-      void refreshState();
-    };
-
-    window.addEventListener("focus", handleFocus);
-
-    return () => {
-      window.clearTimeout(initialRefresh);
-      window.clearInterval(interval);
-      window.removeEventListener("focus", handleFocus);
-    };
+    return startVisiblePolling(refreshState, REFRESH_MS);
   }, [refreshState]);
 
   const isUnlocked = (activityId: string, defaultUnlocked?: boolean) => {

@@ -17,7 +17,7 @@ export function useClassroomLessons(
   const activeRequest = useRef<AbortController | null>(null);
 
   const refreshLessons = useCallback(async () => {
-    if (studentPreview) return;
+    if (studentPreview || document.visibilityState === "hidden" || !navigator.onLine) return;
     // A slower, earlier response must never replace a newer public state.
     activeRequest.current?.abort();
     const controller = new AbortController();
@@ -72,7 +72,9 @@ export function useClassroomLessons(
       scheduled = window.setTimeout(() => void refreshLessons(), 100);
     };
 
-    scheduled = window.setTimeout(() => void refreshLessons(), 0);
+    if (document.visibilityState !== "hidden") {
+      scheduled = window.setTimeout(() => void refreshLessons(), 0);
+    }
     window.addEventListener("focus", scheduleRefresh);
     window.addEventListener("pageshow", scheduleRefresh);
     window.addEventListener("online", scheduleRefresh);
