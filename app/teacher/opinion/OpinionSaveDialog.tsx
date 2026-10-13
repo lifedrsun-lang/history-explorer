@@ -48,8 +48,8 @@ export default function OpinionSaveDialog({capture,user,onClose,onSaved}:{captur
     } catch(e) {setError(e instanceof Error?e.message:"차시에 저장하지 못했습니다. 다시 시도해 주세요.");}
     finally {setBusy(false);}
   }
-  return <dialog ref={ref} className={`${styles.dialog} ${styles.saveDialog}`} onCancel={event=>{if(busy) event.preventDefault();else onClose();}} onClose={onClose}>
-    <h2>의견 사진 저장</h2><p className={styles.small}>중앙 주제와 주변 의견 배치를 담은 사진입니다. 저장해도 활동과 의견은 유지됩니다.</p>
+  return <dialog ref={ref} aria-labelledby="opinion-save-title" className={`${styles.dialog} ${styles.saveDialog}`} onCancel={event=>{if(busy) event.preventDefault();else onClose();}} onClose={onClose}>
+    <h2 id="opinion-save-title">의견 사진 저장</h2><p className={styles.small}>중앙 주제와 주변 의견 배치를 담은 사진입니다. 저장해도 활동과 의견은 유지됩니다.</p>
     {/* A local Blob preview cannot use the remote Next image optimizer. */}
     {/* eslint-disable-next-line @next/next/no-img-element */}
     <img ref={previewRef} alt={`${capture.topic} 저장 미리보기`} className={styles.savePreview}/>
