@@ -16,11 +16,13 @@ export function cleanOpinion(value: unknown) {
   return text;
 }
 
-export type OpinionSlot = 1 | 2 | 3;
+export const OPINION_SLOTS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+export type OpinionSlot = (typeof OPINION_SLOTS)[number];
 export function opinionSlot(value: unknown): OpinionSlot {
   if (value == null) return 1;
-  if (value !== "1" && value !== "2" && value !== "3" && value !== 1 && value !== 2 && value !== 3) throw new Error("invalid_slot");
-  return Number(value) as OpinionSlot;
+  const slot = OPINION_SLOTS.find(number => value === number || value === String(number));
+  if (slot === undefined) throw new Error("invalid_slot");
+  return slot;
 }
 export function opinionPath(slot: OpinionSlot) {
   return slot === 1 ? OPINION_PATH : OPINION_PATH + "/" + slot;

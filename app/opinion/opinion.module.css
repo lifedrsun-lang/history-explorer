@@ -72,8 +72,8 @@
 @media(max-width:640px){.teacherPage{padding:16px}.teacherHeading h1{font-size:24px}.teacherHeading{align-items:flex-start}.controls{padding:16px}.studentCard{padding:26px 22px}.studentCard h1{font-size:24px}.boardToolbar{padding:4px 0 12px;gap:10px}.boardTools{gap:8px}.centre{padding:12px 10px;border-radius:18px}.centre h2{font-size:16px}.centre span,.centre>div{display:none}.zoomText{font-size:24px}.linkRow input{width:100%;flex-basis:100%}}
 @media(prefers-reduced-motion:reduce){.placed{transition:none}}
 
-.slotTabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 16px}
+.slotTabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 16px}
 .slotTabs button{padding:17px 12px;background:white;border:2px solid #dbe3f0;border-radius:16px;font-size:16px;font-weight:900}
 .slotTabs .slotSelected{background:#eef2ff;border-color:#4f46e5;color:#3730a3}
-@media(max-width:640px){.slotTabs{gap:7px}.slotTabs button{font-size:12px;padding:12px 5px}}
+@media(max-width:640px){.slotTabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.slotTabs button{font-size:12px;padding:12px 5px}}
 .saveDialog{max-width:760px}.savePreview{display:block;width:100%;height:auto;border-radius:16px;margin:18px 0;border:1px solid #dbe3f0}.saveFields{border-top:1px solid #e2e8f0;margin-top:22px;padding-top:12px}.saveFields label{display:block;font-size:14px;font-weight:800;margin:12px 0 8px}.saveFields select{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:12px;background:white;color:#1e293b}.saveTarget{padding:12px;background:#eef2ff;border-radius:12px;font-weight:800;margin-top:14px;font-size:14px}

@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
+import { OPINION_SLOTS, opinionSlot } from "@/lib/opinions";
 import OpinionStudentClient from "../OpinionStudentClient";
 export default async function NumberedOpinionPage({params}: {params: Promise<{slot: string}>}) {
   const {slot} = await params;
-  if(slot !== "2" && slot !== "3") notFound();
-  return <OpinionStudentClient slot={slot==="2"?2:3}/>;
+  if(!OPINION_SLOTS.some(number => number > 1 && String(number) === slot)) notFound();
+  return <OpinionStudentClient slot={opinionSlot(slot)}/>;
 }
