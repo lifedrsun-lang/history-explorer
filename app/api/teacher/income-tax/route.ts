@@ -150,10 +150,11 @@ const createRecord = (
   const storedLocalTax = amount(entry.residentTax);
   const legacyTax = amount(entry.taxAmount);
   const taxWasEstimated =
-    entry.calculationVersion !== 1 && storedIncomeTax === 0 && storedLocalTax === 0;
-  const incomeTax = storedIncomeTax ||
+    rawEntry.calculationVersion !== 1 &&
+    amount(rawEntry.incomeTax) === 0 && amount(rawEntry.residentTax) === 0;
+  const incomeTax = entry.calculationVersion === 1 ? storedIncomeTax : storedIncomeTax ||
     (legacyTax ? Math.round(legacyTax / 1.1) : Math.round(grossAmount * 0.03));
-  const localTax = storedLocalTax ||
+  const localTax = entry.calculationVersion === 1 ? storedLocalTax : storedLocalTax ||
     (legacyTax ? Math.max(0, legacyTax - incomeTax) : Math.round(grossAmount * 0.003));
   const contractSearchable = `${normalize(contract.schoolName)} ${normalize(contract.title)}`;
   const usesFixedSchoolMapping = /하늘빛|새솔|사우/.test(contractSearchable);

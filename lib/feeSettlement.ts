@@ -106,20 +106,35 @@ export function resetFeeSettlement(entry: FeeSettlement, expectedAmount: number)
   }, expectedAmount);
 }
 
-// Preserve historical aggregate records. Only explicitly edited records adopt the new schema.
+// Recover missing legacy taxes only when the saved gross/net amounts reconcile exactly
+// with the existing automatic calculation. Keep other historical deductions unchanged.
+const reconcileLegacyFeeSettlement = (entry: FeeSettlement): FeeSettlement => {
+  if (
+    !hasReceivedAmount(entry) || amount(entry.grossAmount) === 0 ||
+    Number(entry.taxAmount || 0) !== 0 || Number(entry.insuranceFee || 0) !== 0
+  ) {
+    return entry;
+  }
+  const calculated = calculateFeeSettlement(entry, amount(entry.grossAmount));
+  const difference = Number(entry.grossAmount) - Number(entry.receivedAmount);
+  if (Number(calculated.taxAmount) <= 0 || difference !== calculated.taxAmount) return entry;
+  return calculated;
+};
+
+// Preserve historical aggregate records unless missing taxes reconcile with the saved payment.
 export function sanitizeFeeSettlement(data: Record<string, unknown>): FeeSettlement {
   if (data.calculationVersion !== 1) {
     const legacyAmount = (value: unknown) => {
       const result = Number(value || 0);
       return Number.isFinite(result) && result >= 0 ? result : 0;
     };
-    return preserveTaxMetadata({
+    return reconcileLegacyFeeSettlement(preserveTaxMetadata({
       receivedAmount: legacyAmount(data.receivedAmount),
       grossAmount: legacyAmount(data.grossAmount),
       insuranceFee: legacyAmount(data.insuranceFee),
       taxAmount: legacyAmount(data.taxAmount),
       receivedDate: String(data.receivedDate || ""),
-    }, data);
+    }, data));
   }
   const entry: FeeSettlement = {
     calculationVersion: 1,
