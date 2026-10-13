@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { auth } from "@/lib/firebase";
 import TeacherClassAccountFinder from "@/app/student/components/TeacherClassAccountFinder";
 import SchoolDocumentsPanel from "@/app/teacher/contract-schools/SchoolDocumentsPanel";
+import LessonPhotosPanel from "@/app/teacher/contract-schools/LessonPhotosPanel";
 import type {
   ContractSchoolClassroom,
   ContractSchoolConfig,
@@ -865,6 +866,7 @@ export default function ContractSchoolsPage() {
                         <label className="text-xs font-black text-slate-600">차시 제목<input value={lesson.title} onChange={(event) => updateLesson(lesson.id, (current) => ({ ...current, title: event.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" /></label>
                       </div>
                       <label className="block text-xs font-black text-slate-600">설명<textarea value={lesson.message} onChange={(event) => updateLesson(lesson.id, (current) => ({ ...current, message: event.target.value }))} rows={3} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" /></label>
+                      {user && <LessonPhotosPanel key={`${selectedSchool.slug}:${lesson.id}`} user={user} school={selectedSchool} lesson={lesson} disabled={saving} />}
                       <div>
                         <div className="flex items-center justify-between"><div className="text-sm font-black text-slate-800">링크 목록</div><button type="button" onClick={() => updateLessonLinks(lesson.id, (links) => [...links, { id: makeClientId("link"), label: "새 링크", href: "https://", kind: "activity", defaultUnlocked: false, targetType: "all" }])} className="rounded-xl bg-sky-100 px-3 py-2 text-xs font-black text-sky-700">+ 링크 추가</button></div>
                         <div className="mt-2 space-y-2">

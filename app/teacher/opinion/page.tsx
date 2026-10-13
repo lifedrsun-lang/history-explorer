@@ -3,7 +3,7 @@ import Link from "next/link";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { auth } from "@/lib/firebase";
-import { Opinion, OpinionState, opinionPath, type OpinionSlot } from "@/lib/opinions";
+import { Opinion, OpinionState, OPINION_SLOTS, opinionPath, type OpinionSlot } from "@/lib/opinions";
 import { makeOpinionPng, shareOpinionPng } from "./opinionImage";
 import OpinionSaveDialog,{type OpinionImageCapture} from "./OpinionSaveDialog";
 import { useOpinionPolling } from "@/app/opinion/useOpinionPolling";
@@ -108,7 +108,7 @@ export default function TeacherOpinionPage() {
     <Link href="/teacher" className={styles.back}>← 교사 관리실</Link>
     <header className={styles.teacherHeading}><div><div className={styles.eyebrow}>SUN LAB · 함께 생각하기</div><h1>실시간 의견 모으기</h1><p>한 문장씩 모아, 함께 생각해요.</p></div><span className={state?.active?styles.activeBadge:styles.idleBadge}>{state?.active?"활동 진행 중":"활동 대기"}</span></header>
     <nav className={styles.slotTabs} aria-label="저장된 의견 모으기 활동">
-      {([1,2,3] as const).map(number=><button type="button" key={number} disabled={busy || imageBusy} aria-current={slot===number?"page":undefined} className={slot===number?styles.slotSelected:undefined} onClick={()=>selectSlot(number)}>의견 활동 {number}</button>)}
+      {OPINION_SLOTS.map(number=><button type="button" key={number} disabled={busy || imageBusy} aria-current={slot===number?"page":undefined} className={slot===number?styles.slotSelected:undefined} onClick={()=>selectSlot(number)}>의견 활동 {number}</button>)}
     </nav>
     <section className={styles.controls} aria-label="활동 관리">
       <label htmlFor="opinion-topic-input">활동 주제</label>

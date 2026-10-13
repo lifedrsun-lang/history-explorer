@@ -12,6 +12,6 @@ export async function GET(_request:Request,{params}:{params:Promise<{token:strin
     if(!resolved || !image || image.schoolSlug!==resolved.school.slug || image.classroomId!==resolved.classroom.id) return new Response(null,{status:404,headers});
     const lesson=toSchoolClassroom(resolved.school,resolved.classroom).lessons.find(l=>l.lesson===image.lessonNumber);
     if(!lesson || lesson.expandLocked || !resolved.school.lessons.some(l=>l.id===image.lessonId && l.lesson===image.lessonNumber)) return new Response(null,{status:404,headers});
-    return new Response(await downloadOpinionLessonImage(image),{headers:{...headers,"Content-Type":"image/png","Content-Disposition":"inline"}});
+    return new Response(await downloadOpinionLessonImage(image),{headers:{...headers,"Content-Type":image.contentType||"image/png","Content-Disposition":"inline"}});
   } catch {return new Response(null,{status:503,headers});}
 }

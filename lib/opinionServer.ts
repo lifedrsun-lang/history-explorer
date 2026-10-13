@@ -66,7 +66,7 @@ export function opinionError(error: unknown) {
   const code = error instanceof Error ? error.message : "unknown";
   const messages: Record<string, [number,string]> = {
     round_closed: [409,"활동이 종료되었거나 새 활동으로 변경되었습니다."],
-    invalid_slot: [400,"활동 번호는 1~3번 중에서 선택해 주세요."],
+    invalid_slot: [400,"활동 번호는 1~8번 중에서 선택해 주세요."],
     invalid_text: [400,"공백을 제외한 의견을 60자 이내로 입력해 주세요."],
     invalid_topic: [400,"주제는 1~80자, 안내 문구는 300자 이내로 입력해 주세요."],
     browser_required: [401,"학생 링크를 다시 열어 주세요."],
