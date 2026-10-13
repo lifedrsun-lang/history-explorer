@@ -128,6 +128,7 @@ const serializeContract = (
   return {
     id: docItem.id,
     ...data,
+    settlements: sanitizeSettlements(data.settlements),
     quarterWeekParticipation: deserializeQuarterWeekParticipation(
       data.quarterWeekParticipation
     ),
