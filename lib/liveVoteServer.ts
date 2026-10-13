@@ -2,7 +2,7 @@ import "server-only";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { verifyTeacherRequest } from "@/lib/assignmentServer";
-import { DEFAULT_ITEMS, VoteError, validateVoteSettings, voteSlot, type VoteChoice, type VoteSettings, type VoteSlot, type VoteView } from "@/lib/liveVote";
+import { DEFAULT_ITEMS, VOTE_SLOTS, VoteError, validateVoteSettings, voteSlot, type VoteChoice, type VoteSettings, type VoteSlot, type VoteView } from "@/lib/liveVote";
 
 export function voteNamespace() {
   if (process.env.VERCEL_ENV === "production") return "production";
@@ -81,7 +81,7 @@ export async function readVote(slot: VoteSlot = 1): Promise<VoteView> {
   }, { readOnly: true });
 }
 export async function readVotes() {
-  return Promise.all(([1, 2, 3] as const).map(slot => readVote(slot)));
+  return Promise.all(VOTE_SLOTS.map(slot => readVote(slot)));
 }
 export async function manageVote(uid: string, body: Record<string, unknown>): Promise<VoteView> {
   const slot = voteSlot(body.slot);

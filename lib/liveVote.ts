@@ -1,6 +1,7 @@
 import { voteImagePathFromUrl } from "@/lib/liveVoteImages";
 export type VoteChoice = 1 | 2;
-export type VoteSlot = 1 | 2 | 3;
+export const VOTE_SLOTS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+export type VoteSlot = (typeof VOTE_SLOTS)[number];
 export type VoteItem = { id: string; imageUrl: string };
 export type VoteSettings = { title: string; question: string; option1: string; option2: string; items: VoteItem[] };
 export type VoteView = VoteSettings & { slot: VoteSlot; active: boolean; generation: string; counts: [number, number]; countsByItem: Record<string, [number, number]>; revision: number };
@@ -9,7 +10,7 @@ export const EMPTY_VOTE: VoteView = { slot: 1, title: "", question: "", option1:
 export class VoteError extends Error { constructor(message: string, public status = 400, public code = "invalid_input") { super(message); } }
 export function voteSlot(value: unknown): VoteSlot {
   const slot = value == null ? 1 : Number(value);
-  if (!Number.isInteger(slot) || slot < 1 || slot > 3) throw new VoteError("투표 번호를 확인해주세요.");
+  if (!Number.isInteger(slot) || slot < 1 || slot > VOTE_SLOTS.length) throw new VoteError("투표 번호를 확인해주세요.");
   return slot as VoteSlot;
 }
 export function validateVoteSettings(input: Record<string, unknown>): VoteSettings {

@@ -57,7 +57,7 @@ async function main() {
   const bucket = integration ? load('lib/supabaseServer.ts').getSupabaseServer().storage.from(load('lib/supabaseServer.ts').getAssignmentBucketName()) : fakeBucket;
   const db = integration ? load('lib/firebaseAdmin.ts').getFirebaseAdmin().db : null;
   const results = [];
-  for (const slot of [1, 2, 3]) for (const [format, type] of [['jpeg', 'image/jpeg'], ['png', 'image/png'], ['webp', 'image/webp']]) {
+  for (const slot of [1, 2, 3, 4, 5, 6, 7, 8]) for (const [format, type] of [['jpeg', 'image/jpeg'], ['png', 'image/png'], ['webp', 'image/webp']]) {
     let storagePath;
     let doc;
     const result = { slot, format };
@@ -96,6 +96,8 @@ async function main() {
   const invalid = new File(['broken'], 'bad.png', { type: 'image/png' });
   assert.equal((await upload.POST(request(invalid, 1, false))).status, 401);
   assert.equal((await upload.POST(request(invalid, 1))).status, 400);
+  assert.equal((await upload.POST(request(invalid, 9))).status, 400);
+  assert.equal(urls.voteImagePathFromUrl('/api/vote/image?path=sunlab-vote/' + namespace + '/9/' + randomUUID() + '.jpg'), null);
   assert.equal((await upload.POST(request(new File([new Uint8Array(4_000_001)], 'big.jpg', { type: 'image/jpeg' }), 1))).status, 400);
   assert.equal((await read.GET(new Request('https://example.test/api/vote/image?path=assignments/private.jpg'))).status, 400);
   assert.equal((await read.GET(new Request('https://example.test/api/vote/image?path=sunlab-vote/../private.jpg'))).status, 400);

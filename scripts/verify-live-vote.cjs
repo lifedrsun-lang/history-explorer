@@ -95,8 +95,27 @@ async function main() {
   await api.manageVote('teacher', { action: 'reset' });
   await api.manageVote('teacher', { action: 'save', ...settings, title: '수정한 제목' });
   assert.equal((await api.readVote()).title, '수정한 제목');
+  assert.deepEqual(Array.from(await api.readVotes(), vote => vote.slot), [1, 2, 3, 4, 5, 6, 7, 8]);
+  await rejected(api.manageVote('teacher', { slot: 9, action: 'save', ...settings }), 'invalid_input');
+  await rejected(api.manageVote('teacher', { slot: 0, action: 'save', ...settings }), 'invalid_input');
+  let slot7Token;
+  for (const slot of [2, 3, 4, 5, 6, 7, 8]) {
+    await api.manageVote('teacher', { slot, action: 'save', ...settings, title: '투표 ' + slot });
+    const created = await api.manageVote('teacher', { slot, action: 'open' });
+    const joined = await api.joinVote({ slot, browserId: randomUUID(), generation: created.generation });
+    await api.castVote({ slot, token: joined.token, choice: 1 });
+    assert.deepEqual(Array.from((await api.readVote(slot)).counts), [1, 0]);
+    if (slot === 7) slot7Token = joined.token;
+  }
+  const slot7Before = await api.readVote(7);
+  await api.manageVote('teacher', { slot: 8, action: 'reset' });
+  assert.deepEqual(Array.from((await api.readVote(8)).counts), [0, 0]);
+  assert.deepEqual(Array.from((await api.readVote(7)).counts), [1, 0]);
+  assert.equal((await api.readVote(7)).generation, slot7Before.generation);
+  await rejected(api.castVote({ slot: 8, token: slot7Token, choice: 2 }), 'vote_ended');
+  assert.equal((await api.readVote(1)).title, '수정한 제목');
   await rejected(api.voteBody(new Request('https://example.test/api/vote/choice', { method: 'POST', headers: { origin: 'https://other.test', 'content-type': 'application/json' }, body: '{}' })), 'forbidden');
-  console.log('PASS: input validation, authorization guards, 25 simulated participants (13 + 12), duplicate choice, choice change (12 + 13), reload, token tampering, reset, erased responses, stale sessions, reopening, settings edit, origin guard.');
+  console.log('PASS: all 8 independent slots, invalid slot guards, isolated reset, cross-slot token rejection, input validation, authorization guards, 25 simulated participants (13 + 12), duplicate choice, reload, stale sessions, settings edit, origin guard.');
   console.log('Not tested here: real Firebase auth, Firestore transaction contention, deployed SSE, browser interaction.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
