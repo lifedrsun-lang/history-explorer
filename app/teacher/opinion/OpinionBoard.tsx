@@ -4,8 +4,9 @@ import { Opinion } from "@/lib/opinions";
 import { placeOpinions, PlacedOpinion, Rect } from "@/lib/opinionLayout";
 import styles from "@/app/opinion/opinion.module.css";
 
-export default function OpinionBoard({topic,opinions,onSelect,listMode,onFallback}: {
+export default function OpinionBoard({topic,opinions,onSelect,listMode,onFallback,onLayoutReady}: {
   topic:string; opinions:Opinion[]; onSelect:(opinion:Opinion)=>void; listMode:boolean; onFallback:(fallback:boolean)=>void;
+  onLayoutReady?:(board:HTMLDivElement, fits:boolean)=>void;
 }) {
   const boardRef=useRef<HTMLDivElement>(null);
   const centreRef=useRef<HTMLDivElement>(null);
@@ -47,6 +48,10 @@ export default function OpinionBoard({topic,opinions,onSelect,listMode,onFallbac
     void document.fonts.ready.then(()=>{if(mounted) compute();});
     return ()=>{mounted=false;observer.disconnect();};
   },[topic,opinions,onFallback,listMode]);
+  useLayoutEffect(()=>{
+    if(boardRef.current && (layout.fallback || layout.positions.length===opinions.length))
+      onLayoutReady?.(boardRef.current,!layout.fallback);
+  },[layout,opinions.length,onLayoutReady]);
   const byId=new Map(opinions.map(o=>[o.id,o]));
   return <>
     <div className={styles.board} ref={boardRef} data-testid="opinion-board" style={listMode?{display:"none"}:undefined}>

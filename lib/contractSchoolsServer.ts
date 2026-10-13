@@ -29,6 +29,7 @@ import {
 } from "@/lib/contractSchools";
 import { getSchoolPassword, normalizeSchoolText } from "@/app/student/data/schoolInfo";
 import { getAfterSchoolSchool } from "@/lib/afterSchool";
+import { listOpinionLessonImages } from "@/lib/opinionLessonImagesServer";
 
 type StoredContractSchool = Omit<
   ContractSchoolConfig,
@@ -829,7 +830,16 @@ export const getContractClassroomByToken = async (
   options: { includeUnpublished?: boolean } = {}
 ) => {
   const resolved = await getContractSchoolAndClassroomByToken(tokenValue, options);
-  return resolved ? toSchoolClassroom(resolved.school, resolved.classroom) : null;
+  if(!resolved) return null;
+  const classroom=toSchoolClassroom(resolved.school,resolved.classroom);
+  try {
+    const images=await listOpinionLessonImages(resolved.school.slug,resolved.classroom.id);
+    return {...classroom,lessons:classroom.lessons.map(lesson=>({...lesson,opinionImages:images.filter(image=>image.lessonNumber===lesson.lesson && resolved.school.lessons.some(l=>l.id===image.lessonId && l.lesson===lesson.lesson)).map(image=>({id:image.id,topic:image.topic,createdAt:image.createdAt,href:`/api/classroom/${encodeURIComponent(classroom.directToken)}/opinion-images/${image.id}`}))}))};
+  } catch {
+    // An image-store outage must never block existing lessons or student login.
+    console.error("classroom opinion images unavailable");
+    return classroom;
+  }
 };
 
 export const getManagedContractClassroomByToken = async (tokenValue: unknown) => {

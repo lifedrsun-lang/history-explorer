@@ -1,4 +1,5 @@
 import { GAEBONG_SCHOOL_NAME } from "@/lib/gaebongClassroom";
+import type { OpinionLessonImage } from "@/lib/opinionLessonImages";
 
 export { GAEBONG_SCHOOL_NAME };
 
@@ -19,6 +20,7 @@ export type ClassroomLesson = {
   message: string;
   links: ClassroomLink[];
   expandLocked?: boolean;
+  opinionImages?: OpinionLessonImage[];
 };
 
 export type ClassroomMonster = {
