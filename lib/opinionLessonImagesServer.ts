@@ -51,3 +51,12 @@ export async function downloadOpinionLessonImage(image:StoredOpinionLessonImage)
   const {data,error}=await getSupabaseServer().storage.from(image.bucket).download(image.storagePath);
   if(error || !data) throw new Error("opinion_image_storage");return data;
 }
+export async function deleteOpinionLessonImage(image:StoredOpinionLessonImage) {
+  const db=getSupabaseServer();
+  // Keep metadata on a storage failure so the teacher can retry the same photo.
+  const removed=await db.storage.from(image.bucket).remove([image.storagePath]);
+  if(removed.error) throw new Error("opinion_image_storage");
+  const {error}=await db.from(OPINION_LESSON_IMAGE_TABLE).delete().eq("id",image.id).eq("storage_path",image.storagePath);
+  if(error) throw new Error("opinion_image_storage");
+}
+
