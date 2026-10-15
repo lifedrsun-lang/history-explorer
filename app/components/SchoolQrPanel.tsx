@@ -40,10 +40,14 @@ export default function SchoolQrPanel({ school, mode = "teacher" }: Props) {
 
   return (
     <section aria-label={`${school.displayName} 학교 접속 QR`} className="rounded-[28px] border border-sky-100 bg-white p-5 shadow-lg sm:p-7">
-      <h3 className="text-xl font-black text-slate-900">{school.displayName} 접속 QR</h3>
-      <p className="mt-2 text-sm font-bold text-slate-500">QR을 찍고 우리 반을 선택해 주세요.</p>
+      {!isStudentView && (
+        <>
+          <h3 className="text-xl font-black text-slate-900">{school.displayName} 접속 QR</h3>
+          <p className="mt-2 text-sm font-bold text-slate-500">QR을 찍고 우리 반을 선택해 주세요.</p>
+        </>
+      )}
       <div className={isStudentView
-        ? "mt-4 flex flex-col items-center gap-3"
+        ? "flex flex-col items-center gap-3"
         : "mt-4 flex flex-col items-center gap-5 sm:flex-row sm:items-start"}>
         <button type="button" onClick={() => dialogRef.current?.showModal()} aria-label={`${school.displayName} QR 크게 보기`} className="shrink-0 rounded-xl border border-slate-200 bg-white p-3 focus-visible:outline-2 focus-visible:outline-sky-600">
           {qrImage()}
@@ -79,7 +83,7 @@ export default function SchoolQrPanel({ school, mode = "teacher" }: Props) {
           <button type="button" autoFocus onClick={() => dialogRef.current?.close()} className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-700">닫기</button>
         </div>
         {qrImage(true)}
-        <p className="mt-4 text-center text-base font-black text-slate-700">QR을 찍고 우리 반을 선택해 주세요.</p>
+        {!isStudentView && <p className="mt-4 text-center text-base font-black text-slate-700">QR을 찍고 우리 반을 선택해 주세요.</p>}
       </dialog>
     </section>
   );
