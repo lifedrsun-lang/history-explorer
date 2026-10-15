@@ -9,6 +9,7 @@ import { auth } from "@/lib/firebase";
 import TeacherClassAccountFinder from "@/app/student/components/TeacherClassAccountFinder";
 import SchoolDocumentsPanel from "@/app/teacher/contract-schools/SchoolDocumentsPanel";
 import LessonPhotosPanel from "@/app/teacher/contract-schools/LessonPhotosPanel";
+import SchoolQrPanel from "./SchoolQrPanel";
 import type {
   ContractSchoolClassroom,
   ContractSchoolConfig,
@@ -833,6 +834,8 @@ export default function ContractSchoolsPage() {
               </div>
               <button type="button" disabled={saving} onClick={() => void saveSchool(selectedSchool, "반 이름과 구성을 저장했어요.")} className="mt-4 rounded-2xl bg-sky-100 px-4 py-2.5 text-sm font-black text-sky-700 disabled:opacity-50">반 이름·구성 저장</button>
             </div>
+
+            <SchoolQrPanel key={selectedSchool.slug} school={selectedSchool} />
 
             <div id="lesson-management" className="scroll-mt-4 rounded-[28px] bg-white p-5 shadow-lg sm:p-7">
               <div className="flex items-center justify-between gap-3">
