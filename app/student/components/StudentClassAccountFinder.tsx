@@ -56,7 +56,6 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
 
   const schoolLabel = classroom.schoolDisplayName || "서울 개봉초";
   const isWonjongSchool = classroom.schoolName === WONJONG_SCHOOL_NAME;
-  const isWonjongGrade2 = isWonjongSchool && classroom.grade === 2;
   const passwordChangeEnabled = !isWonjongSchool || Boolean(account?.passwordResetAllowed);
 
   const resetPasswordForm = () => {
@@ -204,7 +203,7 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
           <div className="text-xs font-black text-emerald-500">🔎 학생용</div>
           <h2 className="mt-1 text-xl font-black text-slate-800">내 계정 찾기</h2>
           <p className="mt-1 text-xs font-bold leading-5 text-slate-500">
-            선생님이 알려주신 학급 번호를 입력해 주세요.
+            선생님이 알려주신 출석번호로 계정을 찾을 수 있어요.
           </p>
         </div>
         <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-black text-emerald-700">
@@ -212,7 +211,8 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
         </span>
       </div>
 
-      <div className="mt-4 flex gap-2 rounded-[22px] bg-emerald-50 p-2">
+      <div className="mt-4 flex flex-col gap-2 rounded-[22px] bg-emerald-50 p-2 sm:flex-row">
+        <div className="relative min-w-0 flex-1">
         <input
           type="text"
           inputMode="numeric"
@@ -230,10 +230,15 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
           onKeyDown={(event) => {
             if (event.key === "Enter" && !isSearching) void findAccount();
           }}
-          placeholder="예: 17"
-          aria-label="학급 번호"
-          className="min-w-0 flex-1 rounded-2xl border border-emerald-100 bg-white px-4 py-3 text-center text-lg font-black text-slate-800 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100"
+          aria-label="출석번호"
+          aria-describedby="student-account-number-hint"
+          className="min-h-20 w-full rounded-2xl border border-emerald-100 bg-white px-4 py-3 text-center text-lg font-black text-slate-800 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100"
         />
+        <span id="student-account-number-hint" className={searchNumber ? "sr-only" : "pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-3 text-center text-xs font-medium leading-5 text-slate-400"}>
+          <span>친구의 출석번호가 어떻게 돼?</span>
+          <span>입력하고 계정찾기를 눌러줘.</span>
+        </span>
+        </div>
         <button
           type="button"
           onClick={() => void findAccount()}
@@ -272,14 +277,6 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
             </button>
           </div>
           <dl className="mt-3 space-y-2">
-            {!isWonjongGrade2 && account.nickname && (
-              <div className="rounded-2xl bg-white px-4 py-3">
-                <dt className="text-[10px] font-black text-slate-400">닉네임</dt>
-                <dd className="mt-1 break-all font-mono text-sm font-black text-slate-800">
-                  {account.nickname}
-                </dd>
-              </div>
-            )}
             <div className="rounded-2xl bg-white px-4 py-3">
               <dt className="text-[10px] font-black text-slate-400">학급 아이디</dt>
               <dd className="mt-1 flex items-center gap-2">
