@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import ClassroomBoard from "./ClassroomBoard";
+import SchoolQrPanel from "@/app/components/SchoolQrPanel";
 import {
   CLASSROOM_MONSTERS,
   type ClassroomMonster,
@@ -198,6 +199,12 @@ export default function SchoolMonsterClassPortal({ schoolSlug, schoolDisplayName
             {!isLocked && errorMessage && <div className="mt-3 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-center text-sm font-black text-rose-600">{errorMessage}</div>}
             <button type="button" onClick={resetClassroom} className="mt-3 w-full rounded-2xl bg-violet-500 py-3 text-sm font-black text-white shadow-sm">반 다시 선택</button>
           </section>
+        )}
+
+        {!currentClassroom && (
+          <SchoolQrPanel
+            school={{ slug: schoolSlug, displayName: schoolDisplayName }}
+          />
         )}
       </div>
     </div>
