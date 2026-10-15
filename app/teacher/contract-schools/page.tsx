@@ -760,6 +760,10 @@ export default function ContractSchoolsPage() {
                 </button>
               </div>
 
+              <div className="mt-4">
+                <SchoolQrPanel key={selectedSchool.slug} school={selectedSchool} />
+              </div>
+
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
                 <label className="text-xs font-black text-slate-600">학교명<input value={selectedSchool.schoolName} onChange={(event) => setSelectedSchool({ ...selectedSchool, schoolName: event.target.value })} className="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm font-bold" /></label>
                 <label className="text-xs font-black text-slate-600">학생 표시명<input value={selectedSchool.displayName} onChange={(event) => setSelectedSchool({ ...selectedSchool, displayName: event.target.value })} className="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm font-bold" /></label>
@@ -834,8 +838,6 @@ export default function ContractSchoolsPage() {
               </div>
               <button type="button" disabled={saving} onClick={() => void saveSchool(selectedSchool, "반 이름과 구성을 저장했어요.")} className="mt-4 rounded-2xl bg-sky-100 px-4 py-2.5 text-sm font-black text-sky-700 disabled:opacity-50">반 이름·구성 저장</button>
             </div>
-
-            <SchoolQrPanel key={selectedSchool.slug} school={selectedSchool} />
 
             <div id="lesson-management" className="scroll-mt-4 rounded-[28px] bg-white p-5 shadow-lg sm:p-7">
               <div className="flex items-center justify-between gap-3">
