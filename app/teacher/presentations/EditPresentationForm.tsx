@@ -19,6 +19,12 @@ import {
   type BoardgameCategory,
 } from "@/lib/presentations/cardMetadata";
 import {
+  getPresentationCardSchoolDocumentId,
+  getPresentationSchoolCardId,
+  readPresentationCardSchool,
+  PRESENTATION_CARD_SCHOOL_DOCUMENT_TYPE,
+} from "@/lib/presentations/cardSchools";
+import {
   WORLD_CULTURE_SERIES,
   getNumber,
   getLessonNumber,
@@ -41,6 +47,7 @@ type PresentationDraft = {
   bookNumber: string;
   lessonNumber: string;
   cardName: string;
+  schoolName: string;
   brandName: string;
   coverImageDataUrl: string;
   resourceTitle: string;
@@ -54,6 +61,7 @@ const EMPTY_DRAFT: PresentationDraft = {
   bookNumber: "",
   lessonNumber: "1",
   cardName: "",
+  schoolName: "",
   brandName: "",
   coverImageDataUrl: "",
   resourceTitle: "",
@@ -223,6 +231,13 @@ export default function EditPresentationForm({ presentationId, embedded = false,
           String(data?.cardKey || "").trim() || (cardName ? normalizeCardKey(cardName) : "");
         let brandName = "";
         let coverImageDataUrl = "";
+        let schoolName = "";
+        if (isNamedCardCategory(category) && cardKey) {
+          const cardId = getPresentationSchoolCardId(category, cardKey);
+          const schoolSnapshot = await getDoc(doc(db, "presentations", getPresentationCardSchoolDocumentId(cardId)));
+          const schoolMetadata = schoolSnapshot.exists() ? readPresentationCardSchool(schoolSnapshot.data()) : null;
+          schoolName = schoolMetadata?.schoolName || "";
+        }
 
         if (isBoardgameCategory(category) && cardKey) {
           try {
@@ -259,6 +274,7 @@ export default function EditPresentationForm({ presentationId, embedded = false,
           lessonNumber:
             String(getLessonNumber(data?.lessonNumber, data?.title, data?.bookNumber) || 1),
           cardName,
+          schoolName,
           brandName,
           coverImageDataUrl,
           resourceTitle,
@@ -379,6 +395,16 @@ export default function EditPresentationForm({ presentationId, embedded = false,
         updatedAt: serverTimestamp(),
       });
 
+      if (isNamedCategory && (draft.schoolName.trim() !== (sourceDraft?.schoolName || "").trim() || !staysOnSameCard) && (draft.schoolName.trim() || sourceDraft?.schoolName)) {
+        const cardId = getPresentationSchoolCardId(draft.category, cardKey);
+        batch.set(doc(db, "presentations", getPresentationCardSchoolDocumentId(cardId)), {
+          documentType: PRESENTATION_CARD_SCHOOL_DOCUMENT_TYPE,
+          cardId,
+          schoolName: draft.schoolName.trim(),
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      }
+
       if (isBoardgameCategory(draft.category)) {
         batch.set(
           doc(
@@ -476,6 +502,20 @@ export default function EditPresentationForm({ presentationId, embedded = false,
 
           {embedded ? <button type="button" aria-expanded={showSettings} onClick={() => setShowSettings((current) => !current)} className="mt-4 rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold">자료 분류·차시 설정 {showSettings ? "접기" : "수정"}</button> : null}
           <div className="mt-6 grid gap-4">
+            {isNamedCardCategory(draft.category) ? (
+              <label className="text-sm font-black text-slate-700">
+                학교명 (선택)
+                <input
+                  type="text"
+                  value={draft.schoolName}
+                  maxLength={80}
+                  placeholder="예: 서울 동구로초"
+                  onChange={(event) => updateDraft("schoolName", event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
+                />
+                <span className="mt-2 block text-xs font-bold leading-5 text-slate-400">이 카드의 모든 자료에 공통으로 표시되는 학교명입니다.</span>
+              </label>
+            ) : null}
             {!embedded || showSettings ? <><div>
               <div className="text-sm font-black text-slate-700">자료 유형</div>
               <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">

@@ -19,6 +19,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import CardActions, { CardTitlesContext, useCardTitle } from "./CardActions";
 import { readPresentationCardTitle, savePresentationCardTitle } from "@/lib/presentations/cardTitles";
+import { readPresentationCardSchool } from "@/lib/presentations/cardSchools";
 
 import {
   getBoardgameCardMetadata,
@@ -79,6 +80,7 @@ type PresentationNamedCard = {
   category: PresentationCategory;
   cardKey: string;
   displayName: string;
+  schoolName: string;
   brandName: string;
   coverImageDataUrl: string;
   resources: PresentationListItem[];
@@ -300,6 +302,9 @@ function buildNamedCardAddHref(card: PresentationNamedCard, lessonNumber?: numbe
     cardKey: card.cardKey,
     quick: "1",
   });
+
+  const schoolName = card.schoolName || getHelloMapleProgram(card.category, card.displayName)?.school;
+  if (schoolName) params.set("schoolName", schoolName);
 
   const contextResource = card.resources[0];
   if (!isNamedCardCategory(card.category) && contextResource?.bookNumber) {
@@ -529,7 +534,8 @@ function groupPersonalStudyLectures(resources: PresentationListItem[]) {
 
 function groupNamedCards(
   items: PresentationListItem[],
-  metadataByCard: Map<string, BoardgameCardMetadata>
+  metadataByCard: Map<string, BoardgameCardMetadata>,
+  schoolNamesByCard: Map<string, string>
 ) {
   const groups = new Map<string, PresentationNamedCard>();
   const oldestFirst = [...items].sort((a, b) => a.createdAt - b.createdAt);
@@ -547,6 +553,7 @@ function groupNamedCards(
       category: item.category,
       cardKey: item.cardKey,
       displayName: metadata?.cardName || item.cardName,
+      schoolName: schoolNamesByCard.get(`named:${key}`) || "",
       brandName: metadata?.brandName || "",
       coverImageDataUrl: metadata?.coverImageDataUrl || "",
       resources: [],
@@ -605,6 +612,7 @@ function TeacherPresentationsPageContent() {
     Map<string, BoardgameCardMetadata>
   >(new Map());
   const [cardTitles, setCardTitles] = useState<Map<string, string>>(new Map());
+  const [cardSchoolNames, setCardSchoolNames] = useState<Map<string, string>>(new Map());
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [detailEditing, setDetailEditing] = useState(false);
   const [detailBusy, setDetailBusy] = useState(false);
@@ -656,9 +664,10 @@ function TeacherPresentationsPageContent() {
     () =>
       groupNamedCards(
         filteredPresentations.filter((item) => item.cardKey),
-        boardgameCardMetadata
+        boardgameCardMetadata,
+        cardSchoolNames
       ),
-    [boardgameCardMetadata, filteredPresentations]
+    [boardgameCardMetadata, cardSchoolNames, filteredPresentations]
   );
   const linkedLibraryResources = useMemo(
     () =>
@@ -749,7 +758,12 @@ function TeacherPresentationsPageContent() {
           if (entry) nextTitles.set(entry.cardId, entry.title);
         });
         setCardTitles(nextTitles);
-
+        const nextSchoolNames = new Map<string, string>();
+        snapshot.docs.forEach((document) => {
+          const entry = readPresentationCardSchool(document.data());
+          if (entry) nextSchoolNames.set(entry.cardId, entry.schoolName);
+        });
+        setCardSchoolNames(nextSchoolNames);
 
         setPresentations(
           snapshot.docs
@@ -1313,7 +1327,7 @@ function getLibraryCardSummary(item: DisplayLibraryCard): ResourceSummary {
       category: CATEGORY_LABELS[card.category],
       image: card.coverImageDataUrl || undefined,
       icon: isBoardgameCategory(card.category) ? "🎲" : card.category === "personal_study" ? "🌱" : card.category === "facilitator" ? "🧭" : "💻",
-      meta: [program?.school || card.brandName, `자료 ${card.resources.length}개`].filter(Boolean).join(" · "),
+      meta: [card.schoolName || program?.school || card.brandName, `자료 ${card.resources.length}개`].filter(Boolean).join(" · "),
     };
   }
   if (item.kind === "book") {
@@ -1451,7 +1465,7 @@ function NamedResourceCard({
           {isWonjongHelloMaple ? (
             <p className="mt-1 text-xs font-black text-emerald-600">클래스포에듀 협력 수업</p>
           ) : null}
-          <p className="mt-1 text-xs font-bold text-slate-400">자료 {card.resources.length}개</p>
+          <p className="mt-1 text-xs font-bold text-slate-400">{[card.schoolName || program?.school, `자료 ${card.resources.length}개`].filter(Boolean).join(" · ")}</p>
         </div>
         <div className={`flex shrink-0 items-center gap-1.5 ${program ? "w-full justify-end" : ""}`}>
           <Link

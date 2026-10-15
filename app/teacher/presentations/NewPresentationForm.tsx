@@ -17,6 +17,11 @@ import {
   PRESENTATION_CARDS_COLLECTION,
 } from "@/lib/presentations/cardMetadata";
 import {
+  getPresentationCardSchoolDocumentId,
+  getPresentationSchoolCardId,
+  PRESENTATION_CARD_SCHOOL_DOCUMENT_TYPE,
+} from "@/lib/presentations/cardSchools";
+import {
   WORLD_CULTURE_SERIES,
   getWorldCultureLessonTitle,
   isArchivePresentationCategory,
@@ -36,6 +41,7 @@ type PresentationDraft = {
   bookNumber: string;
   lessonNumber: string;
   cardName: string;
+  schoolName: string;
   brandName: string;
   coverImageDataUrl: string;
   resourceTitle: string;
@@ -49,6 +55,7 @@ const EMPTY_DRAFT: PresentationDraft = {
   bookNumber: "",
   lessonNumber: "1",
   cardName: "",
+  schoolName: "",
   brandName: "",
   coverImageDataUrl: "",
   resourceTitle: "",
@@ -171,6 +178,7 @@ export default function NewPresentationForm({ contextHref, embedded = false, onS
 
     const cardNameParam = normalizeCardDisplayName(params.get("cardName"));
     const cardKeyParam = String(params.get("cardKey") || "").trim();
+    const schoolNameParam = String(params.get("schoolName") || "").trim();
     const bookNumberParam = String(params.get("bookNumber") || "").trim();
     const lessonNumberParam = String(params.get("lessonNumber") || "").trim();
     const worldSeriesParam = params.get("worldSeries");
@@ -198,6 +206,7 @@ export default function NewPresentationForm({ contextHref, embedded = false, onS
         normalizedBookNumber || (categoryParam === "world" ? "1" : ""),
       lessonNumber: normalizedLessonNumber,
       cardName: cardNameParam,
+      schoolName: schoolNameParam,
     }));
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [contextHref]);
@@ -286,6 +295,16 @@ export default function NewPresentationForm({ contextHref, embedded = false, onS
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+
+      if (isNamedCategory && draft.schoolName.trim()) {
+        const cardId = getPresentationSchoolCardId(draft.category, cardKey);
+        batch.set(doc(db, PRESENTATION_CARDS_COLLECTION, getPresentationCardSchoolDocumentId(cardId)), {
+          documentType: PRESENTATION_CARD_SCHOOL_DOCUMENT_TYPE,
+          cardId,
+          schoolName: draft.schoolName.trim(),
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      }
 
       if (isBoardgameCategory(draft.category) && !lockedCardName) {
         batch.set(
@@ -424,6 +443,21 @@ export default function NewPresentationForm({ contextHref, embedded = false, onS
                   {isLessonContext ? ` · ${lockedLessonNumber}차시` : ""}
                 </div>
               </div>
+            ) : null}
+
+            {isNamedCardCategory(draft.category) ? (
+              <label className="text-sm font-black text-slate-700">
+                학교명 (선택)
+                <input
+                  type="text"
+                  value={draft.schoolName}
+                  maxLength={80}
+                  placeholder="예: 서울 동구로초"
+                  onChange={(event) => updateDraft("schoolName", event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none transition focus:border-yellow-300 focus:ring-4 focus:ring-yellow-100"
+                />
+                <span className="mt-2 block text-xs font-bold leading-5 text-slate-400">입력한 학교명은 이 카드의 자료 개수 옆에 표시됩니다.</span>
+              </label>
             ) : null}
 
             {!isNamedCardContext && !isBookContext ? (
