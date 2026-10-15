@@ -4,13 +4,17 @@ import Image from "next/image";
 import { useRef, useState } from "react";
 import { SCHOOL_QR_CODES } from "@/lib/schoolQrCodes";
 
-type Props = { school: { slug: string; displayName: string } };
+type Props = {
+  school: { slug: string; displayName: string };
+  mode?: "teacher" | "student";
+};
 
-export default function SchoolQrPanel({ school }: Props) {
+export default function SchoolQrPanel({ school, mode = "teacher" }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [notice, setNotice] = useState("");
   const qr = SCHOOL_QR_CODES[school.slug];
   if (!qr) return null;
+  const isStudentView = mode === "student";
 
   async function copyLink() {
     try {
@@ -38,12 +42,23 @@ export default function SchoolQrPanel({ school }: Props) {
     <section aria-label={`${school.displayName} 학교 접속 QR`} className="rounded-[28px] border border-sky-100 bg-white p-5 shadow-lg sm:p-7">
       <h3 className="text-xl font-black text-slate-900">{school.displayName} 접속 QR</h3>
       <p className="mt-2 text-sm font-bold text-slate-500">QR을 찍고 우리 반을 선택해 주세요.</p>
-      <div className="mt-4 flex flex-col items-center gap-5 sm:flex-row sm:items-start">
+      <div className={isStudentView
+        ? "mt-4 flex flex-col items-center gap-3"
+        : "mt-4 flex flex-col items-center gap-5 sm:flex-row sm:items-start"}>
         <button type="button" onClick={() => dialogRef.current?.showModal()} aria-label={`${school.displayName} QR 크게 보기`} className="shrink-0 rounded-xl border border-slate-200 bg-white p-3 focus-visible:outline-2 focus-visible:outline-sky-600">
           {qrImage()}
         </button>
-        <div className="min-w-0 w-full sm:flex-1">
-          <div className="flex flex-wrap gap-2">
+        {isStudentView ? (
+          <button
+            type="button"
+            onClick={() => dialogRef.current?.showModal()}
+            className="rounded-xl bg-sky-600 px-6 py-3 text-sm font-black text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
+          >
+            크게 보기
+          </button>
+        ) : (
+          <div className="min-w-0 w-full sm:flex-1">
+            <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => dialogRef.current?.showModal()} className="rounded-xl bg-sky-600 px-4 py-3 text-sm font-black text-white">크게 보기</button>
             <a href={qr.imageSrc} download={`QR_${school.displayName}.jpg`} className="rounded-xl bg-sky-50 px-4 py-3 text-sm font-black text-sky-800">QR 저장</a>
             <button type="button" onClick={() => void copyLink()} className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700">링크 복사</button>
@@ -51,7 +66,8 @@ export default function SchoolQrPanel({ school }: Props) {
           <a href={qr.encodedUrl} target="_blank" rel="noopener noreferrer" className="mt-4 block break-all text-sm font-bold text-sky-700 underline">{qr.encodedUrl}</a>
           <p className="mt-2 text-xs font-bold text-slate-500">학교의 반 선택 화면으로 연결됩니다.</p>
           <p role="status" className="mt-2 text-sm font-bold text-sky-800">{notice}</p>
-        </div>
+          </div>
+        )}
       </div>
       <dialog ref={dialogRef} aria-label={`${school.displayName} QR 크게 보기`} className="fixed inset-0 m-auto max-h-[95dvh] w-[calc(100%-24px)] max-w-3xl overflow-auto rounded-3xl border-0 bg-white p-5 shadow-2xl backdrop:bg-slate-950/70 sm:p-7" onClick={event => {
         if (event.target !== event.currentTarget) return;

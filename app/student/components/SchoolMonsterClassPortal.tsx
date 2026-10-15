@@ -204,6 +204,7 @@ export default function SchoolMonsterClassPortal({ schoolSlug, schoolDisplayName
         {!currentClassroom && (
           <SchoolQrPanel
             school={{ slug: schoolSlug, displayName: schoolDisplayName }}
+            mode="student"
           />
         )}
       </div>
