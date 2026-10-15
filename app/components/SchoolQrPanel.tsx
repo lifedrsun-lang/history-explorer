@@ -7,21 +7,38 @@ import { SCHOOL_QR_CODES } from "@/lib/schoolQrCodes";
 type Props = {
   school: { slug: string; displayName: string };
   mode?: "teacher" | "student";
+  sharedAccountAvailable?: boolean;
+  onCopySharedAccount?: (field: "id" | "password") => Promise<void>;
 };
 
-export default function SchoolQrPanel({ school, mode = "teacher" }: Props) {
+export default function SchoolQrPanel({
+  school,
+  mode = "teacher",
+  sharedAccountAvailable = false,
+  onCopySharedAccount,
+}: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [notice, setNotice] = useState("");
   const qr = SCHOOL_QR_CODES[school.slug];
   if (!qr) return null;
   const isStudentView = mode === "student";
 
-  async function copyLink() {
+  async function copyText(value: string, successMessage: string) {
     try {
-      await navigator.clipboard.writeText(qr.encodedUrl);
-      setNotice("학교 접속 링크를 복사했어요.");
+      await navigator.clipboard.writeText(value);
+      setNotice(successMessage);
     } catch {
-      setNotice("복사하지 못했어요. 아래 접속 링크를 길게 누르거나 선택해 복사해 주세요.");
+      setNotice("복사하지 못했어요. 브라우저의 클립보드 권한을 확인해 주세요.");
+    }
+  }
+
+  async function copySharedAccount(field: "id" | "password") {
+    if (!onCopySharedAccount) return;
+    try {
+      await onCopySharedAccount(field);
+      setNotice(field === "id" ? "아이디를 복사했어요." : "비밀번호를 복사했어요.");
+    } catch {
+      setNotice("복사하지 못했어요. 다시 로그인한 뒤 시도해 주세요.");
     }
   }
 
@@ -63,13 +80,44 @@ export default function SchoolQrPanel({ school, mode = "teacher" }: Props) {
         ) : (
           <div className="min-w-0 w-full sm:flex-1">
             <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => dialogRef.current?.showModal()} className="rounded-xl bg-sky-600 px-4 py-3 text-sm font-black text-white">크게 보기</button>
-            <a href={qr.imageSrc} download={`QR_${school.displayName}.jpg`} className="rounded-xl bg-sky-50 px-4 py-3 text-sm font-black text-sky-800">QR 저장</a>
-            <button type="button" onClick={() => void copyLink()} className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700">링크 복사</button>
-          </div>
-          <a href={qr.encodedUrl} target="_blank" rel="noopener noreferrer" className="mt-4 block break-all text-sm font-bold text-sky-700 underline">{qr.encodedUrl}</a>
-          <p className="mt-2 text-xs font-bold text-slate-500">학교의 반 선택 화면으로 연결됩니다.</p>
-          <p role="status" className="mt-2 text-sm font-bold text-sky-800">{notice}</p>
+              <button type="button" onClick={() => dialogRef.current?.showModal()} className="rounded-xl bg-sky-600 px-4 py-3 text-sm font-black text-white">크게 보기</button>
+              <a href={qr.imageSrc} download={`QR_${school.displayName}.jpg`} className="rounded-xl bg-sky-50 px-4 py-3 text-sm font-black text-sky-800">QR 저장</a>
+              <button type="button" onClick={() => void copyText(qr.encodedUrl, "학교 접속 링크를 복사했어요.")} className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700">링크 복사</button>
+            </div>
+
+            {sharedAccountAvailable && onCopySharedAccount && (
+              <div className="mt-5 overflow-hidden rounded-2xl border border-sky-100 bg-sky-50/60">
+                <div className="border-b border-sky-100 px-4 py-3">
+                  <div className="text-xs font-black text-sky-700">헬로메이플 공유 계정</div>
+                  <div className="mt-0.5 text-[11px] font-bold text-slate-500">필요한 항목을 눌러 바로 복사하세요.</div>
+                </div>
+                <div className="grid grid-cols-2 divide-x divide-sky-100">
+                  <button
+                    type="button"
+                    onClick={() => void copySharedAccount("id")}
+                    className="min-w-0 bg-white px-3 py-4 text-center transition hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-sky-600"
+                  >
+                    <span className="block text-[11px] font-black text-slate-400">아이디</span>
+                    <span className="mt-1 block text-lg font-black text-slate-900">ID</span>
+                    <span className="mt-2 block text-xs font-black text-sky-700">아이디 복사</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void copySharedAccount("password")}
+                    aria-label="공유 계정 비밀번호 복사"
+                    className="min-w-0 bg-white px-3 py-4 text-center transition hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-sky-600"
+                  >
+                    <span className="block text-[11px] font-black text-slate-400">비밀번호</span>
+                    <span className="mt-1 block text-base font-black tracking-[0.2em] text-slate-900">••••••••</span>
+                    <span className="mt-2 block text-xs font-black text-sky-700">비밀번호 복사</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <a href={qr.encodedUrl} target="_blank" rel="noopener noreferrer" className="mt-4 block break-all text-sm font-bold text-sky-700 underline">{qr.encodedUrl}</a>
+            <p className="mt-2 text-xs font-bold text-slate-500">학교의 반 선택 화면으로 연결됩니다.</p>
+            <p role="status" aria-live="polite" className="mt-2 min-h-5 text-sm font-bold text-sky-800">{notice}</p>
           </div>
         )}
       </div>
@@ -88,3 +136,4 @@ export default function SchoolQrPanel({ school, mode = "teacher" }: Props) {
     </section>
   );
 }
+
