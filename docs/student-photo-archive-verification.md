@@ -71,4 +71,7 @@
 
 ## Preview
 
-배포 상태와 최종 주소는 후속 검증 결과로 갱신한다.
+- Preview 관리자 화면: https://history-explorer-git-feat-student-photo-archive-23697b-sunclass.vercel.app/teacher/photo-archive
+- 첫 Preview 배포 `c90fc34fb426d13e0328d848cec96530be6e28e2`: READY 확인. 브라우저에서 앱의 교사 로그인 필요 화면을 확인했다. 교사 로그인 없이 실제 관리자 작업을 완료했다고 주장하지 않는다.
+- 후속 변경: 학생 카드의 D-day는 한국 자정에 자동 재조회하며, 장기간 열린 화면의 만료 타이머가 브라우저 최대 타이머 길이 때문에 조기 만료되지 않도록 보완했다. 후속 코드의 TypeScript/lint 및 실제 React 격리 테스트도 통과.
+- Production 배포 없음. 실계정 검증과 기존 인증 보완은 위 미완료 목록을 따른다.

@@ -8,6 +8,7 @@ export default function StudentPhotoArchive({ student }: Props) {
   const studentId = String(student.id || ""), studentCollection = String(student.collectionName || "students"), studentPassword = String(student.password || "");
   const [albums, setAlbums] = useState<StudentAlbum[]>([]), [open, setOpen] = useState(false), [error, setError] = useState("");
   const [detail, setDetail] = useState<{ album: StudentAlbum; photos: ArchivePhoto[]; serverNow: number } | null>(null), [busy, setBusy] = useState(false);
+  const [listClock, setListClock] = useState(0);
   const trigger = useRef<HTMLButtonElement>(null), dialog = useRef<HTMLDivElement>(null), requestNumber = useRef(0), activeAlbum = useRef("");
   const call = useCallback(async (body: Record<string, unknown>, signal?: AbortSignal) => {
     const response = await fetch("/api/student/photo-archive", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, studentId, studentCollection, studentPassword }), cache: "no-store", signal });
@@ -18,11 +19,18 @@ export default function StudentPhotoArchive({ student }: Props) {
     try {
       const data = await (await call({ action: "list" }, signal)).json();
       if (signal?.aborted) return;
-      setAlbums(data.albums); setError("");
+      setAlbums(data.albums); setListClock(data.serverNow); setError("");
       if (activeAlbum.current && !data.albums.some((a: StudentAlbum) => a.id === activeAlbum.current)) { setDetail(null); activeAlbum.current = ""; requestNumber.current++; }
-    } catch (e) { if (!signal?.aborted) { setError(e instanceof Error ? e.message : "사진을 불러오지 못했어요."); setDetail(null); } }
+    } catch (e) { if (!signal?.aborted) { setError(e instanceof Error ? e.message : "사진을 불러오지 못했어요."); setAlbums([]); setDetail(null); } }
   }, [call]);
   useEffect(() => { const controller = new AbortController(); const timer = setTimeout(() => void refresh(controller.signal), 0); const focus = () => void refresh(controller.signal); window.addEventListener("focus", focus); return () => { clearTimeout(timer); controller.abort(); window.removeEventListener("focus", focus); }; }, [refresh]);
+  useEffect(() => {
+    if (!listClock) return;
+    const koreaDay = new Date(listClock + 9 * 3_600_000).toISOString().slice(0, 10);
+    const nextMidnight = Date.parse(`${koreaDay}T00:00:00+09:00`) + 86_400_000;
+    const timer = setTimeout(() => void refresh(), Math.max(0, nextMidnight - listClock));
+    return () => clearTimeout(timer);
+  }, [listClock, refresh]);
   useEffect(() => {
     if (!open) return;
     const old = document.body.style.overflow, previousFocus = trigger.current; document.body.style.overflow = "hidden"; dialog.current?.querySelector<HTMLButtonElement>("button")?.focus();
@@ -31,8 +39,14 @@ export default function StudentPhotoArchive({ student }: Props) {
   }, [open, refresh]);
   useEffect(() => {
     if (!detail) return;
-    const delay = Math.max(0, detail.album.expiresAt - detail.serverNow);
-    const timer = window.setTimeout(() => { setDetail(null); activeAlbum.current = ""; requestNumber.current++; void refresh(); }, Math.min(delay, 2_147_483_647));
+    const delay = Math.max(0, detail.album.expiresAt - detail.serverNow), started = performance.now();
+    let timer: number;
+    const check = () => {
+      const remaining = delay - (performance.now() - started);
+      if (remaining > 0) { timer = window.setTimeout(check, Math.min(remaining, 2_147_483_647)); return; }
+      setDetail(null); activeAlbum.current = ""; requestNumber.current++; void refresh();
+    };
+    timer = window.setTimeout(check, Math.min(delay, 2_147_483_647));
     return () => clearTimeout(timer);
   }, [detail, refresh]);
   const choose = async (id: string) => {
