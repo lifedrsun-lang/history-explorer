@@ -1,6 +1,8 @@
 // QR images supplied by the teacher. Keys are the existing school slugs.
 // Keep the source image unchanged so previously shared QR codes remain identical.
-export const SCHOOL_QR_CODES: Record<string, { imageSrc: string; encodedUrl: string }> = {
+export type SchoolQrCode = { imageSrc: string; encodedUrl: string; filename?: string };
+
+export const SCHOOL_QR_CODES: Record<string, SchoolQrCode> = {
   dongguro: {
     imageSrc: "/images/school-qr/dongguro.jpg",
     // Verified redirect: https://sunlab.me.kr/student/classroom/dongguro
