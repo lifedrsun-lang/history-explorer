@@ -82,7 +82,7 @@ async function main() {
   const React = require('react'); const {renderToStaticMarkup} = require('react-dom/server');
   const shared = load('app/components/SchoolQrPanel.tsx', { '@/lib/schoolQrCodes': seeds, 'next/image': {__esModule:true,default:props=>React.createElement('img',{src:props.src,alt:props.alt})} }).default;
   const studentMarkup=renderToStaticMarkup(React.createElement(shared,{school:{slug:'dongguro',displayName:'동구로초'},mode:'student',qrCode:publicQr,sharedAccountAvailable:true,sharedAccountValues:{id:'fixture-id',password:'fixture-password'}}));
-  assert.ok(studentMarkup.includes('크게 보기')); for(const hidden of ['QR 저장','링크 복사','fixture-id','fixture-password','QR을 찍고','접속 QR</h3>'])assert.ok(!studentMarkup.includes(hidden),hidden);
+  assert.ok(studentMarkup.includes('QR 크게 보기')); for(const hidden of ['>크게 보기</button>','QR 저장','링크 복사','fixture-id','fixture-password','QR을 찍고','접속 QR</h3>'])assert.ok(!studentMarkup.includes(hidden),hidden);
   const teacherMarkup=renderToStaticMarkup(React.createElement(shared,{school:{slug:'dongguro',displayName:'동구로초'},qrCode:null,sharedAccountAvailable:true,sharedAccountValues:{id:'fixture-id',password:'fixture-password'}}));
   assert.ok(teacherMarkup.includes('fixture-id'));assert.ok(teacherMarkup.includes('fixture-password'));
   console.log('PASS: authentication/origin/school checks, real PNG conversion with unchanged QR pixels, persistence/reload, public metadata + image, replacement, school isolation, invalid upload preservation, failed-write preservation, deletion + seed tombstone, re-registration, unpublished school isolation, student-only controls, teacher shared account preserved. Isolated fixture only.');
