@@ -27,6 +27,13 @@ const sections: Record<string, ManagementSection> = {
     description: "학교별 수강생 관리와 수업용 코인 지급을 빠르게 이용합니다.",
     items: [
       {
+        href: "/teacher/photo-archive",
+        icon: "📸",
+        title: "우리 반 사진 관리",
+        description: "분기별 활동 사진·실제 수강 명부·공개기간 관리",
+        className: "border-teal-200 bg-teal-50 text-teal-900",
+      },
+      {
         href: "/teacher/students?status=active",
         icon: "🟢",
         title: "방과후 수강생",

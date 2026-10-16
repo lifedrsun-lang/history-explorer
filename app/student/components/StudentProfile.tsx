@@ -6,6 +6,7 @@ import CoinExchangeRequest from "./CoinExchangeRequest";
 import StudentAssignments from "./StudentAssignments";
 import StudentPrivateRankBadge from "./StudentPrivateRankBadge";
 import StudentReviewLaunchers from "./StudentReviewLaunchers";
+import StudentPhotoArchive from "./StudentPhotoArchive";
 
 interface Props {
   student: any;
@@ -219,7 +220,8 @@ export default function StudentProfile({
           </div>
         )}
 
-        <div className="mt-3 rounded-[20px] border border-amber-100 bg-amber-50/80 p-3">
+        <div className="mt-3 grid grid-cols-1 gap-2 min-[640px]:grid-cols-[minmax(0,1fr)_minmax(160px,.7fr)]">
+        <div className="rounded-[20px] border border-amber-100 bg-amber-50/80 p-3">
           <div className="text-xs font-black text-amber-700">📚 지금 배우는 책</div>
           <div className="mt-2 text-sm font-black text-sky-700">
             {current?.short || "별꼼역사 1권"}
@@ -230,6 +232,8 @@ export default function StudentProfile({
           <div className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">
             {stageDescription}
           </div>
+        </div>
+        <StudentPhotoArchive key={`${student?.collectionName}:${student?.id}`} student={student} />
         </div>
 
         <div className="mt-3 grid grid-cols-3 gap-2">

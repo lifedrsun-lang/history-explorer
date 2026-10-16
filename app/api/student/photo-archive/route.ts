@@ -1,0 +1,18 @@
+import { ArchiveError, studentAlbum } from "@/lib/photoArchive";
+import { archiveOrigin, archiveStudent, listStudentAlbums, readableArchive, archivePhotos, archiveImage, archiveJson, archiveError } from "@/lib/photoArchiveServer";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export async function POST(request: Request) {
+  try {
+    archiveOrigin(request);
+    const body = await request.json();
+    if (body.action === "image") return await archiveImage(body);
+    const student = await archiveStudent(body);
+    if (body.action === "list") return archiveJson({ albums: await listStudentAlbums(student), serverNow: Date.now() });
+    if (body.action === "detail") {
+      const album = await readableArchive(body.albumId, student);
+      return archiveJson({ album: studentAlbum(album), photos: await archivePhotos(album.id), serverNow: Date.now() });
+    }
+    throw new ArchiveError("지원하지 않는 요청입니다.");
+  } catch (error) { return archiveError(error); }
+}
