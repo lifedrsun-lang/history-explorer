@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { auth } from "@/lib/firebase";
 import { archiveExpiry, type ArchiveAlbum, type ArchivePhoto } from "@/lib/photoArchive";
 import PhotoDiagram, { PrivatePhoto } from "@/app/components/PhotoDiagram";
+import MyboxImport from "./MyboxImport";
 type Roster = { key: string; name: string; school: string; grade: string; classroom: string; program: string; terms: string[] };
 const api = "/api/teacher/photo-archive";
 const field = "mt-1 w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm text-slate-800";
@@ -119,6 +120,7 @@ export default function PhotoArchiveAdmin() {
             <div className="mt-5 flex flex-wrap items-center gap-3"><button disabled={busy} onClick={() => void save()} className="rounded-xl bg-teal-800 px-6 py-3 text-sm font-bold text-white disabled:opacity-50">{busy ? "처리 중…" : "앨범 저장"}</button><span className="text-xs text-slate-500">{dirty ? "저장하지 않은 변경이 있습니다." : "공개 종료 후에도 원본과 앨범은 보관됩니다."}</span></div>
           </section>
           {album.id && <section className="rounded-3xl border border-stone-200 bg-white p-5"><div className="flex flex-wrap justify-between gap-2"><h2 className="text-lg font-black">사진 {photos.length}장</h2><button disabled={busy} className={button} onClick={() => setPreview(p => !p)}>{preview ? "사진 편집" : "다이어그램 미리보기"}</button></div>
+            <MyboxImport key={album.id} albumId={album.id} busy={busy} dirty={dirty} setBusy={setBusy} request={request} refresh={() => reloadPhotos(true)} />
             <p className="my-3 text-xs leading-5 text-slate-500">JPG·PNG·WEBP · 한 장 10MB까지 · 여러 장을 함께 선택할 수 있습니다. 사진을 추가하면 자동 비공개로 전환되며, 추가 사진의 공개 동의를 확인한 뒤 다시 공개해 주세요.</p>
             <input aria-label="사진 여러 장 선택" type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={busy || dirty} onChange={e => { setFiles(Array.from(e.target.files || [])); e.target.value = ""; }} className={field} />
             {dirty && <p className="mt-2 text-xs text-amber-800">앨범 변경사항을 먼저 저장해 주세요.</p>}
