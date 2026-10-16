@@ -8,6 +8,7 @@ type Props = {
   school: { slug: string; displayName: string };
   mode?: "teacher" | "student";
   sharedAccountAvailable?: boolean;
+  sharedAccountValues?: { id: string; password: string } | null;
   onCopySharedAccount?: (field: "id" | "password") => Promise<void>;
 };
 
@@ -15,6 +16,7 @@ export default function SchoolQrPanel({
   school,
   mode = "teacher",
   sharedAccountAvailable = false,
+  sharedAccountValues = null,
   onCopySharedAccount,
 }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -85,30 +87,36 @@ export default function SchoolQrPanel({
               <button type="button" onClick={() => void copyText(qr.encodedUrl, "학교 접속 링크를 복사했어요.")} className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700">링크 복사</button>
             </div>
 
-            {sharedAccountAvailable && onCopySharedAccount && (
+            {sharedAccountAvailable && (
               <div className="mt-5 overflow-hidden rounded-2xl border border-sky-100 bg-sky-50/60">
                 <div className="border-b border-sky-100 px-4 py-3">
                   <div className="text-xs font-black text-sky-700">헬로메이플 공유 계정</div>
-                  <div className="mt-0.5 text-[11px] font-bold text-slate-500">필요한 항목을 눌러 바로 복사하세요.</div>
+                  <div className="mt-0.5 text-[11px] font-bold text-slate-500">계정 정보를 확인하고 필요한 항목을 눌러 복사하세요.</div>
                 </div>
                 <div className="grid grid-cols-2 divide-x divide-sky-100">
                   <button
                     type="button"
                     onClick={() => void copySharedAccount("id")}
-                    className="min-w-0 bg-white px-3 py-4 text-center transition hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-sky-600"
+                    disabled={!sharedAccountValues || !onCopySharedAccount}
+                    className="min-w-0 bg-white px-3 py-4 text-center transition hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-sky-600 disabled:cursor-wait disabled:hover:bg-white"
                   >
                     <span className="block text-[11px] font-black text-slate-400">아이디</span>
-                    <span className="mt-1 block text-lg font-black text-slate-900">ID</span>
+                    <span className="mt-1 block break-all text-lg font-black text-slate-900">
+                      {sharedAccountValues?.id ?? "불러오는 중…"}
+                    </span>
                     <span className="mt-2 block text-xs font-black text-sky-700">아이디 복사</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => void copySharedAccount("password")}
                     aria-label="공유 계정 비밀번호 복사"
-                    className="min-w-0 bg-white px-3 py-4 text-center transition hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-sky-600"
+                    disabled={!sharedAccountValues || !onCopySharedAccount}
+                    className="min-w-0 bg-white px-3 py-4 text-center transition hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-sky-600 disabled:cursor-wait disabled:hover:bg-white"
                   >
                     <span className="block text-[11px] font-black text-slate-400">비밀번호</span>
-                    <span className="mt-1 block text-base font-black tracking-[0.2em] text-slate-900">••••••••</span>
+                    <span className="mt-1 block break-all text-lg font-black text-slate-900">
+                      {sharedAccountValues?.password ?? "불러오는 중…"}
+                    </span>
                     <span className="mt-2 block text-xs font-black text-sky-700">비밀번호 복사</span>
                   </button>
                 </div>
