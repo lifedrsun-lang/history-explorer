@@ -87,15 +87,7 @@ export default function SchoolQrPanel({
         {qr && <button type="button" onClick={() => dialogRef.current?.showModal()} aria-label={`${school.displayName} QR 크게 보기`} className="shrink-0 rounded-xl border border-slate-200 bg-white p-3 focus-visible:outline-2 focus-visible:outline-sky-600">
           {qrImage()}
         </button>}
-        {isStudentView ? (
-          <button
-            type="button"
-            onClick={() => dialogRef.current?.showModal()}
-            className="rounded-xl bg-sky-600 px-6 py-3 text-sm font-black text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
-          >
-            크게 보기
-          </button>
-        ) : (
+        {!isStudentView && (
           <div className="min-w-0 w-full sm:flex-1">
             {qr && <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => dialogRef.current?.showModal()} className="rounded-xl bg-sky-600 px-4 py-3 text-sm font-black text-white">크게 보기</button>
