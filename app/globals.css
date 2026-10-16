@@ -62,7 +62,7 @@ p.mt-3.rounded-xl.bg-white.px-3.py-2.text-xs.font-bold.leading-5.text-slate-500 
   display: none;
 }
 
-/* 호수와 차시를 모두 고르기 전에는 문제카드를 먼저 펼치지 않는다. */
+/* 호수를 고른 뒤 문제카드를 펼친다. 차시 미지정 문제도 조회할 수 있다. */
 #review-workspace-tabs[data-mode="distribute"][data-filter-ready="false"]
   + main
   #review-question-editor
@@ -77,7 +77,7 @@ p.mt-3.rounded-xl.bg-white.px-3.py-2.text-xs.font-bold.leading-5.text-slate-500 
   #review-question-editor
   + div
   > section:first-child::after {
-  content: "호수와 차시를 선택하면 해당 문제 목록이 표시됩니다.";
+  content: "호수를 선택하면 해당 호수의 모든 문제 목록이 표시됩니다.";
   display: block;
   margin-top: 1.25rem;
   border: 2px dashed rgb(226 232 240);

@@ -20,7 +20,7 @@ const MODES: Array<{
     value: "distribute",
     icon: "📨",
     title: "문제 배포하기",
-    description: "호수·차시 선택 후 학생에게 배포",
+    description: "호수 선택 후 학생에게 배포",
   },
   {
     value: "results",
@@ -50,15 +50,7 @@ export default function ReviewWorkspaceTabs() {
   useEffect(() => {
     const syncFilterReady = () => {
       const bookSelect = findFilterSelect("호수");
-      const lessonSelect = findFilterSelect("차시");
-      setFilterReady(
-        Boolean(
-          bookSelect &&
-            lessonSelect &&
-            bookSelect.value !== "all" &&
-            lessonSelect.value !== "all"
-        )
-      );
+      setFilterReady(Boolean(bookSelect && bookSelect.value !== "all"));
     };
 
     const handleChange = () => {
@@ -121,7 +113,7 @@ export default function ReviewWorkspaceTabs() {
 
         {mode === "distribute" && !filterReady && (
           <div className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 text-xs font-black text-amber-700 md:text-sm">
-            📚 호수와 차시를 선택하면 해당 문제만 표시됩니다. 예: 6호 → 1차시
+            📚 호수를 선택하면 해당 호수의 모든 문제가 표시됩니다. 차시는 필요할 때 선택하세요.
           </div>
         )}
       </div>
