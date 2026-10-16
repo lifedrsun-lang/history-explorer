@@ -158,10 +158,11 @@ export async function importArchiveBytes(albumId: unknown, uid: string, bytes: B
   if (existing.data) return { id, skipped: true, removed: !!existing.data.deleted_at };
   if ((await archivePhotos(album.id)).length >= 500) throw new ArchiveError("앨범에는 최대 500장까지 등록할 수 있습니다.");
   // Validate before retaining remote data. finishArchiveUpload performs the full decode and derivative pipeline.
-  try { const info = await sharp(bytes, { limitInputPixels: 40_000_000 }).metadata(); if (!["jpeg", "png", "webp"].includes(info.format || "") || (info.pages || 1) > 1) throw new Error("format"); }
+  let contentType: string;
+  try { const info = await sharp(bytes, { limitInputPixels: 40_000_000 }).metadata(); if (!["jpeg", "png", "webp"].includes(info.format || "") || (info.pages || 1) > 1) throw new Error("format"); contentType = `image/${info.format}`; }
   catch { throw new ArchiveError("읽을 수 없는 사진입니다. JPG·PNG·WEBP 사진을 확인해 주세요."); }
   const bucket = await privateBucket();
-  const result = await bucket.upload(`${prefix(album.id, id)}/original`, bytes, { contentType: "application/octet-stream", upsert: true, cacheControl: "0" });
+  const result = await bucket.upload(`${prefix(album.id, id)}/original`, bytes, { contentType, upsert: true, cacheControl: "0" });
   storageError(result.error);
   await finishArchiveUpload(album.id, uid, id);
   return { id, skipped: false, removed: false };

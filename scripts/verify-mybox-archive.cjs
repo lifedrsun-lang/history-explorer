@@ -53,12 +53,18 @@ async function main() {
     for (const m of ['expired', 'password', 'blocked', 'large', 'downloadRedirect', 'oversize', 'changed']) { mode = m; assert.ok((await route.POST(body(album.id, 'import', { key: item.resourceKey }))).status >= 400, m); }
     mode = '';
     response = await route.POST(body(album.id, 'import', { key: item.resourceKey })); assert.equal(response.status, 200); const imported = await response.json(); assert.equal(imported.skipped, false);
+    assert.equal(fixture.objects.get(`student-photo-archives/${album.id}/${imported.id}/original`).type, 'image/jpeg', 'Production bucket permits only detected image MIME types');
     assert.equal((await fixture.server.archivePhotos(album.id)).length, 1);
     const storedAlbum = fixture.rows.student_photo_albums.get(album.id); assert.equal(storedAlbum.published, false); assert.equal(storedAlbum.consent_verified, false);
     response = await route.POST(body(album.id, 'import', { key: item.resourceKey })); assert.equal((await response.json()).skipped, true); assert.equal(fixture.objects.size, 3);
     await fixture.server.editArchivePhoto('teacher-1', { photoId: imported.id, remove: true });
     response = await route.POST(body(album.id, 'import', { key: item.resourceKey })); assert.equal((await response.json()).removed, true); assert.equal((await fixture.server.archivePhotos(album.id)).length, 0);
     await assert.rejects(fixture.server.importArchiveBytes(album.id, 'teacher-1', Buffer.from('not-image'))); assert.equal(fixture.objects.size, 3);
+    for (const format of ['png', 'webp']) {
+      const data = await sharp({ create: { width: 70, height: 50, channels: 3, background: '#889977' } })[format]().toBuffer();
+      const photo = await fixture.server.importArchiveBytes(album.id, 'teacher-1', data);
+      assert.equal(fixture.objects.get(`student-photo-archives/${album.id}/${photo.id}/original`).type, `image/${format}`);
+    }
     delete process.env.PHOTO_ARCHIVE_ACCESS_REVIEWED;
     const student = new Request('https://fixture.local/api/student/photo-archive', { method: 'POST', body: JSON.stringify({ ...fixture.credentials('one'), action: 'list' }) });
     assert.equal((await fixture.studentRoute.POST(student)).status, 503);

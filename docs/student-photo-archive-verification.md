@@ -93,3 +93,13 @@
 - `node scripts/verify-photo-archive.cjs`: 기존 권한·공개기간 한국 자정 경계·관리자 원본 유지 테스트 통과.
 - `CLASSROOM_TEST_CHROMIUM=/tmp/chromium node scripts/verify-photo-archive-ui.cjs`: 격리된 React/브라우저/API/storage에서 사진 선택·부분 실패/재시도·390px 화면 가로 넘침 없음·관리자 파일 2장 업로드·기존 50장에 직접 업로드 2장과 MYBOX fixture 2장을 더한 54장 다이어그램 표시 통과.
 - 로그인된 실제 Preview의 관리자 아카이브 화면 접근 확인. 신규 버전 Preview와 실제 MYBOX → 비공개 보관 E2E 검증은 배포 후 별도 기록한다.
+
+### 2026-10-17 실데이터 재확인과 MIME 수정
+
+- Preview `71d1297509f5bbec37071d67e6aac93325dabd44` / `dpl_APv8B5hxdb1xrznsUvZCZrhNXNHK`는 READY다. Production에는 배포하지 않았다.
+- 실제 교사 화면에서 `김포 하늘빛초 / A반 / 2026년 3분기` 비공개 앨범을 저장했다. 기존 결과통지서의 **저장된** 3분기 교육기간 `2026-08-18~2026-11-06`을 화면에서 확인한 뒤 종료일을 입력했다. 공개 종료 기본값은 `2026-11-06 + 14일 = 2026-11-20`, 한국시간 다음 날 00:00에 차단한다.
+- 실제 MYBOX 목록 25장을 확인하고 일괄 가져오기를 시작했으나, 다음 접속에서 DB와 storage를 읽기 전용으로 확인한 결과 **등록 사진 0장, 해당 앨범의 storage 객체 0개**였다. 이전의 `사진 n / 25 가져오는 중` 표시는 처리 시도 진행률이며 성공 증거가 아니다.
+- 원인 코드: 서버 가져오기가 원본 업로드 MIME을 `application/octet-stream`으로 지정했다. 실제 private bucket은 `image/jpeg`, `image/png`, `image/webp`만 허용한다. 버킷 제한을 완화하지 않고 Sharp로 확인한 실제 형식을 MIME으로 사용하도록 수정했다.
+- 격리 storage fixture에도 실제 MIME 허용 목록을 적용했다. 원본 JPEG·PNG·WEBP 각각의 저장 MIME, 잘못된 이미지 거부, 기존 사진 권한·만료 테스트를 통과했다.
+- 실제 앨범은 비공개, 동의 미확인, 명부 미확인, 연결 학생 0명이다. 공개 차단 환경변수와 기존 학생 로그인·학습 데이터는 변경하지 않았다. 추가 DB 마이그레이션 없음.
+- 10월 17일 브라우저 연결이 종료되어 이전 로그인 세션을 사용할 수 없었다. 재접속한 Preview에 교사 로그인 필요 화면이 표시됐다. 수정 Preview에서 실제 25장 가져오기·재조회·관리자 다이어그램 검증은 로그인 후 남은 작업이다.

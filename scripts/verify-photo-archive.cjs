@@ -37,7 +37,7 @@ const storage = {
   from() { return {
     async createSignedUploadUrl(key) { return { data: { signedUrl: `https://fixture.invalid/upload/${key}` }, error: null }; },
     async download(key) { return { data: objects.get(key), error: objects.has(key) ? null : new Error('missing') }; },
-    async upload(key, bytes, options) { objects.set(key, new Blob([bytes], { type: options.contentType })); return { error: null }; },
+    async upload(key, bytes, options) { if (!['image/jpeg', 'image/png', 'image/webp'].includes(options.contentType)) return { error: new Error('Storage MIME type is not allowed') }; objects.set(key, new Blob([bytes], { type: options.contentType })); return { error: null }; },
   }; },
 };
 const studentRecords = new Map([
