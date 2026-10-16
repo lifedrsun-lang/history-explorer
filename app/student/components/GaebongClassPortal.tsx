@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 
 import ClassroomBoard from "./ClassroomBoard";
+import ClassroomLockoutReset from "./ClassroomLockoutReset";
+import { CLASSROOM_LOCKOUT_MS } from "@/lib/classroomLockout";
 import {
   CLASSROOM_MONSTERS,
   GAEBONG_CLASSROOMS,
@@ -11,7 +13,7 @@ import {
 } from "../data/classroomData";
 
 const MAX_FAILED_ATTEMPTS = 3;
-const LOCKOUT_MS = 10 * 60 * 1000;
+const LOCKOUT_MS = CLASSROOM_LOCKOUT_MS;
 
 const shuffleMonsters = () => {
   const items = [...CLASSROOM_MONSTERS];
@@ -295,22 +297,397 @@ export default function GaebongClassPortal({ onChangeSchool }: Props) {
               </div>
             )}
 
+            {isLocked && lockedUntil && selectedClassroom && <ClassroomLockoutReset
+              schoolSlug={"gaebong"} classroomId={`${selectedClassroom.grade}-${selectedClassroom.classNumber}`}
+              storageKey={getLockoutStorageKey(selectedClassroom.classNumber)} lockedUntil={lockedUntil}
+              onReset={() => { setFailedAttempts(0); setLockedUntil(null); setNow(Date.now()); setErrorMessage("선생님이 잠금을 해제했어요. 몬스터 비밀번호를 다시 선택해 주세요."); }}
+            />}
             {!isLocked && errorMessage && (
               <div className="mt-3 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-center text-sm font-black text-rose-600">
                 {errorMessage}
               </div>
-            )}
+           …11144 tokens truncated… : link.defaultUnlocked ?? true;
+  };
 
-            <button
-              type="button"
-              onClick={resetClassroom}
-              className="mt-3 w-full rounded-2xl bg-violet-500 py-3 text-sm font-black text-white shadow-sm transition hover:bg-violet-600"
-            >
-              반 다시 선택
-            </button>
+  const toggleLinkVisibility = async (
+    classroom: ContractSchoolClassroom,
+    link: ClassroomLink
+  ) => {
+    if (!selectedSchool || !user || pendingLinkState || !classroom.directToken) return;
+    const savedSchool = schools.find((school) => school.slug === selectedSchool.slug);
+    const savedLinkExists = savedSchool?.lessons.some((lesson) =>
+      lesson.links.some((item) => item.id === link.id)
+    );
+    if (!savedLinkExists) {
+      setErrorMessage("새 링크를 먼저 저장한 뒤 반별 공개 상태를 설정해 주세요.");
+      return;
+    }
+
+    const key = `${classroom.id}:${link.id}`;
+    const currentUnlocked = isLinkUnlocked(classroom.id, link);
+    setPendingLinkState(key);
+    setErrorMessage("");
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(
+        `/api/classroom/${encodeURIComponent(classroom.directToken)}/activity-state`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            activityId: link.id,
+            unlocked: !currentUnlocked,
+          }),
+        }
+      );
+      const payload = (await response.json().catch(() => ({}))) as {
+        activities?: ActivityMap;
+        error?: string;
+      };
+      if (!response.ok || !payload.activities) {
+        throw new Error(payload.error || "activity_state_update_failed");
+      }
+      setActivityStates((current) => ({
+        ...current,
+        [classroom.id]: payload.activities!,
+      }));
+      setMessage(
+        `${classLabel(classroom)} · ${link.label}을 ${currentUnlocked ? "잠갔어요." : "공개했어요."}`
+      );
+    } catch {
+      setErrorMessage("링크 공개 상태를 저장하지 못했어요.");
+    } finally {
+      setPendingLinkState("");
+    }
+  };
+
+  const orderedSchools = useMemo(
+    () =>
+      [...schools].sort(
+        (a, b) =>
+          Number(a.completed) - Number(b.completed) ||
+          a.displayName.localeCompare(b.displayName, "ko-KR")
+      ),
+    [schools]
+  );
+
+  if (authChecking) {
+    return <main className="min-h-[100dvh] bg-[#f5f7fb] p-6 text-center font-bold text-slate-500">교사 로그인을 확인하는 중이에요.</main>;
+  }
+
+  if (!user) {
+    return (
+      <main className="flex min-h-[100dvh] items-center justify-center bg-[#f5f7fb] p-4">
+        <div className="rounded-3xl bg-white p-8 text-center shadow-xl">
+          <h1 className="text-2xl font-black text-slate-900">교사 로그인이 필요해요.</h1>
+          <Link href="/teacher" className="mt-5 inline-block rounded-2xl bg-slate-900 px-5 py-3 text-sm font-black text-white">교사용 로그인</Link>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-[100dvh] bg-[#f5f7fb] p-3 sm:p-6">
+      <div className="mx-auto max-w-6xl">
+        <header className="rounded-[28px] bg-white p-5 shadow-xl sm:p-7">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-xs font-black tracking-[0.16em] text-sky-500">CONTRACT CLASS</div>
+              <h1 className="mt-2 text-2xl font-black text-slate-900 sm:text-3xl">🏫 건별 수업 관리</h1>
+              <p className="mt-2 text-sm font-bold text-slate-500">학교별 차시 내용과 반별 공개 상태를 한 화면에서 관리합니다.</p>
+            </div>
+            <Link href="/teacher/manage/teaching" className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-700">← 출강 관리</Link>
+          </div>
+        </header>
+
+        {(message || errorMessage) && (
+          <div className={`mt-3 rounded-2xl px-4 py-3 text-sm font-black ${errorMessage ? "border border-rose-200 bg-rose-50 text-rose-700" : "border border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
+            {errorMessage || message}
+          </div>
+        )}
+
+        {!selectedSchool ? (
+          <>
+            <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {orderedSchools.map((school) => {
+                const documentInfo = documentSettings[school.slug];
+                return (
+                <article
+                  key={school.slug}
+                  className={`rounded-[24px] border p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:p-5 ${
+                    school.completed
+                      ? "border-slate-200 bg-slate-50"
+                      : "border-sky-100 bg-white hover:border-sky-300"
+                  }`}
+                >
+                  <button type="button" onClick={() => selectSchool(school)} className="block w-full text-left">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="text-2xl">🏫</div>
+                        {school.completed && (
+                          <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-black text-slate-600">종강</span>
+                        )}
+                      </div>
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${school.published ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{school.published ? "학생페이지 노출" : "준비 중 · 미노출"}</span>
+                    </div>
+                    <div className="mt-3 text-lg font-black text-slate-900">{school.displayName}</div>
+                    <div className="mt-1 text-xs font-bold text-slate-400">/{school.slug} · {school.classrooms.filter((classroom) => classroom.active !== false).length}개 반 · {school.lessons.length}차시</div>
+                    {documentInfo && (
+                      <div className="mt-3 space-y-1 border-t border-slate-100 pt-3 text-xs font-bold text-slate-600">
+                        {(documentInfo.contactName || documentInfo.contactPhone) && (
+                          <div>{[documentInfo.contactName, documentInfo.contactPhone].filter(Boolean).join(" · ")}</div>
+                        )}
+                        {documentInfo.contactEmail && <div className="break-all text-slate-500">{documentInfo.contactEmail}</div>}
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          <span className={`rounded-full px-2.5 py-1 font-black ${documentInfo.processingMethod === "direct" ? "bg-violet-100 text-violet-700" : "bg-sky-100 text-sky-700"}`}>
+                            {documentInfo.processingMethod === "direct" ? "🔑 직접 발급" : "🏫 학교 처리"}
+                          </span>
+                          {documentInfo.submissionChannel && (
+                            <span className="rounded-full bg-amber-100 px-2.5 py-1 font-black text-amber-700">
+                              {documentInfo.submissionChannel === "email" ? "📧 이메일" : "💬 카카오톡"}
+                            </span>
+                          )}
+                          <span className={`rounded-full px-2.5 py-1 font-black ${documentInfo.latestStatus === "submitted" ? "bg-emerald-100 text-emerald-700" : documentInfo.latestStatus === "generated" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600"}`}>
+                            {documentInfo.latestStatus === "submitted" ? "✅ " : ""}{SCHOOL_DOCUMENT_STATUS_LABELS[documentInfo.latestStatus]}
+                          </span>
+                        </div>
+                        {documentInfo.latestProcessedAt && (
+                          <div className="pt-1 text-[11px] text-slate-400">
+                            최근 처리 {new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(documentInfo.latestProcessedAt))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </button>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => selectSchool(school)} className="rounded-xl bg-sky-100 px-3 py-2 text-xs font-black text-sky-700">관리하기 →</button>
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => void toggleSchoolCompleted(school)}
+                      className={`rounded-xl px-3 py-2 text-xs font-black disabled:opacity-50 ${
+                        school.completed
+                          ? "bg-white text-slate-600"
+                          : "bg-slate-200 text-slate-700"
+                      }`}
+                    >
+                      {school.completed ? "진행중으로 변경" : "종강 처리"}
+                    </button>
+                  </div>
+                </article>
+              );})}
+              <button type="button" onClick={() => setShowNewSchool(true)} className="min-h-44 rounded-[24px] border-2 border-dashed border-sky-200 bg-sky-50 p-5 text-center text-sky-700 transition hover:border-sky-400">
+                <div className="text-3xl">＋</div>
+                <div className="mt-2 text-base font-black">신규 학교 등록</div>
+                <div className="mt-1 text-xs font-bold text-sky-500">관리자 카드부터 생성</div>
+              </button>
+            </section>
+
+            {loading && <div className="mt-4 text-center text-sm font-bold text-slate-400">학교 목록을 불러오는 중이에요.</div>}
+
+            {showNewSchool && (
+              <section className="mt-4 rounded-[28px] border border-sky-100 bg-white p-5 shadow-lg sm:p-7">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900">신규 학교 카드 만들기</h2>
+                    <p className="mt-1 text-xs font-bold text-slate-500">생성 직후에는 학생페이지에 노출되지 않습니다.</p>
+                  </div>
+                  <button type="button" onClick={() => setShowNewSchool(false)} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600">닫기</button>
+                </div>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <label className="text-sm font-black text-slate-700">학교명<input value={newSchool.schoolName} onChange={(event) => setNewSchool((current) => ({ ...current, schoolName: event.target.value }))} placeholder="예: 서울 ○○초등학교" className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-sky-400" /></label>
+                  <label className="text-sm font-black text-slate-700">학생 화면 표시명<input value={newSchool.displayName} onChange={(event) => setNewSchool((current) => ({ ...current, displayName: event.target.value }))} placeholder="예: 서울 ○○초" className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-sky-400" /></label>
+                  <label className="text-sm font-black text-slate-700">학교 주소 식별값<input value={newSchool.slug} onChange={(event) => setNewSchool((current) => ({ ...current, slug: event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))} placeholder="예: seoul-sample" className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-sky-400" /><span className="mt-1 block text-[11px] font-bold text-slate-400">/student/classroom/식별값 · 영문 소문자, 숫자, 하이픈</span></label>
+                  <label className="text-sm font-black text-slate-700">수업 장소<input value={newSchool.location} onChange={(event) => setNewSchool((current) => ({ ...current, location: event.target.value }))} placeholder="예: 컴퓨터실" className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-sky-400" /></label>
+                  <label className="text-sm font-black text-slate-700 sm:col-span-2">학교 비밀번호 <span className="text-xs text-slate-400">(선택)</span><input type="password" value={newSchool.schoolPassword} onChange={(event) => setNewSchool((current) => ({ ...current, schoolPassword: event.target.value }))} placeholder="필요한 학교만 입력" className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-sky-400" /></label>
+                </div>
+                <button type="button" onClick={() => void createSchool()} disabled={saving || !newSchool.schoolName.trim() || !newSchool.slug.trim()} className="mt-5 w-full rounded-2xl bg-sky-500 py-3 text-sm font-black text-white disabled:opacity-50">{saving ? "생성 중" : "관리자용 학교 카드 생성"}</button>
+              </section>
+            )}
+          </>
+        ) : (
+          <section className="mt-4 space-y-4">
+            <div className="rounded-[28px] bg-white p-5 shadow-lg sm:p-7">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <button type="button" onClick={() => { setSelectedSchool(null); setSelectedSlug(""); }} className="text-xs font-black text-sky-600">← 학교 카드 목록</button>
+                  <h2 className="mt-2 text-2xl font-black text-slate-900">{selectedSchool.displayName}</h2>
+                  <div className="mt-1 text-xs font-bold text-slate-400">학생 주소 /student/classroom/{selectedSchool.slug}</div>
+                </div>
+                <button type="button" disabled={saving} onClick={() => void saveSchool({ ...selectedSchool, published: !selectedSchool.published }, selectedSchool.published ? "학생페이지에서 숨겼어요." : "학생페이지에 학교를 노출했어요.")} className={`rounded-2xl px-4 py-3 text-sm font-black ${selectedSchool.published ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>
+                  {selectedSchool.published ? "✓ 학생페이지 노출 중" : "○ 학생페이지 미노출"}
+                </button>
+              </div>
+
+              <div className="mt-4">
+                <SchoolQrPanel key={selectedSchool.slug} school={selectedSchool} />
+              </div>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <label className="text-xs font-black text-slate-600">학교명<input value={selectedSchool.schoolName} onChange={(event) => setSelectedSchool({ ...selectedSchool, schoolName: event.target.value })} className="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm font-bold" /></label>
+                <label className="text-xs font-black text-slate-600">학생 표시명<input value={selectedSchool.displayName} onChange={(event) => setSelectedSchool({ ...selectedSchool, displayName: event.target.value })} className="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm font-bold" /></label>
+                <label className="text-xs font-black text-slate-600">수업 장소<input value={selectedSchool.location} onChange={(event) => setSelectedSchool({ ...selectedSchool, location: event.target.value })} className="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm font-bold" /></label>
+              </div>
+              <div className="mt-3 rounded-2xl border border-violet-100 bg-violet-50 p-3">
+                <div className="text-xs font-black text-violet-800">학교 비밀번호 · 학생페이지 노출 상태와 별도</div>
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                  <input type="password" value={passwordInput} onChange={(event) => { setPasswordInput(event.target.value); setClearSchoolPassword(false); }} placeholder={selectedSchool.hasSchoolPassword ? "새 비밀번호 입력 시 변경" : "선택 입력"} className="min-w-0 flex-1 rounded-xl border border-violet-200 bg-white px-3 py-2 text-sm font-bold" />
+                  {selectedSchool.hasSchoolPassword && <button type="button" onClick={() => { setClearSchoolPassword((current) => !current); setPasswordInput(""); }} className={`rounded-xl px-3 py-2 text-xs font-black ${clearSchoolPassword ? "bg-rose-500 text-white" : "bg-white text-violet-700"}`}>{clearSchoolPassword ? "비밀번호 제거 예정" : "비밀번호 제거"}</button>}
+                </div>
+              </div>
+              <button type="button" disabled={saving} onClick={() => void saveSchool(selectedSchool)} className="mt-4 w-full rounded-2xl bg-slate-900 py-3 text-sm font-black text-white disabled:opacity-50">{saving ? "저장 중" : "학교 기본 설정 저장"}</button>
+              {selectedSchool.source === "managed" &&
+                !selectedSchool.published &&
+                selectedSchool.classrooms.length === 0 &&
+                selectedSchool.lessons.length === 0 && (
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => void deleteSchool(selectedSchool)}
+                    className="mt-2 w-full rounded-2xl bg-rose-50 py-3 text-sm font-black text-rose-600 disabled:opacity-50"
+                  >
+                    이 빈 건별 학교 카드 삭제
+                  </button>
+                )}
+            </div>
+
+            <SchoolDocumentsPanel school={selectedSchool} user={user} />
+
+            <div className="rounded-[28px] bg-white p-5 shadow-lg sm:p-7">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div><div className="text-xs font-black text-sky-500">1단계</div><h3 className="mt-1 text-xl font-black text-slate-900">학년·반 등록</h3></div>
+                <div className="flex items-end gap-2">
+                  <label className="text-[11px] font-black text-slate-500">학년<input type="number" min="1" max="12" value={newGrade} onChange={(event) => setNewGrade(event.target.value)} className="mt-1 w-16 rounded-xl border border-slate-200 px-2 py-2 text-center text-sm font-black" /></label>
+                  <label className="text-[11px] font-black text-slate-500">반<input type="number" min="1" max="30" value={newClassNumber} onChange={(event) => setNewClassNumber(event.target.value)} className="mt-1 w-16 rounded-xl border border-slate-200 px-2 py-2 text-center text-sm font-black" /></label>
+                  <button type="button" disabled={saving} onClick={() => void addClassroom()} className="rounded-xl bg-sky-500 px-3 py-2 text-sm font-black text-white disabled:opacity-50">+ 반 추가</button>
+                </div>
+              </div>
+              <p className="mt-2 text-xs font-bold text-slate-500">새 반은 저장과 동시에 운영 중인 6종 가운데 접속 몬스터가 최초 1회 자동 배정됩니다.</p>
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                {selectedSchool.classrooms.map((classroom) => {
+                  const monster = getMonsterById(classroom.monsterId);
+                  const accountExpanded = expandedClassAccounts.has(classroom.id);
+                  return (
+                    <article key={classroom.id} className={`rounded-[22px] border p-4 ${classroom.active ? "border-sky-100 bg-sky-50/50" : "border-slate-200 bg-slate-100 opacity-75"}`}>
+                      <div className="flex items-start gap-3">
+                        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-white bg-white shadow-sm">
+                          {monster ? <Image src={monster.imageSrc} alt={monster.name} fill sizes="64px" className="object-cover" /> : <div className="flex h-full items-center justify-center text-2xl">🎲</div>}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="text-lg font-black text-slate-900">{classLabel(classroom)}</div>
+                            <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${classroom.active ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>{classroom.active ? "운영 중" : "비활성"}</span>
+                          </div>
+                          <div className="mt-1 text-xs font-black text-slate-600">접속 몬스터: {monster?.name || "저장 후 자동 배정"}</div>
+                          <div className="mt-0.5 text-[10px] font-bold text-slate-400">접속 몬스터는 변경할 수 없습니다.</div>
+                        </div>
+                      </div>
+                      <label className="mt-3 block text-[11px] font-black text-slate-500">반 표시명<input value={classroom.label} onChange={(event) => setSelectedSchool({ ...selectedSchool, classrooms: selectedSchool.classrooms.map((item) => item.id === classroom.id ? { ...item, label: event.target.value } : item) })} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold" /></label>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <button type="button" onClick={() => setExpandedClassAccounts((current) => { const next = new Set(current); if (next.has(classroom.id)) next.delete(classroom.id); else next.add(classroom.id); return next; })} className="rounded-xl bg-rose-100 px-3 py-2 text-xs font-black text-rose-700">학생 계정 관리</button>
+                        <a href="#lesson-management" className="rounded-xl bg-orange-100 px-3 py-2 text-center text-xs font-black text-orange-700">차시·링크 관리</a>
+                        {classroom.active && classroom.directToken ? <Link href={`/teacher/contract-schools/preview/${encodeURIComponent(classroom.directToken)}`} target="_blank" className="rounded-xl bg-emerald-100 px-3 py-2 text-center text-xs font-black text-emerald-700">학생 화면 보기 ↗</Link> : <span className="rounded-xl bg-slate-200 px-3 py-2 text-center text-xs font-black text-slate-500">학생 화면 미사용</span>}
+                        <button type="button" disabled={saving} onClick={() => void toggleClassroomActive(classroom.id)} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-600 disabled:opacity-50">{classroom.active ? "반 비활성화" : "반 다시 활성화"}</button>
+                      </div>
+                      <ClassroomLockoutResetButton key={`${selectedSchool.slug}:${classroom.id}`} schoolSlug={selectedSchool.slug} classroomId={classroom.id} getTeacherToken={getTeacherToken} />
+                      {accountExpanded && classroom.directToken && <div className="mt-4"><TeacherClassAccountFinder classroom={toSchoolClassroom(selectedSchool, classroom)} /></div>}
+                    </article>
+                  );
+                })}
+                {selectedSchool.classrooms.length === 0 && <div className="text-sm font-bold text-slate-400">등록된 반이 없어요.</div>}
+              </div>
+              <button type="button" disabled={saving} onClick={() => void saveSchool(selectedSchool, "반 이름과 구성을 저장했어요.")} className="mt-4 rounded-2xl bg-sky-100 px-4 py-2.5 text-sm font-black text-sky-700 disabled:opacity-50">반 이름·구성 저장</button>
+            </div>
+
+            <div id="lesson-management" className="scroll-mt-4 rounded-[28px] bg-white p-5 shadow-lg sm:p-7">
+              <div className="flex items-center justify-between gap-3">
+                <div><div className="text-xs font-black text-orange-500">2~4단계</div><h3 className="mt-1 text-xl font-black text-slate-900">차시·링크·반별 공개</h3></div>
+                <button type="button" onClick={addLesson} className="rounded-xl bg-orange-500 px-3 py-2 text-sm font-black text-white">+ 차시 추가</button>
+              </div>
+              <div className="mt-4 space-y-3">
+                {selectedSchool.lessons.map((lesson) => {
+                  const expanded = expandedLessons.has(lesson.id);
+                  return <article key={lesson.id} className="overflow-hidden rounded-[22px] border border-slate-200">
+                    <div className="bg-slate-50 p-3 sm:p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <button type="button" onClick={() => setExpandedLessons((current) => { const next = new Set(current); if (next.has(lesson.id)) next.delete(lesson.id); else next.add(lesson.id); return next; })} className="min-w-0 text-left">
+                          <div className="text-xs font-black text-orange-500">{lesson.lesson}차시</div>
+                          <div className="mt-1 truncate text-base font-black text-slate-900">{lesson.title}</div>
+                          <div className="mt-1 text-[11px] font-bold text-slate-400">링크 {lesson.links.length}개 · {expanded ? "접기" : "내용 수정"}</div>
+                        </button>
+                        <button type="button" onClick={() => removeLesson(lesson.id)} className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-black text-rose-600">차시 삭제</button>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {selectedSchool.classrooms.filter((classroom) => classroom.active !== false).map((classroom) => {
+                          const visible = selectedSchool.lessonVisibility[classroom.id]?.[lesson.id] === true;
+                          return <button key={classroom.id} type="button" disabled={saving} onClick={() => void toggleLessonVisibility(lesson.id, classroom.id)} className={`rounded-xl px-3 py-2 text-xs font-black transition disabled:opacity-60 ${visible ? "border border-emerald-300 bg-emerald-100 text-emerald-700" : "border border-slate-200 bg-slate-200 text-slate-600"}`}>{classLabel(classroom)} {visible ? "✓ 공개" : "🔒 잠금"}</button>;
+                        })}
+                      </div>
+                    </div>
+                    {expanded && <div className="space-y-4 border-t border-slate-100 p-4">
+                      {lesson.legacyClassLinks && Object.keys(lesson.legacyClassLinks).length > 0 && !lesson.clearLegacyClassLinks && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">기존 반별 전용 링크를 보존 중입니다. 아래 공통 링크를 수정하면 이 차시를 공통 링크 구조로 전환합니다.</div>}
+                      <div className="grid gap-3 sm:grid-cols-[90px_1fr]">
+                        <label className="text-xs font-black text-slate-600">차시 번호<input type="number" min="1" max="100" value={lesson.lesson} onChange={(event) => updateLesson(lesson.id, (current) => ({ ...current, lesson: Number(event.target.value) }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" /></label>
+                        <label className="text-xs font-black text-slate-600">차시 제목<input value={lesson.title} onChange={(event) => updateLesson(lesson.id, (current) => ({ ...current, title: event.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" /></label>
+                      </div>
+                      <label className="block text-xs font-black text-slate-600">설명<textarea value={lesson.message} onChange={(event) => updateLesson(lesson.id, (current) => ({ ...current, message: event.target.value }))} rows={3} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold" /></label>
+                      {user && <LessonPhotosPanel key={`${selectedSchool.slug}:${lesson.id}`} user={user} school={selectedSchool} lesson={lesson} disabled={saving} />}
+                      <div>
+                        <div className="flex items-center justify-between"><div className="text-sm font-black text-slate-800">링크 목록</div><button type="button" onClick={() => updateLessonLinks(lesson.id, (links) => [...links, { id: makeClientId("link"), label: "새 링크", href: "https://", kind: "activity", defaultUnlocked: false, targetType: "all" }])} className="rounded-xl bg-sky-100 px-3 py-2 text-xs font-black text-sky-700">+ 링크 추가</button></div>
+                        <div className="mt-2 space-y-2">
+                          {lesson.links.map((link, linkIndex) => <div key={link.id} className="rounded-2xl border border-sky-100 bg-sky-50/50 p-3">
+                            <div className="grid gap-2 sm:grid-cols-[1fr_1.5fr_auto]">
+                              <input aria-label="링크 제목" value={link.label} onChange={(event) => updateLessonLinks(lesson.id, (links) => links.map((item) => item.id === link.id ? { ...item, label: event.target.value } : item))} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold" />
+                              <input aria-label="링크 주소" value={link.href} onChange={(event) => updateLessonLinks(lesson.id, (links) => links.map((item) => item.id === link.id ? { ...item, href: event.target.value } : item))} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold" />
+                              <div className="flex gap-1">
+                                <button type="button" disabled={linkIndex === 0} onClick={() => updateLessonLinks(lesson.id, (links) => { const next = [...links]; [next[linkIndex - 1], next[linkIndex]] = [next[linkIndex], next[linkIndex - 1]]; return next; })} className="rounded-lg bg-white px-2 text-xs font-black text-slate-600 disabled:opacity-30">↑</button>
+                                <button type="button" disabled={linkIndex === lesson.links.length - 1} onClick={() => updateLessonLinks(lesson.id, (links) => { const next = [...links]; [next[linkIndex], next[linkIndex + 1]] = [next[linkIndex + 1], next[linkIndex]]; return next; })} className="rounded-lg bg-white px-2 text-xs font-black text-slate-600 disabled:opacity-30">↓</button>
+                                <button type="button" onClick={() => updateLessonLinks(lesson.id, (links) => links.filter((item) => item.id !== link.id))} className="rounded-lg bg-rose-50 px-2 text-xs font-black text-rose-600">삭제</button>
+                              </div>
+                            </div>
+                            <div className="mt-3 border-t border-sky-100 pt-3">
+                              <div className="text-[11px] font-black text-slate-500">링크 노출 대상</div>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <button type="button" aria-pressed={link.targetType !== "class"} onClick={() => setLinkTargetType(lesson.id, link.id, "all")} className={`rounded-xl px-3 py-2 text-[11px] font-black transition ${link.targetType !== "class" ? "border border-sky-300 bg-sky-100 text-sky-700" : "border border-slate-200 bg-white text-slate-500"}`}>전체 반</button>
+                                <button type="button" aria-pressed={link.targetType === "class"} onClick={() => setLinkTargetType(lesson.id, link.id, "class")} className={`rounded-xl px-3 py-2 text-[11px] font-black transition ${link.targetType === "class" ? "border border-violet-300 bg-violet-100 text-violet-700" : "border border-slate-200 bg-white text-slate-500"}`}>특정 반</button>
+                              </div>
+                              {link.targetType === "class" && <div className="mt-2 rounded-xl border border-violet-100 bg-white p-2">
+                                <div className="flex flex-wrap gap-2">
+                                  {selectedSchool.classrooms.filter((classroom) => classroom.active !== false).map((classroom) => {
+                                    const targeted = link.targetClassroomIds?.includes(classroom.id) === true;
+                                    return <button key={classroom.id} type="button" aria-pressed={targeted} onClick={() => toggleLinkTargetClassroom(lesson.id, link.id, classroom.id)} className={`rounded-lg px-2.5 py-1.5 text-[11px] font-black transition ${targeted ? "bg-violet-600 text-white" : "bg-slate-100 text-slate-500"}`}>{classLabel(classroom)} {targeted ? "✓" : ""}</button>;
+                                  })}
+                                </div>
+                                {!link.targetClassroomIds?.length && <div className="mt-2 text-[11px] font-black text-rose-600">노출할 반을 1개 이상 선택해 주세요.</div>}
+                              </div>}
+                            </div>
+                            <div className="mt-3 border-t border-sky-100 pt-3">
+                              <div className="mb-2 text-[11px] font-black text-slate-500">학생 활동 버튼 공개 상태</div>
+                              <div className="flex flex-wrap gap-2">
+                                {selectedSchool.classrooms.filter((classroom) => classroom.active !== false).map((classroom) => {
+                                  const unlocked = isLinkUnlocked(classroom.id, link);
+                                  const pending = pendingLinkState === `${classroom.id}:${link.id}`;
+                                  return <button key={classroom.id} type="button" disabled={Boolean(pendingLinkState) || !classroom.directToken} onClick={() => void toggleLinkVisibility(classroom, link)} className={`rounded-xl px-3 py-2 text-[11px] font-black transition disabled:opacity-50 ${unlocked ? "border border-emerald-300 bg-emerald-100 text-emerald-700" : "border border-slate-200 bg-slate-200 text-slate-600"}`}>{classLabel(classroom)} {pending ? "저장 중" : unlocked ? "✓ 공개" : "🔒 잠금"}</button>;
+                                })}
+                              </div>
+                            </div>
+                          </div>)}
+                          {lesson.links.length === 0 && <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-5 text-center text-sm font-bold text-slate-400">등록된 링크가 없어요.</div>}
+                        </div>
+                      </div>
+                    </div>}
+                  </article>;
+                })}
+                {selectedSchool.lessons.length === 0 && <div className="rounded-2xl border border-dashed border-slate-200 p-7 text-center text-sm font-bold text-slate-400">차시를 추가해 주세요.</div>}
+              </div>
+              <button type="button" disabled={saving} onClick={() => void saveSchool(selectedSchool, "차시와 링크를 저장했어요.")} className="mt-5 w-full rounded-2xl bg-orange-500 py-3 text-sm font-black text-white disabled:opacity-50">{saving ? "저장 중" : "차시·링크 저장"}</button>
+            </div>
           </section>
         )}
       </div>
-    </div>
+    </main>
   );
 }
