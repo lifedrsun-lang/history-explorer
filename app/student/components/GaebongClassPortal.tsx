@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 
 import ClassroomBoard from "./ClassroomBoard";
+import ClassroomLockoutReset from "./ClassroomLockoutReset";
+import { CLASSROOM_LOCKOUT_MS } from "@/lib/classroomLockout";
 import {
   CLASSROOM_MONSTERS,
   GAEBONG_CLASSROOMS,
@@ -11,7 +13,7 @@ import {
 } from "../data/classroomData";
 
 const MAX_FAILED_ATTEMPTS = 3;
-const LOCKOUT_MS = 10 * 60 * 1000;
+const LOCKOUT_MS = CLASSROOM_LOCKOUT_MS;
 
 const shuffleMonsters = () => {
   const items = [...CLASSROOM_MONSTERS];
@@ -295,6 +297,11 @@ export default function GaebongClassPortal({ onChangeSchool }: Props) {
               </div>
             )}
 
+            {isLocked && lockedUntil && selectedClassroom && <ClassroomLockoutReset
+              schoolSlug={"gaebong"} classroomId={`${selectedClassroom.grade}-${selectedClassroom.classNumber}`}
+              storageKey={getLockoutStorageKey(selectedClassroom.classNumber)} lockedUntil={lockedUntil}
+              onReset={() => { setFailedAttempts(0); setLockedUntil(null); setNow(Date.now()); setErrorMessage("선생님이 잠금을 해제했어요. 몬스터 비밀번호를 다시 선택해 주세요."); }}
+            />}
             {!isLocked && errorMessage && (
               <div className="mt-3 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-center text-sm font-black text-rose-600">
                 {errorMessage}
