@@ -1,12 +1,7 @@
 "use client";
 
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 
-import {
-  doc,
-  getDoc,
-  updateDoc,
-} from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 
 import { useCallback, useEffect, useState } from "react";
@@ -15,6 +10,7 @@ import {
   useRouter,
 } from "next/navigation";
 
+import type { StudentSummary } from "@/lib/studentTypes";
 import StudentProfile from "@/app/student/components/StudentProfile";
 import { getSchoolNotice } from "@/app/student/data/schoolInfo";
 import { getStageInfo } from "@/app/student/data/stageData";
@@ -31,7 +27,7 @@ export default function TeacherStudentPreviewPage() {
 
   const [authorized, setAuthorized] =
     useState(false);
-  const [student, setStudent] = useState<any>(null);
+  const [student, setStudent] = useState<StudentSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState("");
 
@@ -43,20 +39,13 @@ export default function TeacherStudentPreviewPage() {
     }
 
     try {
-      const snapshot = await getDoc(
-        doc(db, "students", studentId)
-      );
-
-      if (!snapshot.exists()) {
-        setErrorText("학생 정보를 찾을 수 없습니다.");
-        setLoading(false);
-        return;
-      }
-
-      setStudent({
-        id: snapshot.id,
-        ...snapshot.data(),
-      });
+      const user = auth.currentUser;
+      if (!user) throw new Error("teacher_auth_required");
+      const response = await fetch("/api/teacher/student-security", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${await user.getIdToken()}`, "x-sunlab-preview": "1" },
+        body: JSON.stringify({ action: "preview", studentCollection: "students", studentId }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "학생 정보를 불러오지 못했습니다.");
+      setStudent(data.student);
     } catch (error) {
       console.error(
         "학생 미리보기 불러오기 실패:",
@@ -84,22 +73,7 @@ export default function TeacherStudentPreviewPage() {
     return unsubscribe;
   }, [fetchStudent, router]);
 
-  const changeCharacter = async (
-    studentIdValue: string,
-    type: string
-  ) => {
-    await updateDoc(
-      doc(db, "students", studentIdValue),
-      {
-        character: type,
-      }
-    );
-
-    setStudent((prev: any) => ({
-      ...prev,
-      character: type,
-    }));
-  };
+  const changeCharacter = () => { /* Preview is read-only. */ };
 
   if (!authorized || loading) {
     return (
@@ -146,7 +120,7 @@ export default function TeacherStudentPreviewPage() {
                 교사용 학생화면 미리보기입니다.
               </div>
               <div className="mt-1 text-xs text-slate-500">
-                학생에게 공유하는 공개 링크가 아닙니다.
+                과제·복습·코인 현황을 확인하는 읽기 전용 화면입니다.
               </div>
             </div>
 

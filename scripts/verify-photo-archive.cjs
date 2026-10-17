@@ -50,11 +50,16 @@ let firebaseReads = 0;
 function ref(collection, id) { return { collection, id, async get() { firebaseReads++; return { exists: studentRecords.has(`${collection}:${id}`), data: () => studentRecords.get(`${collection}:${id}`) }; } }; }
 const firestore = { collection: c => ({ doc: id => ref(c, id), select() { return this; }, async get() { return { docs: [...studentRecords.entries()].filter(([key]) => key.startsWith(c + ':')).map(([key, data]) => ({ id: key.split(':')[1], data: () => data })) }; } }), getAll: (...refs) => Promise.all(refs.map(r => r.get())) };
 const firebase = { getFirebaseAdmin: () => ({ db: firestore, auth: { async verifyIdToken(token, checkRevoked) { assert.equal(checkRevoked, true); if (token === 'teacher') return { uid: 'teacher-1', firebase: { sign_in_provider: 'password' } }; if (token === 'teacher2') return { uid: 'teacher-2', firebase: { sign_in_provider: 'password' } }; if (token === 'student') return { uid: 's', firebase: { sign_in_provider: 'custom' }, role: 'student' }; throw new Error('invalid'); } } }) };
-const server = load('lib/photoArchiveServer.ts', { 'server-only': {}, '@/lib/firebaseAdmin': firebase, '@/lib/supabaseServer': { getSupabaseServer: () => ({ from: query, storage }), getAssignmentBucketName: () => 'private-fixture' }, '@/lib/assignments': { isAllowedStudentCollection: c => ['students', 'student', 'Students', 'Student'].includes(c) }, '@/lib/studentEnrollment': enrollment, '@/lib/photoArchive': pure });
+process.env.STUDENT_AUTH_TEACHER_UIDS = 'teacher-1,teacher-2';
+const sessionHarness = require('./student-session-fixture.cjs').createHarness({ records: studentRecords, firebase });
+const sessionServer = sessionHarness.load('lib/studentSessionServer.ts');
+const teacherAuth = sessionHarness.load('lib/teacherAuthServer.ts');
+const server = load('lib/photoArchiveServer.ts', { 'server-only': {}, '@/lib/studentSessionServer': sessionServer, '@/lib/teacherAuthServer': teacherAuth, '@/lib/firebaseAdmin': firebase, '@/lib/supabaseServer': { getSupabaseServer: () => ({ from: query, storage }), getAssignmentBucketName: () => 'private-fixture' }, '@/lib/assignments': { isAllowedStudentCollection: c => ['students', 'student', 'Students', 'Student'].includes(c) }, '@/lib/studentEnrollment': enrollment, '@/lib/photoArchive': pure });
 const mocks = { '@/lib/photoArchive': pure, '@/lib/photoArchiveServer': server };
 const studentRoute = load('app/api/student/photo-archive/route.ts', mocks), teacherRoute = load('app/api/teacher/photo-archive/route.ts', mocks);
 const credentials = id => ({ studentCollection: 'students', studentId: id, studentPassword: studentRecords.get(`students:${id}`)?.password });
-const request = (body, token, origin = 'https://fixture.local') => new Request('https://fixture.local/api/photo-archive', { method: 'POST', headers: { 'Content-Type': 'application/json', origin, ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
+const studentCookie = (id, origin = 'http://fixture.local') => sessionHarness.cookie(id).replace(/^sunlab-/, origin.startsWith('https:') ? '__Host-sunlab-' : 'sunlab-');
+const request = (body, token, origin = 'https://fixture.local') => new Request('https://fixture.local/api/photo-archive', { method: 'POST', headers: { 'Content-Type': 'application/json', origin, ...(token ? { authorization: `Bearer ${token}` } : {}), ...(body.studentId && body.studentPassword !== 'bad' ? { cookie: studentCookie(body.studentId, origin) } : {}) }, body: JSON.stringify(body) });
 const asStudent = (id, body) => studentRoute.POST(request({ ...credentials(id), ...body }));
 const asTeacher = (body, token = 'teacher') => teacherRoute.POST(request(body, token));
 const base = { school: '학교1', classroom: 'A반', year: 2026, quarter: 1, title: '검증 앨범', description: '', term_end_date: '2026-03-31', end_date_source: '격리된 테스트 학교 계획', expires_on: '2099-12-31', published: false, consent_verified: true, consent_note: 'fixture consent', roster_verified: true, roster_source: 'fixture historical class roster', member_keys: ['students:one'] };
@@ -130,5 +135,5 @@ async function main() {
   assert.deepEqual([...studentRecords.values()].map(s => s.password), ['fixture-one', 'fixture-new', 'fixture-class', 'fixture-school']);
   console.log('PASS: Korean midnight boundaries, +14-day/year/leap arithmetic, manual expiry, stable 75-photo non-overlap layout, release block, teacher ownership/provider/revocation validation, exact term/class/school roster, server authentication, list/detail/image authorization, consent, upload/EXIF/thumbnail/original preservation, unpublish/revoke/expiry, soft removal, private-bucket assertion and storage failure. Fixtures only; no production learning data written.');
 }
-module.exports = { pure, rows, objects, studentRecords, server, studentRoute, teacherRoute, base, credentials };
+module.exports = { pure, rows, objects, studentRecords, server, studentRoute, teacherRoute, base, credentials, studentCookie, sessionHarness };
 if (require.main === module) main().catch(error => { console.error(error); process.exitCode = 1; });

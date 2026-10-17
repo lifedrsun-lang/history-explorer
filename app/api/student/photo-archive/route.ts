@@ -6,8 +6,8 @@ export async function POST(request: Request) {
   try {
     archiveOrigin(request);
     const body = await request.json();
-    if (body.action === "image") return await archiveImage(body);
-    const student = await archiveStudent(body);
+    if (body.action === "image") return await archiveImage(body, undefined, request);
+    const student = await archiveStudent(request, body);
     if (body.action === "list") return archiveJson({ albums: await listStudentAlbums(student), serverNow: Date.now() });
     if (body.action === "detail") {
       const album = await readableArchive(body.albumId, student);

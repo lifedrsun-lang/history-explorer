@@ -18,7 +18,7 @@ export async function POST(request: Request, { params }: Context) {
   try {
     const { assignmentId } = await params;
     const body = await request.json();
-    const student = await getVerifiedStudent(body);
+    const student = await getVerifiedStudent(request, body);
     const assignment = await getAssignmentForStudent(assignmentId, student);
     if (!Array.isArray(body.files) || !body.files.length) throw new Error("files_required");
     if (body.files.length > HOMEWORK_MAX_FILES) throw new Error("too_many_files");
@@ -48,7 +48,7 @@ export async function DELETE(request: Request, { params }: Context) {
   try {
     const { assignmentId } = await params;
     const body = await request.json();
-    const student = await getVerifiedStudent(body);
+    const student = await getVerifiedStudent(request, body);
     await getAssignmentForStudent(assignmentId, student);
     if (!Array.isArray(body.paths) || !body.paths.every((path: unknown) => typeof path === "string")) throw new Error("invalid_storage_path");
     assertHomeworkStagingPaths(assignmentId, student.studentKey, body.attemptId, body.paths);

@@ -1,8 +1,9 @@
 import "server-only";
-import { randomUUID, createHash, timingSafeEqual } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import sharp from "sharp";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
-import { isAllowedStudentCollection } from "@/lib/assignments";
+import { requirePhotoSession, StudentSessionError } from "@/lib/studentSessionServer";
+import { verifiedTeacher } from "@/lib/teacherAuthServer";
 import { getSupabaseServer, getAssignmentBucketName } from "@/lib/supabaseServer";
 import { getEnrollmentTerms } from "@/lib/studentEnrollment";
 import { ArchiveError, archiveId, canReadArchive, studentAlbum, validateArchiveInput, type ArchiveAlbum, type ArchivePhoto } from "@/lib/photoArchive";
@@ -17,29 +18,18 @@ export function archiveOrigin(request: Request) {
   if ((origin && origin !== new URL(request.url).origin) || request.headers.get("sec-fetch-site") === "cross-site") throw new ArchiveError("허용되지 않은 요청입니다.", 403);
 }
 export async function archiveTeacher(request: Request) {
-  const match = (request.headers.get("authorization") || "").match(/^Bearer (.+)$/);
-  if (!match) throw new ArchiveError("교사 로그인이 필요합니다.", 401);
-  try {
-    const token = await getFirebaseAdmin().auth.verifyIdToken(match[1], true);
-    // Match the established teacher password-login trust boundary; exclude custom/anonymous student tokens.
-    if (token.firebase?.sign_in_provider !== "password" || token.role === "student" || token.student === true) throw new Error("teacher_required");
-    return token.uid;
-  } catch { throw new ArchiveError("교사 로그인이 필요합니다.", 401); }
+  try { return (await verifiedTeacher(request)).uid; }
+  catch { throw new ArchiveError("교사 로그인이 필요합니다.", 401); }
 }
-export async function archiveStudent(body: Record<string, unknown>) {
-  // The existing Firestore student/password lookup is publicly readable. Never enable
-  // real student photos until that legacy authentication boundary has been repaired
-  // and reviewed. This task deliberately does not change the existing login flow.
+export async function archiveStudent(request: Request, body: Record<string, unknown>) {
+  // Remains blocked until production client rules and credential rollout are verified.
   if (process.env.PHOTO_ARCHIVE_ACCESS_REVIEWED !== "true") throw new ArchiveError("사진 공개를 위한 계정 보안 점검 중입니다. 선생님께 문의해 주세요.", 503);
   try {
-    const collection = String(body.studentCollection || ""), id = String(body.studentId || "");
-    if (!isAllowedStudentCollection(collection) || !/^[^/]{1,128}$/.test(id) || typeof body.studentPassword !== "string" || !body.studentPassword.trim()) throw new Error("auth_required");
-    const snap = await getFirebaseAdmin().db.collection(collection).doc(id).get(), data = snap.data();
-    if (!data || data.isActive === false) throw new Error("auth_required");
-    const digest = (value: string) => createHash("sha256").update(value).digest();
-    if (!timingSafeEqual(digest(String(data.password || data.studentPassword || data.pw || "").trim()), digest(body.studentPassword.trim()))) throw new Error("auth_required");
-    return { key: `${collection}:${id}`, terms: getEnrollmentTerms(data) };
-  } catch { throw new ArchiveError("학생 로그인을 다시 확인해 주세요.", 401); }
+    const current = await requirePhotoSession(request, body);
+    return { key: current.identity.studentKey, terms: getEnrollmentTerms(current.data) };
+  } catch (error) {
+    throw new ArchiveError(error instanceof StudentSessionError ? error.message : "학생 로그인을 다시 확인해 주세요.", error instanceof StudentSessionError ? error.status : 401);
+  }
 }
 export async function archiveRoster() {
   const firestore = getFirebaseAdmin().db;
@@ -173,9 +163,9 @@ export async function editArchivePhoto(uid: string, body: Record<string, unknown
   if ("caption" in patch && patch.caption!.length > 1000) throw new ArchiveError("설명은 1,000자까지 입력해 주세요.");
   const result = await db().from(PHOTOS).update(patch).eq("id", photo.id); storageError(result.error);
 }
-export async function archiveImage(body: Record<string, unknown>, uid?: string) {
+export async function archiveImage(body: Record<string, unknown>, uid?: string, request?: Request) {
   const photo = await storedPhoto(body.photoId);
-  const album = uid ? await ownedArchive(photo.album_id, uid) : await readableArchive(photo.album_id, await archiveStudent(body));
+  const album = uid ? await ownedArchive(photo.album_id, uid) : await readableArchive(photo.album_id, await archiveStudent(request!, body));
   if (body.albumId !== album.id) throw new ArchiveError("열람할 수 없는 사진입니다.", 404);
   const variant = body.variant;
   if (!["thumb", "display", "original"].includes(String(variant)) || (!uid && variant === "original")) throw new ArchiveError("열람할 수 없는 사진입니다.", 404);
@@ -183,7 +173,7 @@ export async function archiveImage(body: Record<string, unknown>, uid?: string) 
   const result = await bucket.download(variant === "original" ? photo.original_path : variant === "display" ? photo.display_path : photo.thumb_path);
   storageError(result.error);
   // Recheck after storage I/O so expiry/unpublish during download cannot return bytes.
-  if (!uid) await readableArchive(album.id, await archiveStudent(body));
+  if (!uid) await readableArchive(album.id, await archiveStudent(request!, body));
   return new Response(result.data!, { headers: { ...archiveHeaders, "Content-Type": variant === "original" ? photo.original_type : "image/webp", "Content-Disposition": "inline", "X-Content-Type-Options": "nosniff" } });
 }
 export const archiveHeaders = { "Cache-Control": "private, no-store, max-age=0", "Pragma": "no-cache", "Vary": "Authorization, Cookie, Origin", "Cross-Origin-Resource-Policy": "same-origin" };

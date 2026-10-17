@@ -1,4 +1,5 @@
 "use client";
+import { studentFetch } from "@/lib/studentFetch";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -64,7 +65,7 @@ export default function StudentReviewAssignments({ student, mode = "review" }: P
 
   const studentId = String(student?.id || "");
   const studentCollection = getStudentCollection(student);
-  const studentPassword = String(student?.password || "");
+  const teacherPreview = student.teacherPreview === true;
   const sectionLabel = mode === "exam" ? "기출문제" : "교재문제";
 
   const activeAssignment = useMemo(
@@ -77,7 +78,7 @@ export default function StudentReviewAssignments({ student, mode = "review" }: P
     let cancelled = false;
 
     const loadAssignments = async () => {
-      if (!studentId || !studentPassword) {
+      if (!studentId) {
         if (!cancelled) {
           setAssignments([]);
           setErrorMessage("학생 정보를 다시 확인해 주세요.");
@@ -97,10 +98,10 @@ export default function StudentReviewAssignments({ student, mode = "review" }: P
       setCompletionMessage("");
 
       try {
-        const response = await fetch("/api/student/review-assignments", {
+        const response = await studentFetch(student, "/api/student/review-assignments", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ studentId, studentCollection, studentPassword }),
+          body: JSON.stringify({ studentId, studentCollection }),
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
@@ -133,10 +134,11 @@ export default function StudentReviewAssignments({ student, mode = "review" }: P
     return () => {
       cancelled = true;
     };
-  }, [mode, sectionLabel, studentCollection, studentId, studentPassword]);
+  }, [mode, sectionLabel, studentCollection, studentId, teacherPreview, student]);
 
   const completeAssignment = async () => {
     if (!activeAssignment || isCompleting) return;
+    if (teacherPreview) { setCompletionError("미리보기에서는 제출할 수 없습니다."); return; }
     setIsCompleting(true);
     setCompletionError("");
 
@@ -145,14 +147,14 @@ export default function StudentReviewAssignments({ student, mode = "review" }: P
         .map((question) => answers[question.questionId])
         .filter((answer): answer is LocalAnswer => Boolean(answer));
 
-      const response = await fetch("/api/student/review-assignments", {
+      const response = await studentFetch(student, "/api/student/review-assignments", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           assignmentId: activeAssignment.id,
           studentId,
           studentCollection,
-          studentPassword,
+          teacherPreview,
           answers: answerList,
         }),
       });

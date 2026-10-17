@@ -1,4 +1,5 @@
 "use client";
+import { studentFetch } from "@/lib/studentFetch";
 
 import { useEffect, useState } from "react";
 import {
@@ -29,22 +30,22 @@ export default function StudentReviewLaunchers({ student }: { student: any }) {
 
   const studentId = String(student?.id || "");
   const studentCollection = getStudentCollection(student);
-  const studentPassword = String(student?.password || "");
+  const teacherPreview = student.teacherPreview === true;
 
   useEffect(() => {
     let cancelled = false;
 
     const checkExamAssignments = async () => {
-      if (!studentId || !studentPassword) {
+      if (!studentId) {
         if (!cancelled) setHasExamAssignments(false);
         return;
       }
 
       try {
-        const response = await fetch("/api/student/review-assignments", {
+        const response = await studentFetch(student, "/api/student/review-assignments", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ studentId, studentCollection, studentPassword }),
+          body: JSON.stringify({ studentId, studentCollection }),
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error("review_assignment_check_failed");
@@ -66,7 +67,7 @@ export default function StudentReviewLaunchers({ student }: { student: any }) {
     return () => {
       cancelled = true;
     };
-  }, [studentCollection, studentId, studentPassword]);
+  }, [studentCollection, studentId, teacherPreview, student]);
 
   const popupTitle = activeMode === "exam" ? "🏆 기출문제" : "📘 교재문제";
   const popupDescription =

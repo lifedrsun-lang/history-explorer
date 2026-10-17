@@ -159,7 +159,7 @@ const mapStudentError = (error: unknown) => {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const student = await getVerifiedStudent(body);
+    const student = await getVerifiedStudent(request, body, true);
     const { db } = getFirebaseAdmin();
     const snapshot = await db
       .collection(REVIEW_ASSIGNMENTS_COLLECTION)
@@ -194,7 +194,7 @@ export async function PATCH(request: Request) {
       throw new Error("invalid_review_assignment_id");
     }
 
-    const student = await getVerifiedStudent(body);
+    const student = await getVerifiedStudent(request, body);
     const { db } = getFirebaseAdmin();
     const completionId = `${assignmentId}_${makeStorageSafeStudentKey(
       student.studentKey

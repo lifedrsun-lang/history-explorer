@@ -1,6 +1,7 @@
+import { studentFetch } from "./studentFetch";
 import type { HomeworkUploadTarget } from "./homeworkPhoto";
 
-type StudentAuth = { studentId: string; studentCollection: string; studentPassword: string };
+type StudentAuth = { studentId: string; studentCollection: string; teacherPreview?: boolean };
 const SUBMIT_ERROR = "사진 제출에 실패했습니다. 다시 시도해 주세요.";
 
 export const homeworkUploadError = (error: unknown) =>
@@ -18,7 +19,7 @@ export const submitHomeworkPhotos = async (assignmentId: string, files: File[], 
   let targets: HomeworkUploadTarget[] = [];
   let submitted = false;
   try {
-    const prepared = await readResponse(await fetch(uploadUrl, {
+    const prepared = await readResponse(await studentFetch(auth, uploadUrl, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...auth, files: files.map(({ name, type, size }) => ({ name, type, size })) }),
     }));
@@ -33,7 +34,7 @@ export const submitHomeworkPhotos = async (assignmentId: string, files: File[], 
       // Storage errors are diagnostic data, not user-facing messages.
       if (!response.ok) throw new Error(SUBMIT_ERROR);
     }
-    await readResponse(await fetch(`/api/student/assignments/${assignmentId}/submit`, {
+    await readResponse(await studentFetch(auth, `/api/student/assignments/${assignmentId}/submit`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...auth, attemptId, photos: files.map((file, i) => ({
         storagePath: targets[i].storagePath, name: file.name, type: file.type, size: file.size,
@@ -45,7 +46,7 @@ export const submitHomeworkPhotos = async (assignmentId: string, files: File[], 
   } finally {
     // Never delete final submission files, even if the final response was lost.
     if (!submitted && attemptId && Array.isArray(targets) && targets.length) {
-      await fetch(uploadUrl, {
+      await studentFetch(auth, uploadUrl, {
         method: "DELETE", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...auth, attemptId, paths: targets.map((target) => target.storagePath) }),
       }).catch(() => undefined);

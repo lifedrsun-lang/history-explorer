@@ -84,7 +84,7 @@ export default function PhotoArchiveAdmin() {
   if (!user) return <div className="p-8">교사 로그인이 필요합니다. <Link href="/teacher" className="underline">교사 로그인으로</Link></div>;
   return <main className="min-h-screen bg-stone-50 p-4 text-slate-800 sm:p-8">
     <div className="mx-auto max-w-7xl">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold tracking-widest text-teal-700">CLASS PHOTO ARCHIVE</p><h1 className="mt-2 text-3xl font-black">📸 우리 반 사진 관리</h1><p className="mt-2 text-sm text-slate-600">당시 수강 명부를 확인하고 우리 반의 순간을 공유해 주세요.</p></div><Link href="/teacher/manage/after-school" className={button}>방과후 관리</Link></header>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold tracking-widest text-teal-700">CLASS PHOTO ARCHIVE</p><h1 className="mt-2 text-3xl font-black">📸 우리 반 사진 관리</h1><p className="mt-2 text-sm text-slate-600">당시 수강 명부를 확인하고 우리 반의 순간을 공유해 주세요.</p></div><div className="flex gap-2"><Link href="/teacher/student-security" className={button}>학생 사진 인증</Link><Link href="/teacher/manage/after-school" className={button}>방과후 관리</Link></div></header>
       <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">기존 분기 이력에는 당시 학교·반이 기록되어 있지 않습니다. 실제 명부로 학생을 직접 확인해 주세요. 학교의 실제 분기 종료일과 사진에 나온 모든 학생의 공개 동의를 확인한 후 공개할 수 있습니다.</div>
       {!studentAccessReady && <p role="status" className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800">학생계정 보안 보완 전까지 학생 공개가 차단됩니다. 비공개 앨범 작성·사진 보관·관리자 미리보기는 사용할 수 있습니다.</p>}
       {message && <p role="status" className="mb-4 rounded-xl bg-teal-50 p-3 text-sm text-teal-800">{message}</p>}

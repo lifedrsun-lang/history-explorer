@@ -37,10 +37,9 @@ export async function POST(
     const isStaged = request.headers.get("content-type")?.includes("application/json");
     const body = isStaged ? await request.json() : null;
     const formData = isStaged ? null : await request.formData();
-    const student = await getVerifiedStudent(body || {
+    const student = await getVerifiedStudent(request, body || {
       studentId: formData?.get("studentId"),
       studentCollection: formData?.get("studentCollection"),
-      studentPassword: formData?.get("studentPassword"),
     });
     const assignment = await getAssignmentForStudent(assignmentId, student);
     const photos: File[] = [];

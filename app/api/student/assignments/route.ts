@@ -36,7 +36,7 @@ const mapStudentError = (error: unknown) => {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const student = await getVerifiedStudent(body);
+    const student = await getVerifiedStudent(request, body, true);
     const { db } = getFirebaseAdmin();
     const assignmentSnapshot = await db
       .collection(ASSIGNMENTS_COLLECTION)

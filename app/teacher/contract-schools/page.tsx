@@ -10,6 +10,7 @@ import TeacherClassAccountFinder from "@/app/student/components/TeacherClassAcco
 import SchoolDocumentsPanel from "@/app/teacher/contract-schools/SchoolDocumentsPanel";
 import LessonPhotosPanel from "@/app/teacher/contract-schools/LessonPhotosPanel";
 import SchoolQrPanel from "./SchoolQrPanel";
+import ClassroomLockoutResetButton from "./ClassroomLockoutResetButton";
 import type {
   ContractSchoolClassroom,
   ContractSchoolConfig,
@@ -830,6 +831,7 @@ export default function ContractSchoolsPage() {
                         {classroom.active && classroom.directToken ? <Link href={`/teacher/contract-schools/preview/${encodeURIComponent(classroom.directToken)}`} target="_blank" className="rounded-xl bg-emerald-100 px-3 py-2 text-center text-xs font-black text-emerald-700">학생 화면 보기 ↗</Link> : <span className="rounded-xl bg-slate-200 px-3 py-2 text-center text-xs font-black text-slate-500">학생 화면 미사용</span>}
                         <button type="button" disabled={saving} onClick={() => void toggleClassroomActive(classroom.id)} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-600 disabled:opacity-50">{classroom.active ? "반 비활성화" : "반 다시 활성화"}</button>
                       </div>
+                      <ClassroomLockoutResetButton key={`${selectedSchool.slug}:${classroom.id}`} schoolSlug={selectedSchool.slug} classroomId={classroom.id} getTeacherToken={getTeacherToken} />
                       {accountExpanded && classroom.directToken && <div className="mt-4"><TeacherClassAccountFinder classroom={toSchoolClassroom(selectedSchool, classroom)} /></div>}
                     </article>
                   );

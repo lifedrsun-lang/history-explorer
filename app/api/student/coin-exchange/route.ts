@@ -129,7 +129,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const action = normalizeText(body?.action);
-    const student = await getVerifiedStudent(body);
+    const student = await getVerifiedStudent(request, body, action === "status");
     const exchangeWindow = getCoinExchangeWindowStatus(student.school);
     const { db } = getFirebaseAdmin();
     const studentRef = db.collection(student.collectionName).doc(student.id);

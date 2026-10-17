@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import ClassroomBoard from "./ClassroomBoard";
+import ClassroomLockoutReset from "./ClassroomLockoutReset";
+import { CLASSROOM_LOCKOUT_MS } from "@/lib/classroomLockout";
 import SchoolQrPanel from "@/app/components/SchoolQrPanel";
 import {
   CLASSROOM_MONSTERS,
@@ -10,7 +12,7 @@ import {
 } from "../data/classroomData";
 
 const MAX_FAILED_ATTEMPTS = 3;
-const LOCKOUT_MS = 10 * 60 * 1000;
+const LOCKOUT_MS = CLASSROOM_LOCKOUT_MS;
 
 const shuffleMonsters = () => {
   const items = [...CLASSROOM_MONSTERS];
@@ -196,6 +198,11 @@ export default function SchoolMonsterClassPortal({ schoolSlug, schoolDisplayName
             </div>
             <div className="mt-3 rounded-2xl bg-violet-50 px-3 py-2 text-center text-[11px] font-bold text-violet-500">몬스터 위치는 들어올 때마다 섞여요.</div>
             {isLocked && <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-center text-sm font-black text-rose-700">🔒 비밀번호를 3번 틀렸어요. {remainingMinutes}분 {String(remainingClockSeconds).padStart(2, "0")}초 후 다시 시도할 수 있어요.</div>}
+            {isLocked && lockedUntil && currentClassroom && <ClassroomLockoutReset
+              schoolSlug={schoolSlug} classroomId={`${currentClassroom.grade}-${currentClassroom.classNumber}`}
+              storageKey={getStorageKey(currentClassroom)} lockedUntil={lockedUntil}
+              onReset={() => { setFailedAttempts(0); setLockedUntil(null); setNow(Date.now()); setErrorMessage("선생님이 잠금을 해제했어요. 몬스터 비밀번호를 다시 선택해 주세요."); }}
+            />}
             {!isLocked && errorMessage && <div className="mt-3 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-center text-sm font-black text-rose-600">{errorMessage}</div>}
             <button type="button" onClick={resetClassroom} className="mt-3 w-full rounded-2xl bg-violet-500 py-3 text-sm font-black text-white shadow-sm">반 다시 선택</button>
           </section>

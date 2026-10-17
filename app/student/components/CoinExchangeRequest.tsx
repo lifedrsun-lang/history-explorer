@@ -1,4 +1,5 @@
 "use client";
+import { studentFetch } from "@/lib/studentFetch";
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -24,7 +25,7 @@ type Props = {
 type StudentLike = {
   id?: unknown;
   collectionName?: unknown;
-  password?: unknown;
+  teacherPreview?: boolean;
   silver?: unknown;
   school?: unknown;
 };
@@ -55,7 +56,7 @@ export default function CoinExchangeRequest({ student }: Props) {
 
   const studentId = String(student?.id || "");
   const studentCollection = getStudentCollection(student);
-  const studentPassword = String(student?.password || "");
+  const teacherPreview = student.teacherPreview === true;
   const currentSilver = Math.max(0, Number(student?.silver || 0));
   const isSaesolStudent = isSaesolSchool(student?.school);
 
@@ -63,12 +64,12 @@ export default function CoinExchangeRequest({ student }: Props) {
     return {
       studentId,
       studentCollection,
-      studentPassword,
+      teacherPreview,
     };
-  }, [studentCollection, studentId, studentPassword]);
+  }, [studentCollection, studentId, teacherPreview, student]);
 
   const loadStatus = useCallback(async () => {
-    if (!studentId || !studentPassword) {
+    if (!studentId) {
       return;
     }
 
@@ -76,7 +77,7 @@ export default function CoinExchangeRequest({ student }: Props) {
     setErrorMessage("");
 
     try {
-      const response = await fetch("/api/student/coin-exchange", {
+      const response = await studentFetch(student, "/api/student/coin-exchange", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -105,7 +106,7 @@ export default function CoinExchangeRequest({ student }: Props) {
     } finally {
       setIsLoading(false);
     }
-  }, [getStudentAuthBody, studentId, studentPassword]);
+  }, [getStudentAuthBody, studentId, teacherPreview, student]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -122,6 +123,7 @@ export default function CoinExchangeRequest({ student }: Props) {
   }, [isSaesolStudent, rewardKind]);
 
   const submitExchangeRequest = async () => {
+    if (teacherPreview) { setErrorMessage("미리보기에서는 신청할 수 없습니다."); return; }
     if (isSubmitting || request || !exchangeWindow?.isOpen) {
       return;
     }
@@ -155,7 +157,7 @@ export default function CoinExchangeRequest({ student }: Props) {
     setErrorMessage("");
 
     try {
-      const response = await fetch("/api/student/coin-exchange", {
+      const response = await studentFetch(student, "/api/student/coin-exchange", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -368,7 +370,7 @@ export default function CoinExchangeRequest({ student }: Props) {
               <button
                 type="button"
                 onClick={submitExchangeRequest}
-                disabled={isSubmitting}
+                disabled={isSubmitting || teacherPreview}
                 className="w-full rounded-2xl bg-violet-600 px-4 py-3 text-base font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSubmitting ? "신청하는 중..." : "교환 신청하기"}

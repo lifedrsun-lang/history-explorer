@@ -12,6 +12,7 @@ function bundle(admin) {
   const mocks = {
     'firebase/auth': "exports.onAuthStateChanged=(a,cb)=>{queueMicrotask(()=>cb({getIdToken:async()=> 'teacher'}));return()=>{};};",
     '@/lib/firebase': 'exports.auth={};',
+    './firebase': 'exports.auth={};',
     'next/link': "exports.__esModule=true;exports.default=({children,...props})=>require('react').createElement('a',props,children);",
     'next/dynamic': "exports.__esModule=true;exports.default=()=>require('@/app/components/PhotoDiagram').default;",
     './CoinExchangeRequest': 'exports.__esModule=true;exports.default=()=>null;',
@@ -47,7 +48,7 @@ const server = http.createServer(async (incoming, outgoing) => {
     for await (const chunk of incoming) bytes.push(chunk);
     if (url.pathname === '/test-font' && process.env.PHOTO_ARCHIVE_TEST_FONT) { outgoing.setHeader('Content-Type', 'font/otf'); outgoing.end(fs.readFileSync(process.env.PHOTO_ARCHIVE_TEST_FONT)); return; }
     if (url.pathname.endsWith('.js')) { outgoing.setHeader('Content-Type', 'text/javascript'); outgoing.end(bundles[url.pathname]); return; }
-    if (url.pathname === '/') { outgoing.setHeader('Content-Type', 'text/html; charset=utf-8'); outgoing.end(`<meta name="viewport" content="width=device-width"><style>@font-face{font-family:ArchiveTestKorean;src:url('/test-font')}body{margin:0;font-family:ArchiveTestKorean,Arial,sans-serif;color:#243b35}button{cursor:pointer}#root{padding:16px}input,textarea,select{display:block;margin:8px;padding:8px}fieldset{padding:12px}section{margin:16px 0}aside button{margin:8px}${fs.readdirSync(path.join(root, '.next/static/chunks')).filter(f=>f.endsWith('.css')).map(f=>fs.readFileSync(path.join(root,'.next/static/chunks',f),'utf8')).join('')} ${fs.readFileSync(path.join(root, 'app/components/photoDiagram.module.css'), 'utf8')}</style><div id="root"></div><script src="/${url.searchParams.has('admin') ? 'admin' : 'student'}.js"></script>`); return; }
+    if (url.pathname === '/') { outgoing.setHeader('Set-Cookie', fixture.studentCookie('one') + '; Path=/; HttpOnly; SameSite=Strict'); outgoing.setHeader('Content-Type', 'text/html; charset=utf-8'); outgoing.end(`<meta name="viewport" content="width=device-width"><style>@font-face{font-family:ArchiveTestKorean;src:url('/test-font')}body{margin:0;font-family:ArchiveTestKorean,Arial,sans-serif;color:#243b35}button{cursor:pointer}#root{padding:16px}input,textarea,select{display:block;margin:8px;padding:8px}fieldset{padding:12px}section{margin:16px 0}aside button{margin:8px}${fs.readdirSync(path.join(root, '.next/static/chunks')).filter(f=>f.endsWith('.css')).map(f=>fs.readFileSync(path.join(root,'.next/static/chunks',f),'utf8')).join('')} ${fs.readFileSync(path.join(root, 'app/components/photoDiagram.module.css'), 'utf8')}</style><div id="root"></div><script src="/${url.searchParams.has('admin') ? 'admin' : 'student'}.js"></script>`); return; }
     const request = new Request(url, { method: incoming.method, headers: incoming.headers, body: ['GET', 'HEAD'].includes(incoming.method) ? undefined : Buffer.concat(bytes) });
     if (url.pathname.startsWith('/upload/')) { const form = await request.formData(), file = form.get(''); fixture.objects.set(url.pathname.slice('/upload/'.length), file); outgoing.end('{}'); return; }
     if (url.pathname === '/api/teacher/photo-archive/mybox') {

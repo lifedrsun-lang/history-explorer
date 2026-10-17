@@ -1,4 +1,5 @@
 "use client";
+import { studentFetch } from "@/lib/studentFetch";
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -22,7 +23,7 @@ type Props = {
 type StudentLike = {
   id?: unknown;
   collectionName?: unknown;
-  password?: unknown;
+  teacherPreview?: boolean;
 };
 
 type UploadState = {
@@ -99,18 +100,18 @@ export default function StudentAssignments({ student }: Props) {
 
   const studentId = String(student?.id || "");
   const studentCollection = getStudentCollection(student);
-  const studentPassword = String(student?.password || "");
+  const teacherPreview = student.teacherPreview === true;
 
   const getStudentAuthBody = useCallback(() => {
     return {
       studentId,
       studentCollection,
-      studentPassword,
+      teacherPreview,
     };
-  }, [studentCollection, studentId, studentPassword]);
+  }, [studentCollection, studentId, teacherPreview, student]);
 
   const loadAssignments = useCallback(async () => {
-    if (!studentId || !studentPassword) {
+    if (!studentId) {
       return;
     }
 
@@ -118,7 +119,7 @@ export default function StudentAssignments({ student }: Props) {
     setLoadError("");
 
     try {
-      const response = await fetch("/api/student/assignments", {
+      const response = await studentFetch(student, "/api/student/assignments", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -139,7 +140,7 @@ export default function StudentAssignments({ student }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [getStudentAuthBody, studentId, studentPassword]);
+  }, [getStudentAuthBody, studentId, teacherPreview, student]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -202,6 +203,7 @@ export default function StudentAssignments({ student }: Props) {
   };
 
   const submitAssignment = async (assignment: AssignmentSummary) => {
+    if (teacherPreview) { setAssignmentState(assignment.id, { error: "미리보기에서는 제출할 수 없습니다." }); return; }
     const files = selectedFiles[assignment.id] || [];
 
     if (files.length === 0) {
@@ -333,7 +335,7 @@ export default function StudentAssignments({ student }: Props) {
                       type="file"
                       accept={HOMEWORK_ALLOWED_CONTENT_TYPES.join(",")}
                       multiple
-                      disabled={state.isUploading}
+                      disabled={state.isUploading || teacherPreview}
                       onChange={(event) =>
                         handleFileChange(assignment.id, event.target.files)
                       }
@@ -381,7 +383,7 @@ export default function StudentAssignments({ student }: Props) {
               {canSubmit && (
                 <button
                   type="button"
-                  disabled={state.isUploading}
+                  disabled={state.isUploading || teacherPreview}
                   onClick={() => submitAssignment(assignment)}
                   className="mt-4 w-full rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-black text-white shadow-sm transition enabled:hover:bg-emerald-600 disabled:opacity-60"
                 >
