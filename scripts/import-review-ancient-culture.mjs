@@ -50,6 +50,10 @@ async function main() {
     const bytes = Buffer.from(await blob.arrayBuffer());
     const metadata = await sharp(bytes).metadata();
     if (!metadata.width || !metadata.height) fail('stored_image_invalid');
+    const {data:signed,error:signError} = await bucket.createSignedUrl(path,120);
+    if (signError || !signed?.signedUrl) fail('image_signed_url_failed');
+    const response = await fetch(signed.signedUrl);
+    if (!response.ok || sha256(Buffer.from(await response.arrayBuffer())) !== sha256(bytes)) fail('image_signed_display_failed');
     return bytes;
   }
   for (const item of plan.filter(x=>x.action === 'reuse')) await readImage(item.existing.imageStoragePath);
@@ -115,7 +119,7 @@ async function main() {
   const publishedNewQuestionReferences = assignments.reduce((count,a)=> count + (a.data.questions||[]).filter(q=>importedIds.has(q.questionId)).length,0);
   log('verified',{bankBefore:before.length,bankAfter:after.length,newlyCreated:after.length-before.length,
     availableQuestions:finalPlan.length,byBook:{'06호':2,'07호':1,'08호':3},
-    verifiedImages,oldBankUnchanged,protectedCollections:protectedChecks,
+    verifiedImages,verifiedSignedImages:verifiedImages,oldBankUnchanged,protectedCollections:protectedChecks,
     publishedNewQuestionReferences,assignmentWrites:0,studentWrites:0,questions:summary(finalPlan)});
   if (protectedChecks.some(x=>!x.unchanged)) fail('operational_data_changed_during_job');
   if (publishedNewQuestionReferences !== 0) fail('unexpected_new_question_distribution');
