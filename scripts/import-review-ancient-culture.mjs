@@ -6,11 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import sharp from 'sharp';
 import { JOB, sha256, validateManifest, planImport, documentId, sourceKey, documentHash, snapshotRows, summary, fail } from './review-import-core.mjs';
 
-// --deployment-job is used only by the temporary, reviewed import deployment.
-// Its build-command hook is removed immediately after the verified import.
-const mode = process.argv[2] === '--deployment-job'
-  ? (process.env.VERCEL_ENV === 'production' ? '--apply' : '--dry-run')
-  : process.argv[2];
+const mode = process.argv[2];
 const log = (stage, data) => console.log('REVIEW_IMPORT ' + JSON.stringify({job:JOB,stage,...data}));
 const env = name => process.env[name] || fail('missing_' + name);
 
