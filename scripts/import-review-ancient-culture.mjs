@@ -115,7 +115,7 @@ async function main() {
   const publishedNewQuestionReferences = assignments.reduce((count,a)=> count + (a.data.questions||[]).filter(q=>importedIds.has(q.questionId)).length,0);
   log('verified',{bankBefore:before.length,bankAfter:after.length,newlyCreated:after.length-before.length,
     availableQuestions:finalPlan.length,byBook:{'06호':2,'07호':1,'08호':3},
-    verifiedImages,verifiedSignedImages:verifiedImages,oldBankUnchanged,protectedCollections:protectedChecks,
+    verifiedImages,verifiedSignedImages:verifiedImages,oldBankUnchanged,protectedCollectionCount:protectedChecks.length,protectedCollectionsUnchanged:protectedChecks.every(x=>x.unchanged),
     publishedNewQuestionReferences,assignmentWrites:0,studentWrites:0,questions:summary(finalPlan)});
   if (protectedChecks.some(x=>!x.unchanged)) fail('operational_data_changed_during_job');
   if (publishedNewQuestionReferences !== 0) fail('unexpected_new_question_distribution');
