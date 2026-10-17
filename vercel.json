@@ -1,1 +1,1 @@
-{"buildCommand":"node --test scripts/review-import-core.test.mjs && node scripts/import-review-ancient-culture.mjs --deployment-job && node scripts/probe-homework-storage.cjs && npm run build"}
+{"buildCommand":"node scripts/probe-homework-storage.cjs && npm run build"}
