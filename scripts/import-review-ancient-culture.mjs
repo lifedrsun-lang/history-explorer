@@ -28,7 +28,10 @@ async function main() {
   if (unauthenticated.status !== 401) fail('private_manifest_auth_check_failed');
   log('private_source_protected',{unauthenticatedStatus:unauthenticated.status});
   const {data,error} = await supabase.functions.invoke('review-import-ancient-culture', {body:{job:JOB}});
-  if (error) fail('private_manifest_unavailable');
+  if (error) {
+    log('source_fetch_failed',{status:error.context?.status || null,keyFormat:env('SUPABASE_SERVICE_ROLE_KEY').startsWith('eyJ')?'jwt':'secret'});
+    fail('private_manifest_unavailable');
+  }
   const manifest = validateManifest(data);
   for (const q of manifest.questions) {
     const metadata = await sharp(Buffer.from(q.imageBase64,'base64')).metadata();
