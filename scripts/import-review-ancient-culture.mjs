@@ -113,6 +113,9 @@ async function main() {
   const assignments = snapshotRows(await db.collection('reviewAssignments').get());
   const importedIds = new Set(finalPlan.filter(x=>x.existing.importJob===JOB).map(x=>x.id));
   const publishedNewQuestionReferences = assignments.reduce((count,a)=> count + (a.data.questions||[]).filter(q=>importedIds.has(q.questionId)).length,0);
+  const allSourceIds = new Set(finalPlan.map(x=>x.id));
+  const allSourceAssignmentReferences = assignments.reduce((count,a)=>count+(a.data.questions||[]).filter(q=>allSourceIds.has(q.questionId)).length,0);
+  log('distribution_verified',{allSourceAssignmentReferences,newSourceAssignmentReferences:publishedNewQuestionReferences,reviewAssignmentCount:assignments.length});
   log('verified',{bankBefore:before.length,bankAfter:after.length,newlyCreated:after.length-before.length,
     availableQuestions:finalPlan.length,byBook:{'06호':2,'07호':1,'08호':3},
     verifiedImages,verifiedSignedImages:verifiedImages,oldBankUnchanged,protectedCollectionCount:protectedChecks.length,protectedCollectionsUnchanged:protectedChecks.every(x=>x.unchanged),
