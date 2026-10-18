@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const {createHarness}=require('./student-session-fixture.cjs');
 process.env.STUDENT_AUTH_TEACHER_UIDS='teacher-1,teacher-2';
 const h=createHarness(),{records,tables,identity}=h;
-records.set('students:one',{name:'검증학생',school:'김포 하늘빛초',grade:2,class:'A',studentNumber:7,password:'never-return',bronze:27,silver:3,enrollmentTerms:['2026-Q3'],contact:'private',coinHistory:[{id:'coin',text:'수업 보상',amount:3,privateNote:'hidden'}]});
+records.set('students:one',{name:'검증학생',school:'김포 하늘빛초',grade:2,class:'A',studentNumber:7,password:'never-return',stage:'book_9',bronze:27,silver:3,enrollmentTerms:['2026-Q3'],contact:'private',coinHistory:[{id:'coin',text:'수업 보상',amount:3,privateNote:'hidden'}]});
 records.set('students:other',{name:'다른학생',school:'다른초',grade:2,class:'A',password:'other-secret',bronze:99});
 const auth=h.load('app/api/student/auth/route.ts'),profile=h.load('app/api/student/profile/route.ts'),teacher=h.load('app/api/teacher/student-security/route.ts'),s=h.load('lib/studentSessionServer.ts');
 function req(body,cookie='',headers={},method='POST'){return new Request('http://fixture.local/api/student/auth',{method,headers:{origin:'http://fixture.local',cookie,'Content-Type':'application/json',...headers},...(['GET','HEAD'].includes(method)?{}:{body:JSON.stringify(body)})});}
@@ -13,7 +13,17 @@ async function main(){
   r=await auth.POST(req({action:'login',studentId:'one',studentCollection:'students',school:'하늘빛초',password:'wrong',schoolPassword:'wrong'}));assert.equal(r.status,401);
   r=await auth.POST(req({action:'login',studentId:'one',studentCollection:'students',school:'하늘빛초',password:'7',schoolPassword:'2497'}));assert.equal(r.status,200);
   const cookie=r.headers.get('set-cookie').split(';')[0];assert.match(r.headers.get('set-cookie'),/HttpOnly; SameSite=Strict/);data=await r.json();assert.equal(data.student.bronze,27);assert.equal(data.student.coinHistory[0].text,'수업 보상');assert.ok(!/never-return|private|password|contact/.test(JSON.stringify(data)));
-  assert.equal((await auth.GET(req(null,cookie,{},'GET'))).status,200);
+  // Real login/restore responses must preserve the teacher's progress identifier.
+  const {getBookNumberFromStage}=h.load('app/student/data/stageData.ts');
+  assert.equal(data.student.stage,'book_9');assert.equal(getBookNumberFromStage(data.student.stage),9);
+  r=await auth.GET(req(null,cookie,{},'GET'));assert.equal(r.status,200);
+  const restored=(await r.json()).student;assert.equal(restored.stage,'book_9');assert.equal(getBookNumberFromStage(restored.stage),9);
+  r=await teacher.POST(req({action:'preview',studentId:'one',studentCollection:'students'},'',{'x-sunlab-preview':'1',authorization:'Bearer teacher'}));assert.equal(r.status,200);
+  assert.equal((await r.json()).student.stage,'book_9');
+  for(const [stage,book] of [['9-2',9],[33,9],['33',9],['book_23',23]]){
+    const payload=JSON.parse(JSON.stringify(identity.studentProfile('one','students',{...records.get('students:one'),stage})));
+    assert.equal(getBookNumberFromStage(payload.stage),book);
+  }
   await assert.rejects(s.requireStudentSession(req({},cookie),{studentId:'other'}),e=>e.status===401);
   await assert.rejects(s.requireStudentSession(req({studentPassword:'never-return'})),e=>e.status===401);
   await assert.rejects(s.requirePhotoSession(req({},cookie)),e=>e.status===403);

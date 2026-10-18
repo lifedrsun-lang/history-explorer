@@ -28,7 +28,10 @@ export function studentProfile(id: string, collection: string, data: Record<stri
     ...studentIdentity(id, collection, data),
     bronze: Number(data.bronze || data.bronzeCoin || data.동엽전 || 0),
     silver: Number(data.silver || data.silverCoin || data.은엽전 || 0),
-    stage: Number(data.stage || 1), character: text(data.character),
+    // Existing progress includes book_9, 9-2 and legacy numeric lesson stages.
+    // Coercing book IDs to Number produces NaN/null and incorrectly shows book 1.
+    stage: typeof data.stage === "string" || (typeof data.stage === "number" && Number.isFinite(data.stage)) ? data.stage : 1,
+    character: text(data.character),
     coinHistory: Array.isArray(data.coinHistory) ? data.coinHistory.map((raw: Record<string, unknown>) => {
       const fields = ["id", "date", "type", "source", "currency", "amount", "fromCurrency", "fromAmount", "toCurrency", "toAmount", "text"];
       const row: Record<string, unknown> = {};
