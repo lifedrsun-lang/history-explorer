@@ -21,9 +21,17 @@
 - 기존 `9-2`, 숫자 33, 숫자 문자열 33, `book_23`도 실제 진도 해석기로 각각 9권/9권/9권/23권인지 JSON 직렬화 후 확인했다. 이 검사에는 합성 학생만 사용했다.
 - 학생 응답의 허용 필드 목록은 유지한다. 비밀번호·연락처 등 비공개 필드를 추가로 반환하지 않는다.
 
+## 실제 사진 직접 URL 검사
+
+- Supabase의 프로젝트 URL과 DB에 존재하는 사진 1개의 원본/썸네일/화면용 경로를 조회하고 비로그인 HTTP GET을 수행했다. 비밀키·쿠키·Authorization은 사용하지 않았다. 대상 경로와 사진 내용은 보고서에 노출하지 않는다.
+- 공개 URL 경로 3종은 모두 HTTP 400 JSON `Bucket not found / NoSuchBucket`로 거부됐다. DB에서 실제 객체 존재를 확인한 비공개 버킷의 표본이다.
+- 인증 URL 경로 3종도 모두 HTTP 400 JSON `headers must have required property 'authorization' / InvalidRequest`로 거부됐다. 사진 데이터는 내려오지 않았다.
+- 검사 수는 URL 방식 2종 × 사진 변형 3종 = 6개다. 표본 1개에 대한 비로그인 직접 접근 결과이며, 만료된 서명 URL이나 모든 학생·반의 실계정 권한을 검증했다고 확대하지 않는다.
+- [Supabase 공식 URL 설명](https://supabase.com/docs/guides/storage/serving/downloads)의 public/authenticated 경로로 요청했다. 학생 앱은 별도 서명 다운로드 URL을 반환하지 않는 기존 구조를 유지한다.
+
 ## 완료와 한계
 
-- 서버 세션·사진 권한 회귀, 학생 데이터 흐름 13/13 검사 통과. 로컬 전체 Next 빌드와 TypeScript, 정적 페이지 70/70 생성이 통과했다. 수정 Preview 상태는 배포 로그로 별도 확인한다.
+- 서버 세션·사진 권한 회귀, 학생 데이터 흐름 13/13 검사 통과. 로컬 전체 Next 빌드와 TypeScript, 정적 페이지 70/70 생성이 통과했다. 수정 커밋 `6e92edc98d9f1cd0b7b277720d1b38bceb11619a`의 Preview `https://history-explorer-jot81b3qc-sunclass.vercel.app`는 READY이며 원격 빌드 성공도 확인했다.
 - 실제 관리자 로그인·앨범/인증 관리 조회는 위 기존 Preview에서 확인했다. 수정 후 새 Preview의 실제 학생 화면에서 9권 표시를 재확인한 것은 아직 아니다.
 - 실제 과제 제출/복습 풀이/코인 교환/비밀번호 변경/확인코드 발급은 실행하지 않았다. 학습 이력과 자격정보를 변경하지 않는 범위의 실제 조회 검증이다.
 - Firebase 운영 규칙은 아직 변경하지 않았다. 실제 당시 학교·반 명부 및 공개 동의가 확인되지 않아 사진 공개 차단을 유지한다. 실제 앨범으로 학교·반·분기별 허용·만료 검증은 남아 있다.
