@@ -11,7 +11,7 @@ const log = (stage, data) => console.log('REVIEW_IMPORT ' + JSON.stringify({job:
 const env = name => process.env[name] || fail('missing_' + name);
 
 async function main() {
-  if (!['--dry-run','--apply','--verify'].includes(mode)) fail('explicit_mode_required');
+  if (!['--dry-run','--apply','--verify','--audit'].includes(mode)) fail('explicit_mode_required');
   if (env('FIREBASE_ADMIN_PROJECT_ID') !== 'history-quest-b8e96' ||
       new URL(env('SUPABASE_URL')).hostname !== 'yiowkxfvageewcmczsip.supabase.co') fail('wrong_project');
   if (mode === '--apply' && process.env.VERCEL_ENV !== 'production') fail('apply_requires_production');
@@ -38,6 +38,34 @@ async function main() {
   const before = snapshotRows(await bank.get());
   const plan = planImport(manifest.questions,before);
   log('plan',{mode,bankCount:before.length,questions:summary(plan)});
+  if (mode === '--audit') {
+    const assignmentRows = snapshotRows(await db.collection('reviewAssignments').get());
+    let totalMatchingRecords = 0;
+    for (const item of plan) {
+      const ids = item.ids || (item.id ? [item.id] : []);
+      const records = [];
+      for (const id of ids) {
+        const record = before.find(d=>d.id === id);
+        const d = record.data;
+        let imageAvailable = false, imageMatchesPrepared = false;
+        try { const bytes = await readImage(d.imageStoragePath); imageAvailable = true; imageMatchesPrepared = sha256(bytes) === item.q.imageSha256; } catch {}
+        const references = assignmentRows.reduce((count,a)=>count+(a.data.questions||[]).filter(q=>q.questionId === id).length,0);
+        records.push({id,bookNumber:d.bookNumber,lesson:d.lesson||'',answer:Number(d.correctIndex)+1,
+          answerMatchesSource:Number(d.correctIndex)===item.q.payload.correctIndex,
+          bookMatchesSource:d.bookNumber===item.q.payload.bookNumber,
+          promptMatchesSource:d.prompt===item.q.payload.prompt,
+          optionsMatchSource:JSON.stringify(d.options)===JSON.stringify(item.q.payload.options),
+          imageAvailable,imageMatchesPrepared,assignmentReferences:references,
+          sourceFileRecorded:Boolean(d.sourceFile || String(d.explanation||'').includes(item.q.sourceFile)),
+          importedByThisJob:d.importJob===JOB,
+          createdAt:d.createdAt?.toDate?.().toISOString()||null,updatedAt:d.updatedAt?.toDate?.().toISOString()||null});
+      }
+      totalMatchingRecords += records.length;
+      log('source_audit',{sourceQuestion:item.q.sourceQuestion,recordCount:records.length,records});
+    }
+    log('audit_complete',{bankCount:before.length,totalMatchingRecords,duplicatedSources:plan.filter(x=>x.ids?.length>1).map(x=>x.q.sourceQuestion),assignmentCount:assignmentRows.length,writes:0,finalVerificationPassed:!plan.some(x=>x.action==='conflict')});
+    return;
+  }
   if (plan.some(x=>x.action === 'conflict')) fail('existing_question_conflict');
   // Verify every reused image can be downloaded and decoded before any writes.
   async function readImage(path) {
