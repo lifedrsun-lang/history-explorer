@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSourcePatch } from './source-patch.mjs';
+import { buildSourcePatch, buildExamMetadataPatch } from './source-patch.mjs';
 
 const source={sourceFile:'source.pdf',sourcePage:10,sourceQuestion:5,payload:{explanation:'Source: source.pdf, page 10, question 5.'}};
 test('adds provenance and preserves the entire existing explanation',()=>{
@@ -24,4 +24,18 @@ test('does not duplicate a citation already in the explanation',()=>{
  const patch=buildSourcePatch(existing,source);
  assert.equal(patch.explanation,undefined);
  assert.equal(patch.sourceFile,'source.pdf');
+});
+
+test('missing exam filters are populated without changing question content',()=>{
+ const source={payload:{examLevel:'basic',examRound:'66',examQuestionNumber:'8'}};
+ const existing={prompt:'Keep',bookNumber:'06',examLevel:'',examRound:'',examQuestionNumber:''};
+ const before=JSON.stringify(existing),patch=buildExamMetadataPatch(existing,source);
+ assert.deepEqual(patch,source.payload);
+ assert.equal(JSON.stringify(existing),before);
+ assert.deepEqual(buildExamMetadataPatch({...existing,...patch},source),{});
+});
+test('existing exam metadata is preserved or conflicting metadata rejects the update',()=>{
+ const source={payload:{examLevel:'basic',examRound:'66',examQuestionNumber:'8'}};
+ assert.deepEqual(buildExamMetadataPatch({examLevel:'basic',examRound:66,examQuestionNumber:8},source),{});
+ assert.throws(()=>buildExamMetadataPatch({examLevel:'advanced'},source),/existing_exam_conflict/);
 });

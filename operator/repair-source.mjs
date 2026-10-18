@@ -3,7 +3,7 @@ import { cert, initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { createClient } from '@supabase/supabase-js';
 import { JOB, validateManifest, planImport, documentHash, snapshotRows, fail } from '../scripts/review-import-core.mjs';
-import { buildSourcePatch } from './source-patch.mjs';
+import { buildSourcePatch, buildExamMetadataPatch } from './source-patch.mjs';
 
 const targetId='eoxgEmPjBl8bcWo9kHFA';
 const mode=process.argv[2];
@@ -22,7 +22,7 @@ async function main(){
  const plan=planImport(manifest.questions,before);
  if(plan.some(item=>item.action!=='reuse')||plan[4].id!==targetId)fail('bank_identity_conflict');
  const original=before.find(row=>row.id===targetId).data;
- const patch=buildSourcePatch(original,source);
+ const patch={...buildSourcePatch(original,source),...buildExamMetadataPatch(original,source)};
  log('planned',{mode,targetId,bankCount:before.length,fields:Object.keys(patch),sourceFile:source.sourceFile,sourcePage:source.sourcePage,sourceQuestion:source.sourceQuestion});
  const protectedBefore=new Map();
  let applied=false;
@@ -37,7 +37,7 @@ async function main(){
    const row=current.data();
    for(const key of ['prompt','options','correctIndex','bookNumber','lesson','imageStoragePath'])
     if(documentHash({value:row[key]??null})!==documentHash({value:original[key]??null}))fail('target_changed_concurrently');
-   const currentPatch=buildSourcePatch(row,source);
+   const currentPatch={...buildSourcePatch(row,source),...buildExamMetadataPatch(row,source)};
    if(!Object.keys(currentPatch).length)return false;
    transaction.update(bank.doc(targetId),{...currentPatch,updatedBy:'system:review-source-provenance-20261018',updatedAt:FieldValue.serverTimestamp()});
    return true;
@@ -46,7 +46,7 @@ async function main(){
  const after=snapshotRows(await bank.get()),target=after.find(row=>row.id===targetId)?.data;
  if(!target)fail('target_missing_after');
  const unchangedOtherBank=before.filter(row=>row.id!==targetId).every(row=>after.some(item=>item.id===row.id&&documentHash(item.data)===documentHash(row.data)));
- const allowedChanges=new Set(['sourceFile','sourcePage','sourceQuestion','explanation','updatedBy','updatedAt']);
+ const allowedChanges=new Set(['sourceFile','sourcePage','sourceQuestion','explanation','examLevel','examRound','examQuestionNumber','updatedBy','updatedAt']);
  const unchangedTargetContent=Object.keys(original).filter(key=>!allowedChanges.has(key)).every(key=>documentHash({value:target[key]})===documentHash({value:original[key]}));
  const originalExplanationPreserved=String(target.explanation||'').startsWith(String(original.explanation||''));
  const protectedChecks=[];
@@ -59,11 +59,12 @@ async function main(){
  const allSources=planImport(manifest.questions,after);
  const importedIds=new Set(allSources.filter(item=>item.existing?.importJob===JOB).map(item=>item.id));
  const newQuestionAssignmentReferences=assignments.reduce((n,row)=>n+(row.data.questions||[]).filter(q=>importedIds.has(q.questionId)).length,0);
- const sourceComplete=target.sourceFile===source.sourceFile&&target.sourcePage===source.sourcePage&&target.sourceQuestion===5&&String(target.explanation||'').includes(source.sourceFile);
+ const examMetadataComplete=Object.keys(buildExamMetadataPatch(target,source)).length===0;
+ const sourceComplete=examMetadataComplete&&target.sourceFile===source.sourceFile&&target.sourcePage===source.sourcePage&&target.sourceQuestion===5&&String(target.explanation||'').includes(source.sourceFile);
  const safe=before.length===after.length&&unchangedOtherBank&&unchangedTargetContent&&originalExplanationPreserved&&protectedChecks.every(item=>item.unchanged)&&newQuestionAssignmentReferences===0;
  if(!safe)fail('preservation_check_failed');
  if(mode==='--apply'&&!sourceComplete)fail('source_not_saved');
- log('verified',{mode,recordsUpdated:applied?1:0,bankBefore:before.length,bankAfter:after.length,sourceComplete,unchangedOtherBank,unchangedTargetContent,originalExplanationPreserved,protectedCollections:protectedChecks.length,protectedCollectionsUnchanged:protectedChecks.every(item=>item.unchanged),existingQuestionAssignmentReferences,newQuestionAssignmentReferences,studentCount:protectedChecks.find(item=>item.collection==='students')?.count??null,assignmentWrites:0,studentWrites:0,questionsCreated:0,questionsDeleted:0});
+ log('verified',{mode,recordsUpdated:applied?1:0,bankBefore:before.length,bankAfter:after.length,sourceComplete,examMetadataComplete,unchangedOtherBank,unchangedTargetContent,originalExplanationPreserved,protectedCollections:protectedChecks.length,protectedCollectionsUnchanged:protectedChecks.every(item=>item.unchanged),existingQuestionAssignmentReferences,newQuestionAssignmentReferences,studentCount:protectedChecks.find(item=>item.collection==='students')?.count??null,assignmentWrites:0,studentWrites:0,questionsCreated:0,questionsDeleted:0});
  await mkdir('operator-result',{recursive:true});
  await writeFile('operator-result/index.html','<!doctype html><html lang="en"><title>Operator validation</title><p>Operator validation completed. See authenticated build logs for details.</p></html>');
  log('complete',{mode});

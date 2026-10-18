@@ -13,3 +13,15 @@ export function buildSourcePatch(existing, source) {
   }
   return patch;
 }
+
+// Populate missing exam filters from the same verified source identity.
+export function buildExamMetadataPatch(existing, source) {
+  const patch = {};
+  for (const key of ['examLevel','examRound','examQuestionNumber']) {
+    const expected = source.payload[key];
+    if (expected === undefined || expected === '') throw new Error('missing_exam_value');
+    if (existing[key] === undefined || existing[key] === null || existing[key] === '') patch[key] = expected;
+    else if (String(existing[key]) !== String(expected)) throw new Error('existing_exam_conflict');
+  }
+  return patch;
+}
