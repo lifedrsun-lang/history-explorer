@@ -1,5 +1,5 @@
 {
   "framework": null,
   "outputDirectory": "operator-result",
-  "buildCommand": "node --test operator/source-patch.test.mjs && node operator/repair-source.mjs --apply"
+  "buildCommand": "node operator/audit-image-77-5.mjs"
 }
