@@ -20,7 +20,7 @@ const MODES: Array<{
     value: "distribute",
     icon: "📨",
     title: "문제 배포하기",
-    description: "호수 선택 후 학생에게 배포",
+    description: "문제 선택 후 학생에게 배포",
   },
   {
     value: "results",
@@ -30,33 +30,10 @@ const MODES: Array<{
   },
 ];
 
-const findFilterSelect = (labelText: string) => {
-  const editor = document.getElementById("review-question-editor");
-  const bankSection = editor?.nextElementSibling?.querySelector("section:first-child");
-  if (!bankSection) return null;
-
-  const labels = Array.from(bankSection.querySelectorAll("label"));
-  const label = labels.find((item) =>
-    String(item.textContent || "").trim().startsWith(labelText)
-  );
-
-  return label?.querySelector("select") as HTMLSelectElement | null;
-};
-
 export default function ReviewWorkspaceTabs() {
   const [mode, setMode] = useState<ReviewWorkspaceMode>("create");
-  const [filterReady, setFilterReady] = useState(false);
 
   useEffect(() => {
-    const syncFilterReady = () => {
-      const bookSelect = findFilterSelect("호수");
-      setFilterReady(Boolean(bookSelect && bookSelect.value !== "all"));
-    };
-
-    const handleChange = () => {
-      window.setTimeout(syncFilterReady, 0);
-    };
-
     const handleClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
       const button = target?.closest("button");
@@ -69,12 +46,9 @@ export default function ReviewWorkspaceTabs() {
       }
     };
 
-    syncFilterReady();
-    document.addEventListener("change", handleChange, true);
     document.addEventListener("click", handleClick, true);
 
     return () => {
-      document.removeEventListener("change", handleChange, true);
       document.removeEventListener("click", handleClick, true);
     };
   }, []);
@@ -83,7 +57,6 @@ export default function ReviewWorkspaceTabs() {
     <div
       id="review-workspace-tabs"
       data-mode={mode}
-      data-filter-ready={filterReady ? "true" : "false"}
       className="bg-[#f5f7fb] px-3 pt-3 md:px-5 md:pt-5"
     >
       <div className="mx-auto max-w-7xl rounded-[26px] border border-slate-200 bg-white p-3 shadow-sm md:p-4">
@@ -110,12 +83,6 @@ export default function ReviewWorkspaceTabs() {
             );
           })}
         </div>
-
-        {mode === "distribute" && !filterReady && (
-          <div className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 text-xs font-black text-amber-700 md:text-sm">
-            📚 호수를 선택하면 해당 호수의 모든 문제가 표시됩니다. 차시는 필요할 때 선택하세요.
-          </div>
-        )}
       </div>
     </div>
   );
