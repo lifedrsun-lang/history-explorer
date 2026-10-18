@@ -11,11 +11,15 @@ const ts = require('typescript');
 const sharp = require('sharp');
 const puppeteer = require('puppeteer-core');
 const chromium = require('@sparticuz/chromium').default;
+const { createHarness } = require('./student-session-fixture.cjs');
 const root = path.resolve(__dirname, '..');
 const records = new Map();
 const objects = new Map();
 const tokens = new Map();
-const auth = { studentId: 'test-student', studentCollection: 'students', studentPassword: 'test-password' };
+const auth = { studentId: 'test-student', studentCollection: 'students' };
+const fixturePassword = 'test-password';
+let studentCookie;
+process.env.STUDENT_AUTH_TEACHER_UIDS = 'test-teacher';
 const aid = 'photo-regression';
 let origin;
 let writeFailure = false;
@@ -44,10 +48,14 @@ const bucket = {
 };
 const mocks = {
   'server-only': {},
-  '@/lib/firebaseAdmin': { getFirebaseAdmin: () => ({ db, auth: { verifyIdToken: async () => ({ uid: 'test-teacher' }) } }), isFirebaseAdminConfigurationError: () => false },
+  '@/lib/firebaseAdmin': { getFirebaseAdmin: () => ({ db, auth: { verifyIdToken: async () => ({ uid: 'test-teacher', firebase: { sign_in_provider: 'password' } }) } }), isFirebaseAdminConfigurationError: () => false },
   '@/lib/supabaseServer': { getSupabaseServer: () => ({ storage: { from: () => bucket } }), getAssignmentBucketName: () => 'test-only', isSupabaseConfigurationError: () => false },
   'firebase-admin/firestore': { FieldValue: { serverTimestamp: () => new Date() } },
 };
+// Exercise the real server-session verifier with isolated session tables.
+// Student identity in a request body never substitutes for the HttpOnly cookie.
+const sessionHarness = createHarness({ firebase: mocks['@/lib/firebaseAdmin'] });
+mocks['@/lib/studentSessionServer'] = sessionHarness.load('lib/studentSessionServer.ts');
 const cache = new Map();
 function resolveLocal(spec, filename) {
   let file = spec.startsWith('@/') ? path.join(root, spec.slice(2)) : path.resolve(path.dirname(filename), spec);
@@ -62,7 +70,12 @@ function load(file) {
   const requireFile = createRequire(file);
   new Function('require', 'module', 'exports', code)((spec) => {
     if (spec in mocks) return mocks[spec];
-    if (spec.startsWith('@/') || spec.startsWith('.')) return load(resolveLocal(spec, file));
+    if (spec.startsWith('@/') || spec.startsWith('.')) {
+      const local = resolveLocal(spec, file);
+      const canonical = '@/'+path.relative(root, local).replaceAll('\\', '/').replace(/\.tsx?$/, '');
+      if (canonical in mocks) return mocks[canonical];
+      return load(local);
+    }
     return requireFile(spec);
   }, compiledModule, compiledModule.exports);
   return compiledModule.exports;
@@ -72,7 +85,7 @@ function browserBundle() {
   function add(file) {
     if (modules.has(file)) return file;
     modules.set(file, '');
-    let code = fs.readFileSync(file, 'utf8');
+    let code = file === path.join(root, 'lib/firebase.ts') ? 'exports.auth={currentUser:null};' : fs.readFileSync(file, 'utf8');
     if (/\.tsx?$/.test(file)) code = ts.transpileModule(code, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
     const deps = {};
     const req = createRequire(file);
@@ -89,7 +102,7 @@ function browserBundle() {
   const react = add(require.resolve('react'));
   const reactDOM = add(require.resolve('react-dom/client'));
   const entries = [...modules].filter(([key]) => !key.endsWith(':deps'));
-  return `const process={env:{NODE_ENV:'production'}};const M={${entries.map(([key, code]) => `${JSON.stringify(key)}:${code}`).join(',')}};const D={${entries.map(([key]) => `${JSON.stringify(key)}:${modules.get(`${key}:deps`)}`).join(',')}};const C={};function R(id){if(C[id])return C[id].exports;let m=C[id]={exports:{}};M[id](s=>R(D[id][s]),m,m.exports);return m.exports;}R(${JSON.stringify(reactDOM)}).createRoot(document.getElementById('root')).render(R(${JSON.stringify(react)}).createElement(R(${JSON.stringify(component)}).default,{student:${JSON.stringify({ id: auth.studentId, collectionName: auth.studentCollection, password: auth.studentPassword })}}));`;
+  return `const process={env:{NODE_ENV:'production'}};const M={${entries.map(([key, code]) => `${JSON.stringify(key)}:${code}`).join(',')}};const D={${entries.map(([key]) => `${JSON.stringify(key)}:${modules.get(`${key}:deps`)}`).join(',')}};const C={};function R(id){if(C[id])return C[id].exports;let m=C[id]={exports:{}};M[id](s=>R(D[id][s]),m,m.exports);return m.exports;}R(${JSON.stringify(reactDOM)}).createRoot(document.getElementById('root')).render(R(${JSON.stringify(react)}).createElement(R(${JSON.stringify(component)}).default,{student:${JSON.stringify({ id: auth.studentId, collectionName: auth.studentCollection })}}));`;
 }
 const studentRoute = load('app/api/student/assignments/route.ts');
 const uploadRoute = load('app/api/student/assignments/[assignmentId]/photo-upload/route.ts');
@@ -104,16 +117,19 @@ const apiBodies = [];
 function reset() {
   records.clear(); objects.clear(); tokens.clear(); apiBodies.length = 0;
   writeFailure = false;
-  records.set(`students/${auth.studentId}`, { password: auth.studentPassword, name: '테스트 학생', school: '테스트초', grade: '2', class: '6', program: '역사' });
+  records.set(`students/${auth.studentId}`, { password: fixturePassword, name: '테스트 학생', school: '테스트초', grade: '2', class: '6', program: '역사' });
+  for (const table of Object.values(sessionHarness.tables)) table.clear();
+  sessionHarness.records.set(`students:${auth.studentId}`, records.get(`students/${auth.studentId}`));
+  studentCookie = sessionHarness.cookie(auth.studentId);
   records.set(`assignments/${aid}`, { title: '사진 제출 테스트', isActive: true, targetStudentKeys: [`students:${auth.studentId}`] });
 }
-const jsonRequest = (url, body, method = 'POST') => new Request(`${origin}${url}`, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+const jsonRequest = (url, body, method = 'POST', authenticated = true) => new Request(`${origin}${url}`, { method, headers: { 'Content-Type': 'application/json', origin, ...(authenticated ? { cookie: studentCookie } : {}) }, body: JSON.stringify(body) });
 const server = http.createServer(async (incoming, outgoing) => {
   try {
     const buffers = []; for await (const chunk of incoming) buffers.push(chunk);
     const bytes = Buffer.concat(buffers);
     const url = new URL(incoming.url, origin);
-    if (url.pathname === '/') { outgoing.setHeader('Content-Type', 'text/html; charset=utf-8'); outgoing.end('<meta name="viewport" content="width=device-width"><div id="root"></div><script src="/bundle.js"></script>'); return; }
+    if (url.pathname === '/') { outgoing.setHeader('Set-Cookie', `${studentCookie}; Path=/; HttpOnly; SameSite=Strict`); outgoing.setHeader('Content-Type', 'text/html; charset=utf-8'); outgoing.end('<meta name="viewport" content="width=device-width"><div id="root"></div><script src="/bundle.js"></script>'); return; }
     if (url.pathname === '/bundle.js') { outgoing.setHeader('Content-Type', 'text/javascript; charset=utf-8'); outgoing.end(browserBundle()); return; }
     const request = new Request(url, { method: incoming.method, headers: incoming.headers, ...(bytes.length ? { body: bytes } : {}) });
     let response;
@@ -144,7 +160,7 @@ const server = http.createServer(async (incoming, outgoing) => {
   const webp = await sharp(raw).webp().toBuffer();
   const fixtures = [ ['photo.jpg', jpeg], ['photo.jpeg', jpeg], ['photo.png', png], ['photo.webp', webp] ];
   for (const [name, bytes] of fixtures) fs.writeFileSync(path.join(fixtureDir, name), bytes);
-  browser = await puppeteer.launch({ executablePath: await chromium.executablePath(), args: chromium.args, headless: true });
+  browser = await puppeteer.launch({ executablePath: process.env.CLASSROOM_TEST_CHROMIUM || await chromium.executablePath(), args: chromium.args.filter(arg => arg !== '--disable-web-security'), headless: true });
   async function runUI(label, filename, mode = '', shouldFail = false, multiple = false) {
     reset();
     console.log('Checking:', label);
@@ -227,8 +243,9 @@ const server = http.createServer(async (incoming, outgoing) => {
   results.push('Over-limit file rejected');
   reset();
   const input = { ...auth, files: [{name:'photo.jpg',type:'image/jpeg',size:jpeg.length}] };
-  let response = await uploadRoute.POST(jsonRequest('/prepare', {...input, studentPassword:'wrong'}), ctx); assert.equal(response.status, 400); assert.equal(tokens.size, 0);
-  results.push('Wrong student password cannot mint upload URLs');
+  let response = await uploadRoute.POST(jsonRequest('/prepare', {...input, studentPassword:fixturePassword}, 'POST', false), ctx); assert.equal(response.status, 401); assert.equal(tokens.size, 0);
+  response = await uploadRoute.POST(jsonRequest('/prepare', {...input, studentId:'other-student'}), ctx); assert.equal(response.status, 401); assert.equal(tokens.size, 0);
+  results.push('Missing session and forged student ID cannot mint upload URLs, even with legacy password');
   response = await submitRoute.POST(jsonRequest('/submit', {...auth, attemptId:randomUUID(),photos:[{storagePath:'assignments/other/student/photo.jpg'}]}),ctx); assert.equal(response.status,400); assert.equal(objects.size,0);
   response = await uploadRoute.DELETE(jsonRequest('/cleanup', {...auth, attemptId:randomUUID(),paths:['assignments/other/student/photo.jpg']},'DELETE'),ctx); assert.equal(response.status,400);
   results.push('Cross-student paths rejected for finalize and cleanup');
@@ -239,7 +256,7 @@ const server = http.createServer(async (incoming, outgoing) => {
   results.push('Failed record write rolls back uploaded and staged images');
   writeFailure = false;
   const form = new FormData(); for (const [key,value] of Object.entries(auth)) form.append(key,value); form.append('photos',new File([jpeg],'old.png',{type:'image/jpeg'}));
-  response = await submitRoute.POST(new Request(`${origin}/submit`,{method:'POST',body:form}),ctx); assert.equal(response.status,200);
-  results.push('Legacy multipart client remains compatible');
+  response = await submitRoute.POST(new Request(`${origin}/submit`,{method:'POST',headers:{origin,cookie:studentCookie},body:form}),ctx); assert.equal(response.status,200);
+  results.push('Multipart submission remains compatible with a verified server session');
   console.log(JSON.stringify({ passed:results.length, checks:results, environment:'Chromium with Android/Galaxy user agent and mobile viewport; test adapters, not real Android or production data' },null,2));
 })().catch(error => { console.error(error); process.exitCode=1; }).finally(async () => { if(browser) await browser.close(); server.close(); });

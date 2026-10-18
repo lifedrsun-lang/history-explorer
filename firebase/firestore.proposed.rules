@@ -1,0 +1,22 @@
+// DRAFT ONLY: never deploy before the approved production server-session cutover.
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isPresentationTeacher() {
+      return request.auth != null
+        && request.auth.uid == "fNhzgdP9sLdhgqbVmJnNpZDiOfw1";
+    }
+    match /students/{studentId} {
+      allow read, write: if isPresentationTeacher()
+        && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+    // Preserve the existing presentation permission and nested slide behavior.
+    match /presentations/{presentationId} {
+      allow read, write: if isPresentationTeacher();
+      match /{document=**} {
+        allow read, write: if isPresentationTeacher();
+      }
+    }
+  }
+}

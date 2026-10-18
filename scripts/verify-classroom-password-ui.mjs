@@ -137,7 +137,7 @@ const init = () => {
   failSave = false;
 };
 const findStudent = async (number) => {
-  fireEvent.change(screen.getByLabelText('학급 번호'), { target: { value: String(number) } });
+  fireEvent.change(screen.getByLabelText('출석번호'), { target: { value: String(number) } });
   fireEvent.click(screen.getByRole('button', { name: '계정 찾기', exact: true }));
   await screen.findByText(`${number}번 친구`);
 };

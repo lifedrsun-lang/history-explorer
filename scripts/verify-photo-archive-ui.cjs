@@ -78,7 +78,7 @@ async function main() {
   }
   bundles['/student.js'] = bundle(false); bundles['/admin.js'] = bundle(true);
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); port = server.address().port;
-  browser = await puppeteer.launch({ executablePath: process.env.CLASSROOM_TEST_CHROMIUM || await chromium.executablePath(), args: chromium.args, headless: true });
+  browser = await puppeteer.launch({ executablePath: process.env.CLASSROOM_TEST_CHROMIUM || await chromium.executablePath(), args: chromium.args.filter(arg => arg !== '--disable-web-security'), headless: true });
   const page = await browser.newPage(), errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.setViewport({ width: 1280, height: 900 }); await page.goto(`http://127.0.0.1:${port}/`); await page.waitForFunction(() => document.body.textContent.includes('D-'));
   for (const expected of ['기존 책 제목', '기존 책 설명 유지', '27', '3', '57', '우리 반 사진']) assert.ok((await page.evaluate(() => document.body.textContent)).includes(expected));

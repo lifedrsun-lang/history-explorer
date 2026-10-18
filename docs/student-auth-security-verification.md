@@ -41,7 +41,39 @@
 
 - 새 DB 스키마 적용과 브라우저 역할 접근 차단의 실제 확인.
 - 기존 Firebase 학생 컬렉션의 접근규칙 원문 감사·수정안 검증. 기존 Production은 브라우저에서 학생 문서를 읽는 구조이므로 새 로그인 코드 없이 규칙만 먼저 바꾸면 기존 로그인에 영향을 줄 수 있다. 전환 순서를 맞춰야 한다. 이번 작업에서는 실제 Firebase 규칙을 변경하지 않았다.
-- 승인된 기존 교사 UID를 이 브랜치의 Preview에 설정 후 배포. 최초 환경변수 추가 요청은 원격 브랜치가 아직 없어 거부됐다.
+- 승인된 기존 교사 UID는 현재 이 브랜치의 Preview 전용 환경변수에 설정됐고, 커밋 `76c9bcf115d597a4648cdf0904053a8e276347ae` Preview의 READY 상태를 확인했다. DB 스키마 누락 때문에 실제 학생 인증 완료로 취급하지 않는다.
 - 실제 교사 로그인 상태의 학생 미리보기·확인코드 운영, 실제 학생 계정의 로그인·새로고침·과제·복습·보상 전체 검증.
 - 사진 공개 동의와 당시 학교/반 명부 확인. 이 정보는 임의로 만들지 않는다.
 - 실제 규칙·코드 전환 및 학생 인증을 검증하기 전 `PHOTO_ARCHIVE_ACCESS_REVIEWED`를 켜지 않는다.
+
+## 2026-10-18 재인증 후 실제 점검
+
+- 사용자 승인에 따라 Google 재인증을 완료하고 Firebase Console의 `history-quest-b8e96` / 기본 Firestore / 규칙 화면을 열었다.
+- 실제 배포 규칙의 `/students/{studentId}`는 `allow read, write: if true`였다. 인증하지 않은 클라이언트에도 학생 문서 읽기·쓰기를 허용하는 상태이므로 보안 검증 완료로 보고할 수 없다.
+- `/presentations/{presentationId}`와 그 하위 문서는 기존 교사 UID만 허용한다. 그 밖의 컬렉션 허용 규칙은 화면에 없었다.
+- **Console 편집·게시 없음.** 공유 Production은 아직 브라우저에서 학생 문서를 읽으므로 규칙만 먼저 닫으면 기존 학생 로그인이 막힌다. Production 배포 제외 지시를 지키며, `firebase/firestore.proposed.rules`에 전환용 초안만 작성했다. 학생 문서는 기존 교사의 비밀번호 인증만 허용하고 프레젠테이션 규칙은 유지한다. 서버 Admin SDK 기반 학생 세션과 함께 전환해야 한다.
+- DB 재조회: 활성 사진 25개, 원본·썸네일·화면용 파일 각 25개 존재, 원본 버킷 비공개. 앨범 공개 false, 동의/명부 확인 false, 과거 명부 연결 0명. 데이터 삭제·수정 없음.
+- 세션/사진 코드/시도 횟수 테이블은 재조회에서도 모두 없음. 기존 마이그레이션 요청의 `Invalid or expired requestState`/`Conflicting MCP request metadata` 연결 오류는 미해결이다.
+- 기존 앨범의 실제 분기 종료일은 2026-11-06, 기본 14일 계산 시 공개 종료일 2026-11-20, 차단 시작은 2026-11-21 00:00 Asia/Seoul이다. 현재 비공개 상태는 유지한다.
+
+### 추가 회귀 결과 — 운영 데이터와 분리한 테스트
+
+- `verify-classroom-password-ui.mjs`: 실제 화면 레이블에 맞게 출석번호 조회를 수정, 기존 학생/교사 비밀번호 UI 검증 통과.
+- `verify-photo-archive-ui.cjs`: 브라우저 보안 비활성화 인자를 제거하고 정상 Origin 검사로 실행. PC/모바일 선택·중앙 전환·키보드·터치, 관리자 업로드, MYBOX 재시도·중복 방지 통과.
+- `verify-homework-photo.cjs`: 레거시 본문 비밀번호 대신 실제 서버 세션 검사와 HttpOnly 테스트 쿠키를 연결. 모바일 Chromium 사진 제출·롤백·형식/크기·다른 학생 경로 차단 등 18개 검사 통과. 비밀번호만 있거나 학생 ID를 변조한 요청은 업로드 URL 발급 거부를 확인했다.
+- `verify-firestore-rules.cjs`: Firebase CLI 15.34.0, Firestore Emulator 1.22.0, Java 21, `@firebase/rules-unit-testing` 6.0.0으로 초안 규칙 23개 검사 통과. 비로그인·학생·다른 교사·승인 UID의 custom provider 읽기/목록/쓰기/삭제 차단, 기존 교사 password provider 허용, 프레젠테이션 하위 문서 권한 유지, 미명시 경로 차단을 확인했다. `demo-sunlab-photo-security`와 로컬 포트 8089만 사용했고 실제 규칙은 배포하지 않았다. 검사 의존성은 앱과 분리해 설치했다.
+- 위 검사는 격리된 Firebase/Supabase 어댑터와 합성 이미지로 수행했다. 실제 학생 로그인·과제 제출·교사 로그인 전체 운영 회귀를 의미하지 않는다.
+- 앱 코드는 변경하지 않았다. 앞서 전체 Next 빌드/TypeScript와 서버 세션·사진 권한·분기 관리·데이터 흐름 테스트가 통과한 코드 그대로다.
+
+규칙 검사 재현: Java 21 이상 및 별도 테스트 의존성 `@firebase/rules-unit-testing@6.0.0`이 필요하다. 해당 의존성 디렉터리를 `NODE_PATH`에 지정한 상태에서 저장소 루트에서 다음을 실행한다.
+
+```sh
+npx -y firebase-tools@latest emulators:exec --project demo-sunlab-photo-security --only firestore --config firebase/emulator-only.json 'node scripts/verify-firestore-rules.cjs'
+```
+
+### 안전한 남은 전환 순서
+
+1. 준비된 추가 전용 SQL 마이그레이션 1개를 적용하고 새 테이블/RLS/역할 차단을 실제 검증한다. 연결 플러그인이 반복 실패해 대시보드 대안은 사용자 승인 후 사용한다.
+2. Preview에서 승인된 교사 및 실제 학생 계정의 로그인·새로고침·로그아웃·과제·복습·보상·차시 회귀를 확인한다. 시험 제출로 실제 학습 이력을 오염시키지 않도록 전용 테스트 계정을 사용한다.
+3. 사용자가 Preview를 확인하고 Production 전환을 승인한 뒤 서버 세션 코드와 Firestore 규칙을 함께 전환한다. 현재 작업에서 Production 변경은 하지 않는다.
+4. 사진 공개 동의와 해당 분기의 당시 학교/반 명부를 관리자가 확인한다. 직접 URL/만료/학교·반·분기 권한의 실제 검증까지 마친 뒤에만 공개 차단 해제를 검토한다.
