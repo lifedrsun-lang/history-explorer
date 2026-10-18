@@ -1,1 +1,5 @@
-{"framework": null, "outputDirectory": "operator-result", "buildCommand": "node --test operator/source-patch.test.mjs && node operator/repair-source.mjs --dry-run"}
+{
+  "framework": null,
+  "outputDirectory": "operator-result",
+  "buildCommand": "node --test operator/source-patch.test.mjs && node operator/repair-source.mjs --apply"
+}
