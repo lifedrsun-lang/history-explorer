@@ -77,7 +77,8 @@ export default function PhotoArchiveAdmin() {
     catch (e) { setError(e instanceof Error ? e.message : "원본을 열지 못했습니다."); }
   };
   let expiry = "실제 분기 종료일을 입력하면 자동 계산됩니다.";
-  try { if (album.term_end_date) expiry = `${archiveExpiry(album, clock).expiresOn} 23:59:59까지 (한국시간)`; } catch { expiry = "날짜를 확인해 주세요."; }
+  let expiryLimit = "";
+  try { if (album.term_end_date) { expiryLimit = archiveExpiry({ ...album, expires_on: null }, clock).expiresOn; expiry = `${archiveExpiry(album, clock).expiresOn} 23:59:59까지 (한국시간)`; } } catch { expiry = "날짜를 확인해 주세요."; }
   const term = `${album.year}-Q${album.quarter}`;
   const candidates = roster.filter(s => s.terms.includes(term) && (showOtherSchools || s.school === album.school || album.member_keys.includes(s.key)));
   if (!checked) return <p className="p-8">로그인 확인 중…</p>;
@@ -103,7 +104,7 @@ export default function PhotoArchiveAdmin() {
               <label className="text-sm font-bold sm:col-span-2">앨범 설명<textarea maxLength={3000} value={album.description} onChange={e => update("description", e.target.value)} className={field} /></label>
               <label className="text-sm font-bold">학교의 실제 분기 종료일<input type="date" value={album.term_end_date} onChange={e => update("term_end_date", e.target.value)} className={field} /></label>
               <label className="text-sm font-bold">종료일 확인 근거<input placeholder="학교 안내장·교육계획 등" maxLength={500} value={album.end_date_source} onChange={e => update("end_date_source", e.target.value)} className={field} /></label>
-              <label className="text-sm font-bold">공개 종료일 수동 조정 (선택)<input type="date" value={album.expires_on || ""} onChange={e => update("expires_on", e.target.value || null)} className={field} /><span className="mt-1 block text-xs font-normal text-slate-500">비워 두면 분기 종료일 + 14일</span></label><p className="self-center rounded-xl bg-teal-50 p-3 text-sm font-bold text-teal-800">공개 종료: {expiry}</p>
+              <label className="text-sm font-bold">더 일찍 비공개하기 (선택)<input type="date" max={expiryLimit || undefined} value={album.expires_on || ""} onChange={e => update("expires_on", e.target.value || null)} className={field} /><span className="mt-1 block text-xs font-normal text-slate-500">비워 두면 분기 종료일 + 14일에 자동 종료됩니다. 더 이른 날짜만 선택할 수 있습니다.</span></label><p className="self-center rounded-xl bg-teal-50 p-3 text-sm font-bold text-teal-800">공개 종료: {expiry}</p>
             </fieldset>
           </section>
           <section className="rounded-3xl border border-stone-200 bg-white p-5"><h2 className="text-lg font-black">실제 분기 명부 확인</h2><p className="my-2 text-xs leading-5 text-slate-600">아래 목록은 {term} 이력이 있는 계정입니다. 현재 반으로 자동 배정하지 않습니다. 당시 학교·반 명부에 있는 학생만 선택해 주세요.</p>

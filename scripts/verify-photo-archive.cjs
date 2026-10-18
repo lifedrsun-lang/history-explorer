@@ -62,11 +62,17 @@ const studentCookie = (id, origin = 'http://fixture.local') => sessionHarness.co
 const request = (body, token, origin = 'https://fixture.local') => new Request('https://fixture.local/api/photo-archive', { method: 'POST', headers: { 'Content-Type': 'application/json', origin, ...(token ? { authorization: `Bearer ${token}` } : {}), ...(body.studentId && body.studentPassword !== 'bad' ? { cookie: studentCookie(body.studentId, origin) } : {}) }, body: JSON.stringify(body) });
 const asStudent = (id, body) => studentRoute.POST(request({ ...credentials(id), ...body }));
 const asTeacher = (body, token = 'teacher') => teacherRoute.POST(request(body, token));
-const base = { school: '학교1', classroom: 'A반', year: 2026, quarter: 1, title: '검증 앨범', description: '', term_end_date: '2026-03-31', end_date_source: '격리된 테스트 학교 계획', expires_on: '2099-12-31', published: false, consent_verified: true, consent_note: 'fixture consent', roster_verified: true, roster_source: 'fixture historical class roster', member_keys: ['students:one'] };
+const base = { school: '학교1', classroom: 'A반', year: 2026, quarter: 1, title: '검증 앨범', description: '', term_end_date: new Date().toISOString().slice(0, 10), end_date_source: '격리된 테스트 학교 계획', expires_on: null, published: false, consent_verified: true, consent_note: 'fixture consent', roster_verified: true, roster_source: 'fixture historical class roster', member_keys: ['students:one'] };
 async function main() {
   assert.equal(pure.archiveExpiry({ term_end_date: '2026-12-25', expires_on: null }).expiresOn, '2027-01-08');
   assert.equal(pure.archiveExpiry({ term_end_date: '2028-02-20', expires_on: null }).expiresOn, '2028-03-05');
-  const boundary = { ...base, published: true, expires_on: '2026-04-14' };
+  const boundary = { ...base, term_end_date: '2026-03-31', published: true, expires_on: '2026-04-14' };
+  const extended = { ...boundary, term_end_date: '2026-03-31', expires_on: '2099-12-31' };
+  assert.equal(pure.archiveExpiry(extended).expiresOn, '2026-04-14', 'Stored manual dates must never extend the 14-day limit');
+  assert.equal(pure.canReadArchive(extended, 'students:one', ['2026-Q1'], Date.parse('2026-04-15T00:00:00+09:00')), false);
+  assert.throws(() => pure.validateArchiveInput(extended), /14일/, 'The API must reject a manual extension');
+  assert.equal(pure.archiveExpiry({ ...boundary, expires_on: '2026-04-13' }).expiresOn, '2026-04-13', 'Earlier administrator withdrawal remains available');
+  assert.doesNotThrow(() => pure.validateArchiveInput(boundary));
   assert.equal(pure.archiveExpiry(boundary, Date.parse('2026-04-14T23:59:59+09:00')).daysLeft, 0);
   assert.equal(pure.canReadArchive(boundary, 'students:one', ['2026-Q1'], Date.parse('2026-04-14T23:59:59.999+09:00')), true);
   assert.equal(pure.canReadArchive(boundary, 'students:one', ['2026-Q1'], Date.parse('2026-04-15T00:00:00+09:00')), false);
@@ -80,6 +86,7 @@ async function main() {
   assert.equal(firebaseReads, 0, 'Release block must run before student lookup');
   assert.equal((await asTeacher({ action: 'save', album: { ...base, published: true } })).status, 409);
   process.env.PHOTO_ARCHIVE_ACCESS_REVIEWED = 'true'; // isolated fixtures only, never deployed
+  assert.equal((await asTeacher({ action: 'save', album: extended })).status, 400, 'Direct API requests cannot extend the publication period');
   assert.equal((await asTeacher({ action: 'save', album: base }, 'student')).status, 401);
   assert.equal((await asTeacher({ action: 'save', album: base }, 'bad')).status, 401);
   assert.equal((await teacherRoute.POST(request({ action: 'save', album: base }, 'teacher', 'https://attacker.invalid'))).status, 403);
@@ -112,7 +119,7 @@ async function main() {
   response = await asStudent('one', body); assert.equal(response.status, 200); assert.equal(response.headers.get('cache-control'), 'private, no-store, max-age=0'); assert.equal(response.headers.get('cross-origin-resource-policy'), 'same-origin');
   const actualNow = Date.now;
   try {
-    rows.student_photo_albums.set(album.id, { ...album, expires_on: '2026-04-14' });
+    rows.student_photo_albums.set(album.id, { ...album, term_end_date: '2026-03-31', expires_on: '2099-12-31' });
     Date.now = () => Date.parse('2026-04-14T23:59:59.999+09:00'); assert.equal((await asStudent('one', body)).status, 200);
     Date.now = () => Date.parse('2026-04-15T00:00:00+09:00'); assert.equal((await asStudent('one', body)).status, 404);
   } finally { Date.now = actualNow; rows.student_photo_albums.set(album.id, album); }
@@ -133,7 +140,7 @@ async function main() {
   publicBucket = true; assert.equal((await asTeacher({ action: 'prepare', albumId: album.id, size: 100, contentType: 'image/jpeg' })).status, 503); publicBucket = false;
   failWrite = true; assert.equal((await asTeacher({ action: 'save', album: base })).status, 503); failWrite = false;
   assert.deepEqual([...studentRecords.values()].map(s => s.password), ['fixture-one', 'fixture-new', 'fixture-class', 'fixture-school']);
-  console.log('PASS: Korean midnight boundaries, +14-day/year/leap arithmetic, manual expiry, stable 75-photo non-overlap layout, release block, teacher ownership/provider/revocation validation, exact term/class/school roster, server authentication, list/detail/image authorization, consent, upload/EXIF/thumbnail/original preservation, unpublish/revoke/expiry, soft removal, private-bucket assertion and storage failure. Fixtures only; no production learning data written.');
+  console.log('PASS: Korean midnight boundaries, enforced +14-day limit on stored dates and API writes, year/leap arithmetic, earlier manual withdrawal, stable 75-photo non-overlap layout, release block, teacher ownership/provider/revocation validation, exact term/class/school roster, server authentication, list/detail/image authorization, consent, upload/EXIF/thumbnail/original preservation, unpublish/revoke/expiry, soft removal, private-bucket assertion and storage failure. Fixtures only; no production learning data written.');
 }
 module.exports = { pure, rows, objects, studentRecords, server, studentRoute, teacherRoute, base, credentials, studentCookie, sessionHarness };
 if (require.main === module) main().catch(error => { console.error(error); process.exitCode = 1; });

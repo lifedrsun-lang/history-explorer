@@ -20,7 +20,10 @@ export function archiveDate(value: unknown): string {
 }
 const DAY = 86_400_000;
 export function archiveExpiry(album: Pick<ArchiveAlbum, "term_end_date" | "expires_on">, now = Date.now()) {
-  const expiresOn = album.expires_on ? archiveDate(album.expires_on) : new Date(Date.parse(archiveDate(album.term_end_date)) + 14 * DAY).toISOString().slice(0, 10);
+  const latestExpiry = new Date(Date.parse(archiveDate(album.term_end_date)) + 14 * DAY).toISOString().slice(0, 10);
+  const manualExpiry = album.expires_on ? archiveDate(album.expires_on) : null;
+  // Apply the limit on reads too, including legacy records with a later manual date.
+  const expiresOn = manualExpiry && manualExpiry < latestExpiry ? manualExpiry : latestExpiry;
   // Date-only arithmetic is UTC; cutoff is the following midnight in Korea (UTC+9).
   const expiresAt = Date.parse(expiresOn + "T00:00:00+09:00") + DAY;
   const today = new Date(now + 9 * 3_600_000).toISOString().slice(0, 10);
@@ -53,6 +56,7 @@ export function validateArchiveInput(body: Record<string, unknown>) {
     consent_note: text(body.consent_note, 500), roster_verified: body.roster_verified === true,
     roster_source: text(body.roster_source, 500), member_keys,
   };
+  if (value.expires_on && value.expires_on > archiveExpiry({ ...value, expires_on: null }).expiresOn) throw new ArchiveError("공개 종료일은 실제 분기 종료일 + 14일을 넘길 수 없습니다.");
   if (value.published && (!value.consent_verified || !value.consent_note || !value.roster_verified || !value.roster_source || !member_keys.length)) throw new ArchiveError("공개 전 사진 동의와 당시 학교·반 명부의 확인 기록이 필요합니다.");
   return value;
 }
