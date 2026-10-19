@@ -287,6 +287,7 @@ const sanitizeSettlements = (value: unknown) => {
       !settlement.insuranceFee &&
       !settlement.taxAmount &&
       !settlement.receivedDate &&
+      !Array.isArray(settlement.installments) &&
       !(settlement.calculationVersion === 1 && settlement.receivedAmount !== undefined)
     ) {
       return;
