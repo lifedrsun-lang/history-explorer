@@ -177,5 +177,55 @@ vm.runInNewContext(totalsCode, totalsContext);
   const partialTotals = totalsContext.exports.totals((await (await fees.GET(request)).json()).contracts[0]);
   assert.equal(partialTotals.unpaid, 320000, 'Partially received gross remains unpaid, not insurance');
 
-  console.log('PASS: legacy preservation, split payment normalization, partial unpaid totals, independent tax records and round-trip');
+  // Deleting the final child MUST NOT resurrect the parent's legacy amounts.
+  // Include old aggregate fields to exercise the fallback edge case.
+  saved = {
+    ...saved,
+    allowanceAmount: 720000, receivedDate: '2026-10-08',
+    taxAmount: 23760, insuranceFee: 0,
+    settlements: { '2026-09': { ...split, installments: [] } },
+  };
+  const emptySplit = await (await fees.GET(request)).json();
+  assert.equal(emptySplit.contracts[0].settlements['2026-09'].installments.length, 0,
+    'The split marker must survive normalization even when empty');
+  const noPayments = totalsContext.exports.totals(emptySplit.contracts[0]);
+  assert.equal(noPayments.received, 0, 'Deleted child must not resurrect the original net amount');
+  assert.equal(noPayments.statementGross, 0, 'Deleted child must not resurrect the original gross amount');
+  assert.equal(noPayments.tax, 0, 'Deleted child must not resurrect the old tax amount');
+  assert.equal(noPayments.insurance, 0);
+  assert.equal(noPayments.unpaid, 720000, 'Deleted installment becomes unpaid, not removed expected income');
+  const emptyAnnual = await (await tax.GET(annualRequest)).json();
+  assert.equal(emptyAnnual.records.length, 0, 'Deleted child must disappear from annual income-tax records');
+
+  const deletePatch = await fees.PATCH(new Request(request.url, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: 'contract-test', settlements: emptySplit.contracts[0].settlements }),
+  }));
+  assert.equal(deletePatch.status, 200, 'The empty split list must be persisted');
+  assert.equal(saved.settlements['2026-09'].installments.length, 0);
+  const emptyReread = await (await fees.GET(request)).json();
+  assert.equal(emptyReread.contracts[0].settlements['2026-09'].installments.length, 0);
+  assert.equal(totalsContext.exports.totals(emptyReread.contracts[0]).received, 0);
+  assert.equal((await (await tax.GET(annualRequest)).json()).records.length, 0);
+
+  // Re-adding a new installment after clearing should not bring the deleted rows back.
+  saved = { ...saved, settlements: { '2026-09': {
+    ...split, installments: [{ id: 'new-1', calculationVersion: 1,
+      manualFields: ['grossAmount'], grossAmount: 200000,
+      receivedAmount: 193400, receivedDate: '2026-11-10', taxYear: 2026 }],
+  } } };
+  const readded = (await (await tax.GET(annualRequest)).json()).records;
+  assert.equal(readded.length, 1);
+  assert.equal(readded[0].grossAmount, 200000);
+  assert.equal(readded[0].paymentMonth, 11);
+  assert.equal(readded[0].settlementKey, '2026-09');
+
+  const panel = fs.readFileSync(path.join(root, 'app/teacher/components/FeeSplitPaymentsPanel.tsx'), 'utf8');
+  const feePage = fs.readFileSync(path.join(root, 'app/teacher/fees/page.tsx'), 'utf8');
+  assert.ok(panel.includes('onRemove(item.id)'), 'Each child has a delete action');
+  assert.ok(!panel.includes('items.length > 1 && <button'), 'Delete must appear for the last child');
+  assert.ok(feePage.includes('installments: []'), 'Clear-all must retain an empty split list');
+  assert.ok(!feePage.includes('stored.installments.length <= 1) return'), 'Delete handler must allow the final child');
+
+  console.log('PASS: legacy preservation, split payment add/delete, final child and clear-all, no fallback resurrection, annual tax records, re-add, and persistence');
 })().catch((error) => { console.error(error); process.exitCode = 1; });
