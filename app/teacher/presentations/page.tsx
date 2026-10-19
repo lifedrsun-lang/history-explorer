@@ -334,8 +334,14 @@ function getLessonNumbers(values: Iterable<number>) {
 function getHelloMapleProgram(category: PresentationCategory, storedName: string) {
   if (category !== "hello_maple") return null;
   const name = normalizeCardKey(storedName).replace(/[\s_\/]+/gu, "");
-  if (name === "서울개봉초헬로메이플") {
-    return { name: "인공지능윤리탐험대", school: "서울 개봉초" };
+  if (name === "고양향동초") {
+    return { name: "찾아가는 헬로메이플", school: "고양 향동초" };
+  }
+  if (name === "관계개선교육") {
+    return { name: "관계개선교육", school: "서울 동구로초" };
+  }
+  if (name === "인공지능윤리탐험대" || name === "서울개봉초헬로메이플") {
+    return { name: "인공지능윤리", school: "서울 개봉초" };
   }
   if (name === "원종초헬로메이플") {
     return { name: "찾아가는 AI체험학습", school: "부천 원종초" };
@@ -353,6 +359,15 @@ function isLegacyHelloMapleBasicCard(card: PresentationNamedCard) {
     card.category === "hello_maple" &&
     normalizeCardKey(card.displayName) === normalizeCardKey("헬로메이플 기본")
   );
+}
+
+// Superseded cards are removed from the overview without deleting their source links.
+function isSupersededHelloMapleCard(card: PresentationNamedCard) {
+  if (card.category !== "hello_maple") return false;
+  const name = normalizeCardKey(card.displayName).replace(/[\s_\/]+/gu, "");
+  return name === "찾아가는헬로메이플" ||
+    name === "찾아가는AI체험학습" ||
+    name === "원종초헬로메이플";
 }
 
 function isHideableCodingCard(item: DisplayLibraryCard) {
@@ -706,7 +721,8 @@ function TeacherPresentationsPageContent() {
   );
   const displayLibraryCards = useMemo(() => {
     const visibleCards = allLibraryCards.filter((item) => {
-      if (item.kind === "named" && isLegacyHelloMapleBasicCard(item.card)) {
+      if (item.kind === "named" &&
+          (isLegacyHelloMapleBasicCard(item.card) || isSupersededHelloMapleCard(item.card))) {
         return false;
       }
       return !isHideableCodingCard(item) || !hiddenCodingCardKeys.has(item.materialKey);
@@ -834,7 +850,16 @@ function TeacherPresentationsPageContent() {
   };
   const getSummary = (item: DisplayLibraryCard): ResourceSummary => {
     const summary = getLibraryCardSummary(item);
-    return { ...summary, title: cardTitles.get(item.materialKey) || summary.title };
+    const savedTitle = cardTitles.get(item.materialKey);
+    if (item.kind === "named" && item.card.category === "hello_maple") {
+      const program = getHelloMapleProgram(item.card.category, item.card.displayName);
+      // Legacy titles must not mask the newly displayed program name.
+      if (program && (!savedTitle || savedTitle === item.card.displayName ||
+        (program.name === "인공지능윤리" && savedTitle === "인공지능윤리탐험대"))) {
+        return summary;
+      }
+    }
+    return { ...summary, title: savedTitle || summary.title };
   };
 
   const openLibrary = (category: PresentationCategory) => {
@@ -1324,10 +1349,14 @@ function getLibraryCardSummary(item: DisplayLibraryCard): ResourceSummary {
     return {
       key: item.materialKey,
       title: program ? program.name : card.displayName,
-      category: CATEGORY_LABELS[card.category],
+      category: card.category === "hello_maple"
+        ? program?.school || card.schoolName || CATEGORY_LABELS[card.category]
+        : CATEGORY_LABELS[card.category],
       image: card.coverImageDataUrl || undefined,
       icon: isBoardgameCategory(card.category) ? "🎲" : card.category === "personal_study" ? "🌱" : card.category === "facilitator" ? "🧭" : "💻",
-      meta: [card.schoolName || program?.school || card.brandName, `자료 ${card.resources.length}개`].filter(Boolean).join(" · "),
+      meta: card.category === "hello_maple"
+        ? `자료 ${card.resources.length}개`
+        : [card.schoolName || program?.school || card.brandName, `자료 ${card.resources.length}개`].filter(Boolean).join(" · "),
     };
   }
   if (item.kind === "book") {
@@ -1403,7 +1432,11 @@ function NamedResourceCard({
   const isLessonCard = card.category === "coding" || card.category === "hello_maple";
   const isWonjongHelloMaple = isWonjongHelloMapleCard(card);
   const program = getHelloMapleProgram(card.category, card.displayName);
-  const title = useCardTitle(`named:${card.key}`, program ? `${program.name}(${program.school})` : card.displayName);
+  const savedTitle = useCardTitle(`named:${card.key}`, card.displayName);
+  const title = program &&
+    (savedTitle === card.displayName ||
+      (program.name === "인공지능윤리" && savedTitle === "인공지능윤리탐험대"))
+    ? program.name : savedTitle;
   const icon =
     card.category === "boardgame" || card.category === "teaching_boardgame"
       ? "🎲"
@@ -1458,14 +1491,22 @@ function NamedResourceCard({
           {icon}
         </div>
         <div className="min-w-0 flex-1">
-          <p className={`text-xs font-black ${accent}`}>{CATEGORY_LABELS[card.category]}</p>
+          <p className={`text-xs font-black ${accent}`}>
+            {card.category === "hello_maple"
+              ? program?.school || card.schoolName || CATEGORY_LABELS[card.category]
+              : CATEGORY_LABELS[card.category]}
+          </p>
           <h3 className="mt-1 break-words text-lg font-black leading-6 text-slate-800">
             {title}
           </h3>
           {isWonjongHelloMaple ? (
             <p className="mt-1 text-xs font-black text-emerald-600">클래스포에듀 협력 수업</p>
           ) : null}
-          <p className="mt-1 text-xs font-bold text-slate-400">{[card.schoolName || program?.school, `자료 ${card.resources.length}개`].filter(Boolean).join(" · ")}</p>
+          <p className="mt-1 text-xs font-bold text-slate-400">
+            {card.category === "hello_maple"
+              ? `자료 ${card.resources.length}개`
+              : [card.schoolName || program?.school, `자료 ${card.resources.length}개`].filter(Boolean).join(" · ")}
+          </p>
         </div>
         <div className={`flex shrink-0 items-center gap-1.5 ${program ? "w-full justify-end" : ""}`}>
           <Link
