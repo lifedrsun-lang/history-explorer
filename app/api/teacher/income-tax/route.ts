@@ -110,7 +110,10 @@ const inferYear = (entry: FeeSettlement, key: string) => {
   return AFTER_SCHOOL_ACADEMIC_YEAR;
 };
 
-const inferMonth = (entry: FeeSettlement, key: string) => {
+const inferMonth = (entry: FeeSettlement, key: string, useActualPaymentDate = false) => {
+  if (useActualPaymentDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(entry.receivedDate || "")) {
+    return Number(entry.receivedDate!.slice(5, 7));
+  }
   if (/^\d{4}-\d{2}$/.test(key)) return Number(key.slice(5, 7));
   const quarterMatch = key.match(/^Q([1-4])-T([1-3])/i);
   if (quarterMatch) {
@@ -140,7 +143,9 @@ const createRecord = (
   key: string,
   rawEntry: Record<string, unknown>,
   profile: TaxProfile,
-  fallbackGross = 0
+  fallbackGross = 0,
+  installmentId = "",
+  installmentIndex = 0
 ) => {
   const entry = sanitizeFeeSettlement(rawEntry);
   if (!hasPayment(entry)) return null;
@@ -171,9 +176,11 @@ const createRecord = (
   );
 
   return {
-    id: `${contractId}:${key}`,
+    id: `${contractId}:${key}${installmentId ? `:${installmentId}` : ""}`,
     contractId,
     settlementKey: key,
+    installmentId,
+    installmentIndex,
     contractLabel: [normalize(contract.schoolName), normalize(contract.title)]
       .filter(Boolean)
       .join(" · "),
@@ -181,13 +188,14 @@ const createRecord = (
     industryCode,
     businessNumber,
     taxYear: inferYear(entry, key),
-    paymentMonth: inferMonth(entry, key),
+    paymentMonth: inferMonth(entry, key, Boolean(installmentId)),
     receivedDate: normalize(entry.receivedDate),
     grossAmount,
     incomeTax,
     localTax,
-    employmentInsurance:
-      amount(entry.employmentInsurance) || amount(entry.insuranceFee),
+    employmentInsurance: entry.calculationVersion === 1
+      ? amount(entry.employmentInsurance)
+      : amount(entry.employmentInsurance) || amount(entry.insuranceFee),
     industrialInsurance: amount(entry.industrialInsurance),
     taxWasEstimated,
     metadataConfirmed: entry.taxMetaConfirmed === true,
@@ -286,6 +294,18 @@ export async function GET(request: Request) {
           : {};
 
       Object.entries(settlements).forEach(([key, entry]) => {
+        const normalized = sanitizeFeeSettlement(entry);
+        if (Array.isArray(normalized.installments)) {
+          normalized.installments.forEach((item, index) => {
+            const record = createRecord(
+              docItem.id, contract, key,
+              item as Record<string, unknown>, inferredProfile,
+              0, item.id, index + 1
+            );
+            if (record) records.push(record);
+          });
+          return;
+        }
         const record = createRecord(
           docItem.id,
           contract,
@@ -403,6 +423,16 @@ export async function PATCH(request: Request) {
             businessNumber: profile.businessNumber,
             taxYear: inferYear(entry, key),
             taxMetaConfirmed: Boolean(profile.industryCode),
+            ...(Array.isArray(entry.installments) ? {
+              installments: entry.installments.map((item) => ({
+                ...item,
+                payerName: profile.payerName,
+                industryCode: profile.industryCode,
+                businessNumber: profile.businessNumber,
+                taxYear: inferYear(item, key),
+                taxMetaConfirmed: Boolean(profile.industryCode),
+              })),
+            } : {}),
           };
         });
         updates.settlements = settlements;
@@ -439,17 +469,38 @@ export async function PATCH(request: Request) {
           return jsonError("지급 기록을 찾을 수 없습니다.", 404, "settlement_not_found");
         }
         const entry = sanitizeFeeSettlement(rawEntry);
-        await docRef.update({
-          [`settlements.${settlementKey}`]: {
-            ...entry,
-            payerName: profile.payerName,
-            industryCode: profile.industryCode,
-            businessNumber: profile.businessNumber,
-            taxYear,
-            taxMetaConfirmed: Boolean(profile.industryCode),
-          },
-          updatedAt: FieldValue.serverTimestamp(),
-        });
+        const installmentId = normalize(body.installmentId);
+        if (installmentId) {
+          if (!/^[a-zA-Z0-9_-]{1,80}$/.test(installmentId) ||
+              !entry.installments?.some((item) => item.id === installmentId)) {
+            return jsonError("분할입금 기록을 찾을 수 없습니다.", 404, "installment_not_found");
+          }
+          await docRef.update({
+            [`settlements.${settlementKey}.installments`]: entry.installments.map((item) =>
+              item.id !== installmentId ? item : {
+                ...item,
+                payerName: profile.payerName,
+                industryCode: profile.industryCode,
+                businessNumber: profile.businessNumber,
+                taxYear,
+                taxMetaConfirmed: Boolean(profile.industryCode),
+              }
+            ),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        } else {
+          await docRef.update({
+            [`settlements.${settlementKey}`]: {
+              ...entry,
+              payerName: profile.payerName,
+              industryCode: profile.industryCode,
+              businessNumber: profile.businessNumber,
+              taxYear,
+              taxMetaConfirmed: Boolean(profile.industryCode),
+            },
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
       }
       return Response.json({ ok: true });
     }
