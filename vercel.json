@@ -1,1 +1,3 @@
-{"buildCommand":"node scripts/probe-homework-storage.cjs && npm run build"}
+{
+  "buildCommand": "node scripts/verify-photo-archive.cjs && node scripts/verify-mybox-archive.cjs && node scripts/verify-student-sessions.cjs && node scripts/verify-student-data-flow.mjs && node scripts/probe-homework-storage.cjs && npm run build"
+}

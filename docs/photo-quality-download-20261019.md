@@ -48,3 +48,5 @@
 ## 최초 Preview 빌드에서 발견한 오류
 
 커밋 dd535f5의 Vercel TypeScript 검사에서 다운로드 응답 후 setDetail 업데이트의 null 상태 좁히기 오류가 발견되어 빌드가 중단됐다. albumId 부재를 먼저 거부하고 current의 존재를 명시적으로 확인하도록 수정했다. 해당 첫 배포는 완료로 표시하지 않는다.
+
+Vercel API의 buildCommand override보다 저장소 vercel.json이 우선해 테스트 명령이 실행되지 않은 것을 로그에서 확인했다. 따라서 이 기능 브랜치의 vercel.json에 네 개의 기존 검증 명령을 기존 저장소 점검·전체 빌드 앞에 추가했다. 테스트의 실제 PASS/빌드 결과는 최종 배포 로그를 기준으로 별도 보고한다. 운영 브랜치 설정은 변경하지 않았다.
