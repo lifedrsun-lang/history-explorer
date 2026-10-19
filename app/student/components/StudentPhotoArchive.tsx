@@ -86,18 +86,19 @@ export default function StudentPhotoArchive({ student }: Props) {
   const albumId = detail?.album.id;
   const load = useCallback(async (photoId: string, variant: "thumb" | "display", signal: AbortSignal) => (await call({ action: "image", albumId, photoId, variant }, signal)).blob(), [call, albumId]);
   const downloadPhoto = async (photoId: string) => {
+    if (!albumId) throw new Error("앨범을 다시 열어 주세요.");
     const currentAlbum = albumId;
     try {
       const response = await call({ action: "download", albumId: currentAlbum, photoId });
       const remaining = Number(response.headers.get("X-Downloads-Remaining"));
-      if (Number.isInteger(remaining) && remaining >= 0 && remaining <= 3) setDetail(current => current?.album.id === currentAlbum ? { ...current, downloadRemaining: { ...current.downloadRemaining, [photoId]: remaining } } : current);
+      if (Number.isInteger(remaining) && remaining >= 0 && remaining <= 3) setDetail(current => current && current.album.id === currentAlbum ? { ...current, downloadRemaining: { ...current.downloadRemaining, [photoId]: remaining } } : current);
       const blob = await response.blob(), url = URL.createObjectURL(blob), link = document.createElement("a");
       link.href = url; link.download = `class-photo-${photoId}.jpg`; document.body.appendChild(link); link.click(); link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
     } catch (error) {
       try {
         const latest = await (await call({ action: "detail", albumId: currentAlbum })).json();
-        setDetail(current => current?.album.id === currentAlbum ? { ...current, downloadRemaining: latest.downloadRemaining } : current);
+        setDetail(current => current && current.album.id === currentAlbum ? { ...current, downloadRemaining: latest.downloadRemaining } : current);
       } catch { /* Keep the original failure visible; server authorization still applies. */ }
       throw error;
     }

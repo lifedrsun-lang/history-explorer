@@ -44,3 +44,7 @@
 브랜치 `feat/student-auth-security-20261017`, 원래 부모 `f28c894bd93c574b7ce9c72fa03679e58b759c46`. Preview만 배포하며 Production/main 병합은 하지 않는다. 배포 READY 여부·커밋·URL은 Vercel 배포 결과로 별도 보고한다.
 
 기존 `PHOTO_ARCHIVE_ACCESS_REVIEWED` 공개 차단은 유지한다. 실제 분기 명부와 Firebase 적용 규칙 보완이 미완료인 상태에서 사진을 학생에게 공개하지 않는다. 이 작업으로 Firebase 규칙이 적용되었다고 주장하지 않는다. 체크박스는 보호자 본인 확인을 대신하지 않는다.
+
+## 최초 Preview 빌드에서 발견한 오류
+
+커밋 dd535f5의 Vercel TypeScript 검사에서 다운로드 응답 후 setDetail 업데이트의 null 상태 좁히기 오류가 발견되어 빌드가 중단됐다. albumId 부재를 먼저 거부하고 current의 존재를 명시적으로 확인하도록 수정했다. 해당 첫 배포는 완료로 표시하지 않는다.
