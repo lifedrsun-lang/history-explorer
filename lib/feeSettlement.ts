@@ -15,6 +15,7 @@ export type FeeSettlement = {
   insuranceFee?: number;
   taxAmount?: number;
   receivedDate?: string;
+  installments?: FeeInstallment[];
   calculationVersion?: 1;
   manualFields?: SettlementManualField[];
   taxYear?: number;
@@ -23,6 +24,8 @@ export type FeeSettlement = {
   businessNumber?: string;
   taxMetaConfirmed?: boolean;
 };
+
+export type FeeInstallment = Omit<FeeSettlement, "installments"> & { id: string };
 
 const amount = (value: unknown) => {
   const result = Number(value);
@@ -78,6 +81,7 @@ export function calculateFeeSettlement(entry: FeeSettlement, expectedAmount: num
     receivedDate: entry.receivedDate || "",
   };
   preserveTaxMetadata(result, entry);
+  if (Array.isArray(entry.installments)) result.installments = entry.installments;
   if (hasReceivedAmount(entry)) result.receivedAmount = amount(entry.receivedAmount);
   return result;
 }
@@ -106,6 +110,22 @@ export function resetFeeSettlement(entry: FeeSettlement, expectedAmount: number)
   }, expectedAmount);
 }
 
+// Split payments are authoritative once enabled; the original settlement fields remain
+// untouched for rollback and historical compatibility, not as another payment.
+export function getFeePaymentEntries(entry: FeeSettlement, expectedAmount: number): FeeSettlement[] {
+  if (Array.isArray(entry.installments)) {
+    return entry.installments.map((item) =>
+      item.calculationVersion === 1
+        ? calculateFeeSettlement(item, amount(item.grossAmount))
+        : item
+    );
+  }
+  return [entry.calculationVersion === 1 ? calculateFeeSettlement(entry, expectedAmount) : entry];
+}
+
+export const isPaidFeeInstallment = (entry: FeeSettlement) =>
+  hasReceivedAmount(entry) || Boolean(entry.receivedDate);
+
 // Recover missing legacy taxes only when the saved gross/net amounts reconcile exactly
 // with the existing automatic calculation. Keep other historical deductions unchanged.
 const reconcileLegacyFeeSettlement = (entry: FeeSettlement): FeeSettlement => {
@@ -128,13 +148,15 @@ export function sanitizeFeeSettlement(data: Record<string, unknown>): FeeSettlem
       const result = Number(value || 0);
       return Number.isFinite(result) && result >= 0 ? result : 0;
     };
-    return reconcileLegacyFeeSettlement(preserveTaxMetadata({
+    const result = reconcileLegacyFeeSettlement(preserveTaxMetadata({
       receivedAmount: legacyAmount(data.receivedAmount),
       grossAmount: legacyAmount(data.grossAmount),
       insuranceFee: legacyAmount(data.insuranceFee),
       taxAmount: legacyAmount(data.taxAmount),
       receivedDate: String(data.receivedDate || ""),
     }, data));
+    attachInstallments(result, data.installments);
+    return result;
   }
   const entry: FeeSettlement = {
     calculationVersion: 1,
@@ -151,5 +173,24 @@ export function sanitizeFeeSettlement(data: Record<string, unknown>): FeeSettlem
   if (data.receivedAmount !== undefined && data.receivedAmount !== null && data.receivedAmount !== "") {
     entry.receivedAmount = amount(data.receivedAmount);
   }
-  return calculateFeeSettlement(entry, amount(data.grossAmount));
+  const result = calculateFeeSettlement(entry, amount(data.grossAmount));
+  attachInstallments(result, data.installments);
+  return result;
 }
+
+const attachInstallments = (target: FeeSettlement, raw: unknown) => {
+  if (!Array.isArray(raw)) return;
+  // Preserve a deliberately empty split list without recreating the old single record.
+  const ids = new Set<string>();
+  target.installments = raw.flatMap((value) => {
+    if (!value || typeof value !== "object") return [];
+    const input = value as Record<string, unknown>;
+    const id = String(input.id || "").trim();
+    if (!/^[a-zA-Z0-9_-]{1,80}$/.test(id) || ids.has(id)) return [];
+    ids.add(id);
+    // Drop nested arrays to prevent recursive payloads and accidental duplicate records.
+    const { installments: _nested, ...fields } = input;
+    void _nested;
+    return [{ ...sanitizeFeeSettlement(fields), id }];
+  });
+};

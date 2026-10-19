@@ -117,5 +117,65 @@ vm.runInNewContext(totalsCode, totalsContext);
   const zeroAnnual = await (await tax.GET(annualRequest)).json();
   assert.equal(zeroAnnual.records[0].incomeTax, 0);
   assert.equal(zeroAnnual.records[0].localTax, 0);
-  console.log('PASS: legacy reconciliation, preservation, fees GET/PATCH/reload, annual tax consistency and manual zero deductions');
+
+  // The parent legacy entry is retained as a backup, never double counted.
+  const split = {
+    ...recovered,
+    installments: [
+      { id: 'original', calculationVersion: 1, manualFields: ['grossAmount'], grossAmount: 400000,
+        receivedAmount: 386800, receivedDate: '2026-09-25', taxYear: 2026 },
+      { id: 'second', calculationVersion: 1, manualFields: ['grossAmount'], grossAmount: 320000,
+        receivedAmount: 309440, receivedDate: '2026-10-10', taxYear: 2026 },
+    ],
+  };
+  const splitNormalized = settlement.sanitizeFeeSettlement(split);
+  assert.equal(splitNormalized.installments.length, 2);
+  assert.equal(splitNormalized.grossAmount, 720000, 'Preserve the parent for rollback');
+  assert.equal(splitNormalized.receivedAmount, 696240, 'Preserve the parent net amount');
+  assert.equal(settlement.getFeePaymentEntries(splitNormalized, 720000).length, 2);
+  assert.equal(settlement.getFeePaymentEntries(splitNormalized, 720000).reduce((sum, item) => sum + item.incomeTax, 0), 21600);
+  assert.equal(settlement.getFeePaymentEntries(splitNormalized, 720000).reduce((sum, item) => sum + item.residentTax, 0), 2160);
+  assert.equal(splitNormalized.installments[0].grossAmount + splitNormalized.installments[1].grossAmount, 720000);
+  const malformed = settlement.sanitizeFeeSettlement({
+    ...split,
+    installments: [
+      { id: 'valid', receivedDate: '2026-10-10', grossAmount: 1000, installments: [{ id: 'nested', grossAmount: 9999 }] },
+      { id: 'valid', receivedDate: '2026-10-11', grossAmount: 2000 },
+      { id: 'bad.id', grossAmount: 5000 },
+    ],
+  });
+  assert.equal(malformed.installments.length, 1, 'Drop duplicate/invalid child ids');
+  assert.equal(malformed.installments[0].installments, undefined, 'Drop recursive child payment arrays');
+
+  saved = { ...saved, settlements: { '2026-09': split } };
+  const splitFees = await (await fees.GET(request)).json();
+  const splitTotals = totalsContext.exports.totals(splitFees.contracts[0]);
+  assert.equal(splitTotals.received, 696240, 'Do not sum the legacy parent and children');
+  assert.equal(splitTotals.statementGross, 720000);
+  assert.equal(splitTotals.tax, 23760);
+  assert.equal(splitTotals.incomeTax, 21600);
+  assert.equal(splitTotals.residentTax, 2160);
+  assert.equal(splitTotals.unpaid, 0);
+  const splitAnnual = await (await tax.GET(annualRequest)).json();
+  assert.equal(splitAnnual.records.length, 2, 'Create one annual tax record per installment');
+  assert.equal(splitAnnual.records.reduce((sum, record) => sum + record.grossAmount, 0), 720000);
+  assert.equal(splitAnnual.records.reduce((sum, record) => sum + record.incomeTax, 0), 21600);
+  assert.equal(splitAnnual.records.reduce((sum, record) => sum + record.localTax, 0), 2160);
+  assert.equal(new Set(splitAnnual.records.map((record) => record.id)).size, 2);
+  assert.equal(splitAnnual.records[0].paymentMonth, 9);
+  assert.equal(splitAnnual.records[1].paymentMonth, 10);
+
+  const splitPatch = await fees.PATCH(new Request(request.url, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: 'contract-test', settlements: splitFees.contracts[0].settlements }),
+  }));
+  assert.equal(splitPatch.status, 200);
+  assert.equal(saved.settlements['2026-09'].installments.length, 2);
+  const splitReread = await (await fees.GET(request)).json();
+  assert.equal(splitReread.contracts[0].settlements['2026-09'].installments[1].receivedAmount, 309440);
+  saved = { ...saved, settlements: { '2026-09': { ...split, installments: [split.installments[0]] } } };
+  const partialTotals = totalsContext.exports.totals((await (await fees.GET(request)).json()).contracts[0]);
+  assert.equal(partialTotals.unpaid, 320000, 'Partially received gross remains unpaid, not insurance');
+
+  console.log('PASS: legacy preservation, split payment normalization, partial unpaid totals, independent tax records and round-trip');
 })().catch((error) => { console.error(error); process.exitCode = 1; });

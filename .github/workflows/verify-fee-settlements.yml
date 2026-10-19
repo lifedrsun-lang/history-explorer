@@ -1,0 +1,29 @@
+name: Fee settlement regression
+
+on:
+  pull_request:
+    paths:
+      - "lib/feeSettlement.ts"
+      - "app/api/teacher/fees/route.ts"
+      - "app/api/teacher/income-tax/route.ts"
+      - "app/teacher/fees/page.tsx"
+      - "app/teacher/income-tax/page.tsx"
+      - "scripts/verify-fee-tax-totals.cjs"
+      - ".github/workflows/verify-fee-settlements.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  settlements:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node scripts/verify-fee-tax-totals.cjs
