@@ -5,11 +5,14 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { auth } from "@/lib/firebase";
+import FeeSplitPaymentsPanel from "@/app/teacher/components/FeeSplitPaymentsPanel";
 import { isStudentEnrolledInQuarter } from "@/lib/studentRoster";
 import {
   calculateFeeSettlement,
   changeFeeSettlement,
   hasReceivedAmount,
+  getFeePaymentEntries,
+  isPaidFeeInstallment,
   resetFeeSettlement,
   type FeeSettlement,
   type SettlementInputField,
@@ -766,6 +769,62 @@ export default function TeacherFeesPage() {
     return patchContract(contract.id, { settlements });
   };
 
+  const addFeeInstallment = async (contract: FeeContract, unitKey: string) => {
+    const latest = getLatestContract(contract);
+    const settlements = { ...(latest.settlements || {}) };
+    const stored: FeeSettlement = settlements[unitKey] || {};
+    const { installments: _oldInstallments, ...original } = stored;
+    void _oldInstallments;
+    const existing = Array.isArray(stored.installments)
+      ? stored.installments
+      : isPaidFeeInstallment(stored)
+        ? [{ ...original, id: "original" }]
+        : [];
+    const newItem = { id: crypto.randomUUID().replace(/-/g, ""), calculationVersion: 1 as const, manualFields: [] };
+    settlements[unitKey] = { ...stored, installments: [...existing, newItem] };
+    setError("");
+    return patchContract(contract.id, { settlements });
+  };
+
+  const changeFeeInstallment = async (
+    contract: FeeContract, unitKey: string, id: string,
+    field: SettlementInputField | "reset", value = ""
+  ) => {
+    const latest = getLatestContract(contract);
+    const settlements = { ...(latest.settlements || {}) };
+    const stored: FeeSettlement = settlements[unitKey] || {};
+    if (!Array.isArray(stored.installments)) return;
+    const installments = stored.installments.map((item) => {
+      if (item.id !== id) return item;
+      const next = field === "reset"
+        ? resetFeeSettlement(item, Number(item.grossAmount || 0))
+        : changeFeeSettlement(item, Number(item.grossAmount || 0), field, value);
+      return { ...next, id };
+    });
+    settlements[unitKey] = { ...stored, installments };
+    setError("");
+    return patchContract(contract.id, { settlements });
+  };
+
+  const removeFeeInstallment = async (contract: FeeContract, unitKey: string, id: string) => {
+    const latest = getLatestContract(contract);
+    const settlements = { ...(latest.settlements || {}) };
+    const stored: FeeSettlement = settlements[unitKey] || {};
+    if (!stored.installments || stored.installments.length <= 1) return;
+    settlements[unitKey] = { ...stored, installments: stored.installments.filter((item) => item.id !== id) };
+    return patchContract(contract.id, { settlements });
+  };
+
+  const cancelSplitPayments = async (contract: FeeContract, unitKey: string) => {
+    const latest = getLatestContract(contract);
+    const settlements = { ...(latest.settlements || {}) };
+    const stored: FeeSettlement = settlements[unitKey] || {};
+    const { installments: _discard, ...original } = stored;
+    void _discard;
+    settlements[unitKey] = original;
+    return patchContract(contract.id, { settlements });
+  };
+
   const getSettlementState = (entry: FeeSettlement, expectedAmount: number) => {
     const received = Number(entry.receivedAmount || 0);
     const statementGross = Number(entry.grossAmount || 0);
@@ -859,10 +918,8 @@ export default function TeacherFeesPage() {
 
   const getContractSettlementTotals = (contract: FeeContract) => {
     const units = getSettlementUnits(contract);
-    const entries = Object.entries(contract.settlements || {}).map(([key, entry]) =>
-      entry.calculationVersion === 1
-        ? calculateFeeSettlement(entry, units.find((unit) => unit.key === key)?.expectedAmount ?? Number(entry.grossAmount || 0))
-        : entry
+    const entries = Object.entries(contract.settlements || {}).flatMap(([key, entry]) =>
+      getFeePaymentEntries(entry, units.find((unit) => unit.key === key)?.expectedAmount ?? Number(entry.grossAmount || 0))
     );
     const hasNewSettlements = entries.length > 0;
 
@@ -893,6 +950,12 @@ export default function TeacherFeesPage() {
     const unpaid = units.reduce((sum, unit) => {
       const entry = contract.settlements?.[unit.key] || {};
       const hasReceived = hasReceivedAmount(entry) || (entry.calculationVersion !== 1 && Boolean(entry.receivedDate));
+      if (Array.isArray(entry.installments)) {
+        const paidGross = getFeePaymentEntries(entry, unit.expectedAmount)
+          .filter(isPaidFeeInstallment)
+          .reduce((gross, payment) => gross + Number(payment.grossAmount || 0), 0);
+        return sum + Math.max(0, unit.expectedAmount - paidGross);
+      }
       return hasReceived ? sum : sum + unit.expectedAmount;
     }, 0);
 
@@ -1078,13 +1141,28 @@ export default function TeacherFeesPage() {
             : state.tone === "rose" ? "bg-rose-50 text-rose-700"
             : "bg-amber-50 text-amber-700";
 
-          return (
+          return Array.isArray(stored.installments) ? (
+            <FeeSplitPaymentsPanel
+              key={unit.key}
+              label={unit.label}
+              expectedAmount={unit.expectedAmount}
+              settlement={stored}
+              onAdd={() => void addFeeInstallment(contract, unit.key)}
+              onChange={(id, field, value) => void changeFeeInstallment(contract, unit.key, id, field, value)}
+              onRemove={(id) => void removeFeeInstallment(contract, unit.key, id)}
+              onCancelSplit={() => void cancelSplitPayments(contract, unit.key)}
+            />
+          ) : (
             <div key={unit.key} className="rounded-2xl border border-slate-200 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-sm font-black text-slate-800">
                   {unit.label}<span className="ml-2 font-bold text-slate-500">예상 {formatWon(unit.expectedAmount)}</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => void addFeeInstallment(contract, unit.key)}
+                    className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700">
+                    + 분할입금 추가
+                  </button>
                   <button type="button" onClick={() => setEditingSettlementKey(manualEditing ? "" : rowKey)}
                     className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold text-slate-600">
                     {manualEditing ? "수정 마침" : "직접 수정"}
