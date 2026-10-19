@@ -1,4 +1,6 @@
 import { ArchiveError, studentAlbum } from "@/lib/photoArchive";
+import { saveArchiveConsent } from "@/lib/photoArchiveConsentServer";
+import { limitStudentAttempt } from "@/lib/studentSessionServer";
 import { archiveOrigin, archiveStudent, listStudentAlbums, readableArchive, archivePhotos, archiveImage, archiveJson, archiveError } from "@/lib/photoArchiveServer";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,6 +11,11 @@ export async function POST(request: Request) {
     if (body.action === "image") return await archiveImage(body, undefined, request);
     const student = await archiveStudent(request, body);
     if (body.action === "list") return archiveJson({ albums: await listStudentAlbums(student), serverNow: Date.now() });
+    if (body.action === "consent") {
+      const album = await readableArchive(body.albumId, student, false);
+      await limitStudentAttempt(request, "photo-consent", student.key, 30);
+      return archiveJson({ consent: await saveArchiveConsent(album, student.key, body) });
+    }
     if (body.action === "detail") {
       const album = await readableArchive(body.albumId, student);
       return archiveJson({ album: studentAlbum(album), photos: await archivePhotos(album.id), serverNow: Date.now() });

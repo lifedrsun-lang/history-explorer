@@ -6,6 +6,7 @@ import { requirePhotoSession, StudentSessionError } from "@/lib/studentSessionSe
 import { verifiedTeacher } from "@/lib/teacherAuthServer";
 import { getSupabaseServer, getAssignmentBucketName } from "@/lib/supabaseServer";
 import { getEnrollmentTerms } from "@/lib/studentEnrollment";
+import { archiveConsentStatus, latestArchiveConsents, requireArchiveConsent } from "@/lib/photoArchiveConsentServer";
 import { ArchiveError, archiveId, canReadArchive, studentAlbum, validateArchiveInput, type ArchiveAlbum, type ArchivePhoto } from "@/lib/photoArchive";
 
 const ALBUMS = "student_photo_albums", PHOTOS = "student_archive_photos";
@@ -81,11 +82,14 @@ export async function listStudentAlbums(student: Awaited<ReturnType<typeof archi
   // SQL filtering reduces data reads. Authorization is still checked on every list, detail and byte request.
   const result = await db().from(ALBUMS).select("*").eq("published", true).contains("member_keys", [student.key]).limit(500);
   storageError(result.error);
-  return (result.data as ArchiveAlbum[]).filter(a => canReadArchive(a, student.key, student.terms)).map(a => studentAlbum(a));
+  const albums = (result.data as ArchiveAlbum[]).filter(a => canReadArchive(a, student.key, student.terms));
+  const consents = new Map((await latestArchiveConsents(albums.map(a => a.id), student.key)).map(c => [c.album_id, c]));
+  return albums.map(a => ({ ...studentAlbum(a), consent: archiveConsentStatus(a, consents.get(a.id)) }));
 }
-export async function readableArchive(id: unknown, student: Awaited<ReturnType<typeof archiveStudent>>) {
+export async function readableArchive(id: unknown, student: Awaited<ReturnType<typeof archiveStudent>>, consentRequired = true) {
   const album = await getArchiveAlbum(id);
   if (!canReadArchive(album, student.key, student.terms)) throw new ArchiveError("열람할 수 없는 앨범입니다.", 404);
+  if (consentRequired) await requireArchiveConsent(album, student.key);
   return album;
 }
 export async function archivePhotos(albumId: string) {

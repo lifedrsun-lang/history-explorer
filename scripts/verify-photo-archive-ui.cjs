@@ -46,7 +46,7 @@ const server = http.createServer(async (incoming, outgoing) => {
   try {
     const url = new URL(incoming.url, `http://127.0.0.1:${port}`), bytes = [];
     for await (const chunk of incoming) bytes.push(chunk);
-    if (url.pathname === '/test-font' && process.env.PHOTO_ARCHIVE_TEST_FONT) { outgoing.setHeader('Content-Type', 'font/otf'); outgoing.end(fs.readFileSync(process.env.PHOTO_ARCHIVE_TEST_FONT)); return; }
+    if (url.pathname === '/test-font' && process.env.PHOTO_ARCHIVE_TEST_FONT) { outgoing.setHeader('Content-Type', process.env.PHOTO_ARCHIVE_TEST_FONT.endsWith('.woff2') ? 'font/woff2' : 'font/otf'); outgoing.end(fs.readFileSync(process.env.PHOTO_ARCHIVE_TEST_FONT)); return; }
     if (url.pathname.endsWith('.js')) { outgoing.setHeader('Content-Type', 'text/javascript'); outgoing.end(bundles[url.pathname]); return; }
     if (url.pathname === '/') { outgoing.setHeader('Set-Cookie', fixture.studentCookie('one') + '; Path=/; HttpOnly; SameSite=Strict'); outgoing.setHeader('Content-Type', 'text/html; charset=utf-8'); outgoing.end(`<meta name="viewport" content="width=device-width"><style>@font-face{font-family:ArchiveTestKorean;src:url('/test-font')}body{margin:0;font-family:ArchiveTestKorean,Arial,sans-serif;color:#243b35}button{cursor:pointer}#root{padding:16px}input,textarea,select{display:block;margin:8px;padding:8px}fieldset{padding:12px}section{margin:16px 0}aside button{margin:8px}${fs.readdirSync(path.join(root, '.next/static/chunks')).filter(f=>f.endsWith('.css')).map(f=>fs.readFileSync(path.join(root,'.next/static/chunks',f),'utf8')).join('')} ${fs.readFileSync(path.join(root, 'app/components/photoDiagram.module.css'), 'utf8')}</style><div id="root"></div><script src="/${url.searchParams.has('admin') ? 'admin' : 'student'}.js"></script>`); return; }
     const request = new Request(url, { method: incoming.method, headers: incoming.headers, body: ['GET', 'HEAD'].includes(incoming.method) ? undefined : Buffer.concat(bytes) });
@@ -78,11 +78,35 @@ async function main() {
   }
   bundles['/student.js'] = bundle(false); bundles['/admin.js'] = bundle(true);
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); port = server.address().port;
-  browser = await puppeteer.launch({ executablePath: process.env.CLASSROOM_TEST_CHROMIUM || await chromium.executablePath(), args: chromium.args.filter(arg => arg !== '--disable-web-security'), headless: true });
-  const page = await browser.newPage(), errors = []; page.on('pageerror', e => errors.push(e.message));
+  browser = await puppeteer.launch({ executablePath: process.env.CLASSROOM_TEST_CHROMIUM || await chromium.executablePath(), args: chromium.args.filter(arg => !['--disable-web-security','--single-process'].includes(arg)), headless: true });
+  let page = await browser.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.setViewport({ width: 1280, height: 900 }); await page.goto(`http://127.0.0.1:${port}/`); await page.waitForFunction(() => document.body.textContent.includes('D-'));
   for (const expected of ['기존 책 제목', '기존 책 설명 유지', '27', '3', '57', '우리 반 사진']) assert.ok((await page.evaluate(() => document.body.textContent)).includes(expected));
-  await clickText(page, '우리 반 사진'); await page.waitForSelector('[role="dialog"]'); await clickText(page, '검증 앨범'); await page.waitForSelector('.photo');
+  await clickText(page, '우리 반 사진'); await page.waitForSelector('[role="dialog"]'); await clickText(page, '검증 앨범'); await page.waitForSelector('#photo-consent-title');
+  const ensureConsent = async () => { await page.waitForFunction(()=>document.body.textContent.includes('D-')); if (!(await page.$('#photo-consent-title'))) { if (!(await page.$('[role="dialog"]'))) await clickText(page,'우리 반 사진');await clickText(page,'검증 앨범');await page.waitForSelector('#photo-consent-title'); } };
+  await page.setViewport({width:1280,height:1400});await ensureConsent();await page.evaluate(()=>document.fonts.ready);
+  await (await page.$('[aria-labelledby="photo-consent-title"]')).screenshot({path:'/tmp/photo-consent-entry-desktop.png'});
+  await page.setViewport({width:390,height:1600,isMobile:true,hasTouch:true});
+  await ensureConsent();
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
+  await (await page.$('[aria-labelledby="photo-consent-title"]')).screenshot({path:'/tmp/photo-consent-entry-mobile.png'});
+  await page.setViewport({width:1280,height:900,isMobile:false,hasTouch:false});
+  await ensureConsent();
+  if (process.argv.includes('--consent-screenshots-only')) return;
+  assert.equal((await page.$$('.photo')).length,0);
+  const enterDisabled = () => page.evaluate(()=>[...document.querySelectorAll('button')].find(b=>b.textContent==='동의하고 입장').disabled);
+  assert.equal(await enterDisabled(),true);
+  await (await page.$('[aria-labelledby="photo-consent-title"] input[type="checkbox"]')).click();assert.equal(await enterDisabled(),true);
+  await (await page.$('[aria-labelledby="photo-consent-title"] input[type="checkbox"]')).click();
+  await clickText(page,'동의하지 않고 나가기');await page.waitForFunction(()=>!document.querySelector('[role="dialog"]'));
+  assert.equal([...fixture.rows.student_photo_consent_events.values()].at(-1).publication,false);
+  await clickText(page,'우리 반 사진');await clickText(page,'검증 앨범');await page.waitForSelector('#photo-consent-title');
+  for(const box of await page.$$('[aria-labelledby="photo-consent-title"] input[type="checkbox"]')) await box.click();
+  assert.equal(await enterDisabled(),false);await clickText(page,'동의하고 입장');await page.waitForSelector('.photo');
+  assert.equal(fixture.rows.student_photo_consent_events.size,2);
+  await clickText(page,'닫기 ×');await clickText(page,'우리 반 사진');await clickText(page,'검증 앨범');await page.waitForSelector('.photo');
+  assert.equal(await page.$('#photo-consent-title'),null,'Returning visitors must not be asked again for the same scope');
+  assert.ok((await page.evaluate(()=>document.body.textContent)).includes('열람 종료:'));
   assert.equal((await page.$$('.photo')).length, 50);
   const before = await page.$$eval('.photo', nodes => nodes.map(n => n.style.transform));
   await page.click('.photo:nth-child(2)'); await page.waitForFunction(() => document.querySelector('.photo:nth-child(2)').getAttribute('aria-pressed') === 'true');
@@ -101,7 +125,13 @@ async function main() {
   centered = await page.$eval('.selected', n => { const a = n.getBoundingClientRect(), b = n.closest('.canvas').getBoundingClientRect(); return Math.abs((a.left + a.right) / 2 - (b.left + b.right) / 2) < 2; }); assert.equal(centered, true);
   await clickText(page, '전체 화면'); await page.waitForFunction(() => !!document.fullscreenElement); await page.keyboard.press('Escape');
   // Administrator renders actual editor and uploads two original files through signed staging and real finalization.
+  await browser.close();
+  browser = await puppeteer.launch({ executablePath: process.env.CLASSROOM_TEST_CHROMIUM || await chromium.executablePath(), args: chromium.args.filter(arg => !['--disable-web-security','--single-process'].includes(arg)), headless: true });
+  page = await browser.newPage(); page.on('pageerror', e => errors.push(e.message));
   await page.setViewport({ width: 1280, height: 900, isMobile: false, hasTouch: false }); await page.goto(`http://127.0.0.1:${port}/?admin=1`); await page.waitForFunction(() => document.body.textContent.includes('검증 앨범')); await clickText(page, '검증 앨범'); await page.waitForSelector('input[type="file"]');
+  assert.ok((await page.evaluate(()=>document.body.textContent)).includes('보호자 동의 기록'));
+  await page.evaluate(()=>[...document.querySelectorAll('h2')].find(e=>e.textContent==='보호자 동의 기록').scrollIntoView({block:'center'}));
+  await page.screenshot({path:'/tmp/photo-consent-admin.png'});
   const file1 = '/tmp/archive-ui-1.jpg', file2 = '/tmp/archive-ui-2.png'; await sharp({ create: { width: 500, height: 300, channels: 3, background: '#559977' } }).jpeg().toFile(file1); await sharp({ create: { width: 400, height: 500, channels: 3, background: '#886699' } }).png().toFile(file2);
   await (await page.$('input[type="file"]')).uploadFile(file1, file2); await clickText(page, '일괄 업로드'); await page.waitForFunction(() => document.body.textContent.includes('2장 등록 완료'), { timeout: 30000 });
   assert.equal(fixture.rows.student_archive_photos.size, 52);

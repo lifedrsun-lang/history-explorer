@@ -4,6 +4,8 @@ import { onAuthStateChanged, type User } from "firebase/auth";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { auth } from "@/lib/firebase";
 import { archiveExpiry, type ArchiveAlbum, type ArchivePhoto } from "@/lib/photoArchive";
+import type { TeacherPhotoConsent } from "@/lib/photoArchiveConsent";
+import { getStudentProgramLabel } from "@/lib/programs";
 import PhotoDiagram, { PrivatePhoto } from "@/app/components/PhotoDiagram";
 import MyboxImport from "./MyboxImport";
 type Roster = { key: string; name: string; school: string; grade: string; classroom: string; program: string; terms: string[] };
@@ -17,6 +19,7 @@ export default function PhotoArchiveAdmin() {
   const [files, setFiles] = useState<File[]>([]), [preview, setPreview] = useState(false), [dirty, setDirty] = useState(false), [showOtherSchools, setShowOtherSchools] = useState(false);
   const [pending, setPending] = useState<{ photoId: string; name: string }[]>([]);
   const [studentAccessReady, setStudentAccessReady] = useState(false);
+  const [consents, setConsents] = useState<TeacherPhotoConsent[]>([]);
   const [clock, setClock] = useState(() => Date.now());
   useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 60_000); return () => clearInterval(timer); }, []);
   const activeId = useRef("");
@@ -33,15 +36,15 @@ export default function PhotoArchiveAdmin() {
   const open = async (id: string) => {
     if (dirty && !window.confirm("저장하지 않은 변경을 버릴까요?")) return;
     setBusy(true); setError("");
-    try { const data = await (await request(`${api}?albumId=${id}`)).json(); activeId.current = id; setAlbum(data.album); setPhotos(data.photos); setFiles([]); setPending([]); setDirty(false); setPreview(false); }
+    try { const data = await (await request(`${api}?albumId=${id}`)).json(); activeId.current = id; setAlbum(data.album); setPhotos(data.photos); setConsents(data.consents || []); setFiles([]); setPending([]); setDirty(false); setPreview(false); }
     catch (e) { setError(e instanceof Error ? e.message : "앨범을 열지 못했습니다."); } finally { setBusy(false); }
   };
   const save = async () => {
     setBusy(true); setError(""); setMessage("");
-    try { const data = await (await request(api, { action: "save", album })).json(); setAlbum(data.album); activeId.current = data.album.id; setDirty(false); setMessage("앨범을 저장했습니다."); await reload(); }
+    try { const data = await (await request(api, { action: "save", album })).json(); setAlbum(data.album); setConsents(data.consents || []); activeId.current = data.album.id; setDirty(false); setMessage("앨범을 저장했습니다."); await reload(); }
     catch (e) { setError(e instanceof Error ? e.message : "저장하지 못했습니다."); } finally { setBusy(false); }
   };
-  const reloadPhotos = async (refreshAlbum = false) => { const data = await (await request(`${api}?albumId=${album.id}`)).json(); if (activeId.current === album.id) { setPhotos(data.photos); if (refreshAlbum) { setAlbum(data.album); setDirty(false); } } };
+  const reloadPhotos = async (refreshAlbum = false) => { const data = await (await request(`${api}?albumId=${album.id}`)).json(); if (activeId.current === album.id) { setPhotos(data.photos); setConsents(data.consents || []); if (refreshAlbum) { setAlbum(data.album); setDirty(false); } } };
   const upload = async () => {
     if (!album.id || !files.length) return;
     setBusy(true); setError(""); const failed: File[] = [], failures: string[] = []; let completed = 0;
@@ -109,11 +112,19 @@ export default function PhotoArchiveAdmin() {
           </section>
           <section className="rounded-3xl border border-stone-200 bg-white p-5"><h2 className="text-lg font-black">실제 분기 명부 확인</h2><p className="my-2 text-xs leading-5 text-slate-600">아래 목록은 {term} 이력이 있는 계정입니다. 현재 반으로 자동 배정하지 않습니다. 당시 학교·반 명부에 있는 학생만 선택해 주세요.</p>
             <label className="mb-3 flex gap-2 text-xs"><input type="checkbox" checked={showOtherSchools} onChange={e => setShowOtherSchools(e.target.checked)} />현재 학교가 변경된 학생도 찾기</label>
-            <fieldset disabled={busy} className="max-h-72 space-y-1 overflow-y-auto rounded-xl bg-stone-50 p-3">{candidates.map(s => <label key={s.key} className="flex items-start gap-3 rounded-lg bg-white p-2 text-sm"><input type="checkbox" checked={album.member_keys.includes(s.key)} onChange={e => { const keys = e.target.checked ? [...album.member_keys, s.key] : album.member_keys.filter(k => k !== s.key); setAlbum(a => ({ ...a, member_keys: keys, roster_verified: false })); setDirty(true); }} className="mt-1" /><span><b>{s.name}</b><span className="ml-2 text-xs text-slate-500">현재: {s.school} · {s.grade}학년 {s.classroom} · {s.program}</span></span></label>)}{!candidates.length && <p className="p-3 text-sm text-slate-500">해당 학교·분기의 수강 이력이 있는 계정이 없습니다.</p>}</fieldset>
+            <fieldset disabled={busy} className="max-h-72 space-y-1 overflow-y-auto rounded-xl bg-stone-50 p-3">{candidates.map(s => <label key={s.key} className="flex items-start gap-3 rounded-lg bg-white p-2 text-sm"><input type="checkbox" checked={album.member_keys.includes(s.key)} onChange={e => { const keys = e.target.checked ? [...album.member_keys, s.key] : album.member_keys.filter(k => k !== s.key); setAlbum(a => ({ ...a, member_keys: keys, roster_verified: false })); setDirty(true); }} className="mt-1" /><span><b>{s.name}</b><span className="ml-2 text-xs text-slate-500">현재: {s.school} · {s.grade}학년 {s.classroom}{s.program ? ` · ${getStudentProgramLabel(s.program)}` : ""}</span></span></label>)}{!candidates.length && <p className="p-3 text-sm text-slate-500">해당 학교·분기의 수강 이력이 있는 계정이 없습니다.</p>}</fieldset>
             <p className="my-3 text-sm font-bold">선택한 학생: {album.member_keys.length}명</p>
             <label className="block text-sm font-bold">명부 확인 근거<input disabled={busy} maxLength={500} placeholder="당시 출석부·분기 수강 명부 등" value={album.roster_source} onChange={e => update("roster_source", e.target.value)} className={field} /></label>
             <label className="mt-3 flex gap-2 text-sm"><input disabled={busy} type="checkbox" checked={album.roster_verified} onChange={e => update("roster_verified", e.target.checked)} />선택한 학생이 당시 이 학교·반·분기의 실제 수강생임을 확인했습니다.</label>
           </section>
+          {album.id && <section className="rounded-3xl border border-stone-200 bg-white p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-black">보호자 동의 기록</h2><button disabled={busy || dirty} className={button} onClick={() => void reloadPhotos().catch(e => setError(e instanceof Error ? e.message : "기록을 불러오지 못했습니다."))}>동의 기록 새로고침</button></div>
+            <p className="my-3 text-xs leading-5 text-slate-600">앨범에 연결된 학생 계정별로 동의·비동의·미응답을 구분합니다. 체크는 보호자의 확인 진술이며 법정대리인 본인확인은 별도입니다. 현재 명부에서 제외된 계정의 기존 기록도 보존됩니다. 변경·철회 전 기록은 서버 이력에 보관됩니다.</p>
+            {consents.some(c => c.publicationDeclined) && <p role="status" className="mb-3 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-900">사진 공개 비동의 기록이 있어 이 앨범의 학생 열람이 보류됩니다. 해당 사진과 보호자의 요청을 확인해 주세요.</p>}
+            <p className="mb-3 text-sm font-bold">동의 {consents.filter(c => c.status === "accepted").length}명 · 비동의 {consents.filter(c => c.status === "declined").length}명 · 미응답 {consents.filter(c => c.status === "pending").length}명 · 재동의 필요 {consents.filter(c => c.status === "renewal").length}명</p>
+            <div className="overflow-x-auto"><table className="w-full text-left text-xs"><thead><tr>{["학생", "상태", "사진 공개", "열람 안내", "기록 시각 (한국시간)", "안내한 열람 종료일"].map(label => <th key={label} className="whitespace-nowrap border-b p-2">{label}</th>)}</tr></thead><tbody>{consents.map(c => <tr key={c.studentKey}><td className="whitespace-nowrap p-2">{roster.find(s => s.key === c.studentKey)?.name || "기존 계정"}{!album.member_keys.includes(c.studentKey) ? " (명부 제외)" : ""}</td><td className="whitespace-nowrap p-2">{{ accepted: "동의", declined: "비동의", pending: "미응답", renewal: "재동의 필요" }[c.status]}</td><td className="p-2">{c.publication ? "동의" : c.status === "declined" ? "비동의" : "—"}</td><td className="p-2">{c.viewing ? "동의" : c.status === "declined" ? "비동의" : "—"}</td><td className="whitespace-nowrap p-2">{c.decidedAt ? new Date(c.decidedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }) : "—"}</td><td className="whitespace-nowrap p-2">{c.recordedExpiresOn ? `${c.recordedExpiresOn} 23:59:59` : "—"}</td></tr>)}</tbody></table></div>
+            {!consents.length && <p className="mt-3 text-sm text-slate-500">먼저 당시 수강생 명부를 연결해 주세요. 동의 기록이 없는 연결 학생은 미응답으로 표시됩니다.</p>}
+          </section>}
           <section className="rounded-3xl border border-stone-200 bg-white p-5"><h2 className="mb-4 text-lg font-black">공개 동의와 학생 공개</h2>
             <label className="block text-sm font-bold">동의 확인 기록<input disabled={busy} maxLength={500} placeholder="동의서 확인일·보관 위치 등 (개인정보 입력 금지)" value={album.consent_note} onChange={e => update("consent_note", e.target.value)} className={field} /></label>
             <label className="mt-3 flex gap-2 text-sm"><input disabled={busy} type="checkbox" checked={album.consent_verified} onChange={e => update("consent_verified", e.target.checked)} />사진에 나온 모든 학생의 공개 동의를 확인했습니다.</label>

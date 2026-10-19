@@ -14,14 +14,14 @@ function load(file, mocks = {}) {
   return mod.exports;
 }
 const pure = load('lib/photoArchive.ts'), enrollment = load('lib/studentEnrollment.ts');
-const rows = { student_photo_albums: new Map(), student_archive_photos: new Map() }, objects = new Map();
+const rows = { student_photo_albums: new Map(), student_archive_photos: new Map(), student_photo_consent_events: new Map() }, objects = new Map();
 let publicBucket = false, failWrite = false;
 function query(table) {
   const filters = []; let action = 'read', payload;
   const result = () => {
     if (failWrite && action !== 'read') return { data: null, error: new Error('fixture write failure') };
     let found = [...rows[table].values()].filter(row => filters.every(f => f(row)));
-    if (action === 'insert') { if (rows[table].has(payload.id)) return { data: null, error: new Error('duplicate') }; const row = { revision: 1, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), deleted_at: null, caption: '', ...payload }; rows[table].set(row.id, row); found = [row]; if (table === 'student_archive_photos') { const album = rows.student_photo_albums.get(row.album_id); rows.student_photo_albums.set(album.id, { ...album, published: false, consent_verified: false, revision: album.revision + 1 }); } }
+    if (action === 'insert') { if (rows[table].has(payload.id)) return { data: null, error: new Error('duplicate') }; const row = { event_order: rows[table].size + 1, revision: 1, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), deleted_at: null, caption: '', ...payload }; rows[table].set(row.id, row); found = [row]; if (table === 'student_archive_photos') { const album = rows.student_photo_albums.get(row.album_id); rows.student_photo_albums.set(album.id, { ...album, published: false, consent_verified: false, revision: album.revision + 1 }); } }
     if (action === 'update') { found = found.map(row => ({ ...row, ...payload })); found.forEach(row => rows[table].set(row.id, row)); }
     return { data: found, error: null };
   };
@@ -54,14 +54,26 @@ process.env.STUDENT_AUTH_TEACHER_UIDS = 'teacher-1,teacher-2';
 const sessionHarness = require('./student-session-fixture.cjs').createHarness({ records: studentRecords, firebase });
 const sessionServer = sessionHarness.load('lib/studentSessionServer.ts');
 const teacherAuth = sessionHarness.load('lib/teacherAuthServer.ts');
-const server = load('lib/photoArchiveServer.ts', { 'server-only': {}, '@/lib/studentSessionServer': sessionServer, '@/lib/teacherAuthServer': teacherAuth, '@/lib/firebaseAdmin': firebase, '@/lib/supabaseServer': { getSupabaseServer: () => ({ from: query, storage }), getAssignmentBucketName: () => 'private-fixture' }, '@/lib/assignments': { isAllowedStudentCollection: c => ['students', 'student', 'Students', 'Student'].includes(c) }, '@/lib/studentEnrollment': enrollment, '@/lib/photoArchive': pure });
-const mocks = { '@/lib/photoArchive': pure, '@/lib/photoArchiveServer': server };
+const consentPure = load('lib/photoArchiveConsent.ts');
+let consentReadFailure = false;
+const service = { from: query, storage, async rpc(name, {p_album_ids, p_student_key}) {
+  assert.equal(name, 'photo_archive_latest_consents'); if (consentReadFailure) return {data:null,error:new Error('fixture unavailable')};
+  const latest = new Map();
+  for (const row of [...rows.student_photo_consent_events.values()].sort((a,b)=>b.event_order-a.event_order)) {
+    if (!p_album_ids.includes(row.album_id) || (p_student_key && p_student_key !== row.student_key)) continue;
+    const key = row.album_id+':'+row.student_key; if (!latest.has(key)) latest.set(key,row);
+  } return {data:[...latest.values()],error:null};
+}};
+const consentServer = load('lib/photoArchiveConsentServer.ts', {'server-only':{}, './photoArchive':pure, './photoArchiveConsent':consentPure, './supabaseServer':{getSupabaseServer:()=>service}});
+const server = load('lib/photoArchiveServer.ts', { 'server-only': {}, '@/lib/photoArchiveConsentServer':consentServer, '@/lib/studentSessionServer': sessionServer, '@/lib/teacherAuthServer': teacherAuth, '@/lib/firebaseAdmin': firebase, '@/lib/supabaseServer': { getSupabaseServer: () => service, getAssignmentBucketName: () => 'private-fixture' }, '@/lib/assignments': { isAllowedStudentCollection: c => ['students', 'student', 'Students', 'Student'].includes(c) }, '@/lib/studentEnrollment': enrollment, '@/lib/photoArchive': pure });
+const mocks = { '@/lib/photoArchive': pure, '@/lib/photoArchiveServer': server, '@/lib/photoArchiveConsentServer': consentServer, '@/lib/studentSessionServer': sessionServer };
 const studentRoute = load('app/api/student/photo-archive/route.ts', mocks), teacherRoute = load('app/api/teacher/photo-archive/route.ts', mocks);
 const credentials = id => ({ studentCollection: 'students', studentId: id, studentPassword: studentRecords.get(`students:${id}`)?.password });
 const studentCookie = (id, origin = 'http://fixture.local') => sessionHarness.cookie(id).replace(/^sunlab-/, origin.startsWith('https:') ? '__Host-sunlab-' : 'sunlab-');
 const request = (body, token, origin = 'https://fixture.local') => new Request('https://fixture.local/api/photo-archive', { method: 'POST', headers: { 'Content-Type': 'application/json', origin, ...(token ? { authorization: `Bearer ${token}` } : {}), ...(body.studentId && body.studentPassword !== 'bad' ? { cookie: studentCookie(body.studentId, origin) } : {}) }, body: JSON.stringify(body) });
 const asStudent = (id, body) => studentRoute.POST(request({ ...credentials(id), ...body }));
 const asTeacher = (body, token = 'teacher') => teacherRoute.POST(request(body, token));
+const decide = (album, publication, viewing, extra={}) => asStudent('one',{action:'consent',albumId:album.id,scopeKey:consentServer.archiveConsentScope(album).scopeKey,version:consentPure.PHOTO_CONSENT_VERSION,publication,viewing,guardianDeclared:publication,...extra});
 const base = { school: '학교1', classroom: 'A반', year: 2026, quarter: 1, title: '검증 앨범', description: '', term_end_date: new Date().toISOString().slice(0, 10), end_date_source: '격리된 테스트 학교 계획', expires_on: null, published: false, consent_verified: true, consent_note: 'fixture consent', roster_verified: true, roster_source: 'fixture historical class roster', member_keys: ['students:one'] };
 async function main() {
   assert.equal(pure.archiveExpiry({ term_end_date: '2026-12-25', expires_on: null }).expiresOn, '2027-01-08');
@@ -95,6 +107,22 @@ async function main() {
   assert.equal((await asTeacher({ action: 'save', album: { ...base, published: true, roster_source: '' } })).status, 400);
   let response = await asTeacher({ action: 'save', album: { ...base, published: true } }); assert.equal(response.status, 200);
   let album = (await response.json()).album;
+  response=await asStudent('one',{action:'list'});assert.equal((await response.json()).albums[0].consent.status,'pending');
+  assert.equal((await asStudent('one',{action:'detail',albumId:album.id})).status,403,'Photos require a saved agreement');
+  assert.equal((await decide(album,true,false,{publication:'true'})).status,400);
+  assert.equal((await decide(album,true,true,{guardianDeclared:false})).status,400);
+  assert.equal((await decide(album,true,true,{scopeKey:'0'.repeat(64)})).status,409);
+  assert.equal((await decide(album,true,true,{studentId:'other-class'})).status,404);
+  response=await decide(album,false,false);assert.equal((await response.json()).consent.status,'declined');
+  assert.equal((await asStudent('one',{action:'detail',albumId:album.id})).status,403);
+  assert.equal((await decide(album,true,true)).status,200);
+  const decisions=rows.student_photo_consent_events.size;await decide(album,true,true);assert.equal(rows.student_photo_consent_events.size,decisions);
+  assert.equal(decisions,2,'Refusal and later acceptance are retained as separate events');
+  response=await asStudent('one',{action:'list'});assert.equal((await response.json()).albums[0].consent.status,'accepted');
+  const statuses=await consentServer.teacherArchiveConsents({...album,member_keys:[...album.member_keys,'students:other-class']});
+  assert.equal(statuses.find(s=>s.studentKey==='students:one').status,'accepted');assert.equal(statuses.find(s=>s.studentKey==='students:other-class').status,'pending');
+  consentReadFailure=true;assert.equal((await asStudent('one',{action:'detail',albumId:album.id})).status,503);consentReadFailure=false;
+  failWrite=true;assert.equal((await decide(album,false,false)).status,503);failWrite=false;
   assert.equal((await asTeacher({ action: 'save', album: { ...album, school: '학교2' } })).status, 400);
   assert.equal((await asTeacher({ action: 'save', album: { ...album, revision: 0 } })).status, 409);
   assert.equal((await asTeacher({ action: 'prepare', albumId: album.id, size: 100, contentType: 'image/jpeg' }, 'teacher2')).status, 404);
@@ -116,13 +144,28 @@ async function main() {
   album = rows.student_photo_albums.get(album.id); assert.equal(album.published, false); assert.equal(album.consent_verified, false);
   response = await asTeacher({ action: 'save', album: { ...album, published: true, consent_verified: true } }); assert.equal(response.status, 200); album = (await response.json()).album;
   const photoId = photoIds[0], body = { action: 'image', albumId: album.id, photoId, variant: 'thumb' };
+  rows.student_photo_albums.set(album.id,{...album,member_keys:[...album.member_keys,'students:other-class']});
+  const otherDecision = {action:'consent',albumId:album.id,scopeKey:consentServer.archiveConsentScope(album).scopeKey,version:consentPure.PHOTO_CONSENT_VERSION,publication:false,viewing:true,guardianDeclared:false};
+  assert.equal((await asStudent('other-class',otherDecision)).status,200);
+  assert.equal((await asStudent('one',body)).status,403,'Publication refusal must also protect that child from other viewers');
+  assert.equal((await asStudent('other-class',{...otherDecision,publication:true,guardianDeclared:true})).status,200);
+  rows.student_photo_albums.set(album.id,album);
+  await decide(album,false,false);assert.equal((await asStudent('one',body)).status,403,'Direct image requests must respect refusal');
+  await decide(album,true,true,{studentKey:'students:other-school',expiresOn:'2099-12-31',created_at:'2099-01-01'});
+  const ownRecord=[...rows.student_photo_consent_events.values()].at(-1);assert.equal(ownRecord.student_key,'students:one');assert.equal(ownRecord.expires_on,pure.archiveExpiry(album).expiresOn);assert.notEqual(ownRecord.created_at,'2099-01-01');
+  const teacherGet = token => teacherRoute.GET(new Request(`https://fixture.local/api/teacher/photo-archive?albumId=${album.id}`,{headers:{authorization:`Bearer ${token}`}}));
+  assert.equal((await teacherGet('teacher2')).status,404);assert.equal((await teacherGet('teacher')).status,200);
   response = await asStudent('one', body); assert.equal(response.status, 200); assert.equal(response.headers.get('cache-control'), 'private, no-store, max-age=0'); assert.equal(response.headers.get('cross-origin-resource-policy'), 'same-origin');
   const actualNow = Date.now;
   try {
     rows.student_photo_albums.set(album.id, { ...album, term_end_date: '2026-03-31', expires_on: '2099-12-31' });
-    Date.now = () => Date.parse('2026-04-14T23:59:59.999+09:00'); assert.equal((await asStudent('one', body)).status, 200);
+    Date.now = () => Date.parse('2026-04-14T23:59:59.999+09:00');
+    assert.equal((await asStudent('one',body)).status,403,'Changed expiry requires renewed consent');
+    assert.equal((await decide(rows.student_photo_albums.get(album.id),true,true)).status,200);
+    assert.equal((await asStudent('one', body)).status, 200);
     Date.now = () => Date.parse('2026-04-15T00:00:00+09:00'); assert.equal((await asStudent('one', body)).status, 404);
   } finally { Date.now = actualNow; rows.student_photo_albums.set(album.id, album); }
+  assert.equal((await decide(album,true,true)).status,200);
   for (const id of ['new', 'other-class', 'other-school']) assert.equal((await asStudent(id, body)).status, 404);
   assert.equal((await asStudent('one', { ...body, albumId: randomUUID() })).status, 404);
   assert.equal((await asStudent('one', { ...body, variant: 'original' })).status, 404);
@@ -142,5 +185,5 @@ async function main() {
   assert.deepEqual([...studentRecords.values()].map(s => s.password), ['fixture-one', 'fixture-new', 'fixture-class', 'fixture-school']);
   console.log('PASS: Korean midnight boundaries, enforced +14-day limit on stored dates and API writes, year/leap arithmetic, earlier manual withdrawal, stable 75-photo non-overlap layout, release block, teacher ownership/provider/revocation validation, exact term/class/school roster, server authentication, list/detail/image authorization, consent, upload/EXIF/thumbnail/original preservation, unpublish/revoke/expiry, soft removal, private-bucket assertion and storage failure. Fixtures only; no production learning data written.');
 }
-module.exports = { pure, rows, objects, studentRecords, server, studentRoute, teacherRoute, base, credentials, studentCookie, sessionHarness };
+module.exports = { consentPure, consentServer, decide, pure, rows, objects, studentRecords, server, studentRoute, teacherRoute, base, credentials, studentCookie, sessionHarness };
 if (require.main === module) main().catch(error => { console.error(error); process.exitCode = 1; });

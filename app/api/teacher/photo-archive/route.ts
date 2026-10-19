@@ -1,4 +1,5 @@
 import { ArchiveError } from "@/lib/photoArchive";
+import { teacherArchiveConsents } from "@/lib/photoArchiveConsentServer";
 import { archiveOrigin, archiveTeacher, archiveRoster, listTeacherAlbums, saveArchiveAlbum, ownedArchive, archivePhotos, prepareArchiveUpload, finishArchiveUpload, editArchivePhoto, archiveImage, archiveJson, archiveError } from "@/lib/photoArchiveServer";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -7,7 +8,7 @@ export async function GET(request: Request) {
   try {
     const uid = await archiveTeacher(request), url = new URL(request.url);
     const albumId = url.searchParams.get("albumId");
-    if (albumId) { const album = await ownedArchive(albumId, uid); return archiveJson({ album, photos: await archivePhotos(album.id) }); }
+    if (albumId) { const album = await ownedArchive(albumId, uid); const [photos, consents] = await Promise.all([archivePhotos(album.id), teacherArchiveConsents(album)]); return archiveJson({ album, photos, consents }); }
     return archiveJson({ albums: await listTeacherAlbums(uid), roster: await archiveRoster(), studentAccessReady: process.env.PHOTO_ARCHIVE_ACCESS_REVIEWED === "true" });
   } catch (error) { return archiveError(error); }
 }
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
     archiveOrigin(request);
     const uid = await archiveTeacher(request), body = await request.json();
     switch (body.action) {
-      case "save": return archiveJson({ album: await saveArchiveAlbum(uid, body.album) });
+      case "save": { const album = await saveArchiveAlbum(uid, body.album); return archiveJson({ album, consents: await teacherArchiveConsents(album) }); }
       case "prepare": return archiveJson(await prepareArchiveUpload(body.albumId, uid, body));
       case "complete": return archiveJson({ photo: await finishArchiveUpload(body.albumId, uid, body.photoId) });
       case "editPhoto": await editArchivePhoto(uid, body); return archiveJson({ ok: true });

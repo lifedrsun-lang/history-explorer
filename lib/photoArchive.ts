@@ -6,7 +6,7 @@ export type ArchiveAlbum = {
   created_at: string; updated_at: string;
 };
 export type ArchivePhoto = { id: string; album_id: string; caption: string; width: number; height: number; created_at: string };
-export type StudentAlbum = Pick<ArchiveAlbum, "id" | "school" | "classroom" | "year" | "quarter" | "title" | "description"> & { expiresOn: string; expiresAt: number; daysLeft: number };
+export type StudentAlbum = Pick<ArchiveAlbum, "id" | "school" | "classroom" | "year" | "quarter" | "title" | "description"> & { expiresOn: string; expiresAt: number; daysLeft: number; consent?: import("./photoArchiveConsent").PhotoConsentStatus };
 export class ArchiveError extends Error {
   constructor(message: string, public status = 400) { super(message); }
 }
