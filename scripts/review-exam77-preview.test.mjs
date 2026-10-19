@@ -23,7 +23,7 @@ for (const [i,q] of questions.entries()) {
   assert(q.options.every(Boolean));
   assert(q.imageStoragePath.startsWith("review-questions-preview/exam77-20261019/"));
   assert.equal(q.previewOnly,true);
-  if(q.classificationReviewStatus!=="verified") assert(!q.textbookPages);
+  if(q.textbookEvidenceStatus!=="verified") assert(!q.textbookPages);
 }
 assert.equal(questions.filter(q=>q.bookNumber.startsWith("특별/")).length,18);
 assert.equal(questions[25].bookNumber,"특별/고려");
