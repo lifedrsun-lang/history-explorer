@@ -978,6 +978,19 @@ export default function TeacherFeesPage() {
   };
 
   const paymentContracts = scopeContracts;
+  // UI-only grouping; settlement records and calculation keys are unchanged.
+  const paymentSchoolGroups = Array.from(
+    paymentContracts.reduce((groups, contract) => {
+      const key = normalizeSchoolName(contract.schoolName) || contract.schoolName || contract.id;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(contract);
+      return groups;
+    }, new Map<string, FeeContract[]>())
+  ).map(([key, schoolContracts]) => ({
+    key,
+    name: schoolContracts[0].schoolName,
+    contracts: schoolContracts,
+  }));
   const visibleTabs: { key: FeeTab; label: string }[] =
     paymentScope === "afterschool"
       ? [
@@ -1138,12 +1151,7 @@ export default function TeacherFeesPage() {
       { key: "industrialInsurance", label: "산재보험" },
     ];
 
-    return (
-      <div className="mt-3 space-y-3">
-        <p className="text-sm text-slate-500">
-          받은 금액을 입력하고 입력칸을 벗어나면 자동 계산·저장됩니다. 세금은 원 단위 반올림이며, 산재보험은 기본 0원입니다.
-        </p>
-        {units.map((unit) => {
+    const renderSettlementUnit = (unit: SettlementUnit) => {
           const stored = contract.settlements?.[unit.key] || {};
           const entry = calculateFeeSettlement(stored, unit.expectedAmount);
           const rowKey = `${contract.id}-${unit.key}`;
@@ -1252,7 +1260,45 @@ export default function TeacherFeesPage() {
               </p>
             </div>
           );
-        })}
+
+    };
+
+    return (
+      <div className="mt-3 space-y-3">
+        <p className="text-sm text-slate-500">
+          받은 금액을 입력하고 입력칸을 벗어나면 자동 계산·저장됩니다. 세금은 원 단위 반올림이며, 산재보험은 기본 0원입니다.
+        </p>
+        {contract.type === "afterschool"
+          ? quarters.map((item) => {
+              const quarterUnits = units.filter((unit) => unit.key.startsWith(`${item.key}-`));
+              const quarterExpected = quarterUnits.reduce((sum, unit) => sum + unit.expectedAmount, 0);
+              const quarterReceived = quarterUnits.reduce((sum, unit) => {
+                const entry = contract.settlements?.[unit.key];
+                if (!entry) return sum;
+                return sum + getFeePaymentEntries(entry, unit.expectedAmount)
+                  .reduce((received, payment) => received + Number(payment.receivedAmount || 0), 0);
+              }, 0);
+              return (
+                <details key={item.key} className="group/quarter rounded-2xl border border-emerald-100 bg-white">
+                  <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 rounded-2xl px-4 py-3 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-emerald-500 [&::-webkit-details-marker]:hidden">
+                    <span className="flex items-center gap-2 text-sm font-black text-slate-800">
+                      <span aria-hidden="true" className="inline-block text-emerald-700 transition-transform group-open/quarter:rotate-90">▶</span>
+                      {item.label}
+                      <span className="text-xs font-medium text-slate-500">({quarterUnits.length}건)</span>
+                    </span>
+                    <span className="text-xs font-bold text-slate-500">
+                      발생 예상 {formatWon(quarterExpected)} · 수령 {formatWon(quarterReceived)}
+                    </span>
+                  </summary>
+                  <div className="space-y-3 border-t border-emerald-100 p-3">
+                    {quarterUnits.length > 0 ? quarterUnits.map(renderSettlementUnit) : (
+                      <p className="py-3 text-center text-sm font-bold text-slate-400">이 분기에는 발생액과 입금 기록이 없습니다.</p>
+                    )}
+                  </div>
+                </details>
+              );
+            })
+          : units.map(renderSettlementUnit)}
       </div>
     );
   };
@@ -1574,8 +1620,29 @@ export default function TeacherFeesPage() {
             {allowanceMessage}
           </p>
         )}
-        {paymentContracts.map((contract) => (
-          <div key={contract.id} className="rounded-[28px] bg-white p-5 shadow-sm">
+        {paymentSchoolGroups.map((school) => {
+          const schoolGross = school.contracts.reduce((sum, contract) => sum + getGross(contract), 0);
+          const schoolReceived = school.contracts.reduce(
+            (sum, contract) => sum + getContractSettlementTotals(contract).received, 0
+          );
+          return (
+            <details key={school.key} className="group/school rounded-[28px] bg-white shadow-sm">
+              <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 rounded-[28px] p-5 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-blue-500 [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-3">
+                  <span aria-hidden="true" className="inline-block text-lg text-slate-500 transition-transform group-open/school:rotate-90">▶</span>
+                  <span>
+                    <span className="block text-lg font-black text-slate-900">{school.name}</span>
+                    <span className="mt-1 block text-xs font-bold text-slate-500">{school.contracts.length}개 수당 항목</span>
+                  </span>
+                </span>
+                <span className="text-right text-xs font-bold text-slate-500">
+                  <span className="block">발생액 {formatWon(schoolGross)}</span>
+                  <span className="mt-1 block text-emerald-700">수령 {formatWon(schoolReceived)}</span>
+                </span>
+              </summary>
+              <div className="space-y-3 border-t border-slate-100 px-3 pb-3 pt-3 sm:px-5">
+                {school.contracts.map((contract) => (
+                  <div key={contract.id} className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div
@@ -1674,8 +1741,12 @@ export default function TeacherFeesPage() {
               </form>
             )}
             {renderSettlementRows(contract)}
-          </div>
-        ))}
+                  </div>
+                ))}
+              </div>
+            </details>
+          );
+        })}
       </section>
     </>
   );
