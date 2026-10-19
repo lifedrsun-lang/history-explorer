@@ -14,7 +14,7 @@ function load(file, mocks = {}) {
   return mod.exports;
 }
 const pure = load('lib/photoArchive.ts'), enrollment = load('lib/studentEnrollment.ts');
-const rows = { student_photo_albums: new Map(), student_archive_photos: new Map(), student_photo_consent_events: new Map() }, objects = new Map();
+const rows = { student_photo_albums: new Map(), student_archive_photos: new Map(), student_photo_consent_events: new Map(), student_photo_download_counts: new Map() }, objects = new Map();
 let publicBucket = false, failWrite = false;
 function query(table) {
   const filters = []; let action = 'read', payload;
@@ -26,7 +26,7 @@ function query(table) {
     return { data: found, error: null };
   };
   const q = {
-    select() { return q; }, eq(k, v) { filters.push(row => row[k] === v); return q; }, is(k, v) { filters.push(row => row[k] === v); return q; }, contains(k, values) { filters.push(row => values.every(value => row[k].includes(value))); return q; },
+    select() { return q; }, in(k, values) { filters.push(row => values.includes(row[k])); return q; }, eq(k, v) { filters.push(row => row[k] === v); return q; }, is(k, v) { filters.push(row => row[k] === v); return q; }, contains(k, values) { filters.push(row => values.every(value => row[k].includes(value))); return q; },
     order() { return q; }, limit() { return q; }, insert(data) { action = 'insert'; payload = data; return q; }, update(data) { action = 'update'; payload = data; return q; },
     async maybeSingle() { const r = result(); return { ...r, data: r.data?.[0] || null }; }, async single() { return q.maybeSingle(); },
     then(resolve, reject) { return Promise.resolve(result()).then(resolve, reject); },
@@ -56,7 +56,14 @@ const sessionServer = sessionHarness.load('lib/studentSessionServer.ts');
 const teacherAuth = sessionHarness.load('lib/teacherAuthServer.ts');
 const consentPure = load('lib/photoArchiveConsent.ts');
 let consentReadFailure = false;
-const service = { from: query, storage, async rpc(name, {p_album_ids, p_student_key}) {
+const service = { from: query, storage, async rpc(name, {p_album_ids, p_student_key, p_photo_id}) {
+  if (name === "claim_student_photo_download") {
+    if (failWrite) return {data:null,error:new Error("fixture unavailable")};
+    const key=p_photo_id+":"+p_student_key, old=rows.student_photo_download_counts.get(key), count=old?.used_count||0;
+    if(count>=3)return {data:0,error:null};
+    rows.student_photo_download_counts.set(key,{photo_id:p_photo_id,student_key:p_student_key,used_count:count+1});
+    return {data:count+1,error:null};
+  }
   assert.equal(name, 'photo_archive_latest_consents'); if (consentReadFailure) return {data:null,error:new Error('fixture unavailable')};
   const latest = new Map();
   for (const row of [...rows.student_photo_consent_events.values()].sort((a,b)=>b.event_order-a.event_order)) {
@@ -65,8 +72,10 @@ const service = { from: query, storage, async rpc(name, {p_album_ids, p_student_
   } return {data:[...latest.values()],error:null};
 }};
 const consentServer = load('lib/photoArchiveConsentServer.ts', {'server-only':{}, './photoArchive':pure, './photoArchiveConsent':consentPure, './supabaseServer':{getSupabaseServer:()=>service}});
-const server = load('lib/photoArchiveServer.ts', { 'server-only': {}, '@/lib/photoArchiveConsentServer':consentServer, '@/lib/studentSessionServer': sessionServer, '@/lib/teacherAuthServer': teacherAuth, '@/lib/firebaseAdmin': firebase, '@/lib/supabaseServer': { getSupabaseServer: () => service, getAssignmentBucketName: () => 'private-fixture' }, '@/lib/assignments': { isAllowedStudentCollection: c => ['students', 'student', 'Students', 'Student'].includes(c) }, '@/lib/studentEnrollment': enrollment, '@/lib/photoArchive': pure });
-const mocks = { '@/lib/photoArchive': pure, '@/lib/photoArchiveServer': server, '@/lib/photoArchiveConsentServer': consentServer, '@/lib/studentSessionServer': sessionServer };
+const qualityServer = load('lib/photoArchiveQuality.ts', {'server-only':{}, '@/lib/photoArchive':pure});
+const downloadServer = load('lib/photoArchiveDownloadServer.ts', {'server-only':{}, '@/lib/photoArchive':pure, '@/lib/supabaseServer':{getSupabaseServer:()=>service}});
+const server = load('lib/photoArchiveServer.ts', { 'server-only': {}, '@/lib/photoArchiveQuality':qualityServer, '@/lib/photoArchiveDownloadServer':downloadServer, '@/lib/photoArchiveConsentServer':consentServer, '@/lib/studentSessionServer': sessionServer, '@/lib/teacherAuthServer': teacherAuth, '@/lib/firebaseAdmin': firebase, '@/lib/supabaseServer': { getSupabaseServer: () => service, getAssignmentBucketName: () => 'private-fixture' }, '@/lib/assignments': { isAllowedStudentCollection: c => ['students', 'student', 'Students', 'Student'].includes(c) }, '@/lib/studentEnrollment': enrollment, '@/lib/photoArchive': pure });
+const mocks = { '@/lib/photoArchiveDownloadServer':downloadServer, '@/lib/photoArchive': pure, '@/lib/photoArchiveServer': server, '@/lib/photoArchiveConsentServer': consentServer, '@/lib/studentSessionServer': sessionServer };
 const studentRoute = load('app/api/student/photo-archive/route.ts', mocks), teacherRoute = load('app/api/teacher/photo-archive/route.ts', mocks);
 const credentials = id => ({ studentCollection: 'students', studentId: id, studentPassword: studentRecords.get(`students:${id}`)?.password });
 const studentCookie = (id, origin = 'http://fixture.local') => sessionHarness.cookie(id).replace(/^sunlab-/, origin.startsWith('https:') ? '__Host-sunlab-' : 'sunlab-');
@@ -156,6 +165,31 @@ async function main() {
   const teacherGet = token => teacherRoute.GET(new Request(`https://fixture.local/api/teacher/photo-archive?albumId=${album.id}`,{headers:{authorization:`Bearer ${token}`}}));
   assert.equal((await teacherGet('teacher2')).status,404);assert.equal((await teacherGet('teacher')).status,200);
   response = await asStudent('one', body); assert.equal(response.status, 200); assert.equal(response.headers.get('cache-control'), 'private, no-store, max-age=0'); assert.equal(response.headers.get('cross-origin-resource-policy'), 'same-origin');
+  const downloadBody={action:'download',albumId:album.id,photoId};
+  for (const remaining of [2,1,0]) {
+    response=await asStudent('one',downloadBody);assert.equal(response.status,200);assert.equal(Number(response.headers.get('x-downloads-remaining')),remaining);
+    assert.match(response.headers.get('content-disposition'),/^attachment;/);
+    const downloaded=await sharp(Buffer.from(await response.arrayBuffer())).metadata();
+    assert.equal(downloaded.width,600);assert.equal(downloaded.height,800);assert.equal(downloaded.exif,undefined);assert.equal(downloaded.orientation,undefined);
+  }
+  assert.equal((await asStudent('one',downloadBody)).status,429);
+  assert.equal((await asStudent('one',body)).status,200,'Viewing is not blocked by download exhaustion');
+  response=await asStudent('one',{action:'detail',albumId:album.id});assert.equal((await response.json()).downloadRemaining[photoId],0,'Re-entry reloads server counts');
+  const parallel=await Promise.all(Array.from({length:10},()=>asStudent('one',{...downloadBody,photoId:photoIds[1]})));
+  assert.equal(parallel.filter(r=>r.status===200).length,3);assert.equal(parallel.filter(r=>r.status===429).length,7);
+  failWrite=true;assert.equal((await asStudent('one',{...downloadBody,photoId:photoIds[2]})).status,503);failWrite=false;
+  assert.equal(rows.student_photo_download_counts.has(photoIds[2]+':students:one'),false,'Failed DB write must not serve bytes');
+  const savedOriginal=objects.get(`student-photo-archives/${album.id}/${photoIds[2]}/original`);
+  objects.delete(`student-photo-archives/${album.id}/${photoIds[2]}/original`);
+  assert.equal((await asStudent('one',{...downloadBody,photoId:photoIds[2]})).status,503);
+  assert.equal(rows.student_photo_download_counts.has(photoIds[2]+':students:one'),false,'Missing bytes must not consume quota');
+  objects.set(`student-photo-archives/${album.id}/${photoIds[2]}/original`,savedOriginal);
+  for(const id of ['new','other-class','other-school'])assert.equal((await asStudent(id,downloadBody)).status,404);
+  assert.equal((await asStudent('one',{...downloadBody,albumId:randomUUID()})).status,404);
+  const large=await sharp({create:{width:4000,height:3000,channels:3,background:'#8eaece'}}).jpeg().withMetadata({orientation:6}).toBuffer();
+  const largeDisplay=await sharp(await qualityServer.renderArchiveQuality(large,'display')).metadata();assert.equal(largeDisplay.width,2880);assert.equal(largeDisplay.height,3840);assert.equal(largeDisplay.exif,undefined);
+  const largeDownload=await sharp(await qualityServer.renderArchiveQuality(large,'download')).metadata();assert.equal(largeDownload.width,3000);assert.equal(largeDownload.height,4000);assert.equal(largeDownload.exif,undefined);
+  assert.deepEqual(Buffer.from(await objects.get(`student-photo-archives/${album.id}/${photoId}/original`).arrayBuffer()),raw);
   const actualNow = Date.now;
   try {
     rows.student_photo_albums.set(album.id, { ...album, term_end_date: '2026-03-31', expires_on: '2099-12-31' });
@@ -183,7 +217,7 @@ async function main() {
   publicBucket = true; assert.equal((await asTeacher({ action: 'prepare', albumId: album.id, size: 100, contentType: 'image/jpeg' })).status, 503); publicBucket = false;
   failWrite = true; assert.equal((await asTeacher({ action: 'save', album: base })).status, 503); failWrite = false;
   assert.deepEqual([...studentRecords.values()].map(s => s.password), ['fixture-one', 'fixture-new', 'fixture-class', 'fixture-school']);
-  console.log('PASS: Korean midnight boundaries, enforced +14-day limit on stored dates and API writes, year/leap arithmetic, earlier manual withdrawal, stable 75-photo non-overlap layout, release block, teacher ownership/provider/revocation validation, exact term/class/school roster, server authentication, list/detail/image authorization, consent, upload/EXIF/thumbnail/original preservation, unpublish/revoke/expiry, soft removal, private-bucket assertion and storage failure. Fixtures only; no production learning data written.');
+  console.log('PASS: full-resolution sanitized downloads, 3840px display from originals, per-photo/server-persisted 3-download cap, concurrent request cap, independent photos, no-quota-on-storage-failure, fail-closed counter writes, viewing unaffected; Korean midnight boundaries, enforced +14-day limit on stored dates and API writes, year/leap arithmetic, earlier manual withdrawal, stable 75-photo non-overlap layout, release block, teacher ownership/provider/revocation validation, exact term/class/school roster, server authentication, list/detail/image authorization, consent, upload/EXIF/thumbnail/original preservation, unpublish/revoke/expiry, soft removal, private-bucket assertion and storage failure. Fixtures only; no production learning data written.');
 }
 module.exports = { consentPure, consentServer, decide, pure, rows, objects, studentRecords, server, studentRoute, teacherRoute, base, credentials, studentCookie, sessionHarness };
 if (require.main === module) main().catch(error => { console.error(error); process.exitCode = 1; });

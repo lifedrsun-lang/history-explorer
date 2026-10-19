@@ -1,6 +1,8 @@
 import "server-only";
 import { randomUUID, createHash } from "node:crypto";
 import sharp from "sharp";
+import { renderArchiveQuality } from "@/lib/photoArchiveQuality";
+import { archiveDownloadRemaining, reserveArchiveDownload } from "@/lib/photoArchiveDownloadServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { requirePhotoSession, StudentSessionError } from "@/lib/studentSessionServer";
 import { verifiedTeacher } from "@/lib/teacherAuthServer";
@@ -174,11 +176,29 @@ export async function archiveImage(body: Record<string, unknown>, uid?: string, 
   const variant = body.variant;
   if (!["thumb", "display", "original"].includes(String(variant)) || (!uid && variant === "original")) throw new ArchiveError("열람할 수 없는 사진입니다.", 404);
   const bucket = await privateBucket();
-  const result = await bucket.download(variant === "original" ? photo.original_path : variant === "display" ? photo.display_path : photo.thumb_path);
+  const result = await bucket.download(variant === "original" || variant === "display" ? photo.original_path : photo.thumb_path);
   storageError(result.error);
-  // Recheck after storage I/O so expiry/unpublish during download cannot return bytes.
+  const output = variant === "display" ? await renderArchiveQuality(Buffer.from(await result.data!.arrayBuffer()), "display") : result.data!;
+  // Recheck after storage I/O and encoding so expiry/unpublish cannot return bytes.
   if (!uid) await readableArchive(album.id, await archiveStudent(request!, body));
-  return new Response(result.data!, { headers: { ...archiveHeaders, "Content-Type": variant === "original" ? photo.original_type : "image/webp", "Content-Disposition": "inline", "X-Content-Type-Options": "nosniff" } });
+  return new Response(Buffer.isBuffer(output) ? new Uint8Array(output) : output, { headers: { ...archiveHeaders, "Content-Type": variant === "original" ? photo.original_type : "image/webp", "Content-Disposition": "inline", "X-Content-Type-Options": "nosniff" } });
+}
+export async function archiveDownload(request: Request, body: Record<string, unknown>) {
+  const student = await archiveStudent(request, body);
+  const photo = await storedPhoto(body.photoId);
+  const album = await readableArchive(photo.album_id, student);
+  if (body.albumId !== album.id) throw new ArchiveError("열람할 수 없는 사진입니다.", 404);
+  const remainingBefore = await archiveDownloadRemaining(student.key, [photo.id]);
+  if (remainingBefore[photo.id] <= 0) throw new ArchiveError("이 사진은 이미 3회 다운로드했습니다. 더 이상 다운로드할 수 없습니다.", 429);
+  const bucket = await privateBucket();
+  const result = await bucket.download(photo.original_path); storageError(result.error);
+  const output = await renderArchiveQuality(Buffer.from(await result.data!.arrayBuffer()), "download");
+  // Only prepared, authorized responses consume quota. The DB claim is atomic across tabs/devices.
+  await readableArchive(album.id, await archiveStudent(request, body));
+  const remaining = await reserveArchiveDownload(student.key, photo.id);
+  // Refuse bytes if consent/session/expiry changed during the quota request. Such an attempt may be counted.
+  await readableArchive(album.id, await archiveStudent(request, body));
+  return new Response(Buffer.isBuffer(output) ? new Uint8Array(output) : output, { headers: { ...archiveHeaders, "Content-Type": "image/jpeg", "Content-Disposition": `attachment; filename="class-photo-${photo.id}.jpg"`, "X-Downloads-Remaining": String(remaining), "X-Content-Type-Options": "nosniff" } });
 }
 export const archiveHeaders = { "Cache-Control": "private, no-store, max-age=0", "Pragma": "no-cache", "Vary": "Authorization, Cookie, Origin", "Cross-Origin-Resource-Policy": "same-origin" };
 export function archiveJson(value: unknown) { return Response.json(value, { headers: archiveHeaders }); }

@@ -11,7 +11,7 @@ export default function StudentPhotoArchive({ student }: Props) {
   const teacherPreview = student.teacherPreview === true;
   const [code, setCode] = useState(""), [verifying, setVerifying] = useState(false);
   const [albums, setAlbums] = useState<StudentAlbum[]>([]), [open, setOpen] = useState(false), [error, setError] = useState("");
-  const [detail, setDetail] = useState<{ album: StudentAlbum; photos: ArchivePhoto[]; serverNow: number } | null>(null), [busy, setBusy] = useState(false);
+  const [detail, setDetail] = useState<{ album: StudentAlbum; photos: ArchivePhoto[]; downloadRemaining: Record<string, number>; serverNow: number } | null>(null), [busy, setBusy] = useState(false);
   const [listClock, setListClock] = useState(0);
   const [consentAlbum, setConsentAlbum] = useState<StudentAlbum | null>(null), [publication, setPublication] = useState(false), [viewing, setViewing] = useState(false);
   const [consentSaving, setConsentSaving] = useState(false);
@@ -85,6 +85,23 @@ export default function StudentPhotoArchive({ student }: Props) {
   };
   const albumId = detail?.album.id;
   const load = useCallback(async (photoId: string, variant: "thumb" | "display", signal: AbortSignal) => (await call({ action: "image", albumId, photoId, variant }, signal)).blob(), [call, albumId]);
+  const downloadPhoto = async (photoId: string) => {
+    const currentAlbum = albumId;
+    try {
+      const response = await call({ action: "download", albumId: currentAlbum, photoId });
+      const remaining = Number(response.headers.get("X-Downloads-Remaining"));
+      if (Number.isInteger(remaining) && remaining >= 0 && remaining <= 3) setDetail(current => current?.album.id === currentAlbum ? { ...current, downloadRemaining: { ...current.downloadRemaining, [photoId]: remaining } } : current);
+      const blob = await response.blob(), url = URL.createObjectURL(blob), link = document.createElement("a");
+      link.href = url; link.download = `class-photo-${photoId}.jpg`; document.body.appendChild(link); link.click(); link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    } catch (error) {
+      try {
+        const latest = await (await call({ action: "detail", albumId: currentAlbum })).json();
+        setDetail(current => current?.album.id === currentAlbum ? { ...current, downloadRemaining: latest.downloadRemaining } : current);
+      } catch { /* Keep the original failure visible; server authorization still applies. */ }
+      throw error;
+    }
+  };
   const close = () => { setCode(""); setOpen(false); setDetail(null); setConsentAlbum(null); setPublication(false); setViewing(false); activeAlbum.current = ""; requestNumber.current++; setBusy(false); };
   return <>
     <button ref={trigger} type="button" onClick={() => { setOpen(true); void refresh(); }} className="min-w-0 rounded-[20px] border border-teal-200 bg-teal-50 p-3 text-left transition hover:bg-teal-100">
@@ -127,7 +144,7 @@ export default function StudentPhotoArchive({ student }: Props) {
         </section>}
         {error && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}<button className="ml-3 underline" onClick={() => void refresh()}>다시 확인</button></p>}
         {busy && <p role="status" className="py-16 text-center text-slate-600">앨범을 펼치고 있어요…</p>}
-        {detail ? <><p className="mb-3 rounded-xl bg-teal-50 p-3 text-sm font-bold">열람 종료: {detail.album.expiresOn.replaceAll("-", ".")} 23:59:59 (한국시간)</p><button className="mb-4 text-sm font-bold text-teal-800 underline" onClick={() => { const current = albums.find(a => a.id === detail.album.id); if (!current) return; setDetail(null); requestNumber.current++; setConsentAlbum(current); setPublication(current.consent?.publication === true); setViewing(current.consent?.viewing === true); }}>동의 내용 확인·변경</button><p className="mb-3 text-sm text-slate-600">{detail.album.description}</p><PhotoDiagram key={detail.album.id} photos={detail.photos} load={load} /></> : !busy && !consentAlbum && <p className="rounded-3xl border border-dashed border-stone-300 px-6 py-20 text-center text-slate-600">{albums.length ? "보고 싶은 분기 앨범을 선택해 주세요." : "지금 열람할 수 있는 앨범이 없어요."}</p>}
+        {detail ? <><p className="mb-3 rounded-xl bg-teal-50 p-3 text-sm font-bold">열람 종료: {detail.album.expiresOn.replaceAll("-", ".")} 23:59:59 (한국시간)</p><button className="mb-4 text-sm font-bold text-teal-800 underline" onClick={() => { const current = albums.find(a => a.id === detail.album.id); if (!current) return; setDetail(null); requestNumber.current++; setConsentAlbum(current); setPublication(current.consent?.publication === true); setViewing(current.consent?.viewing === true); }}>동의 내용 확인·변경</button><p className="mb-3 text-sm text-slate-600">{detail.album.description}</p><p className="mb-3 text-xs text-slate-600">다운로드는 학생 계정별 사진 한 장당 3회입니다. 서버가 파일을 제공하면 1회 차감되며, 기기 저장을 취소하거나 전송이 중단되어도 차감될 수 있습니다.</p><PhotoDiagram key={detail.album.id} photos={detail.photos} load={load} onDownload={downloadPhoto} downloadRemaining={detail.downloadRemaining} /></> : !busy && !consentAlbum && <p className="rounded-3xl border border-dashed border-stone-300 px-6 py-20 text-center text-slate-600">{albums.length ? "보고 싶은 분기 앨범을 선택해 주세요." : "지금 열람할 수 있는 앨범이 없어요."}</p>}
       </div>
     </div>}
   </>;

@@ -41,10 +41,11 @@ export function PrivatePhoto({ photo, load, selected = false }: { photo: Archive
     {error && <span onClick={e => { e.stopPropagation(); setRetry(r => r + 1); }}>눌러서 다시 불러오기</span>}
   </div>;
 }
-export default function PhotoDiagram({ photos, load }: { photos: ArchivePhoto[]; load: PhotoLoader }) {
+export default function PhotoDiagram({ photos, load, onDownload, downloadRemaining }: { photos: ArchivePhoto[]; load: PhotoLoader; onDownload?: (photoId: string) => Promise<void>; downloadRemaining?: Record<string, number> }) {
   const frame = useRef<HTMLDivElement>(null), drag = useRef<{ x: number; y: number; px: number; py: number; id: number } | null>(null);
   const [selected, setSelected] = useState<string | null>(null), [zoom, setZoom] = useState(.65), [pan, setPan] = useState({ x: 0, y: 0 });
   const [size, setSize] = useState({ width: 900, height: 600 }), [full, setFull] = useState(false), [fullError, setFullError] = useState("");
+  const [downloading, setDownloading] = useState(false), [downloadError, setDownloadError] = useState(""), [downloadPhotoId, setDownloadPhotoId] = useState("");
   const positions = useMemo(() => archiveLayout(photos.map(p => p.id)), [photos]);
   const selectedIndex = photos.findIndex(p => p.id === selected);
   useEffect(() => {
@@ -79,13 +80,23 @@ export default function PhotoDiagram({ photos, load }: { photos: ArchivePhoto[];
       onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}>
       {photos.map((photo, i) => { const p = positions[i], active = selected === photo.id;
         return <button key={photo.id} aria-label={`${i + 1}번 사진${photo.caption ? `: ${photo.caption}` : ""}`} aria-pressed={active}
-          className={`${styles.photo} ${active ? styles.selected : ""}`} style={{ zIndex: active ? 20 : 1, transform: active ? `translate(-50%,-50%) translate(0px,0px) rotate(0deg) scale(${selectedScale})` : `translate(-50%,-50%) translate(${p.x * zoom + pan.x}px,${p.y * zoom + pan.y}px) rotate(${p.angle}deg) scale(${p.scale * zoom})` } as CSSProperties}
+          className={`${styles.photo} ${active ? styles.selected : ""}`} style={{ width: active ? 190 * selectedScale : 190, height: active ? 155 * selectedScale : 155, padding: active ? `${7 * selectedScale}px ${7 * selectedScale}px ${20 * selectedScale}px` : undefined, zIndex: active ? 20 : 1, transform: active ? `translate(-50%,-50%) translate(0px,0px) rotate(0deg)` : `translate(-50%,-50%) translate(${p.x * zoom + pan.x}px,${p.y * zoom + pan.y}px) rotate(${p.angle}deg) scale(${p.scale * zoom})` } as CSSProperties}
           onClick={() => setSelected(active ? null : photo.id)}>
           <PrivatePhoto photo={photo} load={load} selected={active} /><span className={styles.number}>{String(i + 1).padStart(2, "0")}</span>
         </button>;
       })}
       {!photos.length && <div className={styles.empty}>선생님이 활동 사진을 준비하고 있어요.</div>}
     </div>
+    {onDownload && selected && <div className={styles.download}>
+      <button disabled={downloading || downloadRemaining?.[selected] === undefined || downloadRemaining[selected] <= 0} onClick={async () => {
+        if (downloading) return;
+        setDownloading(true); setDownloadError(""); setDownloadPhotoId(selected);
+        try { await onDownload(selected); }
+        catch (error) { setDownloadError(error instanceof Error ? error.message : "다운로드하지 못했습니다."); }
+        finally { setDownloading(false); }
+      }}>{downloading ? "사진 준비 중…" : `고화질 다운로드 · 남은 ${downloadRemaining?.[selected] ?? "확인 중"}회`}</button>
+      {downloadError && downloadPhotoId === selected && <p role="alert">{downloadError}</p>}
+    </div>}
     <div className={styles.bottom}>
       <button disabled={!photos.length} onClick={() => next(-1)} aria-label="이전 사진">←</button>
       <p aria-live="polite">{selectedIndex >= 0 ? `${selectedIndex + 1} / ${photos.length} · ${photos[selectedIndex].caption || "우리 반의 소중한 순간"}` : `사진 ${photos.length}장 · 사진을 눌러 크게 보기 · 빈 곳을 밀어 이동`}</p>
