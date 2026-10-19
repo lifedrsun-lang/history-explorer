@@ -6,6 +6,11 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { useRouter } from "next/navigation";
 
 import { auth } from "@/lib/firebase";
+import {
+  matchesReviewQuestionFilters,
+  resetReviewQuestionFilters,
+  selectReviewQuestionFilter,
+} from "@/lib/reviewQuestionFilters";
 import ReviewAssignmentComposer from "./ReviewAssignmentComposer";
 
 type QuestionType = "textbook" | "exam";
@@ -90,6 +95,7 @@ function makeOptions(options: string[], count: number) {
 async function teacherFetch(user: User, url: string, init: RequestInit = {}) {
   const token = await user.getIdToken();
   const response = await fetch(url, {
+    cache: "no-store",
     ...init,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -111,10 +117,13 @@ export default function ReviewQuestionBankPage() {
   const [draft, setDraft] = useState<QuestionDraft>(makeEmptyDraft());
   const [questions, setQuestions] = useState<ReviewQuestion[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [questionTypeFilter, setQuestionTypeFilter] = useState<"all" | QuestionType>("all");
-  const [examLevelFilter, setExamLevelFilter] = useState<"all" | Exclude<ExamLevel, "">>("all");
-  const [bookFilter, setBookFilter] = useState("all");
-  const [lessonFilter, setLessonFilter] = useState("all");
+  const [filters, setFilters] = useState(() => resetReviewQuestionFilters());
+  const {
+    questionType: questionTypeFilter,
+    examLevel: examLevelFilter,
+    book: bookFilter,
+    lesson: lessonFilter,
+  } = filters;
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -151,17 +160,7 @@ export default function ReviewQuestionBankPage() {
 
   const filteredQuestions = useMemo(() => {
     return questions
-      .filter((question) => {
-        const typeMatch =
-          questionTypeFilter === "all" || question.questionType === questionTypeFilter;
-        const levelMatch =
-          questionTypeFilter !== "exam" ||
-          examLevelFilter === "all" ||
-          question.examLevel === examLevelFilter;
-        const bookMatch = bookFilter === "all" || question.bookNumber === bookFilter;
-        const lessonMatch = lessonFilter === "all" || question.lesson === lessonFilter;
-        return typeMatch && levelMatch && bookMatch && lessonMatch;
-      })
+      .filter((question) => matchesReviewQuestionFilters(question, filters))
       .sort((a, b) => {
         const bookDiff = bookNumberValue(a.bookNumber) - bookNumberValue(b.bookNumber);
         if (bookDiff !== 0) return bookDiff;
@@ -169,7 +168,7 @@ export default function ReviewQuestionBankPage() {
         if (lessonDiff !== 0) return lessonDiff;
         return a.prompt.localeCompare(b.prompt, "ko");
       });
-  }, [bookFilter, examLevelFilter, lessonFilter, questionTypeFilter, questions]);
+  }, [filters, questions]);
 
   const selectedQuestions = useMemo(
     () =>
@@ -745,16 +744,31 @@ export default function ReviewQuestionBankPage() {
                   <p className="mt-1 text-sm font-bold text-slate-500">
                     유형·급수·호수·차시로 찾고 원하는 순서대로 과제에 담으세요.
                   </p>
+                  <p className="mt-1 text-xs font-bold text-slate-500" aria-live="polite">
+                    조회 {filteredQuestions.length}문항 · 저장된 문제 총 {questions.length}문항
+                  </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-end gap-2">
+                  <button
+                    type="button"
+                    disabled={isLoading}
+                    onClick={() => {
+                      setFilters(resetReviewQuestionFilters(questionTypeFilter));
+                      if (currentUser) void fetchQuestions(currentUser);
+                    }}
+                    className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-black text-blue-700 disabled:opacity-40"
+                  >
+                    {questionTypeFilter === "exam" ? "기출 전체 조회" : "전체 조회"}
+                  </button>
                   <label className="text-xs font-black text-slate-600">
                     유형
                     <select
                       value={questionTypeFilter}
                       onChange={(event) => {
-                        const value = event.target.value as "all" | QuestionType;
-                        setQuestionTypeFilter(value);
-                        if (value !== "exam") setExamLevelFilter("all");
+                        const value = event.target.value;
+                        setFilters((current) =>
+                          selectReviewQuestionFilter(current, "questionType", value)
+                        );
                       }}
                       className="ml-1 rounded-xl border border-slate-200 px-2 py-2 text-sm"
                     >
@@ -769,8 +783,8 @@ export default function ReviewQuestionBankPage() {
                       <select
                         value={examLevelFilter}
                         onChange={(event) =>
-                          setExamLevelFilter(
-                            event.target.value as "all" | Exclude<ExamLevel, "">
+                          setFilters((current) =>
+                            selectReviewQuestionFilter(current, "examLevel", event.target.value)
                           )
                         }
                         className="ml-1 rounded-xl border border-slate-200 px-2 py-2 text-sm"
@@ -785,7 +799,11 @@ export default function ReviewQuestionBankPage() {
                     호수
                     <select
                       value={bookFilter}
-                      onChange={(event) => setBookFilter(event.target.value)}
+                      onChange={(event) =>
+                        setFilters((current) =>
+                          selectReviewQuestionFilter(current, "book", event.target.value)
+                        )
+                      }
                       className="ml-1 rounded-xl border border-slate-200 px-2 py-2 text-sm"
                     >
                       <option value="all">전체</option>
@@ -800,7 +818,11 @@ export default function ReviewQuestionBankPage() {
                     차시
                     <select
                       value={lessonFilter}
-                      onChange={(event) => setLessonFilter(event.target.value)}
+                      onChange={(event) =>
+                        setFilters((current) =>
+                          selectReviewQuestionFilter(current, "lesson", event.target.value)
+                        )
+                      }
                       className="ml-1 rounded-xl border border-slate-200 px-2 py-2 text-sm"
                     >
                       <option value="all">전체</option>
@@ -820,7 +842,17 @@ export default function ReviewQuestionBankPage() {
                 </div>
               ) : filteredQuestions.length === 0 ? (
                 <div className="mt-5 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm font-black text-slate-500">
-                  선택한 조건에 저장된 문제가 없습니다.
+                  <p>선택한 조건에 저장된 문제가 없습니다.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilters(resetReviewQuestionFilters(questionTypeFilter));
+                      if (currentUser) void fetchQuestions(currentUser);
+                    }}
+                    className="mt-3 rounded-xl bg-blue-600 px-4 py-2 text-white"
+                  >
+                    {questionTypeFilter === "exam" ? "기출 전체 조회" : "전체 조회"}
+                  </button>
                 </div>
               ) : (
                 <div className="mt-5 grid gap-3 md:grid-cols-2">
