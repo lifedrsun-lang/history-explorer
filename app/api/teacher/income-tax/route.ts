@@ -111,7 +111,7 @@ const inferYear = (entry: FeeSettlement, key: string) => {
 };
 
 const inferMonth = (entry: FeeSettlement, key: string, useActualPaymentDate = false) => {
-  if (useActualPaymentDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(entry.receivedDate || "")) {
+  if (useActualPaymentDate && /^\d{4}-\d{2}-\d{2}$/.test(entry.receivedDate || "")) {
     return Number(entry.receivedDate!.slice(5, 7));
   }
   if (/^\d{4}-\d{2}$/.test(key)) return Number(key.slice(5, 7));
