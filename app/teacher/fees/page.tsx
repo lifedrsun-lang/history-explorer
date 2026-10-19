@@ -978,6 +978,19 @@ export default function TeacherFeesPage() {
   };
 
   const paymentContracts = scopeContracts;
+  // UI-only grouping; settlement records and calculation keys are unchanged.
+  const paymentSchoolGroups = Array.from(
+    paymentContracts.reduce((groups, contract) => {
+      const key = normalizeSchoolName(contract.schoolName) || contract.schoolName || contract.id;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(contract);
+      return groups;
+    }, new Map<string, FeeContract[]>())
+  ).map(([key, schoolContracts]) => ({
+    key,
+    name: schoolContracts[0].schoolName,
+    contracts: schoolContracts,
+  }));
   const visibleTabs: { key: FeeTab; label: string }[] =
     paymentScope === "afterschool"
       ? [
@@ -1123,7 +1136,7 @@ export default function TeacherFeesPage() {
 
   const renderSettlementRows = (contract: FeeContract) => {
     const units = getSettlementUnits(contract);
-    if (units.length === 0) {
+    if (units.length === 0 && contract.type !== "afterschool") {
       return (
         <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-4 text-center text-sm font-bold text-slate-400">
           아직 수금 단위별 발생액이 없습니다.
@@ -1138,121 +1151,154 @@ export default function TeacherFeesPage() {
       { key: "industrialInsurance", label: "산재보험" },
     ];
 
+    const renderSettlementUnit = (unit: SettlementUnit) => {
+      const stored = contract.settlements?.[unit.key] || {};
+      const entry = calculateFeeSettlement(stored, unit.expectedAmount);
+      const rowKey = `${contract.id}-${unit.key}`;
+      const manualEditing = editingSettlementKey === rowKey;
+      const legacy = Boolean(contract.settlements?.[unit.key]) && stored.calculationVersion !== 1;
+      const state = getSettlementState(entry, unit.expectedAmount);
+      const toneClass = state.tone === "emerald"
+        ? "bg-emerald-50 text-emerald-700"
+        : state.tone === "blue" ? "bg-blue-50 text-blue-700"
+        : state.tone === "rose" ? "bg-rose-50 text-rose-700"
+        : "bg-amber-50 text-amber-700";
+
+      return Array.isArray(stored.installments) ? (
+        <FeeSplitPaymentsPanel
+          key={unit.key}
+          label={unit.label}
+          expectedAmount={unit.expectedAmount}
+          settlement={stored}
+          onAdd={() => void addFeeInstallment(contract, unit.key)}
+          onChange={(id, field, value) => void changeFeeInstallment(contract, unit.key, id, field, value)}
+          onRemove={(id) => void removeFeeInstallment(contract, unit.key, id)}
+          onClearAll={() => void clearFeeInstallments(contract, unit.key)}
+          onCancelSplit={() => void cancelSplitPayments(contract, unit.key)}
+        />
+      ) : (
+        <div key={unit.key} className="rounded-2xl border border-slate-200 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm font-black text-slate-800">
+              {unit.label}<span className="ml-2 font-bold text-slate-500">예상 {formatWon(unit.expectedAmount)}</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => void addFeeInstallment(contract, unit.key)}
+                className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700">
+                + 분할입금 추가
+              </button>
+              <button type="button" onClick={() => setEditingSettlementKey(manualEditing ? "" : rowKey)}
+                className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold text-slate-600">
+                {manualEditing ? "수정 마침" : "직접 수정"}
+              </button>
+              <button type="button" onClick={() => void updateSettlement(contract, unit.key, legacy ? "apply" : "reset")}
+                className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700">
+                {legacy ? "자동 계산 적용" : "자동 계산으로 복원"}
+              </button>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-7">
+            <label className="text-sm font-bold text-slate-600">
+              받은 금액
+              <input
+                key={`${rowKey}-received-${stored.receivedAmount ?? "empty"}`}
+                inputMode="numeric"
+                defaultValue={formatNumberInput(stored.receivedAmount)}
+                onChange={(event) => { event.target.value = formatNumberInput(event.target.value); }}
+                onBlur={(event) => void updateSettlement(contract, unit.key, "receivedAmount", event.target.value.replace(/[^0-9]/g, ""))}
+                placeholder="입금액"
+                className="mt-1 w-full rounded-xl border border-blue-200 bg-white px-2 py-2 text-base font-bold outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </label>
+            <label className="text-sm font-bold text-slate-600">
+              수령일
+              <input
+                key={`${rowKey}-date-${stored.receivedDate || "empty"}`}
+                type="date"
+                defaultValue={stored.receivedDate || ""}
+                onChange={(event) => void updateSettlement(contract, unit.key, "receivedDate", event.target.value)}
+                className="mt-1 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-2 py-2 text-sm font-bold outline-none"
+              />
+            </label>
+            {autoFields.map((field) => (
+              <label key={field.key} className="text-sm font-bold text-slate-600">
+                {field.label}
+                <input
+                  key={`${rowKey}-${field.key}-${entry[field.key] ?? 0}`}
+                  inputMode="numeric"
+                  readOnly={!manualEditing}
+                  defaultValue={formatNumberInput(entry[field.key] ?? 0)}
+                  onChange={(event) => { event.target.value = formatNumberInput(event.target.value); }}
+                  onBlur={(event) => {
+                    if (!manualEditing) return;
+                    const value = event.target.value.replace(/[^0-9]/g, "");
+                    if (Number(value || 0) !== Number(entry[field.key] || 0)) {
+                      void updateSettlement(contract, unit.key, field.key, value);
+                    }
+                  }}
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-2 py-2 text-base font-bold outline-none read-only:bg-slate-50 read-only:text-slate-500 focus:ring-2 focus:ring-blue-200"
+                />
+                <span className="mt-1 block text-xs font-normal text-slate-400">
+                  {entry.manualFields?.includes(field.key) ? "직접 입력" : field.key === "industrialInsurance" ? "기본 0원" : "자동 계산"}
+                </span>
+              </label>
+            ))}
+          </div>
+          {legacy && (
+            <p className="mt-3 text-sm text-amber-700">
+              기존 기록: 세금 합계 {formatWon(Number(stored.taxAmount || 0))} · 보험료 {formatWon(Number(stored.insuranceFee || 0))}.
+              위 분리 금액은 미리보기입니다. 받은 금액을 입력하거나 자동 계산 적용을 누르면 저장됩니다.
+            </p>
+          )}
+          <div className={`mt-3 rounded-lg px-3 py-2 text-sm font-bold ${toneClass}`} role="status">
+            {state.label}{state.detail && <span> · {state.detail}</span>}
+          </div>
+          <p className="mt-2 text-sm text-slate-500">
+            고용보험 = 수당금액 − 받은 금액 − 소득세 − 주민세 − 산재보험.
+            차액이 음수이면 고용보험은 0원으로 표시하고 금액 확인을 안내합니다.
+            직접 수정한 항목은 자동 계산으로 복원하기 전까지 유지됩니다.
+          </p>
+        </div>
+      );
+
+    };
+
     return (
       <div className="mt-3 space-y-3">
         <p className="text-sm text-slate-500">
           받은 금액을 입력하고 입력칸을 벗어나면 자동 계산·저장됩니다. 세금은 원 단위 반올림이며, 산재보험은 기본 0원입니다.
         </p>
-        {units.map((unit) => {
-          const stored = contract.settlements?.[unit.key] || {};
-          const entry = calculateFeeSettlement(stored, unit.expectedAmount);
-          const rowKey = `${contract.id}-${unit.key}`;
-          const manualEditing = editingSettlementKey === rowKey;
-          const legacy = Boolean(contract.settlements?.[unit.key]) && stored.calculationVersion !== 1;
-          const state = getSettlementState(entry, unit.expectedAmount);
-          const toneClass = state.tone === "emerald"
-            ? "bg-emerald-50 text-emerald-700"
-            : state.tone === "blue" ? "bg-blue-50 text-blue-700"
-            : state.tone === "rose" ? "bg-rose-50 text-rose-700"
-            : "bg-amber-50 text-amber-700";
-
-          return Array.isArray(stored.installments) ? (
-            <FeeSplitPaymentsPanel
-              key={unit.key}
-              label={unit.label}
-              expectedAmount={unit.expectedAmount}
-              settlement={stored}
-              onAdd={() => void addFeeInstallment(contract, unit.key)}
-              onChange={(id, field, value) => void changeFeeInstallment(contract, unit.key, id, field, value)}
-              onRemove={(id) => void removeFeeInstallment(contract, unit.key, id)}
-              onClearAll={() => void clearFeeInstallments(contract, unit.key)}
-              onCancelSplit={() => void cancelSplitPayments(contract, unit.key)}
-            />
-          ) : (
-            <div key={unit.key} className="rounded-2xl border border-slate-200 p-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-sm font-black text-slate-800">
-                  {unit.label}<span className="ml-2 font-bold text-slate-500">예상 {formatWon(unit.expectedAmount)}</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => void addFeeInstallment(contract, unit.key)}
-                    className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700">
-                    + 분할입금 추가
-                  </button>
-                  <button type="button" onClick={() => setEditingSettlementKey(manualEditing ? "" : rowKey)}
-                    className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold text-slate-600">
-                    {manualEditing ? "수정 마침" : "직접 수정"}
-                  </button>
-                  <button type="button" onClick={() => void updateSettlement(contract, unit.key, legacy ? "apply" : "reset")}
-                    className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700">
-                    {legacy ? "자동 계산 적용" : "자동 계산으로 복원"}
-                  </button>
-                </div>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-7">
-                <label className="text-sm font-bold text-slate-600">
-                  받은 금액
-                  <input
-                    key={`${rowKey}-received-${stored.receivedAmount ?? "empty"}`}
-                    inputMode="numeric"
-                    defaultValue={formatNumberInput(stored.receivedAmount)}
-                    onChange={(event) => { event.target.value = formatNumberInput(event.target.value); }}
-                    onBlur={(event) => void updateSettlement(contract, unit.key, "receivedAmount", event.target.value.replace(/[^0-9]/g, ""))}
-                    placeholder="입금액"
-                    className="mt-1 w-full rounded-xl border border-blue-200 bg-white px-2 py-2 text-base font-bold outline-none focus:ring-2 focus:ring-blue-200"
-                  />
-                </label>
-                <label className="text-sm font-bold text-slate-600">
-                  수령일
-                  <input
-                    key={`${rowKey}-date-${stored.receivedDate || "empty"}`}
-                    type="date"
-                    defaultValue={stored.receivedDate || ""}
-                    onChange={(event) => void updateSettlement(contract, unit.key, "receivedDate", event.target.value)}
-                    className="mt-1 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-2 py-2 text-sm font-bold outline-none"
-                  />
-                </label>
-                {autoFields.map((field) => (
-                  <label key={field.key} className="text-sm font-bold text-slate-600">
-                    {field.label}
-                    <input
-                      key={`${rowKey}-${field.key}-${entry[field.key] ?? 0}`}
-                      inputMode="numeric"
-                      readOnly={!manualEditing}
-                      defaultValue={formatNumberInput(entry[field.key] ?? 0)}
-                      onChange={(event) => { event.target.value = formatNumberInput(event.target.value); }}
-                      onBlur={(event) => {
-                        if (!manualEditing) return;
-                        const value = event.target.value.replace(/[^0-9]/g, "");
-                        if (Number(value || 0) !== Number(entry[field.key] || 0)) {
-                          void updateSettlement(contract, unit.key, field.key, value);
-                        }
-                      }}
-                      className="mt-1 w-full rounded-xl border border-slate-200 px-2 py-2 text-base font-bold outline-none read-only:bg-slate-50 read-only:text-slate-500 focus:ring-2 focus:ring-blue-200"
-                    />
-                    <span className="mt-1 block text-xs font-normal text-slate-400">
-                      {entry.manualFields?.includes(field.key) ? "직접 입력" : field.key === "industrialInsurance" ? "기본 0원" : "자동 계산"}
+        {contract.type === "afterschool"
+          ? quarters.map((item) => {
+              const quarterUnits = units.filter((unit) => unit.key.startsWith(`${item.key}-`));
+              const quarterExpected = quarterUnits.reduce((sum, unit) => sum + unit.expectedAmount, 0);
+              const quarterReceived = quarterUnits.reduce((sum, unit) => {
+                const entry = contract.settlements?.[unit.key];
+                if (!entry) return sum;
+                return sum + getFeePaymentEntries(entry, unit.expectedAmount)
+                  .reduce((received, payment) => received + Number(payment.receivedAmount || 0), 0);
+              }, 0);
+              return (
+                <details key={item.key} className="group/quarter rounded-2xl border border-emerald-100 bg-white">
+                  <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 rounded-2xl px-4 py-3 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-emerald-500 [&::-webkit-details-marker]:hidden">
+                    <span className="flex items-center gap-2 text-sm font-black text-slate-800">
+                      <span aria-hidden="true" className="inline-block text-emerald-700 transition-transform group-open/quarter:rotate-90">▶</span>
+                      {item.label}
+                      <span className="text-xs font-medium text-slate-500">({quarterUnits.length}건)</span>
                     </span>
-                  </label>
-                ))}
-              </div>
-              {legacy && (
-                <p className="mt-3 text-sm text-amber-700">
-                  기존 기록: 세금 합계 {formatWon(Number(stored.taxAmount || 0))} · 보험료 {formatWon(Number(stored.insuranceFee || 0))}.
-                  위 분리 금액은 미리보기입니다. 받은 금액을 입력하거나 자동 계산 적용을 누르면 저장됩니다.
-                </p>
-              )}
-              <div className={`mt-3 rounded-lg px-3 py-2 text-sm font-bold ${toneClass}`} role="status">
-                {state.label}{state.detail && <span> · {state.detail}</span>}
-              </div>
-              <p className="mt-2 text-sm text-slate-500">
-                고용보험 = 수당금액 − 받은 금액 − 소득세 − 주민세 − 산재보험.
-                차액이 음수이면 고용보험은 0원으로 표시하고 금액 확인을 안내합니다.
-                직접 수정한 항목은 자동 계산으로 복원하기 전까지 유지됩니다.
-              </p>
-            </div>
-          );
-        })}
+                    <span className="text-xs font-bold text-slate-500">
+                      발생 예상 {formatWon(quarterExpected)} · 수령 {formatWon(quarterReceived)}
+                    </span>
+                  </summary>
+                  <div className="space-y-3 border-t border-emerald-100 p-3">
+                    {quarterUnits.length > 0 ? quarterUnits.map(renderSettlementUnit) : (
+                      <p className="py-3 text-center text-sm font-bold text-slate-400">이 분기에는 발생액과 입금 기록이 없습니다.</p>
+                    )}
+                  </div>
+                </details>
+              );
+            })
+          : units.map(renderSettlementUnit)}
       </div>
     );
   };
@@ -1574,8 +1620,29 @@ export default function TeacherFeesPage() {
             {allowanceMessage}
           </p>
         )}
-        {paymentContracts.map((contract) => (
-          <div key={contract.id} className="rounded-[28px] bg-white p-5 shadow-sm">
+        {paymentSchoolGroups.map((school) => {
+          const schoolGross = school.contracts.reduce((sum, contract) => sum + getGross(contract), 0);
+          const schoolReceived = school.contracts.reduce(
+            (sum, contract) => sum + getContractSettlementTotals(contract).received, 0
+          );
+          return (
+            <details key={school.key} className="group/school rounded-[28px] bg-white shadow-sm">
+              <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 rounded-[28px] p-5 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-blue-500 [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-3">
+                  <span aria-hidden="true" className="inline-block text-lg text-slate-500 transition-transform group-open/school:rotate-90">▶</span>
+                  <span>
+                    <span className="block text-lg font-black text-slate-900">{school.name}</span>
+                    <span className="mt-1 block text-xs font-bold text-slate-500">{school.contracts.length}개 수당 항목</span>
+                  </span>
+                </span>
+                <span className="text-right text-xs font-bold text-slate-500">
+                  <span className="block">발생액 {formatWon(schoolGross)}</span>
+                  <span className="mt-1 block text-emerald-700">수령 {formatWon(schoolReceived)}</span>
+                </span>
+              </summary>
+              <div className="space-y-3 border-t border-slate-100 px-3 pb-3 pt-3 sm:px-5">
+                {school.contracts.map((contract) => (
+                  <div key={contract.id} className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div
@@ -1674,8 +1741,12 @@ export default function TeacherFeesPage() {
               </form>
             )}
             {renderSettlementRows(contract)}
-          </div>
-        ))}
+                  </div>
+                ))}
+              </div>
+            </details>
+          );
+        })}
       </section>
     </>
   );
