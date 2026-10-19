@@ -17,6 +17,9 @@ type QuestionType = "textbook" | "exam";
 type ExamLevel = "" | "basic" | "advanced";
 
 type ReviewQuestion = {
+  classificationReviewStatus?: string;
+  classificationReviewNote?: string;
+  proposedTextbookPages?: string;
   id: string;
   questionType: QuestionType;
   examLevel: ExamLevel;
@@ -115,6 +118,7 @@ export default function ReviewQuestionBankPage() {
   const [authChecking, setAuthChecking] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [draft, setDraft] = useState<QuestionDraft>(makeEmptyDraft());
+  const [previewOnly, setPreviewOnly] = useState(false);
   const [questions, setQuestions] = useState<ReviewQuestion[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [filters, setFilters] = useState(() => resetReviewQuestionFilters());
@@ -183,6 +187,7 @@ export default function ReviewQuestionBankPage() {
     setErrorMessage("");
     try {
       const data = await teacherFetch(user, "/api/teacher/review-questions");
+      setPreviewOnly(data?.previewOnly === true);
       setQuestions(Array.isArray(data?.questions) ? data.questions : []);
     } catch (error) {
       setErrorMessage(
@@ -427,6 +432,11 @@ export default function ReviewQuestionBankPage() {
           </Link>
         </header>
 
+        {previewOnly && (
+          <div className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm font-bold text-amber-900" role="status">
+            77회 기본 · 검토용 Preview · 운영 문제은행과 분리되어 있으며 학생 과제 배포는 중지되어 있습니다. 미확인 교재 근거는 검토 필요로 표시합니다.
+          </div>
+        )}
         <div className="grid gap-4 xl:grid-cols-[0.95fr_1.35fr]">
           <section
             id="review-question-editor"
@@ -911,6 +921,13 @@ export default function ReviewQuestionBankPage() {
                           )}
                         </div>
 
+                        {previewOnly && (
+                          <div className="mt-2 text-xs font-bold text-amber-800">
+                            {question.classificationReviewStatus === "verified" ? "교재 직접 확인" : "분류 근거 검토 필요"}
+                            {question.proposedTextbookPages ? ` · 참고: ${question.proposedTextbookPages}` : ""}
+                            {question.classificationReviewNote ? ` · ${question.classificationReviewNote}` : ""}
+                          </div>
+                        )}
                         {question.imageUrl && (
                           <img
                             src={question.imageUrl}
@@ -947,7 +964,7 @@ export default function ReviewQuestionBankPage() {
                         <div className="mt-4 grid grid-cols-3 gap-2">
                           <button
                             type="button"
-                            disabled={isSelected}
+                            disabled={isSelected || previewOnly}
                             onClick={() => addToAssignment(question.id)}
                             className="rounded-xl bg-blue-600 px-2 py-2.5 text-xs font-black text-white disabled:opacity-40"
                           >
@@ -1056,7 +1073,11 @@ export default function ReviewQuestionBankPage() {
                 </div>
               )}
 
-              <ReviewAssignmentComposer user={currentUser} questions={selectedQuestions} />
+              {previewOnly ? (
+                <p className="mt-4 text-sm font-bold text-amber-800">검토용 Preview에서는 학생 과제를 배포할 수 없습니다.</p>
+              ) : (
+                <ReviewAssignmentComposer user={currentUser} questions={selectedQuestions} />
+              )}
             </section>
           </div>
         </div>

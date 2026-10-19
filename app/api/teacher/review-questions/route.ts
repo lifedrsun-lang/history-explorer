@@ -1,3 +1,4 @@
+import { isReviewQuestionPreview, reviewQuestionsCollection } from "@/lib/reviewQuestionPreview";
 import { FieldValue } from "firebase-admin/firestore";
 
 import {
@@ -15,7 +16,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const REVIEW_QUESTIONS_COLLECTION = "reviewQuestions";
+const REVIEW_QUESTIONS_COLLECTION = reviewQuestionsCollection;
 const normalizeText = (value: unknown) => String(value || "").trim();
 
 const normalizeBookNumber = (value: unknown) => {
@@ -91,6 +92,9 @@ const serializeQuestion = async (
     imageStoragePath,
     imageOriginalName: normalizeText(data?.imageOriginalName),
     imageUrl,
+    classificationReviewStatus: normalizeText(data?.classificationReviewStatus),
+    classificationReviewNote: normalizeText(data?.classificationReviewNote),
+    proposedTextbookPages: normalizeText(data?.proposedTextbookPages),
     createdAt: serializeDate(data?.createdAt),
     updatedAt: serializeDate(data?.updatedAt),
   };
@@ -214,7 +218,7 @@ export async function GET(request: Request) {
       snapshot.docs.map((docItem) => serializeQuestion(docItem.id, docItem.data()))
     );
 
-    return Response.json({ questions });
+    return Response.json({ questions, previewOnly: isReviewQuestionPreview });
   } catch (error) {
     return mapError(error);
   }
