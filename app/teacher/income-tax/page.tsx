@@ -19,6 +19,8 @@ type PaymentRecord = {
   id: string;
   contractId: string;
   settlementKey: string;
+  installmentId?: string;
+  installmentIndex?: number;
   contractLabel: string;
   payerName: string;
   industryCode: string;
@@ -529,6 +531,7 @@ export default function IncomeTaxPage() {
           action: "saveRecordMetadata",
           contractId: record.contractId,
           settlementKey: record.settlementKey,
+          installmentId: record.installmentId,
           payerName: record.payerName,
           industryCode: record.industryCode,
           businessNumber: record.businessNumber,
@@ -1139,7 +1142,7 @@ export default function IncomeTaxPage() {
                   <div key={record.id} className="rounded-2xl border border-slate-200 p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <div className="font-black">{record.contractLabel || record.payerName}</div>
+                        <div className="font-black">{record.contractLabel || record.payerName}{record.installmentIndex ? ` · ${record.installmentIndex}차 입금` : ""}</div>
                         <div className="mt-1 text-xs font-bold text-slate-500">{record.receivedDate || "입금일 미입력"} · 세전 {won(record.grossAmount)} · 소득세 {won(record.incomeTax)} · 지방세 {won(record.localTax)}</div>
                         <div className="mt-1 text-xs font-bold text-slate-400">고용보험 {won(record.employmentInsurance)} · 산재보험 {won(record.industrialInsurance)}</div>
                       </div>
