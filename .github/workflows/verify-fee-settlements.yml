@@ -9,6 +9,7 @@ on:
       - "app/teacher/fees/page.tsx"
       - "app/teacher/income-tax/page.tsx"
       - "scripts/verify-fee-tax-totals.cjs"
+      - "scripts/verify-fee-accordions.cjs"
       - ".github/workflows/verify-fee-settlements.yml"
   workflow_dispatch:
 
@@ -27,3 +28,4 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: node scripts/verify-fee-tax-totals.cjs
+      - run: node scripts/verify-fee-accordions.cjs
