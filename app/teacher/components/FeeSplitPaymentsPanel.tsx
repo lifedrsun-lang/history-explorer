@@ -30,11 +30,12 @@ type Props = {
   onAdd: () => void;
   onChange: (id: string, field: SettlementInputField | "reset", value?: string) => void;
   onRemove: (id: string) => void;
+  onClearAll: () => void;
   onCancelSplit: () => void;
 };
 
 export default function FeeSplitPaymentsPanel({
-  label, expectedAmount, settlement, onAdd, onChange, onRemove, onCancelSplit,
+  label, expectedAmount, settlement, onAdd, onChange, onRemove, onClearAll, onCancelSplit,
 }: Props) {
   const [editingId, setEditingId] = useState("");
   const items: FeeInstallment[] = settlement.installments || [];
@@ -65,9 +66,16 @@ export default function FeeSplitPaymentsPanel({
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={onAdd} className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-black text-white">+ 분할입금 추가</button>
+          {items.length > 0 && (
+            <button type="button" onClick={() => {
+              if (window.confirm("이 수당의 분할입금 내역을 모두 삭제하고 입금액을 0원으로 처리할까요? 지급예정 수당과 분할 전 원본 기록은 보존됩니다.")) onClearAll();
+            }} className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
+              입금내역 전체 삭제
+            </button>
+          )}
           <button type="button" onClick={() => {
-            if (window.confirm("분할입금 내역을 취소하고 기존 1건 기록으로 되돌릴까요? 추가 입력한 내역은 사라집니다.")) onCancelSplit();
-          }} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600">기존 방식으로 복원</button>
+            if (window.confirm("분할입금을 취소하고 분할 전 1건 기록으로 되돌릴까요? 이 작업을 하면 이전에 삭제한 분할 전 기록이 다시 집계될 수 있습니다.")) onCancelSplit();
+          }} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600">분할 전 기록 복원</button>
         </div>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-white p-3 text-sm sm:grid-cols-4">
@@ -84,6 +92,11 @@ export default function FeeSplitPaymentsPanel({
         기존 단일 기록은 보관되며 분할입금 합계에 중복 포함되지 않습니다.
       </p>
       <div className="mt-3 space-y-3">
+        {items.length === 0 && (
+          <div role="status" className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center text-sm font-bold text-slate-500">
+            등록된 입금 내역이 없습니다. 새로운 입금은 [+ 분할입금 추가]로 등록하세요.
+          </div>
+        )}
         {items.map((item, index) => {
           const entry = paymentEntries[index];
           const canEdit = editingId === item.id;
@@ -98,9 +111,9 @@ export default function FeeSplitPaymentsPanel({
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setEditingId(canEdit ? "" : item.id)} className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700">{canEdit ? "수정 마침" : "공제 직접 수정"}</button>
                   <button type="button" onClick={() => onChange(item.id, "reset")} className="rounded-lg bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">공제 자동계산</button>
-                  {items.length > 1 && <button type="button" onClick={() => {
-                    if (window.confirm(`${index + 1}차 입금 기록을 삭제할까요?`)) onRemove(item.id);
-                  }} className="rounded-lg bg-rose-50 px-2 py-1 text-xs font-bold text-rose-700">삭제</button>}
+                  <button type="button" onClick={() => {
+                    if (window.confirm(`${index + 1}차 입금 기록을 삭제할까요? 삭제 후 누적 입금액과 세금 집계가 자동 수정됩니다.`)) onRemove(item.id);
+                  }} className="rounded-lg bg-rose-50 px-2 py-1 text-xs font-bold text-rose-700" aria-label={`${index + 1}차 입금 삭제`}>삭제</button>
                 </div>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-7">
