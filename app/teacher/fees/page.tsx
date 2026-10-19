@@ -810,8 +810,21 @@ export default function TeacherFeesPage() {
     const latest = getLatestContract(contract);
     const settlements = { ...(latest.settlements || {}) };
     const stored: FeeSettlement = settlements[unitKey] || {};
-    if (!stored.installments || stored.installments.length <= 1) return;
+    if (!Array.isArray(stored.installments) || !stored.installments.some((item) => item.id === id)) return;
+    // Leave the empty array in place. Removing the parent record would resurrect
+    // legacy received amounts during fallback and in tax reporting.
     settlements[unitKey] = { ...stored, installments: stored.installments.filter((item) => item.id !== id) };
+    setError("");
+    return patchContract(contract.id, { settlements });
+  };
+
+  const clearFeeInstallments = async (contract: FeeContract, unitKey: string) => {
+    const latest = getLatestContract(contract);
+    const settlements = { ...(latest.settlements || {}) };
+    const stored: FeeSettlement = settlements[unitKey] || {};
+    if (!Array.isArray(stored.installments) || stored.installments.length === 0) return;
+    settlements[unitKey] = { ...stored, installments: [] };
+    setError("");
     return patchContract(contract.id, { settlements });
   };
 
@@ -921,7 +934,9 @@ export default function TeacherFeesPage() {
     const entries = Object.entries(contract.settlements || {}).flatMap(([key, entry]) =>
       getFeePaymentEntries(entry, units.find((unit) => unit.key === key)?.expectedAmount ?? Number(entry.grossAmount || 0))
     );
-    const hasNewSettlements = entries.length > 0;
+    // Even an empty split-payment list is an explicitly saved settlement:
+    // do not resurrect the old single-payment totals after deleting the last row.
+    const hasNewSettlements = Object.keys(contract.settlements || {}).length > 0;
 
     const received = hasNewSettlements
       ? entries.reduce((sum, entry) => sum + Number(entry.receivedAmount || 0), 0)
@@ -1150,6 +1165,7 @@ export default function TeacherFeesPage() {
               onAdd={() => void addFeeInstallment(contract, unit.key)}
               onChange={(id, field, value) => void changeFeeInstallment(contract, unit.key, id, field, value)}
               onRemove={(id) => void removeFeeInstallment(contract, unit.key, id)}
+              onClearAll={() => void clearFeeInstallments(contract, unit.key)}
               onCancelSplit={() => void cancelSplitPayments(contract, unit.key)}
             />
           ) : (
