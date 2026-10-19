@@ -98,6 +98,34 @@ const sections: Record<string, ManagementSection> = {
     description: "출강 일정과 건별계약 수금, 참여확인서와 수업 운영 기능을 관리합니다.",
     items: [
       {
+        href: "/teacher/contract-schools",
+        icon: "🏫",
+        title: "건별 수업 관리",
+        description: "학교·학년반·차시·링크 등록과 반별 공개 상태 관리",
+        className: "border-sky-200 bg-sky-50 text-sky-900",
+      },
+      {
+        href: "/teacher/atc-confirmations",
+        icon: "🧾",
+        title: "ATC 참여확인서",
+        description: "출강일정과 수금관리 데이터를 연결해 월별 확인서 작성",
+        className: "border-indigo-200 bg-indigo-50 text-indigo-900",
+      },
+      {
+        href: "/teacher/schedule?tab=teaching",
+        icon: "📅",
+        title: "출강 일정",
+        description: "방과후·건별계약 출강일정과 Google Calendar 연동 확인",
+        className: "border-cyan-200 bg-cyan-50 text-cyan-900",
+      },
+      {
+        href: "/teacher/timer",
+        icon: "⏱️",
+        title: "40분 수업 타이머",
+        description: "20분 → 10분 → 10분 구간을 자동으로 안내하는 수업용 타이머",
+        className: "border-sky-200 bg-sky-50 text-sky-900",
+      },
+      {
         href: "/teacher/live-vote",
         icon: "📊",
         title: "실시간 투표",
@@ -112,26 +140,11 @@ const sections: Record<string, ManagementSection> = {
         className: "border-violet-200 bg-violet-50 text-violet-900",
       },
       {
-        href: "/teacher/contract-schools",
-        icon: "🏫",
-        title: "건별 수업 관리",
-        description: "학교·학년반·차시·링크 등록과 반별 공개 상태 관리",
-        className: "border-sky-200 bg-sky-50 text-sky-900",
-      },
-      {
-        href: "/teacher/timer",
-        icon: "⏱️",
-        title: "40분 수업 타이머",
-        description: "20분 → 10분 → 10분 구간을 자동으로 안내하는 수업용 타이머",
-        className: "border-sky-200 bg-sky-50 text-sky-900",
-      },
-
-      {
-        href: "/teacher/schedule?tab=teaching",
-        icon: "📅",
-        title: "출강 일정",
-        description: "방과후·건별계약 출강일정과 Google Calendar 연동 확인",
-        className: "border-cyan-200 bg-cyan-50 text-cyan-900",
+        href: "/teacher/activity-lab",
+        icon: "🤖",
+        title: "활동 결과 연구소",
+        description: "모럴머신 참여 현황과 반별·학년별 결과 관리",
+        className: "border-indigo-200 bg-indigo-50 text-indigo-900",
       },
       {
         href: "/teacher/fees?scope=contract&tab=payments",
@@ -139,21 +152,6 @@ const sections: Record<string, ManagementSection> = {
         title: "건별계약 · 수금",
         description: "계약기간·차시별 강사료와 입금·급여명세 내역 관리",
         className: "border-blue-200 bg-blue-50 text-blue-900",
-      },
-      {
-        href: "/teacher/atc-confirmations",
-        icon: "🧾",
-        title: "ATC 참여확인서",
-        description: "출강일정과 수금관리 데이터를 연결해 월별 확인서 작성",
-        className: "border-indigo-200 bg-indigo-50 text-indigo-900",
-      },
-
-      {
-        href: "/teacher/activity-lab",
-        icon: "🤖",
-        title: "활동 결과 연구소",
-        description: "모럴머신 참여 현황과 반별·학년별 결과 관리",
-        className: "border-indigo-200 bg-indigo-50 text-indigo-900",
       },
     ],
   },
