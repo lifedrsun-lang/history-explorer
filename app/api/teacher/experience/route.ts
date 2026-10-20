@@ -2,7 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { verifyTeacherRequest, handleRouteError } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
-import { ExperienceInputError, validateExperienceClass } from "@/lib/experienceClasses";
+import { ExperienceInputError, validateExperienceClass, type ExperienceClass } from "@/lib/experienceClasses";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,9 +58,9 @@ function errorResponse(error: unknown) {
   return handleRouteError(error);
 }
 const collection = () => getFirebaseAdmin().db.collection(COLLECTION);
-const serialize = (doc: FirebaseFirestore.QueryDocumentSnapshot | FirebaseFirestore.DocumentSnapshot) => ({
-  ...doc.data(), id: doc.id,
-});
+const serialize = (doc: FirebaseFirestore.QueryDocumentSnapshot | FirebaseFirestore.DocumentSnapshot): ExperienceClass => ({
+  ...(doc.data() || {}), id: doc.id,
+} as ExperienceClass);
 
 export async function GET(request: Request) {
   try {
