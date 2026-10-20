@@ -247,7 +247,7 @@ const sections: Record<string, ManagementSection> = {
         href: "/teacher/hope-savings",
         icon: "💗",
         title: "희망소망저축",
-        description: "수당 중 엄마에게 드린 금액을 기록하고 월별·전체 누적액 확인",
+        description: "엄마에게 맡긴 돈과 돌려받은 돈을 기록하고 현재 잔액 확인",
         className: "border-rose-200 bg-rose-50 text-rose-900",
       },
       {
