@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 
 const COLLECTION = "teacher_hope_savings";
 const MAX_AMOUNT = 1_000_000_000_000;
+type TransactionKind = "deposit" | "withdrawal";
 
 class InputError extends Error {}
 
@@ -21,16 +22,12 @@ const validDate = (value: unknown) => {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
 };
 
-const amount = (value: unknown, required: boolean): number | null => {
-  if (value === undefined || value === null || value === "") {
-    if (required) throw new InputError("엄마에게 드린 금액을 입력해 주세요.");
-    return null;
-  }
+const positiveAmount = (value: unknown) => {
   if (typeof value !== "string" && typeof value !== "number") {
-    throw new InputError("금액은 원 단위의 정수로 입력해 주세요.");
+    throw new InputError("금액을 원 단위로 입력해 주세요.");
   }
   const number = Number(value);
-  if (!Number.isSafeInteger(number) || number < (required ? 1 : 0) || number > MAX_AMOUNT) {
+  if (!Number.isSafeInteger(number) || number < 1 || number > MAX_AMOUNT) {
     throw new InputError("금액은 1원 이상, 1조 원 이하의 정수로 입력해 주세요.");
   }
   return number;
@@ -38,26 +35,39 @@ const amount = (value: unknown, required: boolean): number | null => {
 
 const parseFields = (body: Record<string, unknown>) => {
   if (!validDate(body.date)) {
-    throw new InputError("실제로 드린 날짜를 올바르게 입력해 주세요.");
+    throw new InputError("거래 날짜를 올바르게 입력해 주세요.");
+  }
+  const kind = body.kind;
+  if (kind !== "deposit" && kind !== "withdrawal") {
+    throw new InputError("엄마에게 준 돈 또는 다시 받아온 돈을 선택해 주세요.");
   }
   return {
     date: text(body.date, 10),
-    source: text(body.source, 120),
-    receivedAmount: amount(body.receivedAmount, false),
-    savedAmount: amount(body.savedAmount, true) as number,
+    kind: kind as TransactionKind,
+    // 기존 기록의 savedAmount 필드를 그대로 사용하여 데이터 이전 없이 호환한다.
+    savedAmount: positiveAmount(body.savedAmount),
     memo: text(body.memo, 500),
   };
 };
 
-const serialize = (doc: FirebaseFirestore.QueryDocumentSnapshot | FirebaseFirestore.DocumentSnapshot) => {
+const timestampText = (value: unknown) => {
+  const timestamp = value as { toDate?: () => Date } | null | undefined;
+  return typeof timestamp?.toDate === "function" ? timestamp.toDate().toISOString() : "";
+};
+
+const serialize = (
+  doc: FirebaseFirestore.QueryDocumentSnapshot | FirebaseFirestore.DocumentSnapshot
+) => {
   const data = doc.data() || {};
   return {
     id: doc.id,
     date: typeof data.date === "string" ? data.date : "",
-    source: typeof data.source === "string" ? data.source : "",
-    receivedAmount: typeof data.receivedAmount === "number" ? data.receivedAmount : null,
+    // 기존 저장 내역에는 kind가 없으므로 모두 '엄마에게 준 돈'으로 표시한다.
+    kind: data.kind === "withdrawal" ? "withdrawal" : "deposit",
     savedAmount: typeof data.savedAmount === "number" ? data.savedAmount : 0,
     memo: typeof data.memo === "string" ? data.memo : "",
+    source: typeof data.source === "string" ? data.source : "",
+    createdAt: timestampText(data.createdAt),
   };
 };
 
@@ -79,7 +89,9 @@ export async function GET(request: Request) {
     const { db } = getFirebaseAdmin();
     const snapshot = await db.collection(COLLECTION).where("ownerUid", "==", teacher.uid).get();
     const items = snapshot.docs.map(serialize).sort((a, b) =>
-      b.date.localeCompare(a.date) || b.id.localeCompare(a.id)
+      b.date.localeCompare(a.date) ||
+      b.createdAt.localeCompare(a.createdAt) ||
+      b.id.localeCompare(a.id)
     );
     return Response.json({ items }, { headers: { "Cache-Control": "no-store" } });
   });
@@ -113,6 +125,7 @@ export async function PATCH(request: Request) {
     if (!existing.exists || existing.data()?.ownerUid !== teacher.uid) {
       return jsonError("수정할 기록을 찾을 수 없습니다.", 404, "hope_savings_not_found");
     }
+    // 종전 source/receivedAmount 데이터는 변경하지 않고, 화면에서만 제외한다.
     await ref.update({ ...fields, updatedAt: FieldValue.serverTimestamp() });
     return Response.json({ item: serialize(await ref.get()) });
   });
