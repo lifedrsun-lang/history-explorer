@@ -5,8 +5,9 @@ import { onAuthStateChanged, type User } from "firebase/auth";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { auth } from "@/lib/firebase";
 import {
-  blankExperienceClass, EXPERIENCE_STATUSES,
-  type ExperienceClass, type ExperienceClassFields, type ExperienceStatus,
+  blankExperienceClass, blankExperienceCertificate, CERTIFICATE_FIELDS, EXPERIENCE_STATUSES,
+  experiencePaymentStatus, experiencePaymentLabel,
+  type ExperienceClass, type ExperienceClassFields, type ExperienceStatus, type ExperiencePaymentStatus,
 } from "@/lib/experienceClasses";
 
 type Filter = "all" | ExperienceStatus;
@@ -24,6 +25,10 @@ function fields(item: ExperienceClass): ExperienceClassFields {
     sessionCount: item.sessionCount, participantCount: item.participantCount,
     materialsUrl: item.materialsUrl, notes: item.notes,
     feeAmount: item.feeAmount, feePaid: item.feePaid, status: item.status,
+    provider: item.provider ?? "", instructorRole: item.instructorRole ?? "",
+    contactName: item.contactName ?? "", contactPhone: item.contactPhone ?? "",
+    feePerSession: item.feePerSession ?? null, paymentStatus: experiencePaymentStatus(item),
+    certificate: { ...blankExperienceCertificate(), ...item.certificate },
   };
 }
 
@@ -44,6 +49,16 @@ export default function ExperienceClassesPage() {
   const [message, setMessage] = useState("");
 
   const dirty = editor !== null && JSON.stringify(editor) !== baseline;
+  const savedRecord = items.find(item => item.id === editId);
+  const copyValue = async (label: string, value: string) => {
+    setError(""); setMessage("");
+    try {
+      await navigator.clipboard.writeText(value);
+      setMessage(label + "을(를) 복사했습니다.");
+    } catch {
+      setError("복사하지 못했습니다. 브라우저의 클립보드 권한을 확인하거나 표시된 값을 선택해 복사해주세요.");
+    }
+  };
   const canLeave = () => !dirty || window.confirm("저장하지 않은 체험수업 내용이 있습니다. 이동할까요?");
   const patch = <K extends keyof ExperienceClassFields>(key: K, value: ExperienceClassFields[K]) =>
     setEditor(prev => prev ? { ...prev, [key]: value } : prev);
@@ -221,7 +236,7 @@ export default function ExperienceClassesPage() {
                       <p className="mt-2 text-xs leading-relaxed text-slate-600">
                         {[item.subject, item.audience, item.startTime && item.endTime ? item.startTime + "~" + item.endTime : (item.startTime || item.endTime), item.location].filter(Boolean).join(" · ") || "상세정보 미입력"}
                       </p>
-                      {item.feeAmount !== null && <p className="mt-1 text-xs text-slate-500">수당: {feeLabel(item.feeAmount)} · {item.feePaid ? "입금완료" : "입금전"}</p>}
+                      {item.feeAmount !== null && <p className="mt-1 text-xs text-slate-500">수당: {feeLabel(item.feeAmount)} · {experiencePaymentLabel(item)}</p>}
                       <div className="mt-3 flex gap-2">
                         <button type="button" onClick={() => openEdit(item)} disabled={busy} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white">열기·수정</button>
                         <button type="button" onClick={() => void remove(item)} disabled={busy} className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-700">삭제</button>
@@ -249,6 +264,10 @@ export default function ExperienceClassesPage() {
                         <label className={LABEL}>체험수업명 *<input required maxLength={160} className={INPUT} value={editor.title} onChange={e => patch("title", e.target.value)} placeholder="예: 플로리스트 체험" /></label>
                         <label className={LABEL}>분야·과목<input maxLength={100} className={INPUT} value={editor.subject} onChange={e => patch("subject", e.target.value)} placeholder="예: 공예·진로·과학" /></label>
                         <label className={LABEL}>대상<input maxLength={100} className={INPUT} value={editor.audience} onChange={e => patch("audience", e.target.value)} placeholder="예: 초등 3~4학년" /></label>
+                        <label className={LABEL}>시행업체<input maxLength={160} className={INPUT} value={editor.provider} onChange={e => patch("provider", e.target.value)} /></label>
+                        <label className={LABEL}>역할<input maxLength={100} className={INPUT} value={editor.instructorRole} onChange={e => patch("instructorRole", e.target.value)} /></label>
+                        <label className={LABEL}>담당자<input maxLength={100} className={INPUT} value={editor.contactName} onChange={e => patch("contactName", e.target.value)} /></label>
+                        <label className={LABEL}>연락처<input type="tel" maxLength={100} className={INPUT} value={editor.contactPhone} onChange={e => patch("contactPhone", e.target.value)} /></label>
                         <label className={LABEL}>수업일 *<input required type="date" className={INPUT} value={editor.date} onChange={e => patch("date", e.target.value)} /></label>
                         <label className={LABEL}>진행 상태<select className={INPUT} value={editor.status} onChange={e => patch("status", e.target.value as ExperienceStatus)}>{EXPERIENCE_STATUSES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
                         <label className={LABEL}>시작시간<input type="time" className={INPUT} value={editor.startTime} onChange={e => patch("startTime", e.target.value)} /></label>
@@ -258,9 +277,37 @@ export default function ExperienceClassesPage() {
                         <label className={LABEL + " sm:col-span-2"}>수업 장소<input maxLength={250} className={INPUT} value={editor.location} onChange={e => patch("location", e.target.value)} /></label>
                         <label className={LABEL + " sm:col-span-2"}>수업자료 링크 (https://)<input maxLength={1200} type="url" className={INPUT} value={editor.materialsUrl} onChange={e => patch("materialsUrl", e.target.value)} placeholder="https://..." />{editor.materialsUrl.startsWith("https://") && <a href={editor.materialsUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs text-indigo-700 underline">저장한 자료 링크 열기</a>}</label>
                         <label className={LABEL}>예상·계약 수당 (원)<input min={0} max={1000000000} step={1} type="number" className={INPUT} value={editor.feeAmount ?? ""} onChange={e => patch("feeAmount", e.target.value === "" ? null : Number(e.target.value))} /></label>
-                        <label className={LABEL + " flex items-end pb-2"}><span className="flex items-center gap-2"><input type="checkbox" checked={editor.feePaid} onChange={e => patch("feePaid", e.target.checked)} className="h-4 w-4" />수당 입금완료</span></label>
+                        <label className={LABEL}>차시당 수당 (원)<input min={0} max={1000000000} step={1} type="number" className={INPUT} value={editor.feePerSession ?? ""} onChange={e => patch("feePerSession", e.target.value === "" ? null : Number(e.target.value))} /></label>
+                        <label className={LABEL}>입금 상태<select className={INPUT} value={editor.paymentStatus} onChange={e => {
+                          const paymentStatus = e.target.value as ExperiencePaymentStatus;
+                          setEditor(previous => previous ? { ...previous, paymentStatus, feePaid: paymentStatus === "paid" } : previous);
+                        }}><option value="unknown">미확인</option><option value="unpaid">입금전</option><option value="paid">입금완료</option></select></label>
                         <label className={LABEL + " sm:col-span-2"}>수업 준비·활동 내용·메모<textarea rows={6} maxLength={4000} className={INPUT} value={editor.notes} onChange={e => patch("notes", e.target.value)} placeholder="준비물, 활동 내용, 특이사항 등을 기록해주세요." /></label>
                       </div>
+                      <section aria-label="성범죄경력 회보서 발급정보" className="space-y-4 rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4">
+                        <h3 className="text-base font-black text-slate-900">성범죄경력 회보서 발급정보</h3>
+                        <p className="text-xs text-slate-600">로그인한 교사 본인의 관리 화면에만 표시됩니다.</p>
+                        {savedRecord && <dl className="space-y-3">
+                          {CERTIFICATE_FIELDS.map(field => {
+                            const value = savedRecord.certificate?.[field.key] || "";
+                            return <div key={field.key} className="rounded-xl bg-white p-3">
+                              <dt className="text-xs font-bold text-slate-600">{field.label}</dt>
+                              <dd className="mt-1 flex items-center justify-between gap-3">
+                                <span className="min-w-0 select-text break-all text-sm font-semibold text-slate-900">{value || "미입력"}</span>
+                                {"copy" in field && value && <button type="button" aria-label={field.label + " 복사"} onClick={() => void copyValue(field.label, value)} className="shrink-0 rounded-lg border border-indigo-200 px-3 py-2 text-xs font-bold text-indigo-700">복사</button>}
+                              </dd>
+                            </div>;
+                          })}
+                        </dl>}
+                        <details open={!editId}>
+                          <summary className="cursor-pointer text-sm font-bold text-indigo-800">발급정보 입력·수정</summary>
+                          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                            {CERTIFICATE_FIELDS.map(field => <label key={field.key} className={LABEL + (field.key === "emailSubject" ? " sm:col-span-2" : "")}>{field.label}
+                              <input type={field.key === "deadline" ? "date" : field.key === "email" ? "email" : "text"} maxLength={field.max} className={INPUT} value={editor.certificate[field.key]} onChange={e => patch("certificate", { ...editor.certificate, [field.key]: e.target.value })} />
+                            </label>)}
+                          </div>
+                        </details>
+                      </section>
                       <p className="text-xs leading-relaxed text-slate-500">체험수업 기록은 별도 저장됩니다. 사진 업로드와 Google Calendar 자동 등록, 기존 수금관리 연동은 현재 포함되지 않습니다.</p>
                       <div className="flex flex-wrap gap-2">
                         <button type="submit" disabled={busy || !editor.title.trim() || !editor.organization.trim() || !editor.date} className="rounded-xl bg-indigo-700 px-6 py-3 text-sm font-black text-white disabled:opacity-50">{busy ? "처리 중..." : editId ? "수정 저장" : "체험수업 등록·저장"}</button>

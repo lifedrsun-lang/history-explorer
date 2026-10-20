@@ -34,7 +34,7 @@ async function authenticate(request: Request): Promise<string> {
 }
 async function body(request: Request): Promise<Record<string, unknown>> {
   const raw = await request.text();
-  if (new TextEncoder().encode(raw).length > 14000) {
+  if (new TextEncoder().encode(raw).length > 32000) {
     throw new ExperienceInputError("입력 내용이 너무 큽니다.");
   }
   let data: unknown;
@@ -92,13 +92,14 @@ export async function PUT(request: Request) {
     const data = await body(request);
     const id = validId(data.id);
     const expected = revision(data.revision);
-    const fields = validateExperienceClass(data);
     const ref = collection().doc(id);
     const db = getFirebaseAdmin().db;
     const item = await db.runTransaction(async tx => {
       const existing = await tx.get(ref);
       if (!existing.exists || existing.data()?.teacher_uid !== uid) throw new Error("record_not_found");
       if (existing.data()?.revision !== expected) throw new Error("record_conflict");
+      // Older open tabs may omit newly introduced fields; keep stored details.
+      const fields = validateExperienceClass({ ...existing.data(), ...data });
       const updates = { ...fields, revision: expected + 1, updated_at: now() };
       tx.update(ref, updates);
       return { ...existing.data(), ...updates, id };
