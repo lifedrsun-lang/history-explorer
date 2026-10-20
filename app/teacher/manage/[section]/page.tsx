@@ -166,8 +166,16 @@ const sections: Record<string, ManagementSection> = {
     eyebrow: "EXPERIENCE CLASS",
     icon: "🎨",
     title: "체험수업",
-    description: "체험수업 일정·수업자료·활동사진·수당을 개인 기록으로 정리할 공간입니다.",
-    items: [],
+    description: "기관별 일회성 체험수업의 일정, 활동 내용과 수당을 개인 기록으로 정리합니다.",
+    items: [
+      {
+        href: "/teacher/experience",
+        icon: "📝",
+        title: "체험수업 등록·조회",
+        description: "학교·기관, 일시, 대상, 준비 내용과 수당을 등록하고 수정",
+        className: "border-purple-200 bg-purple-50 text-purple-900",
+      },
+    ],
   },
   "sun-lab": {
     eyebrow: "SUN LAB",
