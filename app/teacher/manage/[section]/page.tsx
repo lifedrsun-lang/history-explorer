@@ -251,6 +251,13 @@ const sections: Record<string, ManagementSection> = {
         className: "border-rose-200 bg-rose-50 text-rose-900",
       },
       {
+        href: "/teacher/mom-settlements",
+        icon: "💜",
+        title: "Mom 정산",
+        description: "엄마 수당의 입금·지급과 미지급금 관리",
+        className: "border-indigo-200 bg-indigo-50 text-indigo-900",
+      },
+      {
         href: "/teacher/students?status=paused",
         icon: "🗂️",
         title: "휴강 · 수강이력",
