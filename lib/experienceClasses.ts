@@ -1,4 +1,23 @@
 export type ExperienceStatus = "planned" | "confirmed" | "completed" | "cancelled";
+export type ExperiencePaymentStatus = "unknown" | "unpaid" | "paid";
+export const CERTIFICATE_FIELDS = [
+  { key: "facilityId", label: "시설기관 ID", max: 100, copy: true },
+  { key: "verificationNumber", label: "검증번호", max: 100, copy: true },
+  { key: "policeAgency", label: "경찰청", max: 160 },
+  { key: "policeStation", label: "경찰서", max: 160 },
+  { key: "issueMethod", label: "발급 방법", max: 160 },
+  { key: "deadline", label: "제출 마감", max: 10 },
+  { key: "email", label: "제출 이메일", max: 254, copy: true },
+  { key: "emailSubject", label: "메일 제목", max: 300, copy: true },
+] as const;
+export type ExperienceCertificate = Record<typeof CERTIFICATE_FIELDS[number]["key"], string>;
+export function blankExperienceCertificate(): ExperienceCertificate {
+  return { facilityId: "", verificationNumber: "", policeAgency: "", policeStation: "", issueMethod: "", deadline: "", email: "", emailSubject: "" };
+}
+export const experiencePaymentStatus = (item: { feePaid: boolean; paymentStatus?: ExperiencePaymentStatus }): ExperiencePaymentStatus =>
+  item.paymentStatus ?? (item.feePaid ? "paid" : "unpaid");
+export const experiencePaymentLabel = (item: { feePaid: boolean; paymentStatus?: ExperiencePaymentStatus }): string =>
+  ({ unknown: "미확인", unpaid: "입금전", paid: "입금완료" })[experiencePaymentStatus(item)];
 
 export type ExperienceClassFields = {
   title: string;
@@ -16,6 +35,13 @@ export type ExperienceClassFields = {
   feeAmount: number | null;
   feePaid: boolean;
   status: ExperienceStatus;
+  provider: string;
+  instructorRole: string;
+  contactName: string;
+  contactPhone: string;
+  feePerSession: number | null;
+  paymentStatus: ExperiencePaymentStatus;
+  certificate: ExperienceCertificate;
 };
 
 export type ExperienceClass = ExperienceClassFields & {
@@ -40,6 +66,8 @@ export function blankExperienceClass(): ExperienceClassFields {
     date: "", startTime: "", endTime: "", sessionCount: null,
     participantCount: null, materialsUrl: "", notes: "",
     feeAmount: null, feePaid: false, status: "planned",
+    provider: "", instructorRole: "", contactName: "", contactPhone: "",
+    feePerSession: null, paymentStatus: "unknown", certificate: blankExperienceCertificate(),
   };
 }
 
@@ -97,13 +125,34 @@ export function validateExperienceClass(raw: Record<string, unknown>): Experienc
   if (typeof raw.feePaid !== "boolean") {
     throw new ExperienceInputError("수당 입금 상태를 확인해주세요.");
   }
+  const paymentStatus = raw.paymentStatus ?? (raw.feePaid ? "paid" : "unpaid");
+  if (!["unknown", "unpaid", "paid"].includes(String(paymentStatus))) {
+    throw new ExperienceInputError("수당 입금 상태를 확인해주세요.");
+  }
+  const source = raw.certificate === undefined ? {} : raw.certificate;
+  if (!source || typeof source !== "object" || Array.isArray(source)) {
+    throw new ExperienceInputError("발급정보를 확인해주세요.");
+  }
+  const certificate = blankExperienceCertificate();
+  for (const field of CERTIFICATE_FIELDS) {
+    certificate[field.key] = text((source as Record<string, unknown>)[field.key], field.label, field.max);
+  }
+  if (certificate.deadline && !validDate(certificate.deadline)) throw new ExperienceInputError("제출 마감을 확인해주세요.");
+  if (certificate.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(certificate.email)) throw new ExperienceInputError("제출 이메일을 확인해주세요.");
   return {
     title, organization, subject, audience, location, date, startTime, endTime,
     sessionCount: optionalInteger(raw.sessionCount, "차시", 1000),
     participantCount: optionalInteger(raw.participantCount, "인원", 100000),
     materialsUrl, notes,
     feeAmount: optionalInteger(raw.feeAmount, "수당", 1000000000),
-    feePaid: raw.feePaid,
+    feePaid: paymentStatus === "paid",
     status: status as ExperienceStatus,
+    provider: text(raw.provider, "시행업체", 160),
+    instructorRole: text(raw.instructorRole, "역할", 100),
+    contactName: text(raw.contactName, "담당자", 100),
+    contactPhone: text(raw.contactPhone, "연락처", 100),
+    feePerSession: optionalInteger(raw.feePerSession, "차시당 수당", 1000000000),
+    paymentStatus: paymentStatus as ExperiencePaymentStatus,
+    certificate,
   };
 }
