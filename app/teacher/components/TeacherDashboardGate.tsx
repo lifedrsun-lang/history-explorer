@@ -275,14 +275,14 @@ export default function TeacherDashboardGate() {
           )}
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:mt-4 sm:gap-4">
+        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 sm:mt-4 sm:gap-4">
           {managementSections.map(renderManagementSection)}
         </div>
 
         <div className="mt-5 text-sm font-black text-slate-500 sm:mt-6 sm:text-base">
           기타 관리
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+        <div className="mt-2 grid grid-cols-2 gap-3 md:grid-cols-3 sm:gap-4">
           {supportingSections.map(renderManagementSection)}
         </div>
 
