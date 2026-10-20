@@ -22,7 +22,7 @@ const managementSections = [
     key: "after-school",
     href: "/teacher/manage/after-school",
     icon: "🏫",
-    title: "방과후 관리",
+    title: "방과후학교",
     description: "수강생·출석·진도·과제·복습·수강료 관리",
     className: "border-blue-200 bg-blue-50 text-blue-900",
   },
@@ -30,23 +30,31 @@ const managementSections = [
     key: "teaching",
     href: "/teacher/manage/teaching",
     icon: "🚗",
-    title: "출강 관리",
-    description: "출강일정·건별계약·참여확인서·수업 운영 관리",
+    title: "교과협력",
+    description: "교과 연계 협력수업의 일정·차시·참여확인서·수업 운영",
     className: "border-cyan-200 bg-cyan-50 text-cyan-900",
   },
   {
     key: "care",
     href: "/teacher/manage/care",
     icon: "🧸",
-    title: "돌봄/늘봄 관리",
+    title: "돌봄/늘봄",
     description: "돌봄·늘봄 학교 및 기관 관리",
     className: "border-amber-200 bg-amber-50 text-amber-900",
+  },
+  {
+    key: "experience",
+    href: "/teacher/manage/experience",
+    icon: "🎨",
+    title: "체험수업",
+    description: "일회성 체험수업 기록용 공간 (기능 준비 중)",
+    className: "border-pink-200 bg-pink-50 text-pink-900",
   },
   {
     key: "sun-lab",
     href: "/teacher/manage/sun-lab",
     icon: "✨",
-    title: "SUN LAB 관리",
+    title: "Sun Lab",
     description: "선랩 수강생·헬로메이플 미션·도서관 관리",
     className: "border-emerald-200 bg-emerald-50 text-emerald-900",
   },
@@ -267,14 +275,14 @@ export default function TeacherDashboardGate() {
           )}
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:mt-4 sm:gap-4">
+        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 sm:mt-4 sm:gap-4">
           {managementSections.map(renderManagementSection)}
         </div>
 
         <div className="mt-5 text-sm font-black text-slate-500 sm:mt-6 sm:text-base">
           기타 관리
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+        <div className="mt-2 grid grid-cols-2 gap-3 md:grid-cols-3 sm:gap-4">
           {supportingSections.map(renderManagementSection)}
         </div>
 

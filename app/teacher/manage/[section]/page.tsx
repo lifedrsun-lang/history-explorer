@@ -23,7 +23,7 @@ const sections: Record<string, ManagementSection> = {
   "after-school": {
     eyebrow: "AFTER SCHOOL",
     icon: "🏫",
-    title: "방과후 관리",
+    title: "방과후학교",
     description: "학교별 수강생 관리와 수업용 코인 지급을 빠르게 이용합니다.",
     items: [
       {
@@ -94,7 +94,7 @@ const sections: Record<string, ManagementSection> = {
   teaching: {
     eyebrow: "TEACHING",
     icon: "🚗",
-    title: "출강 관리",
+    title: "교과협력",
     description: "출강 일정과 건별계약 수금, 참여확인서와 수업 운영 기능을 관리합니다.",
     items: [
       {
@@ -158,14 +158,21 @@ const sections: Record<string, ManagementSection> = {
   care: {
     eyebrow: "CARE · NEULBOM",
     icon: "🧸",
-    title: "돌봄/늘봄 관리",
+    title: "돌봄/늘봄",
     description: "돌봄·늘봄 운영을 위한 관리 영역입니다.",
+    items: [],
+  },
+  experience: {
+    eyebrow: "EXPERIENCE CLASS",
+    icon: "🎨",
+    title: "체험수업",
+    description: "체험수업 일정·수업자료·활동사진·수당을 개인 기록으로 정리할 공간입니다.",
     items: [],
   },
   "sun-lab": {
     eyebrow: "SUN LAB",
     icon: "✨",
-    title: "SUN LAB 관리",
+    title: "Sun Lab",
     description: "선랩 수강생과 헬로메이플·도서관 등 선랩 전용 기능을 관리합니다.",
     items: [
       {
@@ -318,10 +325,14 @@ export default async function TeacherManagementSectionPage({
           </section>
         ) : (
           <section className="mt-4 rounded-[28px] border border-amber-200 bg-amber-50 p-7 text-center shadow-sm sm:rounded-[32px] sm:p-10">
-            <div className="text-4xl">🧸</div>
-            <h2 className="mt-3 text-xl font-black text-amber-950 sm:text-2xl">세부 관리는 준비 중이에요.</h2>
+            <div className="text-4xl">{section === "experience" ? "🎨" : "🧸"}</div>
+            <h2 className="mt-3 text-xl font-black text-amber-950 sm:text-2xl">
+              {section === "experience" ? "체험수업 기록 기능은 준비 중이에요." : "세부 관리는 준비 중이에요."}
+            </h2>
             <p className="mt-2 text-sm font-bold leading-relaxed text-amber-800">
-              학교·기관별 카드는 추후 이 화면에 추가할 예정입니다.
+              {section === "experience"
+                ? "일정·자료·사진·수당 정리 기능은 아직 추가되지 않았습니다."
+                : "학교·기관별 카드는 추후 이 화면에 추가할 예정입니다."}
             </p>
           </section>
         )}
