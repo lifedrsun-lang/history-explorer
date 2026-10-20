@@ -244,6 +244,13 @@ const sections: Record<string, ManagementSection> = {
         className: "border-teal-200 bg-teal-50 text-teal-900",
       },
       {
+        href: "/teacher/hope-savings",
+        icon: "💗",
+        title: "희망소망저축",
+        description: "수당 중 엄마에게 드린 금액을 기록하고 월별·전체 누적액 확인",
+        className: "border-rose-200 bg-rose-50 text-rose-900",
+      },
+      {
         href: "/teacher/students?status=paused",
         icon: "🗂️",
         title: "휴강 · 수강이력",
