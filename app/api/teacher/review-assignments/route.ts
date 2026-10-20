@@ -1,3 +1,4 @@
+import { isReviewQuestionPreview } from "@/lib/reviewQuestionPreview";
 import { FieldValue } from "firebase-admin/firestore";
 
 import {
@@ -262,6 +263,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    if (isReviewQuestionPreview) {
+      await verifyTeacherRequest(request);
+      return jsonError("77회 Preview에서는 학생 과제를 배포할 수 없습니다.", 409, "preview_assignment_disabled");
+    }
     const teacher = await verifyTeacherRequest(request);
     const body = await request.json();
     const title = normalizeText(body?.title);
