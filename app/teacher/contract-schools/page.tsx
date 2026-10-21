@@ -40,6 +40,8 @@ type NewSchoolDraft = {
   schoolPassword: string;
 };
 
+type OperatingPlanLinks = Record<string, string>;
+
 type ActivityMap = Record<string, boolean>;
 type ActivityStates = Record<string, ActivityMap>;
 
@@ -99,6 +101,15 @@ export default function ContractSchoolsPage() {
   );
   const [activityStates, setActivityStates] = useState<ActivityStates>({});
   const [pendingLinkState, setPendingLinkState] = useState("");
+  const [operatingPlanLinks, setOperatingPlanLinks] = useState<OperatingPlanLinks>({});
+
+  const getOperatingPlanLink = (school: ContractSchoolConfig) => {
+    const schoolNames = `${school.schoolName} ${school.displayName}`;
+    const match = Object.entries(operatingPlanLinks).find(([schoolName]) =>
+      schoolNames.includes(schoolName)
+    );
+    return match?.[1] || null;
+  };
   const [documentSettings, setDocumentSettings] = useState<
     Record<string, SchoolDocumentSettings>
   >({});
@@ -141,7 +152,7 @@ export default function ContractSchoolsPage() {
 
     try {
       const token = await user.getIdToken();
-      const [response, documentSettingsResponse] = await Promise.all([
+      const [response, documentSettingsResponse, operatingPlansResponse] = await Promise.all([
         fetch("/api/teacher/contract-schools", {
           cache: "no-store",
           headers: { Authorization: `Bearer ${token}` },
@@ -150,16 +161,26 @@ export default function ContractSchoolsPage() {
           cache: "no-store",
           headers: { Authorization: `Bearer ${token}` },
         }),
+        fetch("/api/teacher/contract-schools/operating-plans", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
-      const [payload, documentSettingsPayload] = await Promise.all([
+      const [payload, documentSettingsPayload, operatingPlansPayload] = await Promise.all([
         response.json().catch(() => ({})) as Promise<ApiPayload>,
         documentSettingsResponse.json().catch(() => ({})) as Promise<{
           settings?: SchoolDocumentSettings[];
+        }>,
+        operatingPlansResponse.json().catch(() => ({})) as Promise<{
+          links?: OperatingPlanLinks;
         }>,
       ]);
       if (!response.ok) throw new Error(payload.error || "load_failed");
       const nextSchools = Array.isArray(payload.schools) ? payload.schools : [];
       setSchools(nextSchools);
+      if (operatingPlansResponse.ok) {
+        setOperatingPlanLinks(operatingPlansPayload.links || {});
+      }
       if (documentSettingsResponse.ok) {
         const nextSettings = Array.isArray(documentSettingsPayload.settings)
           ? documentSettingsPayload.settings
@@ -653,6 +674,7 @@ export default function ContractSchoolsPage() {
             <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {orderedSchools.map((school) => {
                 const documentInfo = documentSettings[school.slug];
+                const operatingPlanHref = getOperatingPlanLink(school);
                 return (
                 <article
                   key={school.slug}
@@ -716,6 +738,16 @@ export default function ContractSchoolsPage() {
                       {school.completed ? "진행중으로 변경" : "종강 처리"}
                     </button>
                   </div>
+                  {operatingPlanHref && (
+                    <a
+                      href={operatingPlanHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 block rounded-xl bg-indigo-50 px-3 py-2.5 text-center text-xs font-black text-indigo-700 hover:bg-indigo-100"
+                    >
+                      📄 운영계획서 열기 ↗
+                    </a>
+                  )}
                 </article>
               );})}
               <button type="button" onClick={() => setShowNewSchool(true)} className="min-h-44 rounded-[24px] border-2 border-dashed border-sky-200 bg-sky-50 p-5 text-center text-sky-700 transition hover:border-sky-400">
@@ -755,6 +787,16 @@ export default function ContractSchoolsPage() {
                   <button type="button" onClick={() => { setSelectedSchool(null); setSelectedSlug(""); }} className="text-xs font-black text-sky-600">← 학교 카드 목록</button>
                   <h2 className="mt-2 text-2xl font-black text-slate-900">{selectedSchool.displayName}</h2>
                   <div className="mt-1 text-xs font-bold text-slate-400">학생 주소 /student/classroom/{selectedSchool.slug}</div>
+                  {getOperatingPlanLink(selectedSchool) && (
+                    <a
+                      href={getOperatingPlanLink(selectedSchool) || undefined}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 inline-block rounded-xl bg-indigo-50 px-4 py-2.5 text-sm font-black text-indigo-700 hover:bg-indigo-100"
+                    >
+                      📄 운영계획서 열기 ↗
+                    </a>
+                  )}
                 </div>
                 <button type="button" disabled={saving} onClick={() => void saveSchool({ ...selectedSchool, published: !selectedSchool.published }, selectedSchool.published ? "학생페이지에서 숨겼어요." : "학생페이지에 학교를 노출했어요.")} className={`rounded-2xl px-4 py-3 text-sm font-black ${selectedSchool.published ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>
                   {selectedSchool.published ? "✓ 학생페이지 노출 중" : "○ 학생페이지 미노출"}
