@@ -1,3 +1,4 @@
+import { normalizeReviewBookNumber } from "@/lib/reviewQuestionMetadata";
 import { FieldValue } from "firebase-admin/firestore";
 
 import {
@@ -44,7 +45,7 @@ const serializeQuestionSnapshot = (
   examLevel: normalizeExamLevel(data?.examLevel),
   examRound: normalizeText(data?.examRound),
   examQuestionNumber: normalizeText(data?.examQuestionNumber),
-  bookNumber: normalizeText(data?.bookNumber),
+  bookNumber: normalizeReviewBookNumber(data?.bookNumber),
   lesson: normalizeLesson(data?.lesson, data?.topic),
   topic: normalizeText(data?.topic),
   prompt: normalizeText(data?.prompt),

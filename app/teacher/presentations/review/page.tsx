@@ -11,6 +11,7 @@ import {
   resetReviewQuestionFilters,
   selectReviewQuestionFilter,
 } from "@/lib/reviewQuestionFilters";
+import { normalizeReviewBookNumber, matchesReviewDistribution, type ReviewDistribution } from "@/lib/reviewQuestionMetadata";
 import ReviewAssignmentComposer from "./ReviewAssignmentComposer";
 
 type QuestionType = "textbook" | "exam";
@@ -32,6 +33,7 @@ type ReviewQuestion = {
   imageStoragePath: string;
   imageOriginalName: string;
   imageUrl: string;
+  distributions?: ReviewDistribution[];
 };
 
 type QuestionDraft = Omit<ReviewQuestion, "id">;
@@ -124,6 +126,14 @@ export default function ReviewQuestionBankPage() {
     book: bookFilter,
     lesson: lessonFilter,
   } = filters;
+  const [distributionSchool, setDistributionSchool] = useState("all");
+  const [distributionClass, setDistributionClass] = useState("all");
+  const [distributionStatus, setDistributionStatus] = useState("all");
+  const [studentSchools, setStudentSchools] = useState<string[]>([]);
+  const distributionSchools = useMemo(() => Array.from(new Set([
+    ...studentSchools,
+    ...questions.flatMap((q) => (q.distributions || []).map((entry) => entry.school)),
+  ].filter(Boolean))).sort((a, b) => a.localeCompare(b, "ko")), [questions, studentSchools]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -152,7 +162,7 @@ export default function ReviewQuestionBankPage() {
 
   const bookOptions = useMemo(
     () =>
-      Array.from(new Set(questions.map((q) => q.bookNumber).filter(Boolean))).sort(
+      Array.from(new Set(questions.map((q) => normalizeReviewBookNumber(q.bookNumber)).filter(Boolean))).sort(
         (a, b) => bookNumberValue(a) - bookNumberValue(b)
       ),
     [questions]
@@ -161,6 +171,7 @@ export default function ReviewQuestionBankPage() {
   const filteredQuestions = useMemo(() => {
     return questions
       .filter((question) => matchesReviewQuestionFilters(question, filters))
+      .filter((question) => matchesReviewDistribution(question.distributions || [], distributionSchool, distributionStatus, distributionClass))
       .sort((a, b) => {
         const bookDiff = bookNumberValue(a.bookNumber) - bookNumberValue(b.bookNumber);
         if (bookDiff !== 0) return bookDiff;
@@ -168,7 +179,7 @@ export default function ReviewQuestionBankPage() {
         if (lessonDiff !== 0) return lessonDiff;
         return a.prompt.localeCompare(b.prompt, "ko");
       });
-  }, [filters, questions]);
+  }, [filters, questions, distributionSchool, distributionStatus, distributionClass]);
 
   const selectedQuestions = useMemo(
     () =>
@@ -183,7 +194,9 @@ export default function ReviewQuestionBankPage() {
     setErrorMessage("");
     try {
       const data = await teacherFetch(user, "/api/teacher/review-questions");
-      setQuestions(Array.isArray(data?.questions) ? data.questions : []);
+      setQuestions(Array.isArray(data?.questions) ? data.questions.map((question: ReviewQuestion) => ({
+        ...question, bookNumber: normalizeReviewBookNumber(question.bookNumber),
+      })) : []);
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "문제은행을 불러오지 못했습니다."
@@ -202,6 +215,10 @@ export default function ReviewQuestionBankPage() {
       setCurrentUser(user);
       setAuthChecking(false);
       void fetchQuestions(user);
+      void teacherFetch(user, "/api/teacher/assignment-students")
+        .then((data) => setStudentSchools(Array.isArray(data.students)
+          ? data.students.map((student: { school: string }) => student.school).filter(Boolean) : []))
+        .catch(() => { /* Existing distribution schools remain available. */ });
     });
     return unsubscribe;
   }, [router]);
@@ -754,6 +771,9 @@ export default function ReviewQuestionBankPage() {
                     disabled={isLoading}
                     onClick={() => {
                       setFilters(resetReviewQuestionFilters(questionTypeFilter));
+                      setDistributionSchool("all");
+                      setDistributionClass("all");
+                      setDistributionStatus("all");
                       if (currentUser) void fetchQuestions(currentUser);
                     }}
                     className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-black text-blue-700 disabled:opacity-40"
@@ -836,6 +856,35 @@ export default function ReviewQuestionBankPage() {
                 </div>
               </div>
 
+              <div className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl bg-sky-50 p-3">
+                <label className="text-xs font-black text-slate-700">
+                  배포 확인 학교
+                  <select aria-label="배포 확인 학교" value={distributionSchool}
+                    onChange={(event) => setDistributionSchool(event.target.value)}
+                    className="ml-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                    <option value="all">전체 학교</option>
+                    {distributionSchools.map((school) => <option key={school} value={school}>{school}</option>)}
+                  </select>
+                </label>
+                <label className="text-xs font-black text-slate-700">
+                  배포 확인 반
+                  <select aria-label="배포 확인 반" value={distributionClass}
+                    onChange={(event) => setDistributionClass(event.target.value)}
+                    className="ml-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                    <option value="all">전체 반</option><option value="A반">A반</option><option value="B반">B반</option>
+                  </select>
+                </label>
+                <label className="text-xs font-black text-slate-700">
+                  배포 상태
+                  <select aria-label="배포 상태" value={distributionStatus}
+                    onChange={(event) => setDistributionStatus(event.target.value)}
+                    className="ml-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                    <option value="all">전체 문제</option><option value="unsent">선택 대상에 미배포</option><option value="sent">선택 대상에 배포됨</option>
+                  </select>
+                </label>
+                <p className="w-full text-xs font-bold text-slate-500">학교·반을 선택한 뒤 미배포 문제를 찾으세요. 배포 이력은 마감된 과제도 포함합니다.</p>
+              </div>
+
               {isLoading ? (
                 <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-8 text-center text-sm font-black text-slate-500">
                   문제은행을 불러오는 중입니다...
@@ -847,6 +896,9 @@ export default function ReviewQuestionBankPage() {
                     type="button"
                     onClick={() => {
                       setFilters(resetReviewQuestionFilters(questionTypeFilter));
+                      setDistributionSchool("all");
+                      setDistributionClass("all");
+                      setDistributionStatus("all");
                       if (currentUser) void fetchQuestions(currentUser);
                     }}
                     className="mt-3 rounded-xl bg-blue-600 px-4 py-2 text-white"
@@ -908,6 +960,26 @@ export default function ReviewQuestionBankPage() {
                             <span className="rounded-full bg-blue-600 px-2.5 py-1 text-xs font-black text-white">
                               과제 {selectedOrder + 1}번
                             </span>
+                          )}
+                        </div>
+
+                        <div className="mt-3 text-xs font-bold" aria-label="문제 배포 이력">
+                          {(question.distributions || []).length === 0 ? (
+                            <span className="rounded-lg bg-white px-2 py-1 text-slate-500">배포 기록 없음</span>
+                          ) : (
+                            <details className="rounded-xl bg-white p-2 text-sky-800">
+                              <summary className="cursor-pointer">
+                                배포 학교: {Array.from(new Set((question.distributions || []).map((entry) => entry.school || "학교 미기록"))).join(", ")}
+                              </summary>
+                              <ul className="mt-2 space-y-1">
+                                {(question.distributions || []).map((entry) => (
+                                  <li key={entry.assignmentId}>
+                                    {entry.school || "학교 미기록"} · {entry.teachingClass || "반 미기록"} · {entry.createdAt ? new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(entry.createdAt)) : "날짜 미기록"} · {entry.title}
+                                    {!entry.isActive ? " · 비활성 과제" : ""}
+                                  </li>
+                                ))}
+                              </ul>
+                            </details>
                           )}
                         </div>
 
@@ -1056,7 +1128,7 @@ export default function ReviewQuestionBankPage() {
                 </div>
               )}
 
-              <ReviewAssignmentComposer user={currentUser} questions={selectedQuestions} />
+              <ReviewAssignmentComposer user={currentUser} questions={selectedQuestions} onSent={() => { if (currentUser) void fetchQuestions(currentUser); }} />
             </section>
           </div>
         </div>
