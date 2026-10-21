@@ -94,9 +94,12 @@ export default function SchoolSelect({
         )}
         <div className="flex flex-1 flex-col items-center justify-center">
           <div className="text-base sm:text-lg font-black leading-snug text-slate-800">{cardInfo.title}</div>
-          <div className={`mt-2 text-xs sm:text-sm font-bold ${
+          {schoolInfo?.provider && (
+            <div className="mt-2 text-xs font-bold text-sky-700 sm:text-sm">{schoolInfo.provider}</div>
+          )}
+          {(contractSchool?.location || cardInfo.location) && <div className={`mt-2 text-xs sm:text-sm font-bold ${
             isCompleted ? "text-slate-500" : isPaused ? "text-amber-700" : "text-sky-700"
-          }`}>📍 {contractSchool?.location || cardInfo.location}</div>
+          }`}>📍 {contractSchool?.location || cardInfo.location}</div>}
         </div>
       </div>
     );

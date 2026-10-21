@@ -34,7 +34,8 @@ export default async function AfterSchoolSchoolPage({
               <h1 className="mt-2 text-3xl font-black text-slate-900 sm:text-4xl">
                 🏫 {school.shortName}
               </h1>
-              <p className="mt-2 text-sm font-bold text-slate-500">{school.location}</p>
+              {school.provider && <p className="mt-2 text-sm font-bold text-slate-600">{school.provider}</p>}
+              {school.location && <p className="mt-2 text-sm font-bold text-slate-500">{school.location}</p>}
             </div>
             <Link
               href="/teacher/manage/after-school"
