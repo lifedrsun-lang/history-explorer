@@ -1,5 +1,5 @@
 export type ExperienceStatus = "planned" | "confirmed" | "completed" | "cancelled";
-export type ExperiencePaymentStatus = "unknown" | "unpaid" | "paid";
+export type ExperiencePaymentStatus = "unknown" | "unpaid" | "partial" | "paid";
 export const CERTIFICATE_FIELDS = [
   { key: "facilityId", label: "시설기관 ID", max: 100, copy: true },
   { key: "verificationNumber", label: "검증번호", max: 100, copy: true },
@@ -17,9 +17,36 @@ export function blankExperienceCertificate(): ExperienceCertificate {
 export const experiencePaymentStatus = (item: { feePaid: boolean; paymentStatus?: ExperiencePaymentStatus }): ExperiencePaymentStatus =>
   item.paymentStatus ?? (item.feePaid ? "paid" : "unpaid");
 export const experiencePaymentLabel = (item: { feePaid: boolean; paymentStatus?: ExperiencePaymentStatus }): string =>
-  ({ unknown: "미확인", unpaid: "입금전", paid: "입금완료" })[experiencePaymentStatus(item)];
+  ({ unknown: "미확인", unpaid: "입금전", partial: "일부입금", paid: "입금완료" })[experiencePaymentStatus(item)];
 
-export type ExperienceClassFields = {
+export type ExperienceWageFields = {
+  receivedAmount: number | null;
+  deductionAmount: number | null;
+  paymentDate: string;
+  paymentMemo: string;
+};
+
+export function experienceWageBalance(item: { feeAmount: number | null; receivedAmount?: number | null; deductionAmount?: number | null; feePaid: boolean; paymentStatus?: ExperiencePaymentStatus }): number | null {
+  if (item.feeAmount == null) return null;
+  if (item.receivedAmount == null) return experiencePaymentStatus(item) === "unpaid" ? item.feeAmount : null;
+  return Math.max(0, item.feeAmount - item.receivedAmount - (item.deductionAmount ?? 0));
+}
+
+export function calculateExperienceWages(items: ExperienceClass[]) {
+  return items.reduce((sum, item) => {
+    const balance = experienceWageBalance(item);
+    return {
+      expected: sum.expected + (item.feeAmount ?? 0),
+      received: sum.received + (item.receivedAmount ?? 0),
+      deductions: sum.deductions + (item.deductionAmount ?? 0),
+      outstanding: sum.outstanding + (balance ?? 0),
+      unconfirmed: sum.unconfirmed + (balance == null ? 1 : 0),
+      missingExpected: sum.missingExpected + (item.feeAmount == null ? 1 : 0),
+    };
+  }, { expected: 0, received: 0, deductions: 0, outstanding: 0, unconfirmed: 0, missingExpected: 0 });
+}
+
+export type ExperienceClassFields = ExperienceWageFields & {
   title: string;
   organization: string;
   subject: string;
@@ -68,6 +95,7 @@ export function blankExperienceClass(): ExperienceClassFields {
     feeAmount: null, feePaid: false, status: "planned",
     provider: "", instructorRole: "", contactName: "", contactPhone: "",
     feePerSession: null, paymentStatus: "unknown", certificate: blankExperienceCertificate(),
+    receivedAmount: null, deductionAmount: null, paymentDate: "", paymentMemo: "",
   };
 }
 
@@ -125,8 +153,8 @@ export function validateExperienceClass(raw: Record<string, unknown>): Experienc
   if (typeof raw.feePaid !== "boolean") {
     throw new ExperienceInputError("수당 입금 상태를 확인해주세요.");
   }
-  const paymentStatus = raw.paymentStatus ?? (raw.feePaid ? "paid" : "unpaid");
-  if (!["unknown", "unpaid", "paid"].includes(String(paymentStatus))) {
+  let paymentStatus = raw.paymentStatus ?? (raw.feePaid ? "paid" : "unpaid");
+  if (!["unknown", "unpaid", "partial", "paid"].includes(String(paymentStatus))) {
     throw new ExperienceInputError("수당 입금 상태를 확인해주세요.");
   }
   const source = raw.certificate === undefined ? {} : raw.certificate;
@@ -139,12 +167,22 @@ export function validateExperienceClass(raw: Record<string, unknown>): Experienc
   }
   if (certificate.deadline && !validDate(certificate.deadline)) throw new ExperienceInputError("제출 마감을 확인해주세요.");
   if (certificate.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(certificate.email)) throw new ExperienceInputError("제출 이메일을 확인해주세요.");
+  const feeAmount = optionalInteger(raw.feeAmount, "수당", 1000000000);
+  const receivedAmount = optionalInteger(raw.receivedAmount, "실입금액", 1000000000);
+  const deductionAmount = optionalInteger(raw.deductionAmount, "공제액", 1000000000);
+  const paymentDate = text(raw.paymentDate, "입금일", 10);
+  if (paymentDate && !validDate(paymentDate)) throw new ExperienceInputError("입금일을 확인해주세요.");
+  if (receivedAmount !== null) {
+    paymentStatus = receivedAmount === 0 && !deductionAmount ? "unpaid"
+      : feeAmount === null ? "unknown"
+      : receivedAmount + (deductionAmount ?? 0) >= feeAmount ? "paid" : "partial";
+  }
   return {
     title, organization, subject, audience, location, date, startTime, endTime,
     sessionCount: optionalInteger(raw.sessionCount, "차시", 1000),
     participantCount: optionalInteger(raw.participantCount, "인원", 100000),
     materialsUrl, notes,
-    feeAmount: optionalInteger(raw.feeAmount, "수당", 1000000000),
+    feeAmount,
     feePaid: paymentStatus === "paid",
     status: status as ExperienceStatus,
     provider: text(raw.provider, "시행업체", 160),
@@ -154,5 +192,7 @@ export function validateExperienceClass(raw: Record<string, unknown>): Experienc
     feePerSession: optionalInteger(raw.feePerSession, "차시당 수당", 1000000000),
     paymentStatus: paymentStatus as ExperiencePaymentStatus,
     certificate,
+    receivedAmount, deductionAmount, paymentDate,
+    paymentMemo: text(raw.paymentMemo, "임금 메모", 1000),
   };
 }

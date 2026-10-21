@@ -47,7 +47,7 @@ const managementSections = [
     href: "/teacher/manage/experience",
     icon: "🎨",
     title: "체험수업",
-    description: "일회성 체험수업 기록용 공간 (기능 준비 중)",
+    description: "기관별 수업 일정·발급정보와 임금·입금 내역 관리",
     className: "border-pink-200 bg-pink-50 text-pink-900",
   },
   {

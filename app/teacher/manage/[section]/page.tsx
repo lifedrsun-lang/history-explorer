@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ExperienceWorkspace from "../../experience/ExperienceWorkspace";
 
 import AfterSchoolAlerts from "./AfterSchoolAlerts";
 import AfterSchoolSchoolCards from "./AfterSchoolSchoolCards";
@@ -162,21 +163,6 @@ const sections: Record<string, ManagementSection> = {
     description: "돌봄·늘봄 운영을 위한 관리 영역입니다.",
     items: [],
   },
-  experience: {
-    eyebrow: "EXPERIENCE CLASS",
-    icon: "🎨",
-    title: "체험수업",
-    description: "기관별 일회성 체험수업의 일정, 활동 내용과 수당을 개인 기록으로 정리합니다.",
-    items: [
-      {
-        href: "/teacher/experience",
-        icon: "📝",
-        title: "체험수업 등록·조회",
-        description: "학교·기관, 일시, 대상, 준비 내용과 수당을 등록하고 수정",
-        className: "border-purple-200 bg-purple-50 text-purple-900",
-      },
-    ],
-  },
   "sun-lab": {
     eyebrow: "SUN LAB",
     icon: "✨",
@@ -274,6 +260,7 @@ export default async function TeacherManagementSectionPage({
   params: Promise<{ section: string }>;
 }) {
   const { section } = await params;
+  if (section === "experience") return <ExperienceWorkspace />;
   const config = sections[section];
 
   if (!config) {
