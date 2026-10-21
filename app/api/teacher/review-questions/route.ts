@@ -1,3 +1,4 @@
+import { normalizeReviewBookNumber, buildReviewDistributionIndex } from "@/lib/reviewQuestionMetadata";
 import { FieldValue } from "firebase-admin/firestore";
 
 import {
@@ -18,18 +19,7 @@ export const dynamic = "force-dynamic";
 const REVIEW_QUESTIONS_COLLECTION = "reviewQuestions";
 const normalizeText = (value: unknown) => String(value || "").trim();
 
-const normalizeBookNumber = (value: unknown) => {
-  const normalized = normalizeText(value);
-  if (!normalized) return "";
-
-  const numberOnly = normalized.match(/^(\d+)$/);
-  if (numberOnly) return `${numberOnly[1]}호`;
-
-  const withHo = normalized.match(/^(\d+)\s*호$/);
-  if (withHo) return `${withHo[1]}호`;
-
-  return normalized;
-};
+const normalizeBookNumber = normalizeReviewBookNumber;
 
 const normalizeLesson = (value: unknown, topic?: unknown) => {
   const direct = normalizeText(value);
@@ -205,13 +195,34 @@ export async function GET(request: Request) {
   try {
     await verifyTeacherRequest(request);
     const { db } = getFirebaseAdmin();
-    const snapshot = await db
-      .collection(REVIEW_QUESTIONS_COLLECTION)
-      .orderBy("createdAt", "desc")
-      .get();
+    const [snapshot, assignmentSnapshot] = await Promise.all([
+      db.collection(REVIEW_QUESTIONS_COLLECTION).orderBy("createdAt", "desc").get(),
+      db.collection("reviewAssignments").select(
+        "school", "targetTeachingClass", "title", "createdAt", "isActive", "questions"
+      ).get(),
+    ]);
+    const distributionIndex = buildReviewDistributionIndex(
+      assignmentSnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          school: normalizeText(data.school),
+          teachingClass: normalizeText(data.targetTeachingClass),
+          title: normalizeText(data.title),
+          createdAt: serializeDate(data.createdAt),
+          isActive: data.isActive !== false,
+          questionIds: Array.isArray(data.questions)
+            ? data.questions.map((q: { questionId?: unknown }) => normalizeText(q?.questionId))
+            : [],
+        };
+      })
+    );
 
     const questions = await Promise.all(
-      snapshot.docs.map((docItem) => serializeQuestion(docItem.id, docItem.data()))
+      snapshot.docs.map(async (docItem) => ({
+        ...await serializeQuestion(docItem.id, docItem.data()),
+        distributions: distributionIndex[docItem.id] || [],
+      }))
     );
 
     return Response.json({ questions });

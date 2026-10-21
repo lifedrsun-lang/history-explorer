@@ -18,6 +18,7 @@ type ReviewQuestion = {
 type Props = {
   user: User | null;
   questions: ReviewQuestion[];
+  onSent?: () => void;
 };
 
 const getTeachingClass = (student: AssignmentStudent) => {
@@ -48,10 +49,10 @@ async function teacherFetch(user: User, url: string, init: RequestInit = {}) {
   return data;
 }
 
-export default function ReviewAssignmentComposer({ user, questions }: Props) {
+export default function ReviewAssignmentComposer({ user, questions, onSent }: Props) {
   const [open, setOpen] = useState(false);
   const [students, setStudents] = useState<AssignmentStudent[]>([]);
-  const [title, setTitle] = useState("");
+  const [customTitle, setTitle] = useState<string | null>(null);
   const [school, setSchool] = useState("");
   const [teachingClass, setTeachingClass] = useState("A반");
   const [selectedStudentKeys, setSelectedStudentKeys] = useState<string[]>([]);
@@ -64,14 +65,7 @@ export default function ReviewAssignmentComposer({ user, questions }: Props) {
     questions.length > 0 &&
     questions.every((question) => question.questionType === "exam");
 
-  useEffect(() => {
-    if (!questions.length) {
-      setTitle("");
-      return;
-    }
-
-    setTitle(isExamAssignment ? "기출문제" : "교재문제");
-  }, [isExamAssignment, questions]);
+  const title = customTitle ?? (isExamAssignment ? "기출문제" : "교재문제");
 
   useEffect(() => {
     if (!open || !user || students.length > 0 || isLoadingStudents) return;
@@ -183,6 +177,7 @@ export default function ReviewAssignmentComposer({ user, questions }: Props) {
         )}명에게 보냈습니다. 학생 화면에는 최소 12일 동안 열리고, 이후 처음 오는 일요일에 마감됩니다.`
       );
       setSelectedStudentKeys([]);
+      onSent?.();
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "복습과제 발송에 실패했습니다."

@@ -1,3 +1,5 @@
+import { normalizeReviewBookNumber } from "./reviewQuestionMetadata.ts";
+
 export type ReviewQuestionFilters = {
   questionType: "all" | "textbook" | "exam";
   examLevel: "all" | "basic" | "advanced";
@@ -40,7 +42,7 @@ export function matchesReviewQuestionFilters(
   return (
     (filters.questionType === "all" || question.questionType === filters.questionType) &&
     (filters.questionType !== "exam" || filters.examLevel === "all" || question.examLevel === filters.examLevel) &&
-    (filters.book === "all" || question.bookNumber === filters.book) &&
+    (filters.book === "all" || normalizeReviewBookNumber(question.bookNumber) === normalizeReviewBookNumber(filters.book)) &&
     (filters.lesson === "all" || question.lesson === filters.lesson)
   );
 }
