@@ -69,5 +69,33 @@ async function check(name, fn) { await fn(); count++; console.log('PASS ' + name
     const legacy={...fields}; delete legacy.certificate; delete legacy.paymentStatus; delete legacy.provider; legacy.feePaid=true;
     const validated=lib.validateExperienceClass(legacy); assert.equal(validated.paymentStatus,'paid'); assert.equal(validated.provider,''); assert.equal(validated.certificate.facilityId,'');
   });
+  await check('net deposit plus deductions fully settles gross fee', async () => {
+    const item=lib.validateExperienceClass({...fields,receivedAmount:77360,deductionAmount:2640,paymentDate:'2026-11-30'});
+    assert.equal(item.paymentStatus,'paid'); assert.equal(item.feePaid,true); assert.equal(lib.experienceWageBalance(item),0);
+  });
+  await check('partial deposits and unconfirmed amounts stay distinct', async () => {
+    const partial=lib.validateExperienceClass({...fields,receivedAmount:40000,deductionAmount:0});
+    assert.equal(partial.paymentStatus,'partial'); assert.equal(lib.experienceWageBalance(partial),40000);
+    assert.equal(lib.experienceWageBalance(fields),null);
+    const unpaid=lib.validateExperienceClass({...fields,receivedAmount:0});
+    assert.equal(unpaid.paymentStatus,'unpaid'); assert.equal(lib.experienceWageBalance(unpaid),80000);
+  });
+  await check('wage totals exclude unconfirmed balances and do not fabricate deposits', async () => {
+    const settled=lib.validateExperienceClass({...fields,receivedAmount:77360,deductionAmount:2640});
+    const partial=lib.validateExperienceClass({...fields,receivedAmount:40000});
+    const totals=lib.calculateExperienceWages([settled,partial,fields]);
+    assert.equal(totals.expected,240000); assert.equal(totals.received,117360); assert.equal(totals.deductions,2640); assert.equal(totals.outstanding,40000); assert.equal(totals.unconfirmed,1);
+  });
+  await check('wage update and later class edit preserve certificate, wage, and other fields', async () => {
+    const response=await api.PUT(request('PUT','teacher',{id:saved.id,revision:2,receivedAmount:77360,deductionAmount:2640,paymentDate:'2026-11-30',paymentMemo:'테스트 입금'}));
+    assert.equal(response.status,200); const wage=(await response.json()).item;
+    assert.equal(wage.feeAmount,80000); assert.equal(wage.paymentStatus,'paid'); assert.deepEqual(wage.certificate,saved.certificate);
+    const edited=await api.PUT(request('PUT','teacher',{id:saved.id,revision:3,title:'수업 수정',paymentStatus:'unknown',feePaid:false}));
+    const item=(await edited.json()).item; assert.equal(item.receivedAmount,77360); assert.equal(item.deductionAmount,2640); assert.equal(item.paymentDate,'2026-11-30'); assert.equal(item.paymentStatus,'paid'); assert.deepEqual(item.certificate,saved.certificate);
+    const queried=(await (await api.GET(request('GET','teacher'))).json()).items[0]; assert.deepEqual(queried,item);
+  });
+  await check('invalid wage values rejected', async () => {
+    for (const invalid of [{receivedAmount:-1},{deductionAmount:0.5},{paymentDate:'2026-02-30'},{paymentMemo:'x'.repeat(1001)}]) assert.throws(()=>lib.validateExperienceClass({...fields,...invalid}));
+  });
   console.log(`${count} checks passed; all DB operations used an in-memory test database.`);
 })().catch(e => {console.error(e); process.exitCode=1;});
