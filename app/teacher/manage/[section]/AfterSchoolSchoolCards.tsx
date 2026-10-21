@@ -163,7 +163,7 @@ export default function AfterSchoolSchoolCards() {
           return (
             <article
               key={school.slug}
-              className={`overflow-hidden rounded-[26px] border shadow-sm ${SCHOOL_CARD_STYLES[index]}`}
+              className={`overflow-hidden rounded-[26px] border shadow-sm ${SCHOOL_CARD_STYLES[index % SCHOOL_CARD_STYLES.length]}`}
             >
               <Link
                 href={`/teacher/after-school/${school.slug}`}
@@ -176,9 +176,12 @@ export default function AfterSchoolSchoolCards() {
                   </span>
                 </div>
                 <div className="mt-3 text-xl font-black">{school.shortName}</div>
-                <div className="mt-1 text-xs font-bold opacity-65">
-                  {school.location}
-                </div>
+                {school.provider && (
+                  <div className="mt-1 text-sm font-bold opacity-80">{school.provider}</div>
+                )}
+                {school.location && (
+                  <div className="mt-1 text-xs font-bold opacity-65">{school.location}</div>
+                )}
                 {documents && (
                   <div className="mt-4 space-y-1 border-t border-current/10 pt-3 text-xs font-bold">
                     {(documents.contactName || documents.contactPhone) && (

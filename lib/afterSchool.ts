@@ -21,6 +21,7 @@ export type AfterSchoolSchool = {
   displayName: string;
   shortName: string;
   location: string;
+  provider?: string;
   status: AfterSchoolStatus;
   aliases: string[];
 };
@@ -57,6 +58,16 @@ export const AFTER_SCHOOL_SCHOOLS: AfterSchoolSchool[] = [
     location: "5F 음악실",
     status: "active",
     aliases: ["화성 새솔초등학교", "화성 새솔초", "새솔초등학교", "새솔초"],
+  },
+  {
+    slug: "deunghyeon",
+    name: "서울 등현초등학교",
+    displayName: "서울 등현초",
+    shortName: "서울 등현초",
+    location: "",
+    provider: "크로바에듀",
+    status: "active",
+    aliases: ["서울 등현초등학교", "서울등현초등학교", "서울 등현초", "등현초등학교", "등현초"],
   },
 ];
 

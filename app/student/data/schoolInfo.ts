@@ -19,6 +19,7 @@ export type SchoolInfo = {
   displayName: string;
   aliases?: string[];
   password?: string;
+  provider?: string;
   loginCard: { title: string; location: string };
   notice?: SchoolNoticeInfo;
   hideRanking?: boolean;
@@ -112,6 +113,13 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     aliases: ["서울 신상도초", "신상도초"],
     password: "2792",
     loginCard: { title: "서울 신상도초", location: "컴퓨터실" },
+  },
+  {
+    name: "서울 등현초등학교",
+    displayName: "서울 등현초",
+    aliases: ["서울등현초등학교", "서울 등현초", "등현초등학교", "등현초"],
+    provider: "크로바에듀",
+    loginCard: { title: "서울 등현초", location: "" },
   },
   {
     name: CULTURE_CENTER_LABEL,
