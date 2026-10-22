@@ -44,6 +44,8 @@ export type ContractSchoolConfig = {
   location: string;
   /** 관리자용 수업 분야(차시별 교육내용과 별개) */
   categories?: string[];
+  /** undefined: legacy configured link; empty string: hide link. */
+  operatingPlanUrl?: string;
   published: boolean;
   completed: boolean;
   hasSchoolPassword: boolean;
