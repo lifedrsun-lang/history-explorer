@@ -8,34 +8,40 @@ const SCHOOL_NAMES = [
   "월문초",
   "개봉초",
   "신상도초",
+  "광일초",
 ] as const;
 
 const readOperatingPlanLinks = (): Record<string, string> => {
-  const raw = process.env.CONTRACT_SCHOOL_OPERATING_PLAN_LINKS;
-  if (!raw) return {};
+  const sources = [
+    process.env.CONTRACT_SCHOOL_OPERATING_PLAN_LINKS,
+    process.env.CONTRACT_SCHOOL_OPERATING_PLAN_LINKS_EXTRA,
+  ];
+  const links: Record<string, string> = {};
 
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+  for (const raw of sources) {
+    if (!raw) continue;
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) continue;
 
-    const values = parsed as Record<string, unknown>;
-    const links: Record<string, string> = {};
-    for (const name of SCHOOL_NAMES) {
-      const value = values[name];
-      if (typeof value !== "string") continue;
-      try {
-        const url = new URL(value);
-        if (url.protocol === "https:" && url.hostname === "docs.google.com") {
-          links[name] = url.toString();
+      const values = parsed as Record<string, unknown>;
+      for (const name of SCHOOL_NAMES) {
+        const value = values[name];
+        if (typeof value !== "string") continue;
+        try {
+          const url = new URL(value);
+          if (url.protocol === "https:" && url.hostname === "docs.google.com") {
+            links[name] = url.toString();
+          }
+        } catch {
+          // Invalid URLs are ignored.
         }
-      } catch {
-        // Invalid URLs do not appear on teacher school cards.
       }
+    } catch {
+      // One invalid source must not hide links from the other source.
     }
-    return links;
-  } catch {
-    return {};
   }
+  return links;
 };
 
 export async function GET(request: Request) {
