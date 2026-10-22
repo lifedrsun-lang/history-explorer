@@ -47,6 +47,7 @@ type SchoolDraft = {
   displayName?: unknown;
   location?: unknown;
   categories?: unknown;
+  operatingPlanUrl?: unknown;
   published?: unknown;
   completed?: unknown;
   classrooms?: unknown;
@@ -61,6 +62,7 @@ const MAX_DISPLAY_NAME = 60;
 const MAX_LOCATION = 100;
 const MAX_CATEGORIES = 20;
 const MAX_CATEGORY_LENGTH = 40;
+const MAX_OPERATING_PLAN_URL = 2_048;
 const MAX_PASSWORD = 64;
 const MAX_CLASSROOMS = 30;
 const MAX_LESSONS = 50;
@@ -93,6 +95,22 @@ const normalizeCategories = (value: unknown): string[] => {
     return normalizeLimitedText(item, "categories", MAX_CATEGORY_LENGTH);
   });
   return Array.from(new Set(categories));
+};
+
+const normalizeOperatingPlanUrl = (value: unknown): string => {
+  if (typeof value !== "string") throw new Error("invalid_operating_plan_url");
+  const text = value.trim();
+  if (!text) return "";
+  if (text.length > MAX_OPERATING_PLAN_URL) throw new Error("invalid_operating_plan_url");
+  try {
+    const url = new URL(text);
+    if (url.protocol !== "https:" || !url.hostname || url.username || url.password) {
+      throw new Error("invalid_operating_plan_url");
+    }
+    return url.toString();
+  } catch {
+    throw new Error("invalid_operating_plan_url");
+  }
 };
 
 const normalizeInteger = (
@@ -222,6 +240,9 @@ const fromStoredSchool = (
     categories: Array.isArray(data.categories)
       ? data.categories.filter((value): value is string => typeof value === "string")
       : [],
+    ...(typeof data.operatingPlanUrl === "string"
+      ? { operatingPlanUrl: data.operatingPlanUrl }
+      : {}),
     published: data.published === true,
     completed:
       typeof data.completed === "boolean"
@@ -665,6 +686,9 @@ export const updateContractSchool = async (
   const categories = draft.categories === undefined
     ? baseSchool.categories || []
     : normalizeCategories(draft.categories);
+  const operatingPlanUrl = draft.operatingPlanUrl === undefined
+    ? baseSchool.operatingPlanUrl
+    : normalizeOperatingPlanUrl(draft.operatingPlanUrl);
 
   if (
     published &&
@@ -715,6 +739,7 @@ export const updateContractSchool = async (
     published,
     completed: draft.completed === true,
     categories,
+    ...(operatingPlanUrl !== undefined ? { operatingPlanUrl } : {}),
     classrooms,
     lessons,
     lessonVisibility,
