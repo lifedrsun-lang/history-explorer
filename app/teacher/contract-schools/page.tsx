@@ -67,6 +67,7 @@ const getErrorMessage = (code?: string) => {
     invalid_link_url: "링크 주소는 http:// 또는 https://로 시작해야 해요.",
     invalid_link_targets: "특정 반 링크는 노출할 반을 1개 이상 선택해 주세요.",
     invalid_categories: "수업 카테고리는 최대 20개, 각 40자 이내로 입력해 주세요.",
+    invalid_operating_plan_url: "운영계획서 링크는 https://로 시작하는 주소여야 해요.",
     duplicate_classroom: "같은 학년·반을 두 번 등록할 수 없어요.",
     duplicate_lesson: "같은 차시 번호를 두 번 등록할 수 없어요.",
     school_setup_incomplete: "학생페이지에 노출하려면 반과 차시를 먼저 등록해 주세요.",
@@ -106,6 +107,9 @@ export default function ContractSchoolsPage() {
   const [operatingPlanLinks, setOperatingPlanLinks] = useState<OperatingPlanLinks>({});
 
   const getOperatingPlanLink = (school: ContractSchoolConfig) => {
+    if (typeof school.operatingPlanUrl === "string") {
+      return school.operatingPlanUrl || null;
+    }
     const schoolNames = `${school.schoolName} ${school.displayName}`;
     const match = Object.entries(operatingPlanLinks).find(([schoolName]) =>
       schoolNames.includes(schoolName)
@@ -697,10 +701,17 @@ export default function ContractSchoolsPage() {
                       <SchoolCategoryEditor
                         school={school}
                         saving={saving}
-                        onSave={async (categories) =>
+                        operatingPlanUrl={operatingPlanHref || ""}
+                        onSave={async (categories, operatingPlanUrl) =>
                           Boolean(await saveSchool(
-                            { ...school, categories },
-                            `${school.displayName} 수업 카테고리를 저장했어요.`,
+                            {
+                              ...school,
+                              categories,
+                              ...(operatingPlanUrl !== (operatingPlanHref || "")
+                                ? { operatingPlanUrl }
+                                : {}),
+                            },
+                            `${school.displayName} 수업 정보가 저장됐어요.`,
                             { keepSchoolListClosed: true, applyPasswordChanges: false }
                           ))
                         }
