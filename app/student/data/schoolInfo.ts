@@ -118,8 +118,7 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     name: "서울 등현초등학교",
     displayName: "서울 등현초",
     aliases: ["서울등현초등학교", "서울 등현초", "등현초등학교", "등현초"],
-    provider: "크로바에듀",
-    loginCard: { title: "서울 등현초", location: "" },
+    loginCard: { title: "서울 등현초", location: "강의실 미정" },
   },
   {
     name: CULTURE_CENTER_LABEL,
