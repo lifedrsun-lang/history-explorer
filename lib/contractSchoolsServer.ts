@@ -46,6 +46,7 @@ type SchoolDraft = {
   schoolName?: unknown;
   displayName?: unknown;
   location?: unknown;
+  categories?: unknown;
   published?: unknown;
   completed?: unknown;
   classrooms?: unknown;
@@ -58,6 +59,8 @@ type SchoolDraft = {
 const MAX_SCHOOL_NAME = 100;
 const MAX_DISPLAY_NAME = 60;
 const MAX_LOCATION = 100;
+const MAX_CATEGORIES = 20;
+const MAX_CATEGORY_LENGTH = 40;
 const MAX_PASSWORD = 64;
 const MAX_CLASSROOMS = 30;
 const MAX_LESSONS = 50;
@@ -79,6 +82,17 @@ const normalizeLimitedText = (
   }
 
   return text;
+};
+
+const normalizeCategories = (value: unknown): string[] => {
+  if (!Array.isArray(value) || value.length > MAX_CATEGORIES) {
+    throw new Error("invalid_categories");
+  }
+  const categories = value.map((item) => {
+    if (typeof item !== "string") throw new Error("invalid_categories");
+    return normalizeLimitedText(item, "categories", MAX_CATEGORY_LENGTH);
+  });
+  return Array.from(new Set(categories));
 };
 
 const normalizeInteger = (
@@ -205,6 +219,9 @@ const fromStoredSchool = (
     schoolName: normalizeText(data.schoolName),
     displayName: normalizeText(data.displayName),
     location: normalizeText(data.location),
+    categories: Array.isArray(data.categories)
+      ? data.categories.filter((value): value is string => typeof value === "string")
+      : [],
     published: data.published === true,
     completed:
       typeof data.completed === "boolean"
@@ -573,6 +590,7 @@ export const createContractSchool = async (
     schoolName,
     displayName,
     location,
+    categories: [],
     published: false,
     completed: false,
     classrooms: [],
@@ -644,6 +662,9 @@ export const updateContractSchool = async (
     baseSchool
   );
   const published = draft.published === true;
+  const categories = draft.categories === undefined
+    ? baseSchool.categories || []
+    : normalizeCategories(draft.categories);
 
   if (
     published &&
@@ -693,6 +714,7 @@ export const updateContractSchool = async (
     ),
     published,
     completed: draft.completed === true,
+    categories,
     classrooms,
     lessons,
     lessonVisibility,
