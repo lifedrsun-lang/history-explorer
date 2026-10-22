@@ -42,6 +42,8 @@ export type ContractSchoolConfig = {
   schoolName: string;
   displayName: string;
   location: string;
+  /** 관리자용 수업 분야(차시별 교육내용과 별개) */
+  categories?: string[];
   published: boolean;
   completed: boolean;
   hasSchoolPassword: boolean;
@@ -259,6 +261,7 @@ const toSeedSchool = ({
     schoolName: firstClassroom.schoolName,
     displayName: schoolDisplayName,
     location,
+    categories: [],
     published: true,
     completed,
     hasSchoolPassword,
