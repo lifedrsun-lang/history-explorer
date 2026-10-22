@@ -10,6 +10,7 @@ import TeacherClassAccountFinder from "@/app/student/components/TeacherClassAcco
 import SchoolDocumentsPanel from "@/app/teacher/contract-schools/SchoolDocumentsPanel";
 import LessonPhotosPanel from "@/app/teacher/contract-schools/LessonPhotosPanel";
 import SchoolQrPanel from "./SchoolQrPanel";
+import SchoolCategoryEditor from "./SchoolCategoryEditor";
 import ClassroomLockoutResetButton from "./ClassroomLockoutResetButton";
 import type {
   ContractSchoolClassroom,
@@ -65,6 +66,7 @@ const getErrorMessage = (code?: string) => {
     invalid_display_name: "학생 화면 표시명을 확인해 주세요.",
     invalid_link_url: "링크 주소는 http:// 또는 https://로 시작해야 해요.",
     invalid_link_targets: "특정 반 링크는 노출할 반을 1개 이상 선택해 주세요.",
+    invalid_categories: "수업 카테고리는 최대 20개, 각 40자 이내로 입력해 주세요.",
     duplicate_classroom: "같은 학년·반을 두 번 등록할 수 없어요.",
     duplicate_lesson: "같은 차시 번호를 두 번 등록할 수 없어요.",
     school_setup_incomplete: "학생페이지에 노출하려면 반과 차시를 먼저 등록해 주세요.",
@@ -684,18 +686,38 @@ export default function ContractSchoolsPage() {
                       : "border-sky-100 bg-white hover:border-sky-300"
                   }`}
                 >
-                  <button type="button" onClick={() => selectSchool(school)} className="block w-full text-left">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className="text-2xl">🏫</div>
-                        {school.completed && (
-                          <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-black text-slate-600">종강</span>
-                        )}
-                      </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <button type="button" onClick={() => selectSchool(school)} aria-label={`${school.displayName} 관리하기`} className="flex items-center gap-2">
+                      <span className="text-2xl">🏫</span>
+                      {school.completed && (
+                        <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-black text-slate-600">종강</span>
+                      )}
+                    </button>
+                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                      <SchoolCategoryEditor
+                        school={school}
+                        saving={saving}
+                        onSave={async (categories) =>
+                          Boolean(await saveSchool(
+                            { ...school, categories },
+                            `${school.displayName} 수업 카테고리를 저장했어요.`,
+                            { keepSchoolListClosed: true, applyPasswordChanges: false }
+                          ))
+                        }
+                      />
                       <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${school.published ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{school.published ? "학생페이지 노출" : "준비 중 · 미노출"}</span>
                     </div>
-                    <div className="mt-3 text-lg font-black text-slate-900">{school.displayName}</div>
+                  </div>
+                  <button type="button" onClick={() => selectSchool(school)} className="mt-3 block w-full text-left">
+                    <div className="text-lg font-black text-slate-900">{school.displayName}</div>
                     <div className="mt-1 text-xs font-bold text-slate-400">/{school.slug} · {school.classrooms.filter((classroom) => classroom.active !== false).length}개 반 · {school.lessons.length}차시</div>
+                    {(school.categories?.length ?? 0) > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {school.categories!.map((category) => (
+                          <span key={category} className="rounded-full bg-indigo-50 px-2 py-1 text-[11px] font-bold text-indigo-700">{category}</span>
+                        ))}
+                      </div>
+                    )}
                     {documentInfo && (
                       <div className="mt-3 space-y-1 border-t border-slate-100 pt-3 text-xs font-bold text-slate-600">
                         {(documentInfo.contactName || documentInfo.contactPhone) && (
