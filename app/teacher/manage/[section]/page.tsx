@@ -106,6 +106,13 @@ const sections: Record<string, ManagementSection> = {
         className: "border-sky-200 bg-sky-50 text-sky-900",
       },
       {
+        href: "/teacher/atc-plans",
+        icon: "📋",
+        title: "ATC 수업계획서",
+        description: "학교 선택 · 헬로메이플 기초·심화 구성 · 수업계획서 저장·인쇄",
+        className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+      },
+      {
         href: "/teacher/atc-confirmations",
         icon: "🧾",
         title: "ATC 참여확인서",

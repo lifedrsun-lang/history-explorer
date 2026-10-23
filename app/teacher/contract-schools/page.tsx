@@ -771,7 +771,6 @@ export default function ContractSchoolsPage() {
                       {school.completed ? "진행중으로 변경" : "종강 처리"}
                     </button>
                   </div>
-                  <Link href={`/teacher/atc-plans?school=${encodeURIComponent(school.slug)}`} className="mt-2 block rounded-xl bg-emerald-50 px-3 py-2.5 text-center text-xs font-black text-emerald-700 hover:bg-emerald-100">수업계획서 만들기 / 보기</Link>
                   {operatingPlanHref && (
                     <a
                       href={operatingPlanHref}

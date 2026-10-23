@@ -120,7 +120,7 @@ export default function AtcPlansPage() {
   if (!checked || loading) return <main className={styles.shell}><p role="status">학교와 수업계획서를 불러오고 있습니다.</p></main>;
   if (!user) return <main className={styles.shell}><h1>헬로메이플 수업계획서</h1><p>교사용 로그인 후 이용할 수 있습니다.</p><Link href="/teacher">교사용 로그인</Link></main>;
   return <main className={styles.shell}>
-    <header className={styles.header}><div><Link href="/teacher/contract-schools">← 학교 카드</Link><p className={styles.eyebrow}>ATC SCHOOL</p><h1>헬로메이플 수업계획서</h1><p>기초와 심화를 골라 우리 학교의 수업으로 구성하세요.</p></div></header>
+    <header className={styles.header}><div><Link href="/teacher/manage/teaching">← 교과협력</Link><p className={styles.eyebrow}>ATC SCHOOL</p><h1>헬로메이플 수업계획서</h1><p>기초와 심화를 골라 우리 학교의 수업으로 구성하세요.</p></div></header>
     {error && <p role="alert" className={styles.error}>{error} 입력 내용은 화면에 유지됩니다.</p>}
     {message && <p role="status" className={styles.success}>{message}</p>}
     <section className={styles.panel}>
