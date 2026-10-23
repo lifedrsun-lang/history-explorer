@@ -28,11 +28,12 @@ export function composeAtcRows(ids: string[]): PlanWeek[] {
 
 export const ATC_LESSONS = curriculum.modules.flatMap(module => {
   let number = 0;
-  return module.blocks.flatMap(block => Array.from({ length: block.duration }, () => {
+  return module.blocks.flatMap(block => Array.from({ length: block.duration }, (_, offset) => {
     const lessonNumber = ++number;
+    const phase = block.duration === 2 ? (offset === 0 ? "이론" : "실습") : "";
     return {
       id: `${module.id}-lesson-${lessonNumber}`,
-      moduleId: module.id, moduleTitle: module.title, lessonNumber,
+      moduleId: module.id, moduleTitle: module.title, lessonNumber, phase,
       topic: block.topic, activities: block.activities,
       sharedRange: block.duration > 1 ? block.range : "",
       warning: module.warning.trim(),
@@ -46,10 +47,11 @@ export function composeAtcLessonRows(ids: string[]): PlanWeek[] {
     if (!lesson) throw new Error("차시를 찾을 수 없습니다.");
     return {
       id: crypto.randomUUID(), week_number: 1, lesson_number: 1, duration: 1,
-      source_lesson_id: lesson.id, source_revision: 1,
-      topic: `${lesson.moduleTitle} · 원본 ${lesson.lessonNumber}차시`,
-      objective: "", activities: `${lesson.topic}\n${lesson.activities}`,
-      materials: "", notes: [lesson.warning, lesson.sharedRange
+      source_lesson_id: lesson.id, source_revision: 2,
+      topic: `${lesson.moduleTitle} · 원본 ${lesson.lessonNumber}차시${lesson.phase ? ` (${lesson.phase})` : ""}`,
+      objective: "", activities: `${lesson.phase ? `[${lesson.phase}] ` : ""}${lesson.topic}\n${lesson.activities}`,
+      materials: "", notes: [lesson.warning, lesson.phase
+        ? `원본 ${lesson.sharedRange}차시 중 ${lesson.lessonNumber}차시 ${lesson.phase}. 두 차시의 앞 차시는 이론, 뒤 차시는 실습으로 구성합니다.` : lesson.sharedRange
         ? `원본 ${lesson.sharedRange}차시 공통 내용입니다. 선택한 차시에 맞게 수업 내용을 조정해 주세요.` : ""].filter(Boolean).join("\n"),
     };
   }));
