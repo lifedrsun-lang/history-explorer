@@ -51,3 +51,29 @@ assert.ok(html.includes('총 6차시'));
 assert.ok(html.includes('5~6'));
 console.log('PASS: 15 module totals; literacy 6; composition/order/removal; server roundtrip and total; invalid data; legacy compatibility; HTML escaping.');
 module.exports = { load };
+
+const lessons = core.ATC_LESSONS;
+for (const module of core.ATC_CURRICULUM.modules) {
+  const entries = lessons.filter(l => l.moduleId === module.id);
+  assert.equal(entries.length, module.blocks.reduce((n,b) => n+b.duration,0));
+  assert.equal(JSON.stringify(entries.map(l => l.lessonNumber)), JSON.stringify(entries.map((_,i) => i+1)));
+}
+const partialIds = ['basic-1-lesson-1', 'basic-1-lesson-3', 'basic-1-lesson-6', 'advanced-7-lesson-2'];
+// Use a real advanced lesson ID from the catalog.
+partialIds[3] = lessons.find(l => l.moduleId.startsWith('advanced-') && l.lessonNumber === 2).id;
+const partial = core.composeAtcLessonRows(partialIds);
+assert.equal(partial.length,4);
+assert.equal(core.atcTotal(partial),4);
+assert.equal(JSON.stringify(partial.map(r => r.lesson_number)), '[1,2,3,4]');
+assert.equal(JSON.stringify(partial.map(r => r.source_lesson_id)), JSON.stringify(partialIds));
+assert.ok(partial.every(r => r.duration === 1));
+assert.ok(partial[1].notes.includes('3-4차시 공통'));
+assert.ok(partial[2].topic.includes('원본 6차시'));
+const roundtrip = validatePlan({...core.newAtcPlan({slug:'test',schoolName:'검증초'}),weeks:partial,total_lessons:999});
+assert.equal(roundtrip.total_lessons,4);
+assert.equal(roundtrip.weeks[2].source_lesson_id,'basic-1-lesson-6');
+assert.ok(core.atcPlanHtml({...plan,weeks:partial}).includes('총 4차시'));
+assert.throws(() => core.composeAtcLessonRows(['basic-1-lesson-7']));
+assert.throws(() => core.composeAtcLessonRows([partialIds[0],partialIds[0]]));
+assert.equal(core.composeAtcLessonRows([]).length,0);
+console.log('PASS: individual lessons, partial/mixed selection, source references, shared content, save roundtrip, totals and invalid selections.');

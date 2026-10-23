@@ -5,7 +5,7 @@ import { onAuthStateChanged, type User } from "firebase/auth";
 import { useEffect, useRef, useState } from "react";
 import { auth } from "@/lib/firebase";
 import { validatePlan, type SemesterPlan, type PlanWeek } from "@/lib/semesterPlans";
-import { ATC_CURRICULUM, atcPlanHtml, atcRange, atcTotal, composeAtcRows, newAtcPlan, renumberAtcRows } from "@/lib/atcPlans";
+import { ATC_CURRICULUM, ATC_LESSONS, composeAtcLessonRows, atcPlanHtml, atcRange, atcTotal, newAtcPlan, renumberAtcRows } from "@/lib/atcPlans";
 import styles from "./atcPlans.module.css";
 
 type School = { slug: string; schoolName: string; displayName: string; classrooms: { grade: number; active: boolean }[] };
@@ -115,7 +115,7 @@ export default function AtcPlansPage() {
     anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
   const school = schools.find(s => s.slug === schoolSlug);
-  const selectedTotal = selection.reduce((sum, id) => sum + ATC_CURRICULUM.modules.find(m => m.id === id)!.blocks.reduce((n, b) => n + b.duration, 0), 0);
+  const selectedTotal = selection.length;
 
   if (!checked || loading) return <main className={styles.shell}><p role="status">학교와 수업계획서를 불러오고 있습니다.</p></main>;
   if (!user) return <main className={styles.shell}><h1>헬로메이플 수업계획서</h1><p>교사용 로그인 후 이용할 수 있습니다.</p><Link href="/teacher">교사용 로그인</Link></main>;
@@ -141,9 +141,22 @@ export default function AtcPlansPage() {
         <label>수업 주제<textarea rows={2} value={plan.notes} onChange={e => setPlan({ ...plan, notes: e.target.value })} /></label>
       </div></fieldset>
       <fieldset disabled={busy} className={styles.panel}><legend>커리큘럼 선택</legend><div className={styles.toolbar}><div className={styles.tabs}>{["전체", "기초", "심화"].map(g => <button type="button" key={g} aria-pressed={group === g} onClick={() => setGroup(g)}>{g}</button>)}</div><a href={ATC_CURRICULUM.sourceUrl} target="_blank" rel="noopener noreferrer">원본 커리큘럼 ↗</a></div>
-        <div className={styles.modules}>{ATC_CURRICULUM.modules.filter(m => group === "전체" || m.group === group).map(m => <label className={selection.includes(m.id) ? styles.selectedModule : styles.module} key={m.id}><input type="checkbox" checked={selection.includes(m.id)} onChange={e => setSelection(ids => e.target.checked ? [...ids, m.id] : ids.filter(id => id !== m.id))} /><span><small>{m.group} · {m.blocks.reduce((n,b) => n+b.duration, 0)}차시</small><strong>{m.title}</strong>{m.warning && <em>{m.warning}</em>}</span></label>)}</div>
-        {!!selection.length && <div className={styles.selection}><h3>추가할 순서 · {selectedTotal}차시</h3>{selection.map((id, index) => <div className={styles.selectionRow} key={id}><span>{index+1}. {ATC_CURRICULUM.modules.find(m => m.id === id)!.title}</span><div><button aria-label={`${index+1}번째 선택 위로`} disabled={index === 0} onClick={() => moveSelection(index, -1)}>↑</button><button aria-label={`${index+1}번째 선택 아래로`} disabled={index === selection.length-1} onClick={() => moveSelection(index, 1)}>↓</button></div></div>)}
-          <button className={styles.primary} disabled={plan.weeks.length + selection.reduce((n,id) => n + ATC_CURRICULUM.modules.find(m => m.id===id)!.blocks.length,0) > 200 || atcTotal(plan.weeks) + selectedTotal > 999} onClick={() => { updateRows([...plan.weeks, ...composeAtcRows(selection)]); setSelection([]); setPreview(false); }}>선택한 커리큘럼 추가 ({selectedTotal}차시)</button></div>}
+        <p className={styles.hint}>프로그램을 펼친 뒤 필요한 차시만 선택하세요. 선택한 차시는 계획서에서 1차시부터 순서대로 배치됩니다.</p>
+        <div className={styles.modules}>{ATC_CURRICULUM.modules.filter(m => group === "전체" || m.group === group).map(m => {
+          const lessons = ATC_LESSONS.filter(lesson => lesson.moduleId === m.id);
+          const count = lessons.filter(lesson => selection.includes(lesson.id)).length;
+          return <details className={styles.moduleCard} key={m.id}>
+            <summary><small>{m.group} · {lessons.length}차시 · {count}개 선택</small><strong>{m.title}</strong><span className={styles.expandHint}>차시별 선택 펼치기 / 접기</span></summary>
+            {m.warning && <p className={styles.hint}>{m.warning}</p>}
+            <button type="button" onClick={() => setSelection(ids => count === lessons.length ? ids.filter(id => !lessons.some(l => l.id === id)) : [...ids, ...lessons.filter(l => !ids.includes(l.id)).map(l => l.id)])}>{count === lessons.length ? "전체 해제" : "전체 차시 선택"}</button>
+            <div className={styles.lessonOptions}>{lessons.map(lesson => <label className={selection.includes(lesson.id) ? styles.selectedModule : styles.module} key={lesson.id}>
+              <input type="checkbox" checked={selection.includes(lesson.id)} onChange={e => { const selected = e.target.checked; setSelection(ids => selected ? [...ids, lesson.id] : ids.filter(id => id !== lesson.id)); }} />
+              <span><strong>{lesson.lessonNumber}차시</strong><span className={styles.lessonTopic}>{lesson.topic}</span>{lesson.sharedRange && <small>원본 {lesson.sharedRange}차시 공통 내용</small>}</span>
+            </label>)}</div>
+          </details>;
+        })}</div>
+        {!!selection.length && <div className={styles.selection}><h3>추가할 순서 · {selectedTotal}차시</h3>{selection.map((id, index) => <div className={styles.selectionRow} key={id}><span>{index+1}. {`${ATC_LESSONS.find(l => l.id === id)!.moduleTitle} · ${ATC_LESSONS.find(l => l.id === id)!.lessonNumber}차시`}</span><div><button aria-label={`${index+1}번째 선택 위로`} disabled={index === 0} onClick={() => moveSelection(index, -1)}>↑</button><button aria-label={`${index+1}번째 선택 아래로`} disabled={index === selection.length-1} onClick={() => moveSelection(index, 1)}>↓</button></div></div>)}
+          <button className={styles.primary} disabled={plan.weeks.length + selection.length > 200 || atcTotal(plan.weeks) + selectedTotal > 999} onClick={() => { updateRows([...plan.weeks, ...composeAtcLessonRows(selection)]); setSelection([]); setPreview(false); }}>선택한 차시 추가 ({selectedTotal}차시)</button></div>}
       </fieldset>
       <section className={styles.panel}><div className={styles.toolbar}><h2>차시별 계획 · 총 {atcTotal(plan.weeks)}차시</h2><button onClick={() => setPreview(v => !v)} disabled={!plan.weeks.length}>{preview ? "수정 화면" : "계획서 미리보기"}</button></div>
         {!plan.weeks.length && <p className={styles.empty}>위에서 커리큘럼을 선택하고 추가해 주세요.</p>}

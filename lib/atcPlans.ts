@@ -25,6 +25,36 @@ export function composeAtcRows(ids: string[]): PlanWeek[] {
   });
   return renumberAtcRows(rows);
 }
+
+export const ATC_LESSONS = curriculum.modules.flatMap(module => {
+  let number = 0;
+  return module.blocks.flatMap(block => Array.from({ length: block.duration }, () => {
+    const lessonNumber = ++number;
+    return {
+      id: `${module.id}-lesson-${lessonNumber}`,
+      moduleId: module.id, moduleTitle: module.title, lessonNumber,
+      topic: block.topic, activities: block.activities,
+      sharedRange: block.duration > 1 ? block.range : "",
+      warning: module.warning.trim(),
+    };
+  }));
+});
+export function composeAtcLessonRows(ids: string[]): PlanWeek[] {
+  if (new Set(ids).size !== ids.length) throw new Error("같은 차시를 두 번 선택할 수 없습니다.");
+  return renumberAtcRows(ids.map(id => {
+    const lesson = ATC_LESSONS.find(item => item.id === id);
+    if (!lesson) throw new Error("차시를 찾을 수 없습니다.");
+    return {
+      id: crypto.randomUUID(), week_number: 1, lesson_number: 1, duration: 1,
+      source_lesson_id: lesson.id, source_revision: 1,
+      topic: `${lesson.moduleTitle} · 원본 ${lesson.lessonNumber}차시`,
+      objective: "", activities: `${lesson.topic}\n${lesson.activities}`,
+      materials: "", notes: [lesson.warning, lesson.sharedRange
+        ? `원본 ${lesson.sharedRange}차시 공통 내용입니다. 선택한 차시에 맞게 수업 내용을 조정해 주세요.` : ""].filter(Boolean).join("\n"),
+    };
+  }));
+}
+
 export function newAtcPlan(school: { slug: string; schoolName: string }): SemesterPlan {
   return { ...newPlan(), format: "atc", school_slug: school.slug, school_name: school.schoolName,
     title: `${school.schoolName} 헬로메이플 수업계획서`, program: "헬로메이플",
