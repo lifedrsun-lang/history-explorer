@@ -20,6 +20,7 @@ export type CurriculumLesson = LessonContent & {
   revision: number;
 };
 export type PlanWeek = LessonContent & {
+  duration?: number;
   id: string;
   week_number: number;
   lesson_number: number;
@@ -27,6 +28,9 @@ export type PlanWeek = LessonContent & {
   source_revision: number | null;
 };
 export type SemesterPlan = {
+  format?: "atc";
+  school_slug?: string;
+  school_name?: string;
   id: string;
   title: string;
   program: string;
@@ -95,13 +99,24 @@ export function validatePlan(body: Record<string, unknown>): Omit<SemesterPlan, 
       source_revision: w.source_revision === null ? null : integer(w.source_revision, 1, 1000000),
       topic: text(w.topic, 500), objective: text(w.objective), activities: text(w.activities),
       materials: text(w.materials), notes: text(w.notes),
+      ...(body.format === "atc" ? { duration: integer(w.duration, 1, 20) } : {}),
     };
   }));
   if (new Set(weeks.map(w => w.id)).size !== weeks.length) throw new PlanInputError("주차 ID가 중복되었습니다.");
+  let nextLesson = 1;
+  if (body.format === "atc") for (const week of weeks) {
+    week.lesson_number = nextLesson;
+    nextLesson += week.duration!;
+  }
   const result = { title, program, year: integer(body.year, 2000, 2200), operation: text(body.operation, 200),
+    ...(body.format === "atc" ? { format: "atc" as const, school_slug: validId(body.school_slug), school_name: text(body.school_name, 200).trim() } : {}),
     period_start: date(body.period_start), period_end: date(body.period_end), target: text(body.target, 500),
     total_lessons: integer(body.total_lessons, 0, 999), instructor: text(body.instructor, 200), notes: text(body.notes), weeks };
   if (result.period_start && result.period_end && result.period_start > result.period_end) throw new PlanInputError("종료일은 시작일 이후로 입력해주세요.");
+  if (body.format === "atc") {
+    if (!result.school_name || !weeks.length || nextLesson - 1 > 999) throw new PlanInputError("학교명과 수업 내용을 확인해주세요.");
+    result.total_lessons = nextLesson - 1;
+  }
   // Leave room for ownership and Firestore metadata under the document's 1 MiB limit.
   if (new TextEncoder().encode(JSON.stringify(result)).length > 700000) throw new PlanInputError("계획안 내용이 너무 큽니다. 계획안을 나누어 저장해주세요.");
   return result;
@@ -114,3 +129,4 @@ export function validateLesson(body: Record<string, unknown>): Pick<CurriculumLe
     topic, objective: text(body.objective), activities: text(body.activities), materials: text(body.materials),
     notes: text(body.notes), activity_format: text(body.activity_format, 500), review_required: body.review_required === true };
 }
+

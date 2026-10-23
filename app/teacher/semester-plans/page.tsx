@@ -66,7 +66,7 @@ export default function SemesterPlansPage() {
     try {
       const data = await api("GET");
       if (auth.currentUser?.uid !== loadingUid) return;
-      setPlans(data.plans); setLessons(data.lessons); setAllowed(true);
+      setPlans(data.plans.filter(plan => plan.format !== "atc")); setLessons(data.lessons); setAllowed(true);
     } catch (e) { if (auth.currentUser?.uid === loadingUid) setError(e instanceof Error ? e.message : "자료를 불러오지 못했습니다."); }
     finally { if (auth.currentUser?.uid === loadingUid) setLoading(false); }
   }, [api]);
@@ -211,7 +211,7 @@ export default function SemesterPlansPage() {
   if (!user) return <main className={styles.shell}><section className={styles.panel}><h1>학기 계획안</h1><p>교사용 로그인 후 이용할 수 있습니다.</p><Link href="/teacher">교사용 로그인</Link></section></main>;
   if (!allowed) return <main className={styles.shell}><section className={styles.panel}><h1>학기 계획안</h1><p role="status">{loading ? "수업자료를 불러오고 있습니다." : error}</p>{!loading && <button onClick={() => void load()}>다시 불러오기</button>}<Link href="/teacher">교사용 홈</Link></section></main>;
   return <main className={styles.shell}>
-    <header className={styles.header}><div><Link href="/teacher/manage/after-school">방과후 관리</Link><h1>학기 계획안</h1></div>
+    <header className={styles.header}><div><Link href="/teacher/manage/after-school">방과후 관리</Link><h1>학기 계획안</h1><Link href="/teacher/atc-plans">헬로메이플 수업계획서 →</Link></div>
       {(editor || lessonEditor) && <div className={styles.actions}><span role="status" className={dirty ? styles.unsaved : styles.muted}>{status}</span><button onClick={close} disabled={busy}>목록</button>{editor && <button onClick={() => setPreview(v => !v)} disabled={busy}>{preview ? "작성 화면" : "미리보기"}</button>}<button className={styles.primary} onClick={() => void save()} disabled={busy || !dirty}>{busy ? "저장 중…" : "저장"}</button></div>}
     </header>
     {error && <p role="alert" className={styles.error}>{error.replace("저장 실패: ", "저장하지 못했습니다. 입력한 내용은 화면에 유지됩니다. ")}</p>}
@@ -272,3 +272,4 @@ export default function SemesterPlansPage() {
     </>)}
   </main>;
 }
+
