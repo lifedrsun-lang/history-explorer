@@ -7,6 +7,7 @@ import { auth } from "@/lib/firebase";
 import { validatePlan, type SemesterPlan, type PlanWeek } from "@/lib/semesterPlans";
 import { ATC_CURRICULUM, ATC_LESSONS, composeAtcLessonRows, atcPlanHtml, atcRange, atcTotal, newAtcPlan, renumberAtcRows } from "@/lib/atcPlans";
 import styles from "./atcPlans.module.css";
+import AtcPlanMail from "./AtcPlanMail";
 
 type School = { slug: string; schoolName: string; displayName: string; classrooms: { grade: number; active: boolean }[] };
 async function api(user: User, path: string, method = "GET", body?: unknown) {
@@ -166,6 +167,7 @@ export default function AtcPlansPage() {
           <label>수업 주제<input maxLength={500} value={row.topic} onChange={e => updateRows(plan.weeks.map(r => r.id===row.id ? {...r,topic:e.target.value} : r))} /></label><label>수업 내용<textarea rows={6} maxLength={20000} value={row.activities} onChange={e => updateRows(plan.weeks.map(r => r.id===row.id ? {...r,activities:e.target.value} : r))} /></label>
         </fieldset></details>)}
       </section>
+      {plan.id ? <AtcPlanMail key={`${user.uid}:${plan.id}:${plan.revision}`} user={user} plan={plan} dirty={dirty} busy={busy} setBusy={setBusy} /> : <p className={styles.hint}>학교별 저장 후 담당자에게 메일을 발송할 수 있습니다.</p>}
       <div className={styles.footer}><span role="status">{busy ? "저장 중…" : dirty ? "저장 전 변경사항이 있습니다" : "저장된 내용입니다"}</span><button className={styles.primary} disabled={busy || !plan.weeks.length || !!selection.length || (!dirty && !!plan.id)} onClick={() => void save()}>학교별 저장</button><button disabled={!plan.weeks.length || busy} onClick={download}>계획서 파일 저장</button></div>
       <p className={styles.hint}>파일은 HTML 형식으로 저장됩니다. 파일을 열고 ‘인쇄 / PDF 저장’을 누르면 PDF로 보관할 수 있습니다. HWP 원본 파일 생성은 지원하지 않습니다.</p>
     </>}
