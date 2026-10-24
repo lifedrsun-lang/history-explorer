@@ -35,6 +35,8 @@ export const ATC_LESSONS = curriculum.modules.flatMap(module => {
       id: `${module.id}-lesson-${lessonNumber}`,
       moduleId: module.id, moduleTitle: module.title, lessonNumber, phase,
       topic: block.topic, activities: block.activities,
+      displayTopic: `${module.displayTitle} - ${block.displayTopic}${phase ? ` (${phase})` : ""}`,
+      label: `${lessonNumber}차시 ${module.displayTitle} - ${block.displayTopic}${phase ? ` (${phase})` : ""}`,
       sharedRange: block.duration > 1 ? block.range : "",
       warning: module.warning.trim(),
     };
@@ -47,8 +49,8 @@ export function composeAtcLessonRows(ids: string[]): PlanWeek[] {
     if (!lesson) throw new Error("차시를 찾을 수 없습니다.");
     return {
       id: crypto.randomUUID(), week_number: 1, lesson_number: 1, duration: 1,
-      source_lesson_id: lesson.id, source_revision: 2,
-      topic: `${lesson.moduleTitle} · 원본 ${lesson.lessonNumber}차시${lesson.phase ? ` (${lesson.phase})` : ""}`,
+      source_lesson_id: lesson.id, source_revision: 3,
+      topic: lesson.displayTopic,
       objective: "", activities: `${lesson.phase ? `[${lesson.phase}] ` : ""}${lesson.topic}\n${lesson.activities}`,
       materials: "", notes: [lesson.warning, lesson.phase
         ? `원본 ${lesson.sharedRange}차시 중 ${lesson.lessonNumber}차시 ${lesson.phase}. 두 차시의 앞 차시는 이론, 뒤 차시는 실습으로 구성합니다.` : lesson.sharedRange
