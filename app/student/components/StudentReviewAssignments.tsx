@@ -37,7 +37,7 @@ type LocalAnswer = {
 
 type ReviewMode = "review" | "exam";
 type Props = { student: any; mode?: ReviewMode };
-const OPTION_LABELS = ["①", "②", "③", "④"];
+const OPTION_LABELS = ["①", "②", "③", "④", "⑤"];
 
 const getStudentCollection = (student: any): StudentCollection => {
   const collectionName = String(student?.collectionName || "students");
@@ -235,7 +235,7 @@ export default function StudentReviewAssignments({ student, mode = "review" }: P
   const isCorrect = selectedIndex === currentQuestion.correctIndex;
   const isLast = questionIndex === activeAssignment.questions.length - 1;
   const isExamImage = currentQuestion.questionType === "exam" && Boolean(currentQuestion.imageUrl);
-  const answerCount = currentQuestion.questionType === "exam" ? 4 : currentQuestion.options.length;
+  const answerCount = currentQuestion.options.length;
 
   return (
     <div className="px-2 py-4">
@@ -269,7 +269,7 @@ export default function StudentReviewAssignments({ student, mode = "review" }: P
           <div className="mt-4 text-lg font-black leading-7 text-slate-800">{currentQuestion.prompt}</div>
         )}
 
-        <div className={`mt-4 grid gap-2 ${isExamImage ? "grid-cols-4" : ""}`}>
+        <div className={`mt-4 grid gap-2 ${isExamImage ? (answerCount === 5 ? "grid-cols-5" : "grid-cols-4") : ""}`}>
           {Array.from({ length: answerCount }).map((_, index) => {
             const selected = selectedIndex === index;
             const correct = checked && index === currentQuestion.correctIndex;

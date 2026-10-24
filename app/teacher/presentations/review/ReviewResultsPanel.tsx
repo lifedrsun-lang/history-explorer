@@ -57,7 +57,7 @@ type ReviewAssignmentResult = {
 };
 
 type Props = { user: User | null };
-const OPTION_LABELS = ["①", "②", "③", "④"];
+const OPTION_LABELS = ["①", "②", "③", "④", "⑤"];
 
 const formatDate = (value: string | null) => {
   if (!value) return "";

@@ -41,6 +41,11 @@ const normalizeExamLevel = (value: unknown) => {
 const normalizeExamNumber = (value: unknown) =>
   normalizeText(value).replace(/[^0-9]/g, "");
 
+const getOptionCount = (questionType: string, examLevel: string) => {
+  if (questionType === "textbook") return 3;
+  return examLevel === "advanced" ? 5 : 4;
+};
+
 const serializeQuestion = async (
   id: string,
   data: FirebaseFirestore.DocumentData
@@ -74,7 +79,15 @@ const serializeQuestion = async (
     topic: normalizeText(data?.topic),
     prompt: normalizeText(data?.prompt),
     options: Array.isArray(data?.options)
-      ? data.options.slice(0, 4).map((item: unknown) => normalizeText(item))
+      ? data.options
+          .slice(
+            0,
+            getOptionCount(
+              normalizeQuestionType(data?.questionType),
+              normalizeExamLevel(data?.examLevel)
+            )
+          )
+          .map((item: unknown) => normalizeText(item))
       : [],
     correctIndex: Number(data?.correctIndex || 0),
     explanation: normalizeText(data?.explanation),
@@ -166,11 +179,12 @@ const parseQuestionBody = (body: Record<string, unknown>) => {
     throw new Error("exam_image_or_prompt_required");
   }
 
-  const options = rawOptions.slice(0, 4);
-  if (options.length !== 4 || options.some((item) => !item)) {
+  const optionCount = getOptionCount(questionType, examLevel);
+  const options = rawOptions.slice(0, optionCount);
+  if (options.length !== optionCount || options.some((item) => !item)) {
     throw new Error("invalid_options");
   }
-  if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex > 3) {
+  if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex >= optionCount) {
     throw new Error("invalid_correct_index");
   }
 

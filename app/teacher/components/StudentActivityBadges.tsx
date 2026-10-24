@@ -71,7 +71,7 @@ let cachedMap: ActivityStatusMap | null = null;
 let cachedAt = 0;
 let pendingRequest: Promise<ActivityStatusMap> | null = null;
 const CACHE_MS = 5 * 60_000;
-const OPTION_LABELS = ["①", "②", "③", "④"];
+const OPTION_LABELS = ["①", "②", "③", "④", "⑤"];
 
 const invalidateCache = () => {
   cachedMap = null;
