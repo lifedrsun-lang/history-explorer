@@ -18,17 +18,17 @@ const { validatePlan, newPlan } = load('lib/semesterPlans.ts');
 const totals = core.ATC_CURRICULUM.modules.map(m => m.blocks.reduce((n,b) => n+b.duration,0));
 assert.equal(JSON.stringify(totals), JSON.stringify([6,6,4,4,6,2,4,4,8,8,5,8,8,4,4]));
 let plan = core.newAtcPlan({ slug: 'test-school', schoolName: '검증초' });
-plan.weeks = core.composeAtcRows(['basic-6', 'basic-3']);
+plan.weeks = core.composeAtcRows(['basic-6', 'advanced-7']);
 assert.equal(core.atcTotal(plan.weeks), 6);
-assert.equal(core.atcRange(plan.weeks.at(-1)), '5~6');
+assert.equal(core.atcRange(plan.weeks.at(-1)), '6');
 plan.total_lessons = 999; // Server must derive the total rather than trust it.
 const saved = validatePlan(JSON.parse(JSON.stringify(plan)));
 assert.equal(saved.total_lessons, 6);
 assert.equal(saved.school_slug, 'test-school');
-assert.equal(saved.weeks.at(-1).duration, 2);
+assert.equal(saved.weeks.at(-1).duration, 1);
 const reordered = core.renumberAtcRows([...plan.weeks].reverse());
-assert.equal(core.atcRange(reordered[0]), '1~2');
-assert.equal(core.atcTotal(reordered.slice(1)), 4);
+assert.equal(core.atcRange(reordered[0]), '1');
+assert.equal(core.atcTotal(reordered.slice(1)), 5);
 assert.equal(core.atcTotal(core.composeAtcRows(['basic-5'])), 6);
 assert.ok(core.ATC_CURRICULUM.modules.find(m => m.id==='advanced-12').warning.includes('8차시'));
 assert.throws(() => core.composeAtcRows(['missing']));
@@ -48,7 +48,7 @@ assert.ok(html.includes('&lt;script&gt;'));
 assert.ok(!html.includes('<script>'));
 assert.ok(!html.includes('<img src=x'));
 assert.ok(html.includes('총 6차시'));
-assert.ok(html.includes('5~6'));
+assert.ok(html.includes('<td>6</td>'));
 console.log('PASS: 15 module totals; literacy 6; composition/order/removal; server roundtrip and total; invalid data; legacy compatibility; HTML escaping.');
 module.exports = { load };
 
@@ -79,7 +79,7 @@ assert.throws(() => core.composeAtcLessonRows([partialIds[0],partialIds[0]]));
 assert.equal(core.composeAtcLessonRows([]).length,0);
 console.log('PASS: individual lessons, partial/mixed selection, source references, shared content, save roundtrip, totals and invalid selections.');
 
-const pair = core.composeAtcLessonRows(['basic-3-lesson-3','basic-3-lesson-4']);
+const pair = core.composeAtcLessonRows(['advanced-9-2-lesson-3','advanced-9-2-lesson-4']);
 assert.ok(pair[0].topic.endsWith('(이론)'));
 assert.ok(pair[1].topic.endsWith('(실습)'));
 assert.ok(pair[0].activities.startsWith('[이론]'));
@@ -91,8 +91,8 @@ console.log('PASS: paired lessons theory/practice, individual lessons unchanged,
 assert.equal(lessons.find(l => l.id === 'basic-3-lesson-1').label, '1차시 유한의 계단 - 게임 기획자와 개발자');
 const stairRows = core.composeAtcLessonRows(['basic-3-lesson-1','basic-3-lesson-3','basic-3-lesson-4']);
 assert.equal(stairRows[0].topic, '유한의 계단 - 게임 기획자와 개발자');
-assert.equal(stairRows[1].topic, '유한의 계단 - 게임 구현하기 (이론)');
-assert.equal(stairRows[2].topic, '유한의 계단 - 게임 구현하기 (실습)');
+assert.equal(stairRows[1].topic, '유한의 계단 - 게임 구현하기');
+assert.equal(stairRows[2].topic, '유한의 계단 - 게임 프로그래밍하기');
 assert.ok(core.atcPlanHtml({...plan,weeks:stairRows}).includes('유한의 계단 - 게임 기획자와 개발자'));
 console.log('PASS: program and detailed topic labels, theory/practice and export.');
 
@@ -122,3 +122,33 @@ assert.ok(guideHtml.includes('시작의 마을 (1/2)'));
 assert.ok(guideHtml.includes('꾸미기 마을 (2/2)'));
 assert.ok(!guideHtml.includes('(이론)'));
 console.log('PASS: requested guide labels, separate 2-1/2-2/2-3 activities, stable IDs, six-lesson selection, server roundtrip and export.');
+
+const updatedModules = {
+  'basic-2': ['몬스터 마을 (1/2)', '몬스터 마을 (2/2)', '포털 마을 (1/2)', '포털 마을 (2/2)', '아이템 마을 (1/2)', '아이템 마을 (2/2)'],
+  'basic-3': ['게임 기획자와 개발자', '게임 설계하기', '게임 구현하기', '게임 프로그래밍하기'],
+  'basic-4': ['다양한 미니게임과 게임 종류', '피하기 게임 설계하기', '피하기 게임 구현하기', '피하기 게임 프로그래밍하기'],
+  'advanced-9-1': ['아바타 꾸미기', '에너지 히어로 아바타 꾸미기',
+    '에너지 아이템 모으기 대작전 ; 조건 기능을 활용하여 월드 만들기',
+    '에너지 아이템 모으기 대작전 ; 변수 기능을 활용하여 월드 만들기',
+    '에너지 낭비를 막아라 ; 반복 기능을 활용하여 월드 만들기',
+    '에너지 낭비를 막아라 ; 조건 기능을 활용하여 월드 만들기',
+    '에너지 절약 함께해요 ; 입력 기능을 활용하여 월드 만들기',
+    '에너지 절약 함께해요 ; 출력 기능을 활용하여 월드 만들기'],
+};
+for (const [moduleId, topics] of Object.entries(updatedModules)) {
+  const m = core.ATC_CURRICULUM.modules.find(m => m.id === moduleId);
+  const rows = core.composeAtcLessonRows(topics.map((_, i) => `${moduleId}-lesson-${i+1}`));
+  assert.equal(JSON.stringify(rows.map(r => r.topic)), JSON.stringify(topics.map(t => `${m.displayTitle} - ${t}`)));
+  assert.ok(rows.every(r => r.duration === 1 && r.source_revision === 5));
+  const saved = validatePlan({...core.newAtcPlan({slug:'test',schoolName:'검증초'}),weeks:rows});
+  assert.equal(saved.total_lessons, topics.length);
+  assert.ok(!core.atcPlanHtml({...plan,weeks:rows}).includes('(이론)'));
+}
+const career = core.composeAtcLessonRows(['advanced-8-lesson-3','advanced-8-lesson-4']);
+assert.equal(career[0].topic, '진로교육(3~4학년) - 게임 중 나오는 직업 탐구하기');
+assert.equal(career[1].topic, '진로교육(3~4학년) - 나만의 직업 캐릭터 만들기');
+const energy = core.composeAtcLessonRows(['advanced-9-1-lesson-5','advanced-9-1-lesson-6']);
+assert.ok(energy[0].activities.startsWith('에너지 낭비를 막아라 ; 반복 기능'));
+assert.ok(!energy[0].activities.includes('조건 기능'));
+assert.ok(energy[1].activities.startsWith('에너지 낭비를 막아라 ; 조건 기능'));
+console.log('PASS: revised tutorial/game/career/energy lessons, fifth lesson repeat and sixth condition, stable source IDs, totals, save validation and export.');

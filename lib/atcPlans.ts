@@ -54,7 +54,7 @@ export function composeAtcLessonRows(ids: string[]): PlanWeek[] {
     if (!lesson) throw new Error("차시를 찾을 수 없습니다.");
     return {
       id: crypto.randomUUID(), week_number: 1, lesson_number: 1, duration: 1,
-      source_lesson_id: lesson.id, source_revision: 4,
+      source_lesson_id: lesson.id, source_revision: 5,
       topic: lesson.displayTopic,
       objective: "", activities: `${lesson.phase ? `[${lesson.phase}] ` : ""}${lesson.topic}\n${lesson.activities}`,
       materials: "", notes: [lesson.warning, lesson.phase

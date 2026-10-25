@@ -79,25 +79,46 @@
       "warning": "",
       "blocks": [
         {
-          "range": "1-2",
-          "duration": 2,
-          "topic": "몬스터 마을",
+          "range": "1",
+          "duration": 1,
+          "topic": "몬스터 마을 (1/2)",
           "activities": "튜토리얼 3번\n- 몬스터 추가하기\n- 몬스터 방향과 위치 설정하기\n- 아이템 만들기",
-          "displayTopic": "몬스터 마을"
+          "displayTopic": "몬스터 마을 (1/2)"
         },
         {
-          "range": "3-4",
-          "duration": 2,
-          "topic": "포털 마을",
+          "range": "2",
+          "duration": 1,
+          "topic": "몬스터 마을 (2/2)",
+          "activities": "튜토리얼 3번\n- 몬스터 추가하기\n- 몬스터 방향과 위치 설정하기\n- 아이템 만들기",
+          "displayTopic": "몬스터 마을 (2/2)"
+        },
+        {
+          "range": "3",
+          "duration": 1,
+          "topic": "포털 마을 (1/2)",
           "activities": "튜토리얼 4번\n- 포털 추가하기\n- 포털 타고 아바타 이동하기",
-          "displayTopic": "포털 마을"
+          "displayTopic": "포털 마을 (1/2)"
         },
         {
-          "range": "5-6",
-          "duration": 2,
-          "topic": "아이템 마을",
+          "range": "4",
+          "duration": 1,
+          "topic": "포털 마을 (2/2)",
+          "activities": "튜토리얼 4번\n- 포털 추가하기\n- 포털 타고 아바타 이동하기",
+          "displayTopic": "포털 마을 (2/2)"
+        },
+        {
+          "range": "5",
+          "duration": 1,
+          "topic": "아이템 마을 (1/2)",
           "activities": "튜토리얼 5번\n- 아이템 변수 추가하기\n- 아바타 코딩하기\n- 아이템 코딩하기",
-          "displayTopic": "아이템 마을"
+          "displayTopic": "아이템 마을 (1/2)"
+        },
+        {
+          "range": "6",
+          "duration": 1,
+          "topic": "아이템 마을 (2/2)",
+          "activities": "튜토리얼 5번\n- 아이템 변수 추가하기\n- 아바타 코딩하기\n- 아이템 코딩하기",
+          "displayTopic": "아이템 마을 (2/2)"
         }
       ],
       "displayTitle": "헬로메이플 튜토리얼 정복"
@@ -124,11 +145,18 @@
           "displayTopic": "게임 설계하기"
         },
         {
-          "range": "3-4",
-          "duration": 2,
-          "topic": "나는 게임 개발자 - 유한의 계단편-",
-          "activities": "유한의 계단 게임 구현하기\n- 계단을 다양하게\n- 맵을 여러 가지 모습으로\n- 프로그래밍하기\n- 목적지에 도착하면 게임 끝내기 또는 시간 측정하기 등",
+          "range": "3",
+          "duration": 1,
+          "topic": "유한의 계단 게임 구현하기",
+          "activities": "- 계단을 다양하게\n- 맵을 여러 가지 모습으로",
           "displayTopic": "게임 구현하기"
+        },
+        {
+          "range": "4",
+          "duration": 1,
+          "topic": "유한의 계단 게임 프로그래밍하기",
+          "activities": "- 프로그래밍하기\n- 목적지에 도착하면 게임 끝내기 또는 시간 측정하기 등",
+          "displayTopic": "게임 프로그래밍하기"
         }
       ],
       "displayTitle": "유한의 계단"
@@ -143,23 +171,30 @@
         {
           "range": "1",
           "duration": 1,
-          "topic": "파리파리 해파리 게임",
+          "topic": "다양한 미니게임과 게임 종류",
           "activities": "다양한 미니게임과 게임 종류",
           "displayTopic": "다양한 미니게임과 게임 종류"
         },
         {
           "range": "2",
           "duration": 1,
-          "topic": "나는 게임 개발자 - 해파리 게임편-",
+          "topic": "피하기 게임 설계하기",
           "activities": "피하기 게임 설계하기",
           "displayTopic": "피하기 게임 설계하기"
         },
         {
-          "range": "3-4",
-          "duration": 2,
-          "topic": "나는 게임 개발자 - 해파리 게임편-",
-          "activities": "피하기 게임 구현하기\n- 맵 꾸미기\n- 오브젝트 추가 및 프로그래밍\n- 게임 종료 조건",
+          "range": "3",
+          "duration": 1,
+          "topic": "피하기 게임 구현하기",
+          "activities": "- 맵 꾸미기",
           "displayTopic": "피하기 게임 구현하기"
+        },
+        {
+          "range": "4",
+          "duration": 1,
+          "topic": "피하기 게임 프로그래밍하기",
+          "activities": "- 오브젝트 추가 및 프로그래밍\n- 게임 종료 조건",
+          "displayTopic": "피하기 게임 프로그래밍하기"
         }
       ],
       "displayTitle": "해파리 게임"
@@ -293,18 +328,25 @@
           "displayTopic": "나의 꿈 나누기"
         },
         {
-          "range": "2-3",
-          "duration": 2,
+          "range": "2",
+          "duration": 1,
           "topic": "진로교육(3~4학년)",
           "activities": "1) 게임 중 나오는 직업 탐구하기\n2) 나만의 직업 캐릭터 만들기",
           "displayTopic": "게임 중 나오는 직업 탐구하기"
         },
         {
+          "range": "3",
+          "duration": 1,
+          "topic": "게임 중 나오는 직업 탐구하기",
+          "activities": "게임 중 나오는 직업 탐구하기",
+          "displayTopic": "게임 중 나오는 직업 탐구하기"
+        },
+        {
           "range": "4",
           "duration": 1,
-          "topic": "진로교육(3~4학년)",
-          "activities": "1) 우리반 직업 발표회\n2) 스스로 평가하기",
-          "displayTopic": "우리반 직업 발표회"
+          "topic": "나만의 직업 캐릭터 만들기",
+          "activities": "나만의 직업 캐릭터 만들기",
+          "displayTopic": "나만의 직업 캐릭터 만들기"
         }
       ],
       "displayTitle": "진로교육(3~4학년)"
@@ -317,32 +359,60 @@
       "warning": "",
       "blocks": [
         {
-          "range": "1-2",
-          "duration": 2,
+          "range": "1",
+          "duration": 1,
           "topic": "아바타 꾸미기",
-          "activities": "에너지 히어로 아바타 꾸미기",
+          "activities": "아바타 꾸미기",
           "displayTopic": "아바타 꾸미기"
         },
         {
-          "range": "3-4",
-          "duration": 2,
-          "topic": "에너지 아이템\n모으기 대작전",
-          "activities": "조건/변수 기능을 활용하여 월드 만들기\n- 에너지 종류 알아보기\n- '에너지 아이템 모으기 대작전' 월드 제작",
-          "displayTopic": "에너지 아이템 모으기 대작전"
+          "range": "2",
+          "duration": 1,
+          "topic": "에너지 히어로 아바타 꾸미기",
+          "activities": "에너지 히어로 아바타 꾸미기",
+          "displayTopic": "에너지 히어로 아바타 꾸미기"
         },
         {
-          "range": "5-6",
-          "duration": 2,
-          "topic": "에너지 낭비를 막아라",
-          "activities": "반복/조건 기능을 활용하여 월드 만들기\n- 에너지 절약 방법 학습\n- '에너지 낭비를 막아라' 월드 제작",
-          "displayTopic": "에너지 낭비를 막아라"
+          "range": "3",
+          "duration": 1,
+          "topic": "에너지 아이템 모으기 대작전 ; 조건 기능을 활용하여 월드 만들기",
+          "activities": "조건 기능을 활용하여 월드 만들기\n- 에너지 종류 알아보기\n- '에너지 아이템 모으기 대작전' 월드 제작",
+          "displayTopic": "에너지 아이템 모으기 대작전 ; 조건 기능을 활용하여 월드 만들기"
         },
         {
-          "range": "7-8",
-          "duration": 2,
-          "topic": "에너지 절약 함께해요",
-          "activities": "입/출력 기능을 활용하여 월드 만들기\n- 에너지 절약 슬로건 제작\n- '에너지 절약 함께해요 캠페인' 월드 제작",
-          "displayTopic": "에너지 절약 함께해요"
+          "range": "4",
+          "duration": 1,
+          "topic": "에너지 아이템 모으기 대작전 ; 변수 기능을 활용하여 월드 만들기",
+          "activities": "변수 기능을 활용하여 월드 만들기\n- 에너지 종류 알아보기\n- '에너지 아이템 모으기 대작전' 월드 제작",
+          "displayTopic": "에너지 아이템 모으기 대작전 ; 변수 기능을 활용하여 월드 만들기"
+        },
+        {
+          "range": "5",
+          "duration": 1,
+          "topic": "에너지 낭비를 막아라 ; 반복 기능을 활용하여 월드 만들기",
+          "activities": "반복 기능을 활용하여 월드 만들기\n- 에너지 절약 방법 학습\n- '에너지 낭비를 막아라' 월드 제작",
+          "displayTopic": "에너지 낭비를 막아라 ; 반복 기능을 활용하여 월드 만들기"
+        },
+        {
+          "range": "6",
+          "duration": 1,
+          "topic": "에너지 낭비를 막아라 ; 조건 기능을 활용하여 월드 만들기",
+          "activities": "조건 기능을 활용하여 월드 만들기\n- 에너지 절약 방법 학습\n- '에너지 낭비를 막아라' 월드 제작",
+          "displayTopic": "에너지 낭비를 막아라 ; 조건 기능을 활용하여 월드 만들기"
+        },
+        {
+          "range": "7",
+          "duration": 1,
+          "topic": "에너지 절약 함께해요 ; 입력 기능을 활용하여 월드 만들기",
+          "activities": "입력 기능을 활용하여 월드 만들기\n- 에너지 절약 슬로건 제작\n- '에너지 절약 함께해요 캠페인' 월드 제작",
+          "displayTopic": "에너지 절약 함께해요 ; 입력 기능을 활용하여 월드 만들기"
+        },
+        {
+          "range": "8",
+          "duration": 1,
+          "topic": "에너지 절약 함께해요 ; 출력 기능을 활용하여 월드 만들기",
+          "activities": "출력 기능을 활용하여 월드 만들기\n- 에너지 절약 슬로건 제작\n- '에너지 절약 함께해요 캠페인' 월드 제작",
+          "displayTopic": "에너지 절약 함께해요 ; 출력 기능을 활용하여 월드 만들기"
         }
       ],
       "displayTitle": "에너지 절약과 실천(3~4학년)"
