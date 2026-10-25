@@ -269,16 +269,27 @@ const fromStoredSchoolSnapshot = async (snapshot: DocumentSnapshot) => {
   // Migrate only this school's stored password; keep classrooms, lessons and tokens.
   const removeShinsangdoSchoolPassword =
     snapshot.id === "shinsangdo" && data.shinsangdoPasswordRemoved !== true;
+  const seedClassrooms = getDefaultContractSchool("shinsangdo")?.classrooms || [];
+  const restoreEmptyShinsangdoClassrooms =
+    removeShinsangdoSchoolPassword &&
+    (!Array.isArray(data.classrooms) || data.classrooms.length === 0);
+  const classroomFields = restoreEmptyShinsangdoClassrooms
+    ? {
+        classrooms: seedClassrooms,
+        classroomTokens: seedClassrooms.map((classroom) => classroom.directToken),
+      }
+    : {};
   const school = fromStoredSchool(
     snapshot.id,
     removeShinsangdoSchoolPassword
-      ? { ...data, passwordSalt: null, passwordHash: null, published: true }
+      ? { ...data, ...classroomFields, passwordSalt: null, passwordHash: null, published: true }
       : data
   );
 
   if (removeShinsangdoSchoolPassword) {
     await snapshot.ref.set(
       {
+        ...classroomFields,
         passwordSalt: null,
         passwordHash: null,
         published: true,
