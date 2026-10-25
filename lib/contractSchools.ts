@@ -274,7 +274,7 @@ const toSeedSchool = ({
   };
 };
 
-const SHINSANGDO_CLASSROOMS: SchoolClassroom[] = [
+export const SHINSANGDO_CLASSROOMS: SchoolClassroom[] = [
   {
     schoolName: "서울 신상도초등학교",
     schoolDisplayName: "서울 신상도초",
@@ -348,7 +348,6 @@ export const DEFAULT_CONTRACT_SCHOOLS: ContractSchoolConfig[] = [
     schoolDisplayName: "서울 신상도초",
     location: "컴퓨터실",
     classrooms: SHINSANGDO_CLASSROOMS,
-    hasSchoolPassword: true,
   }),
 ];
 

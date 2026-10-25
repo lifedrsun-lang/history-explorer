@@ -111,7 +111,6 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     name: "서울 신상도초등학교",
     displayName: "서울 신상도초",
     aliases: ["서울 신상도초", "신상도초"],
-    password: "2792",
     loginCard: { title: "서울 신상도초", location: "컴퓨터실" },
   },
   {
