@@ -28,24 +28,21 @@ export function composeAtcRows(ids: string[]): PlanWeek[] {
 
 export const ATC_LESSONS = curriculum.modules.flatMap(module => {
   let number = 0;
-  const blocks: {
-    range: string; duration: number; topic: string; activities: string; displayTopic: string;
-    options?: { number: string; topic: string; activities: string }[];
-  }[] = module.blocks;
-  return blocks.flatMap(block => Array.from({ length: block.duration }, (_, offset) => {
+  return module.blocks.flatMap(block => Array.from({ length: block.duration }, (_, offset) => {
     const lessonNumber = ++number;
     const phase = block.duration === 2 ? (offset === 0 ? "이론" : "실습") : "";
-    const options = block.options || [{ number: String(lessonNumber), topic: block.displayTopic, activities: block.activities }];
-    return options.map((option, optionIndex) => ({
-      id: `${module.id}-lesson-${lessonNumber}${optionIndex ? `-${optionIndex + 1}` : ""}`,
+    const displayTopic = "displayLabel" in block ? String(block.displayLabel)
+      : `${module.displayTitle} - ${block.displayTopic}${phase ? ` (${phase})` : ""}`;
+    return {
+      id: `${module.id}-lesson-${lessonNumber}`,
       moduleId: module.id, moduleTitle: module.title, lessonNumber, phase,
-      topic: block.options ? option.topic : block.topic, activities: option.activities,
-      displayTopic: `${module.displayTitle} - ${option.topic}${phase ? ` (${phase})` : ""}`,
-      label: `${option.number}차시 ${module.displayTitle} - ${option.topic}${phase ? ` (${phase})` : ""}`,
+      topic: block.topic, activities: block.activities,
+      displayTopic,
+      label: `${lessonNumber}차시 ${displayTopic}`,
       sharedRange: block.duration > 1 ? block.range : "",
       warning: module.warning.trim(),
-    }));
-  }).flat());
+    };
+  }));
 });
 export function composeAtcLessonRows(ids: string[]): PlanWeek[] {
   if (new Set(ids).size !== ids.length) throw new Error("같은 차시를 두 번 선택할 수 없습니다.");
@@ -54,7 +51,7 @@ export function composeAtcLessonRows(ids: string[]): PlanWeek[] {
     if (!lesson) throw new Error("차시를 찾을 수 없습니다.");
     return {
       id: crypto.randomUUID(), week_number: 1, lesson_number: 1, duration: 1,
-      source_lesson_id: lesson.id, source_revision: 5,
+      source_lesson_id: lesson.id, source_revision: 6,
       topic: lesson.displayTopic,
       objective: "", activities: `${lesson.phase ? `[${lesson.phase}] ` : ""}${lesson.topic}\n${lesson.activities}`,
       materials: "", notes: [lesson.warning, lesson.phase
