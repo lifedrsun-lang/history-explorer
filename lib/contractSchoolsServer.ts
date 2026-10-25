@@ -37,6 +37,8 @@ type StoredContractSchool = Omit<
 > & {
   passwordSalt?: string | null;
   passwordHash?: string | null;
+  /** One-time migration flag; preserves future teacher password changes. */
+  shinsangdoPasswordRemoved?: boolean;
   classroomTokens?: string[];
   createdAt?: unknown;
   updatedAt?: unknown;
@@ -263,7 +265,29 @@ const fromStoredSchool = (
 
 const fromStoredSchoolSnapshot = async (snapshot: DocumentSnapshot) => {
   const data = snapshot.data() as StoredContractSchool;
-  const school = fromStoredSchool(snapshot.id, data);
+  // Shinsangdo now uses the same passwordless school -> class entry as Gaebong.
+  // Migrate only this school's stored password; keep classrooms, lessons and tokens.
+  const removeShinsangdoSchoolPassword =
+    snapshot.id === "shinsangdo" && data.shinsangdoPasswordRemoved !== true;
+  const school = fromStoredSchool(
+    snapshot.id,
+    removeShinsangdoSchoolPassword
+      ? { ...data, passwordSalt: null, passwordHash: null, published: true }
+      : data
+  );
+
+  if (removeShinsangdoSchoolPassword) {
+    await snapshot.ref.set(
+      {
+        passwordSalt: null,
+        passwordHash: null,
+        published: true,
+        shinsangdoPasswordRemoved: true,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+  }
 
   if (Number(data.schemaVersion || 0) < CONTRACT_SCHOOL_SCHEMA_VERSION) {
     await snapshot.ref.set(
@@ -711,7 +735,7 @@ export const updateContractSchool = async (
         passwordHash: storedData?.passwordHash || null,
       };
 
-  if (draft.clearSchoolPassword === true) {
+  if (draft.clearSchoolPassword === true || (slug === "shinsangdo" && !password)) {
     passwordFields = { passwordSalt: null, passwordHash: null };
   } else if (password) {
     passwordFields = makePasswordFields(password);
@@ -745,6 +769,9 @@ export const updateContractSchool = async (
     lessonVisibility,
     classroomTokens: classrooms.map((classroom) => classroom.directToken),
     ...passwordFields,
+    ...(slug === "shinsangdo" || storedData?.shinsangdoPasswordRemoved === true
+      ? { shinsangdoPasswordRemoved: true }
+      : {}),
     createdAt: storedData?.createdAt || FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   };
