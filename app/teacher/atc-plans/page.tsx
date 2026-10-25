@@ -145,9 +145,10 @@ export default function AtcPlansPage() {
         <p className={styles.hint}>프로그램을 펼친 뒤 필요한 차시만 선택하세요. 선택한 차시는 계획서에서 1차시부터 순서대로 배치됩니다.</p>
         <div className={styles.modules}>{ATC_CURRICULUM.modules.filter(m => group === "전체" || m.group === group).map(m => {
           const lessons = ATC_LESSONS.filter(lesson => lesson.moduleId === m.id);
+          const lessonCount = m.blocks.reduce((total, block) => total + block.duration, 0);
           const count = lessons.filter(lesson => selection.includes(lesson.id)).length;
           return <details className={styles.moduleCard} key={m.id}>
-            <summary><small>{m.group} · {lessons.length}차시 · {count}개 선택</small><strong>{m.title}</strong><span className={styles.expandHint}>차시별 선택 펼치기 / 접기</span></summary>
+            <summary><small>{m.group} · {lessonCount}차시{lessons.length !== lessonCount && ` · ${lessons.length}개 활동`} · {count}개 선택</small><strong>{m.title}</strong><span className={styles.expandHint}>차시별 선택 펼치기 / 접기</span></summary>
             {m.warning && <p className={styles.hint}>{m.warning}</p>}
             <button type="button" onClick={() => setSelection(ids => count === lessons.length ? ids.filter(id => !lessons.some(l => l.id === id)) : [...ids, ...lessons.filter(l => !ids.includes(l.id)).map(l => l.id)])}>{count === lessons.length ? "전체 해제" : "전체 차시 선택"}</button>
             <div className={styles.lessonOptions}>{lessons.map(lesson => <label className={selection.includes(lesson.id) ? styles.selectedModule : styles.module} key={lesson.id}>

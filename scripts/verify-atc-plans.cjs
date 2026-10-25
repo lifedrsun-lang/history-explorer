@@ -55,8 +55,9 @@ module.exports = { load };
 const lessons = core.ATC_LESSONS;
 for (const module of core.ATC_CURRICULUM.modules) {
   const entries = lessons.filter(l => l.moduleId === module.id);
-  assert.equal(entries.length, module.blocks.reduce((n,b) => n+b.duration,0));
-  assert.equal(JSON.stringify(entries.map(l => l.lessonNumber)), JSON.stringify(entries.map((_,i) => i+1)));
+  const total = module.blocks.reduce((n,b) => n+b.duration,0);
+  assert.equal(entries.length, total + (module.id === "basic-1" ? 2 : 0));
+  assert.equal(JSON.stringify([...new Set(entries.map(l => l.lessonNumber))]), JSON.stringify(Array.from({length: total}, (_,i) => i+1)));
 }
 const partialIds = ['basic-1-lesson-1', 'basic-1-lesson-3', 'basic-1-lesson-6', 'advanced-7-lesson-2'];
 // Use a real advanced lesson ID from the catalog.
@@ -67,8 +68,8 @@ assert.equal(core.atcTotal(partial),4);
 assert.equal(JSON.stringify(partial.map(r => r.lesson_number)), '[1,2,3,4]');
 assert.equal(JSON.stringify(partial.map(r => r.source_lesson_id)), JSON.stringify(partialIds));
 assert.ok(partial.every(r => r.duration === 1));
-assert.ok(partial[1].notes.includes('3차시 이론'));
-assert.equal(partial[2].topic, '헬로메이플 기초 가이드 - 꾸미기 마을 (실습)');
+assert.equal(partial[1].notes, '');
+assert.equal(partial[2].topic, '헬로메이플 기초 가이드 - 꾸미기 마을 (2/2)');
 const roundtrip = validatePlan({...core.newAtcPlan({slug:'test',schoolName:'검증초'}),weeks:partial,total_lessons:999});
 assert.equal(roundtrip.total_lessons,4);
 assert.equal(roundtrip.weeks[2].source_lesson_id,'basic-1-lesson-6');
@@ -78,7 +79,7 @@ assert.throws(() => core.composeAtcLessonRows([partialIds[0],partialIds[0]]));
 assert.equal(core.composeAtcLessonRows([]).length,0);
 console.log('PASS: individual lessons, partial/mixed selection, source references, shared content, save roundtrip, totals and invalid selections.');
 
-const pair = core.composeAtcLessonRows(['basic-1-lesson-3','basic-1-lesson-4']);
+const pair = core.composeAtcLessonRows(['basic-3-lesson-3','basic-3-lesson-4']);
 assert.ok(pair[0].topic.endsWith('(이론)'));
 assert.ok(pair[1].topic.endsWith('(실습)'));
 assert.ok(pair[0].activities.startsWith('[이론]'));
@@ -94,3 +95,30 @@ assert.equal(stairRows[1].topic, '유한의 계단 - 게임 구현하기 (이론
 assert.equal(stairRows[2].topic, '유한의 계단 - 게임 구현하기 (실습)');
 assert.ok(core.atcPlanHtml({...plan,weeks:stairRows}).includes('유한의 계단 - 게임 기획자와 개발자'));
 console.log('PASS: program and detailed topic labels, theory/practice and export.');
+
+const guide = lessons.filter(l => l.moduleId === 'basic-1');
+const expected = [
+  ['1', '계정 로그인 & 아바타 꾸미기'],
+  ['2-1', '버그버스터즈'], ['2-2', 'OX 메이플운동회'], ['2-3', '도전! 타자히어로'],
+  ['3', '시작의 마을 (1/2)'], ['4', '시작의 마을 (2/2)'],
+  ['5', '꾸미기 마을 (1/2)'], ['6', '꾸미기 마을 (2/2)'],
+];
+assert.equal(JSON.stringify(guide.map(l => l.label)), JSON.stringify(expected.map(([number, topic]) => `${number}차시 헬로메이플 기초 가이드 - ${topic}`)));
+assert.equal(new Set(guide.map(l => l.id)).size, 8);
+assert.ok(guide.every(l => !l.phase));
+const choices = core.composeAtcLessonRows(guide.slice(1,4).map(l => l.id));
+assert.ok(!choices[0].activities.includes('OX'));
+assert.ok(choices[1].activities.includes('O, X 퀴즈'));
+assert.ok(!choices[1].activities.includes('타자'));
+assert.ok(choices[2].activities.includes('한컴타자'));
+assert.equal(core.atcTotal(choices), 3);
+const selectedGuide = core.composeAtcLessonRows([guide[0],guide[2],...guide.slice(4)].map(l => l.id));
+assert.equal(core.atcTotal(selectedGuide), 6);
+const savedGuide = validatePlan({...core.newAtcPlan({slug:'test',schoolName:'검증초'}),weeks:selectedGuide});
+assert.equal(savedGuide.weeks[1].source_lesson_id, 'basic-1-lesson-2-2');
+const guideHtml = core.atcPlanHtml({...plan,weeks:selectedGuide});
+assert.ok(guideHtml.includes('계정 로그인 &amp; 아바타 꾸미기'));
+assert.ok(guideHtml.includes('시작의 마을 (1/2)'));
+assert.ok(guideHtml.includes('꾸미기 마을 (2/2)'));
+assert.ok(!guideHtml.includes('(이론)'));
+console.log('PASS: requested guide labels, separate 2-1/2-2/2-3 activities, stable IDs, six-lesson selection, server roundtrip and export.');
