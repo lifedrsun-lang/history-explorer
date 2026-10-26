@@ -39,6 +39,17 @@ async function main() {
     assert.equal(call.name, slot === 1 ? 'opinion_mutate' : 'opinion_slot_mutate');
     assert.equal(call.params.p_slot, slot === 1 ? undefined : slot);
   }
+  assert.equal(opinions.cleanOpinionName("  김민서  "), "김민서");
+  assert.equal(opinions.cleanOpinionName("Kim  Minseo"), "Kim Minseo");
+  for (const invalidName of ["", " ", "1", "12", "🔥🔥", "김", "x".repeat(21), "name\\nmore"])
+    assert.throws(() => opinions.cleanOpinionName(invalidName), /invalid_name/);
+  await server.mutateOpinion('submit', {slot:4,round:'00000000-0000-0000-0000-000000000001',participant:'a'.repeat(64),text:'의견',name:'김민서'});
+  const namedCall = calls.pop();
+  assert.equal(namedCall.name, 'opinion_submit_named');
+  assert.equal(namedCall.params.p_slot, 4);
+  assert.equal(namedCall.params.p_name, '김민서');
+  const legacy = server.teacherOpinionState({ ...row, responses: {a:{id:'1',text:'기존 의견',createdAt:'2026-10-01'}} });
+  assert.equal(legacy.opinions[0].name, null);
   for (const invalid of [0, 9, -1, 2.5, '', '01', '1.0', ' 8', '8 ', true, false, {}, [], 'bad']) assert.throws(() => opinions.opinionSlot(invalid), /invalid_slot/);
   const page = load('app/opinion/[slot]/page.tsx', {
     'next/navigation': { notFound() { throw new Error('not_found'); } },
