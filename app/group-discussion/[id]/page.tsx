@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { use, useCallback, useEffect, useState } from "react";
+import { type DiscussionQuestion, isTableQuestion, opinionSlots, rowSlot, readTableCells } from "@/lib/groupDiscussionFormat";
 
-type Question = { id: string; text: string };
+type Question = DiscussionQuestion;
 type Participant = { number: number; name: string; opinions: Record<string, string> };
 type Group = { group: number; recorder: number | null; selected: Record<string, number>; submitted: boolean; participants: Participant[] };
 type State = {
@@ -21,6 +22,7 @@ export default function StudentGroupDiscussion({ params }: { params: Promise<{ i
   const [name, setName] = useState("");
   const [group, setGroup] = useState(1);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [tableDrafts, setTableDrafts] = useState<Record<string, string[]>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -58,6 +60,7 @@ export default function StudentGroupDiscussion({ params }: { params: Promise<{ i
       setData(next);
       if (payload.action === "opinion") {
         setDrafts(old => { const copy = { ...old }; delete copy[String(payload.questionId)]; return copy; });
+        setTableDrafts(old => { const copy = { ...old }; delete copy[String(payload.questionId)]; return copy; });
         setNotice("의견을 저장했습니다.");
       }
       if (payload.action === "join") setNotice("모둠에 참여했습니다.");
@@ -116,53 +119,142 @@ export default function StudentGroupDiscussion({ params }: { params: Promise<{ i
             </section>
             {data.questions.map((q, qi)=>{
               const mine = myGroup?.participants.find(p=>p.number===data.me?.number);
-              const draft = drafts[q.id] ?? mine?.opinions[q.id] ?? "";
               return <section key={q.id} className="rounded-3xl bg-white p-5 shadow-sm">
                 <h2 className="mb-3 text-lg font-black">{qi+1}번. {q.text}</h2>
-                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-3">
-                  <label className="text-sm font-black">나의 의견</label>
-                  <textarea className={input+" mt-2 min-h-24 resize-y"} maxLength={400} disabled={!canEdit||busy}
-                    placeholder="내 생각을 적어 주세요 (최대 400자)." value={draft}
-                    onChange={e=>setDrafts(old=>({...old,[q.id]:e.target.value}))} />
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="text-xs text-slate-500">{draft.length}/400자</span>
-                    <button disabled={!canEdit||busy||drafts[q.id]===undefined} onClick={()=>void action({action:"opinion",questionId:q.id,text:draft})}
-                      className={button+" bg-indigo-600 text-sm text-white"}>내 의견 저장</button>
-                  </div>
-                </div>
-                <div className="mt-5 flex items-center justify-between gap-2">
-                  <h3 className="font-black">우리 모둠의 의견</h3>
-                  <span className="text-xs text-slate-500">의견을 읽고 함께 토론하세요</span>
-                </div>
-                <div className="mt-2 grid gap-2">
-                  {myGroup?.participants.map((p, i)=>{
-                    const chosen = myGroup.selected[q.id]===p.number;
-                    const hasOpinion = Boolean(p.opinions[q.id]?.trim());
-                    return <div key={p.number} className={"rounded-2xl border p-3 "+(chosen?"border-yellow-400 bg-yellow-50":"border-slate-200 bg-slate-50")}>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-bold">{i+1}번 의견 · {p.name}</span>
-                        {chosen ? <span className="text-sm font-bold text-amber-700">👑 최종 의견</span> :
-                        recorder && canEdit && hasOpinion ? <button disabled={busy} onClick={()=>void action({action:"select",questionId:q.id,winner:p.number})}
-                          className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-amber-800">👑 왕관 선택</button> : null}
+                {isTableQuestion(q) ? <div className="space-y-5">
+                  <p className="text-sm text-slate-600">비교 항목마다 모든 칸에 내 의견을 작성해 저장하세요. 모둠원들의 비교 의견을 토론한 후 기록 담당자가 한 세트씩 왕관을 선정합니다.</p>
+                  {q.rows!.map((row,ri)=>{
+                    const slot = rowSlot(q,ri);
+                    const currentRow = tableDrafts[slot] ?? readTableCells(mine?.opinions[slot],q.columns!.length);
+                    const allFilled = currentRow.every(cell=>cell.trim().length>0);
+                    return <div key={slot} className="rounded-2xl border border-indigo-100 p-3 sm:p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="font-black text-indigo-900">{ri+1}. {row}</h3>
+                        {myGroup?.selected[slot] && <span className="text-xs font-bold text-amber-700">👑 이 항목의 최종 의견 선정됨</span>}
                       </div>
-                      <p className="mt-2 whitespace-pre-wrap break-words text-sm">{p.opinions[q.id] || "아직 의견을 작성하지 않았어요."}</p>
+                      <div className="mt-3 grid gap-3 rounded-2xl bg-indigo-50/60 p-3 sm:grid-cols-2">
+                        {q.columns!.map((column,ci)=><label key={ci} className="block text-sm font-bold">
+                          {column}
+                          <textarea className={input+" mt-1 min-h-24 resize-y"} maxLength={200}
+                            aria-label={row+" - "+column} disabled={!canEdit||busy}
+                            placeholder="내 생각을 적어 주세요 (200자 이내)"
+                            value={currentRow[ci]||""}
+                            onChange={e=>setTableDrafts(old=>({
+                              ...old,[slot]:currentRow.map((v,index)=>index===ci?e.target.value:v),
+                            }))}/>
+                        </label>)}
+                      </div>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <p className="text-xs text-slate-500">{allFilled?"모든 칸 작성 완료":"모든 비교 칸을 작성해 주세요."}</p>
+                        <button className={button+" bg-indigo-600 text-sm text-white"}
+                          disabled={!canEdit||busy||!allFilled||tableDrafts[slot]===undefined}
+                          onClick={()=>void action({action:"opinion",questionId:slot,text:JSON.stringify(currentRow)})}>
+                          이 항목 의견 저장
+                        </button>
+                      </div>
+                      <h4 className="mb-2 mt-4 text-sm font-black">우리 모둠 의견 · {row}</h4>
+                      <div className="grid gap-2">
+                        {myGroup?.participants.map((p,pi)=>{
+                          const raw=p.opinions[slot]||"";
+                          const values=readTableCells(raw,q.columns!.length);
+                          const hasOpinion=Boolean(raw) && values.every(v=>v.trim().length>0);
+                          const chosen=myGroup.selected[slot]===p.number;
+                          return <div key={p.number} className={"rounded-xl border p-3 "+(chosen?"border-amber-400 bg-amber-50":"border-slate-200 bg-slate-50")}>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-bold">{pi+1}번 의견 · {p.name}</span>
+                              {chosen ? <span className="text-sm font-bold text-amber-800">👑 최종 선택</span> :
+                                recorder && canEdit && hasOpinion ? <button disabled={busy}
+                                  onClick={()=>void action({action:"select",questionId:slot,winner:p.number})}
+                                  className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-amber-800">👑 왕관 선택</button> : null}
+                            </div>
+                            {hasOpinion ? <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                              {q.columns!.map((column,ci)=><div key={ci} className="min-w-0 rounded-lg bg-white/70 p-2">
+                                <div className="text-xs font-bold text-indigo-900">{column}</div>
+                                <p className="mt-1 whitespace-pre-wrap break-words text-sm">{values[ci]}</p>
+                              </div>)}
+                            </div> : <p className="mt-2 text-sm text-slate-500">아직 의견을 작성하지 않았어요.</p>}
+                          </div>;
+                        })}
+                      </div>
                     </div>;
                   })}
-                </div>
+                  <div className="overflow-x-auto rounded-xl border border-slate-200">
+                    <h3 className="border-b border-slate-200 bg-slate-50 p-3 font-black">👑 우리 모둠 최종 비교표</h3>
+                    <table className="w-full min-w-[540px] border-collapse text-sm">
+                      <thead><tr className="bg-indigo-100"><th className="border border-slate-200 p-2">비교 항목</th>
+                        {q.columns!.map((col,ci)=><th key={ci} className="border border-slate-200 p-2">{col}</th>)}</tr></thead>
+                      <tbody>{q.rows!.map((row,ri)=>{
+                        const slot=rowSlot(q,ri);
+                        const winner=myGroup?.participants.find(p=>p.number===myGroup?.selected[slot]);
+                        const cells=readTableCells(winner?.opinions[slot],q.columns!.length);
+                        return <tr key={slot}><th className="border border-slate-200 bg-slate-50 p-2 text-left">{row}</th>
+                          {cells.map((cell,ci)=><td key={ci} className="whitespace-pre-wrap break-words border border-slate-200 p-2">
+                            {cell||"미선정"} {winner&&ci===0?"👑":""}</td>)}</tr>;
+                      })}</tbody>
+                    </table>
+                  </div>
+                </div> : <>
+                  <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-3">
+                    <label className="text-sm font-black">나의 의견</label>
+                    <textarea className={input+" mt-2 min-h-24 resize-y"} maxLength={400} disabled={!canEdit||busy}
+                      placeholder="내 생각을 적어 주세요 (최대 400자)." value={drafts[q.id]??mine?.opinions[q.id]??""}
+                      onChange={e=>setDrafts(old=>({...old,[q.id]:e.target.value}))}/>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <span className="text-xs text-slate-500">{(drafts[q.id]??mine?.opinions[q.id]??"").length}/400자</span>
+                      <button disabled={!canEdit||busy||drafts[q.id]===undefined}
+                        onClick={()=>void action({action:"opinion",questionId:q.id,text:drafts[q.id]??""})}
+                        className={button+" bg-indigo-600 text-sm text-white"}>내 의견 저장</button>
+                    </div>
+                  </div>
+                  <div className="mt-5 flex items-center justify-between gap-2">
+                    <h3 className="font-black">우리 모둠의 의견</h3>
+                    <span className="text-xs text-slate-500">의견을 읽고 함께 토론하세요</span>
+                  </div>
+                  <div className="mt-2 grid gap-2">
+                    {myGroup?.participants.map((p, i)=>{
+                      const chosen=myGroup.selected[q.id]===p.number;
+                      const hasOpinion=Boolean(p.opinions[q.id]?.trim());
+                      return <div key={p.number} className={"rounded-2xl border p-3 "+(chosen?"border-yellow-400 bg-yellow-50":"border-slate-200 bg-slate-50")}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-bold">{i+1}번 의견 · {p.name}</span>
+                          {chosen ? <span className="text-sm font-bold text-amber-700">👑 최종 의견</span> :
+                          recorder && canEdit && hasOpinion ? <button disabled={busy} onClick={()=>void action({action:"select",questionId:q.id,winner:p.number})}
+                            className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-amber-800">👑 왕관 선택</button> : null}
+                        </div>
+                        <p className="mt-2 whitespace-pre-wrap break-words text-sm">{p.opinions[q.id] || "아직 의견을 작성하지 않았어요."}</p>
+                      </div>;
+                    })}
+                  </div>
+                </>}
               </section>;
             })}
             {recorder && !myGroup?.submitted && data.status==="open" && <section className="rounded-3xl bg-white p-5 shadow-sm">
               <h2 className="font-black">모둠 최종 제출</h2>
               <p className="mt-1 text-sm text-slate-600">모든 문제에서 왕관 하나씩 선정한 후 제출하세요. 제출 후에는 선생님이 다시 열어야 수정할 수 있습니다.</p>
-              <button className={button+" mt-3 w-full bg-emerald-600 text-white"} disabled={busy || data.questions.some(q=>!myGroup?.selected[q.id])}
+              <button className={button+" mt-3 w-full bg-emerald-600 text-white"} disabled={busy || data.questions.some(q=>opinionSlots(q).some(slot=>!myGroup?.selected[slot]))}
                 onClick={()=>{if(window.confirm("모둠 답안을 최종 제출할까요?")) void action({action:"submit"});}}>👑 모둠 최종 제출하기</button>
             </section>}
             {!recorder && !myGroup?.submitted && <p className="rounded-xl bg-white p-4 text-center text-sm text-slate-600">왕관 선정과 최종 제출은 선생님이 지정한 기록 담당자만 할 수 있습니다.</p>}
             {data.results && <section className="rounded-3xl bg-white p-5 shadow-sm">
               <h2 className="text-lg font-black">공개된 모둠별 최종 답안</h2>
-              {data.results.map(r=><div key={r.group} className="mt-3 rounded-xl border border-slate-200 p-3">
-                <h3 className="font-bold">{r.group}모둠 {r.submitted?"👑":"(미제출)"}</h3>
-                {r.selections.map((s,i)=><p key={s.questionId} className="mt-2 whitespace-pre-wrap text-sm">{i+1}번: {s.text||"선택 전"}</p>)}
+              {data.results.map(result=><div key={result.group} className="mt-3 rounded-xl border border-slate-200 p-3">
+                <h3 className="font-bold">{result.group}모둠 {result.submitted?"👑":"(미제출)"}</h3>
+                {data.questions.map((q,qi)=><div key={q.id} className="mt-3">
+                  <h4 className="text-sm font-bold">{qi+1}번. {q.text}</h4>
+                  {isTableQuestion(q) ? <div className="mt-2 overflow-x-auto">
+                    <table className="w-full min-w-[540px] border-collapse text-sm">
+                      <thead><tr className="bg-indigo-100"><th className="border border-slate-200 p-2">비교 항목</th>
+                        {q.columns!.map((col,ci)=><th key={ci} className="border border-slate-200 p-2">{col}</th>)}</tr></thead>
+                      <tbody>{q.rows!.map((row,ri)=>{
+                        const slot=rowSlot(q,ri);
+                        const selected=result.selections.find(s=>s.questionId===slot);
+                        const cells=readTableCells(selected?.text,q.columns!.length);
+                        return <tr key={slot}><th className="border border-slate-200 p-2 text-left">{row}</th>
+                          {cells.map((cell,ci)=><td key={ci} className="whitespace-pre-wrap border border-slate-200 p-2">{cell||"미선정"}</td>)}</tr>;
+                      })}</tbody>
+                    </table>
+                  </div> : <p className="mt-1 whitespace-pre-wrap text-sm">{result.selections.find(s=>s.questionId===q.id)?.text||"선택 전"}</p>}
+                </div>)}
               </div>)}
             </section>}
           </>
