@@ -78,6 +78,13 @@ const validOpinion = (q: DiscussionQuestion, text: string) => {
     return readTableCells(text, q.columns!.length).every(cell => cell.trim().length > 0);
   } catch { return false; }
 };
+// 모둠에서 3명만 작성해도 토론 결과를 결정할 수 있습니다.
+const MIN_OPINIONS_TO_DECIDE = 3;
+const submittedOpinionCount = (data: Discussion, groupNumber: number, question: DiscussionQuestion, slot: string) =>
+  Object.values(data.students).filter(member =>
+    member.group === groupNumber && validOpinion(question, member.opinions[slot] || "")
+  ).length;
+
 const resultView = (data: Discussion) => GROUPS.map(group => {
   const g = data.groups[String(group)];
   return { group, submitted: g.submitted, selections: data.questions.flatMap(q =>
@@ -174,14 +181,17 @@ export async function mutateStudent(id: string, request: NextRequest, body: Reco
       if (!question || data.students[String(winner)]?.group !== student.group ||
           !validOpinion(question, data.students[String(winner)].opinions[questionId] || ""))
         throw new DiscussionError(400, "같은 모둠에서 작성된 완성된 의견을 선택해 주세요.");
+      if (submittedOpinionCount(data, student.group, question, questionId) < MIN_OPINIONS_TO_DECIDE)
+        throw new DiscussionError(409, "이 문제에 의견을 작성한 학생이 3명 이상이어야 왕관을 선택할 수 있습니다.");
       group.selected[questionId] = winner;
     } else if (action === "submit") {
       if (group.recorder !== student.number) throw new DiscussionError(403, "기록 담당자만 제출할 수 있습니다.");
       if (data.questions.some(q => opinionSlots(q).some(slot => {
         const winner = data.students[String(group.selected[slot])];
         return !winner || winner.group !== student.group ||
-          !validOpinion(q, winner.opinions[slot] || "");
-      }))) throw new DiscussionError(409, "모든 문제와 비교표 항목의 최종 의견을 왕관으로 선택해 주세요.");
+          !validOpinion(q, winner.opinions[slot] || "") ||
+          submittedOpinionCount(data, student.group, q, slot) < MIN_OPINIONS_TO_DECIDE;
+      }))) throw new DiscussionError(409, "각 문제와 비교표 항목에 3명 이상의 의견과 최종 왕관 선택이 필요합니다.");
       group.submitted = true; group.submittedAt = now();
     } else throw new DiscussionError(400, "올바르지 않은 요청입니다.");
     tx.set(r, { ...data });

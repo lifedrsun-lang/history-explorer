@@ -127,9 +127,13 @@ export default function StudentGroupDiscussion({ params }: { params: Promise<{ i
                     const slot = rowSlot(q,ri);
                     const currentRow = tableDrafts[slot] ?? readTableCells(mine?.opinions[slot],q.columns!.length);
                     const allFilled = currentRow.every(cell=>cell.trim().length>0);
+                    const validCount = myGroup?.participants.filter(p => {
+                      const cells = readTableCells(p.opinions[slot], q.columns!.length);
+                      return Boolean(p.opinions[slot]) && cells.every(cell => cell.trim());
+                    }).length || 0;
                     return <div key={slot} className="rounded-2xl border border-indigo-100 p-3 sm:p-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="font-black text-indigo-900">{ri+1}. {row}</h3>
+                        <h3 className="font-black text-indigo-900">{ri+1}. {row} <span className="ml-2 text-xs font-bold text-indigo-600">의견 {validCount}명 {validCount>=3?"✓ 왕관 선택 가능":"· 3명 작성 시 진행"}</span></h3>
                         {myGroup?.selected[slot] && <span className="text-xs font-bold text-amber-700">👑 이 항목의 최종 의견 선정됨</span>}
                       </div>
                       <div className="mt-3 grid gap-3 rounded-2xl bg-indigo-50/60 p-3 sm:grid-cols-2">
@@ -163,7 +167,7 @@ export default function StudentGroupDiscussion({ params }: { params: Promise<{ i
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-sm font-bold">{pi+1}번 의견 · {p.name}</span>
                               {chosen ? <span className="text-sm font-bold text-amber-800">👑 최종 선택</span> :
-                                recorder && canEdit && hasOpinion ? <button disabled={busy}
+                                recorder && canEdit && hasOpinion ? <button disabled={busy || validCount<3}
                                   onClick={()=>void action({action:"select",questionId:slot,winner:p.number})}
                                   className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-amber-800">👑 왕관 선택</button> : null}
                             </div>
@@ -207,7 +211,7 @@ export default function StudentGroupDiscussion({ params }: { params: Promise<{ i
                     </div>
                   </div>
                   <div className="mt-5 flex items-center justify-between gap-2">
-                    <h3 className="font-black">우리 모둠의 의견</h3>
+                    <h3 className="font-black">우리 모둠의 의견 <span className="ml-2 text-xs font-bold text-indigo-600">의견 {myGroup?.participants.filter(p=>Boolean(p.opinions[q.id]?.trim())).length || 0}명 · 3명부터 선정</span></h3>
                     <span className="text-xs text-slate-500">의견을 읽고 함께 토론하세요</span>
                   </div>
                   <div className="mt-2 grid gap-2">
@@ -218,7 +222,7 @@ export default function StudentGroupDiscussion({ params }: { params: Promise<{ i
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-sm font-bold">{i+1}번 의견 · {p.name}</span>
                           {chosen ? <span className="text-sm font-bold text-amber-700">👑 최종 의견</span> :
-                          recorder && canEdit && hasOpinion ? <button disabled={busy} onClick={()=>void action({action:"select",questionId:q.id,winner:p.number})}
+                          recorder && canEdit && hasOpinion ? <button disabled={busy || (myGroup?.participants.filter(person=>Boolean(person.opinions[q.id]?.trim())).length || 0)<3} onClick={()=>void action({action:"select",questionId:q.id,winner:p.number})}
                             className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-amber-800">👑 왕관 선택</button> : null}
                         </div>
                         <p className="mt-2 whitespace-pre-wrap break-words text-sm">{p.opinions[q.id] || "아직 의견을 작성하지 않았어요."}</p>
@@ -230,8 +234,12 @@ export default function StudentGroupDiscussion({ params }: { params: Promise<{ i
             })}
             {recorder && !myGroup?.submitted && data.status==="open" && <section className="rounded-3xl bg-white p-5 shadow-sm">
               <h2 className="font-black">모둠 최종 제출</h2>
-              <p className="mt-1 text-sm text-slate-600">모든 문제에서 왕관 하나씩 선정한 후 제출하세요. 제출 후에는 선생님이 다시 열어야 수정할 수 있습니다.</p>
-              <button className={button+" mt-3 w-full bg-emerald-600 text-white"} disabled={busy || data.questions.some(q=>opinionSlots(q).some(slot=>!myGroup?.selected[slot]))}
+              <p className="mt-1 text-sm text-slate-600">모든 문제와 비교표의 각 항목에서 최소 3명이 의견을 저장하면 기록 담당자가 왕관을 선정할 수 있습니다. 5명을 모두 기다릴 필요는 없습니다. 제출 후에는 선생님이 다시 열어야 수정할 수 있습니다.</p>
+              <button className={button+" mt-3 w-full bg-emerald-600 text-white"} disabled={busy || data.questions.some(q=>opinionSlots(q).some(slot=>!myGroup?.selected[slot] || (myGroup?.participants.filter(p=> {
+                  if (!isTableQuestion(q)) return Boolean(p.opinions[slot]?.trim());
+                  const cells = readTableCells(p.opinions[slot],q.columns!.length);
+                  return Boolean(p.opinions[slot]) && cells.every(cell=>cell.trim());
+                }).length || 0)<3))}
                 onClick={()=>{if(window.confirm("모둠 답안을 최종 제출할까요?")) void action({action:"submit"});}}>👑 모둠 최종 제출하기</button>
             </section>}
             {!recorder && !myGroup?.submitted && <p className="rounded-xl bg-white p-4 text-center text-sm text-slate-600">왕관 선정과 최종 제출은 선생님이 지정한 기록 담당자만 할 수 있습니다.</p>}

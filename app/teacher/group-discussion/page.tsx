@@ -4,6 +4,7 @@ import Link from "next/link";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { useCallback, useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
+import GroupDiscussionSaveDialog, { type DiscussionImageCapture } from "./GroupDiscussionSaveDialog";
 import { type DiscussionQuestion, isTableQuestion, opinionSlots, rowSlot, formatOpinion, readTableCells } from "@/lib/groupDiscussionFormat";
 
 type Question = DiscussionQuestion;
@@ -37,6 +38,8 @@ export default function TeacherGroupDiscussionPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [openCreation, setOpenCreation] = useState(true);
+  const [imageCapture, setImageCapture] = useState<DiscussionImageCapture | null>(null);
+  const [imageBusy, setImageBusy] = useState(false);
 
   useEffect(() => onAuthStateChanged(auth, u=>{ setUser(u); setChecking(false); }), []);
   const api = useCallback(async (payload?: Record<string,unknown>, id?: string) => {
@@ -86,9 +89,15 @@ export default function TeacherGroupDiscussionPage() {
     if(current) void submit({id:current.id,action,...extra});
   };
   const link = current ? "https://sunlab.me.kr/group-discussion/"+current.id : "";
-  const downloadResults = () => {
-    if(!current) return;
-    // A text-based SVG renders as an image without any third-party library.
+  const saveDiscussionResults = async () => {
+    if(!current || imageBusy) return;
+    setError("");
+    if (!current.groups.some(group => group.submitted)) {
+      setError("학교 차시 저장은 최소 1개 모둠의 최종 제출 후 이용할 수 있습니다.");
+      return;
+    }
+    setImageBusy(true);
+    try {
     const rows:string[] = [current.title];
     for (const question of current.questions) {
       rows.push(" ");
@@ -104,7 +113,7 @@ export default function TeacherGroupDiscussionPage() {
       }
     }
     const canvas = document.createElement("canvas"), ctx=canvas.getContext("2d");
-    if(!ctx) return;
+    if(!ctx) throw new Error("이미지 저장을 지원하지 않는 브라우저입니다.");
     const width=1100, pad=45, maxWidth=width-2*pad, lineHeight=31;
     ctx.font="24px sans-serif";
     const lines:string[]=[];
@@ -116,17 +125,28 @@ export default function TeacherGroupDiscussionPage() {
       }
       lines.push(line);
     }
-    if(lines.length>250) {setError("저장할 내용이 너무 많아 이미지 대신 인쇄 기능을 사용해 주세요.");return;}
+    if(lines.length>250) throw new Error("이미지 길이가 너무 깁니다. 저장할 결과를 줄여 주세요.");
     canvas.width=width;canvas.height=Math.max(300,lines.length*lineHeight+pad*2);
     ctx.fillStyle="#ffffff";ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.fillStyle="#111827";ctx.font="24px sans-serif";
     lines.forEach((line,i)=>ctx.fillText(line,pad,pad+25+i*lineHeight));
-    canvas.toBlob(blob=>{
-      if(!blob) return;
-      const url=URL.createObjectURL(blob), a=document.createElement("a");
-      a.href=url; a.download="모둠토론_"+current.title.replace(/[\\/:*?"<>|]/g,"_").slice(0,40)+".png";
-      document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
-    },"image/png");
+    const blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob(value => value ? resolve(value) : reject(new Error("PNG 생성에 실패했습니다.")), "image/png")
+    );
+    if (blob.size > 3_500_000) {
+      throw new Error("차시 사진 용량 3.5MB를 초과했습니다. 모둠 답안 길이를 줄인 뒤 다시 저장해 주세요.");
+    }
+    setImageCapture({
+      id: crypto.randomUUID(),
+      title: current.title,
+      blob,
+      opinionCount: Math.min(100, Math.max(1, current.groups.filter(group => group.submitted).length)),
+    });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "결과 이미지를 만들지 못했습니다.");
+    } finally {
+      setImageBusy(false);
+    }
   };
 
   if(checking) return <main className="p-6">교사 로그인 확인 중...</main>;
@@ -245,7 +265,7 @@ export default function TeacherGroupDiscussionPage() {
             <button disabled={busy||current.status==="closed"} className={secondary} onClick={()=>{if(window.confirm("활동을 종료할까요? 학생 의견 작성이 중단됩니다."))act("close");}}>활동 종료</button>
             <button disabled={busy||current.published} className={primary} onClick={()=>act("publish")}>최종 결과 공개</button>
             <button disabled={busy||!current.published} className={secondary} onClick={()=>act("hide")}>결과 비공개</button>
-            <button className={secondary} onClick={downloadResults}>👑 최종 답안 PNG 저장</button>
+            <button className={secondary} disabled={imageBusy} onClick={() => void saveDiscussionResults()}>{imageBusy ? "이미지 생성 중…" : "👑 최종 답안 저장 (파일 / 학교 차시)"}</button>
           </div>
           <p className="mt-2 text-xs text-slate-500">활동 중에는 모둠별 의견을 다른 모둠에 공개하지 않습니다. 결과 공개 버튼을 눌렀을 때 선택된 최종 의견만 학생들에게 표시됩니다.</p>
         </section>
@@ -300,6 +320,7 @@ export default function TeacherGroupDiscussionPage() {
           </article>)}
         </section>
       </>}
+      {imageCapture && user && <GroupDiscussionSaveDialog capture={imageCapture} user={user} onClose={() => setImageCapture(null)} onSaved={setMessage} />}
       <footer className="pb-5 text-center text-xs text-slate-500">학생의 이름·번호 및 의견은 수업 관리 목적에 한해 확인해 주세요.</footer>
     </div>
   </main>;
