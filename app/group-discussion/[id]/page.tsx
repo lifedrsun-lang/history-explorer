@@ -133,7 +133,7 @@ export default function StudentGroupDiscussion({ params }: { params: Promise<{ i
                     }).length || 0;
                     return <div key={slot} className="rounded-2xl border border-indigo-100 p-3 sm:p-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="font-black text-indigo-900">{ri+1}. {row} <span className="ml-2 text-xs font-bold text-indigo-600">의견 {validCount}/3명 {validCount>=3?"✓ 왕관 선택 가능":"· 3명 필요"}</span></h3>
+                        <h3 className="font-black text-indigo-900">{ri+1}. {row} <span className="ml-2 text-xs font-bold text-indigo-600">의견 {validCount}명 {validCount>=3?"✓ 왕관 선택 가능":"· 3명 작성 시 진행"}</span></h3>
                         {myGroup?.selected[slot] && <span className="text-xs font-bold text-amber-700">👑 이 항목의 최종 의견 선정됨</span>}
                       </div>
                       <div className="mt-3 grid gap-3 rounded-2xl bg-indigo-50/60 p-3 sm:grid-cols-2">
@@ -211,7 +211,7 @@ export default function StudentGroupDiscussion({ params }: { params: Promise<{ i
                     </div>
                   </div>
                   <div className="mt-5 flex items-center justify-between gap-2">
-                    <h3 className="font-black">우리 모둠의 의견 <span className="ml-2 text-xs font-bold text-indigo-600">의견 {myGroup?.participants.filter(p=>Boolean(p.opinions[q.id]?.trim())).length || 0}/3명</span></h3>
+                    <h3 className="font-black">우리 모둠의 의견 <span className="ml-2 text-xs font-bold text-indigo-600">의견 {myGroup?.participants.filter(p=>Boolean(p.opinions[q.id]?.trim())).length || 0}명 · 3명부터 선정</span></h3>
                     <span className="text-xs text-slate-500">의견을 읽고 함께 토론하세요</span>
                   </div>
                   <div className="mt-2 grid gap-2">
