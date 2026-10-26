@@ -4,8 +4,8 @@ import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from
 import { NextRequest, NextResponse } from "next/server";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { verifyTeacherRequest } from "@/lib/assignmentServer";
+import { type DiscussionQuestion, isTableQuestion, opinionSlots, readTableCells } from "@/lib/groupDiscussionFormat";
 
-export type DiscussionQuestion = { id: string; text: string };
 export type DiscussionStudent = {
   number: number; name: string; group: number; joinedAt: string;
   sessionHash: string; opinions: Record<string, string>;
@@ -63,12 +63,29 @@ const groupView = (data: Discussion, group: number) => ({
     .sort((a,b) => a.number - b.number)
     .map(s => ({ number: s.number, name: s.name, opinions: s.opinions })),
 });
+const findQuestionForSlot = (questions: DiscussionQuestion[], slot: string) =>
+  questions.find(q => opinionSlots(q).includes(slot));
+
+const validOpinion = (q: DiscussionQuestion, text: string) => {
+  if (!text.trim()) return false;
+  if (!isTableQuestion(q)) return text.trim().length <= 400;
+  if (text.length > 1500) return false;
+  try {
+    const raw: unknown = JSON.parse(text);
+    if (!Array.isArray(raw) || raw.length !== q.columns!.length ||
+        !raw.every(cell => typeof cell === "string" && cell.trim().length > 0 && cell.trim().length <= 200))
+      return false;
+    return readTableCells(text, q.columns!.length).every(cell => cell.trim().length > 0);
+  } catch { return false; }
+};
 const resultView = (data: Discussion) => GROUPS.map(group => {
   const g = data.groups[String(group)];
-  return { group, submitted: g.submitted, selections: data.questions.map(q => {
-    const winner = data.students[String(g.selected[q.id])];
-    return { questionId: q.id, text: winner?.opinions[q.id] || "" };
-  }) };
+  return { group, submitted: g.submitted, selections: data.questions.flatMap(q =>
+    opinionSlots(q).map(slot => {
+      const winner = data.students[String(g.selected[slot])];
+      return { questionId: slot, text: winner?.opinions[slot] || "" };
+    })
+  ) };
 });
 const baseView = (id: string, data: Discussion) => ({
   id, title: data.title, questions: data.questions, status: data.status, published: data.published,
@@ -144,24 +161,27 @@ export async function mutateStudent(id: string, request: NextRequest, body: Reco
     if (group.submitted) throw new DiscussionError(409, "이미 제출한 모둠입니다. 교사에게 재수정을 요청해 주세요.");
     if (action === "opinion") {
       const questionId = String(body.questionId || ""), text = String(body.text || "").trim();
-      if (!data.questions.some(q => q.id === questionId) || text.length > 400)
-        throw new DiscussionError(400, "의견은 400자 이내로 입력해 주세요.");
+      const question = findQuestionForSlot(data.questions, questionId);
+      if (!question || (text !== "" && !validOpinion(question, text)))
+        throw new DiscussionError(400, isTableQuestion(question || {id:"",text:""}) ?
+          "표의 모든 칸을 200자 이내로 채워 주세요." : "의견은 400자 이내로 입력해 주세요.");
       student.opinions[questionId] = text;
       if (group.selected[questionId] === student.number && !text) delete group.selected[questionId];
     } else if (action === "select") {
       const questionId = String(body.questionId || ""), winner = Number(body.winner);
       if (group.recorder !== student.number) throw new DiscussionError(403, "왕관은 기록 담당자만 선택할 수 있습니다.");
-      if (!data.questions.some(q => q.id === questionId) ||
-          data.students[String(winner)]?.group !== student.group ||
-          !data.students[String(winner)].opinions[questionId]?.trim())
-        throw new DiscussionError(400, "같은 모둠에서 작성된 의견을 선택해 주세요.");
+      const question = findQuestionForSlot(data.questions, questionId);
+      if (!question || data.students[String(winner)]?.group !== student.group ||
+          !validOpinion(question, data.students[String(winner)].opinions[questionId] || ""))
+        throw new DiscussionError(400, "같은 모둠에서 작성된 완성된 의견을 선택해 주세요.");
       group.selected[questionId] = winner;
     } else if (action === "submit") {
       if (group.recorder !== student.number) throw new DiscussionError(403, "기록 담당자만 제출할 수 있습니다.");
-      if (data.questions.some(q => {
-        const winner = data.students[String(group.selected[q.id])];
-        return !winner || winner.group !== student.group || !winner.opinions[q.id]?.trim();
-      })) throw new DiscussionError(409, "모든 문제의 최종 의견을 왕관으로 선택해 주세요.");
+      if (data.questions.some(q => opinionSlots(q).some(slot => {
+        const winner = data.students[String(group.selected[slot])];
+        return !winner || winner.group !== student.group ||
+          !validOpinion(q, winner.opinions[slot] || "");
+      }))) throw new DiscussionError(409, "모든 문제와 비교표 항목의 최종 의견을 왕관으로 선택해 주세요.");
       group.submitted = true; group.submittedAt = now();
     } else throw new DiscussionError(400, "올바르지 않은 요청입니다.");
     tx.set(r, { ...data });
@@ -190,15 +210,36 @@ export async function readTeacher(request: Request, id: string) {
 export async function createTeacher(request: Request, body: Record<string, unknown>) {
   const user = await verifyTeacherRequest(request);
   const title = String(body.title || "").trim();
-  const texts = Array.isArray(body.questions) ? body.questions : [];
-  if (!title || title.length > 100 || texts.length < 1 || texts.length > 10 ||
-      texts.some(q => typeof q !== "string" || !q.trim() || q.trim().length > 250))
+  const inputs: unknown[] = Array.isArray(body.questions) ? body.questions : [];
+  if (!title || title.length > 100 || inputs.length < 1 || inputs.length > 10)
     throw new DiscussionError(400, "활동 제목과 문제 1~10개를 입력해 주세요.");
+  const questions: DiscussionQuestion[] = inputs.map((value,index) => {
+    const item = typeof value === "string" ? { type: "text", text: value } : value;
+    if (!item || typeof item !== "object") throw new DiscussionError(400, "문제 유형을 확인해 주세요.");
+    const v = item as Record<string,unknown>;
+    const text = typeof v.text === "string" ? v.text.trim() : "";
+    if (!text || text.length > 250) throw new DiscussionError(400, "문제는 1~250자로 입력해 주세요.");
+    if (v.type !== undefined && v.type !== "text" && v.type !== "table")
+      throw new DiscussionError(400, "지원하지 않는 문제 유형입니다.");
+    const id = String(index+1);
+    if (v.type !== "table") return {id,text,type:"text"};
+    if (!Array.isArray(v.columns) || v.columns.length < 2 || v.columns.length > 4 ||
+        !Array.isArray(v.rows) || v.rows.length < 1 || v.rows.length > 8)
+      throw new DiscussionError(400,"비교표는 열 2~4개, 비교 항목 1~8개로 구성해 주세요.");
+    const labels: unknown[] = [...v.columns, ...v.rows];
+    if (labels.some(label => typeof label !== "string" || !label.trim() || label.trim().length > 60))
+      throw new DiscussionError(400,"비교표의 항목과 열 제목은 1~60자로 입력해 주세요.");
+    const columns = (v.columns as string[]).map(x=>x.trim());
+    const rows = (v.rows as string[]).map(x=>x.trim());
+    if (new Set(columns).size !== columns.length)
+      throw new DiscussionError(400,"비교표의 열 제목을 서로 다르게 입력해 주세요.");
+    return {id,text,type:"table",columns,rows};
+  });
   const id = randomUUID(), createdAt = now();
   const groups: Record<string, DiscussionGroup> = {};
   for (const group of GROUPS) groups[String(group)] = { recorder: null, selected: {}, submitted: false, submittedAt: null };
   const data: Discussion = {
-    title, questions: texts.map((text, index) => ({ id: String(index + 1), text: String(text).trim() })),
+    title, questions,
     createdAt, createdBy: user.uid, status: "open", published: false, students: {}, groups,
   };
   await ref(id).create(data);
