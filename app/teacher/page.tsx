@@ -1075,6 +1075,13 @@ export default function TeacherPage() {
     <div className="min-h-[100dvh] bg-[#f5f7fb] p-3">
       <div className="mx-auto mb-3 flex max-w-7xl flex-wrap justify-end gap-2">
         <Link
+          href="/teacher/group-discussion"
+          className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-bold text-indigo-700 shadow-sm"
+        >
+          👑 모둠 토론 관리
+        </Link>
+
+        <Link
           href="/teacher/assignments"
           className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 shadow-sm"
         >
