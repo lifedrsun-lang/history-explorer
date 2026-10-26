@@ -6,7 +6,7 @@ import type { OpinionState, Opinion, OpinionSlot } from "@/lib/opinions";
 
 const COOKIE = "sunlab_opinion_browser";
 type Row = { topic: string; instruction: string; active: boolean; round_id: string | null; revision: number;
-  responses: Record<string, { id: string; createdAt: string; text: string | null }> };
+  responses: Record<string, { id: string; createdAt: string; text: string | null; name?: string | null }> };
 export function browserIdentity(request: NextRequest, issue = false) {
   const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!secret) throw new Error("opinion_configuration");
@@ -41,21 +41,23 @@ export function teacherOpinionState(row: Row): OpinionState {
   return { topic: row.topic, instruction: row.instruction, active: row.active, round: row.round_id,
     revision: row.revision, participantCount: Object.keys(row.responses).length,
     opinions: Object.values(row.responses).filter((item): item is Opinion => typeof item.text === "string")
-      .map(({id,text,createdAt}) => ({id,text,createdAt})).sort((a,b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)) };
+      .map(({id,text,createdAt,name}) => ({id,text,createdAt,name:typeof name === "string" && name.trim() ? name : null})).sort((a,b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)) };
 }
 export function studentOpinionState(row: Row, participant: string) {
   const own = row.responses[participant];
   return { topic: row.topic, instruction: row.instruction, active: row.active, round: row.round_id,
-    revision: row.revision, submitted: Boolean(own), opinion: own?.text ? { id: own.id, text: own.text, createdAt: own.createdAt } : null };
+    revision: row.revision, submitted: Boolean(own), opinion: own?.text ? { id: own.id, text: own.text, createdAt: own.createdAt, name: own.name?.trim() || null } : null };
 }
-export async function mutateOpinion(action: string, args: { slot?: OpinionSlot; round?: unknown; participant?: string; text?: string; instruction?: string; id?: unknown } = {}) {
+export async function mutateOpinion(action: string, args: { slot?: OpinionSlot; round?: unknown; participant?: string; text?: string; name?: string; instruction?: string; id?: unknown } = {}) {
   const slot = args.slot ?? 1;
   const params = { p_action: action, p_round: args.round ?? null, p_participant: args.participant ?? null,
     p_text: args.text ?? null, p_instruction: args.instruction ?? null, p_id: args.id ?? null };
-  const { data, error } = slot === 1 ? await getSupabaseServer().rpc("opinion_mutate", params)
+  const { data, error } = action === "submit"
+    ? await getSupabaseServer().rpc("opinion_submit_named", {p_slot:slot,p_round:args.round ?? null,p_participant:args.participant ?? null,p_text:args.text ?? null,p_name:args.name ?? null})
+    : slot === 1 ? await getSupabaseServer().rpc("opinion_mutate", params)
     : await getSupabaseServer().rpc("opinion_slot_mutate", { ...params, p_slot: slot });
   if (error) {
-    for (const code of ["round_closed", "invalid_text", "invalid_topic", "activity_full", "invalid_action"]) {
+    for (const code of ["round_closed", "invalid_text", "invalid_name", "invalid_topic", "activity_full", "invalid_action"]) {
       if (error.message.includes(code)) throw new Error(code);
     }
     throw new Error("opinion_storage");
@@ -68,6 +70,7 @@ export function opinionError(error: unknown) {
     round_closed: [409,"활동이 종료되었거나 새 활동으로 변경되었습니다."],
     invalid_slot: [400,"활동 번호는 1~8번 중에서 선택해 주세요."],
     invalid_text: [400,"공백을 제외한 의견을 60자 이내로 입력해 주세요."],
+    invalid_name: [400,"이름을 2~20자 이내로 정확히 입력해 주세요."],
     invalid_topic: [400,"주제는 1~80자, 안내 문구는 300자 이내로 입력해 주세요."],
     browser_required: [401,"학생 링크를 다시 열어 주세요."],
     invalid_origin: [403,"허용되지 않은 요청입니다."],
