@@ -148,6 +148,13 @@ const sections: Record<string, ManagementSection> = {
         className: "border-violet-200 bg-violet-50 text-violet-900",
       },
       {
+        href: "/teacher/group-discussion",
+        icon: "👑",
+        title: "모둠 토론 활동",
+        description: "5개 모둠 토론·서술형/비교표형 의견 수집·왕관 선정·결과 제출",
+        className: "border-amber-200 bg-amber-50 text-amber-950",
+      },
+      {
         href: "/teacher/activity-lab",
         icon: "🤖",
         title: "활동 결과 연구소",
