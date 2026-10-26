@@ -324,7 +324,7 @@ export default async function TeacherManagementSectionPage({
             {section === "after-school" && (
               <h2 className="mb-3 px-1 text-lg font-black text-slate-900 sm:text-xl">방과후 공통 관리</h2>
             )}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className={`grid grid-cols-2 gap-3 sm:gap-4 ${section === "teaching" ? "lg:grid-cols-3" : ""}`}>
               {config.items.map((item) => (
                 <Link
                   key={`${item.href}-${item.title}`}
