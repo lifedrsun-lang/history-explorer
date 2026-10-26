@@ -185,7 +185,7 @@ export default function StudentGroupDiscussion({ params }: { params: Promise<{ i
                         {q.columns!.map((col,ci)=><th key={ci} className="border border-slate-200 p-2">{col}</th>)}</tr></thead>
                       <tbody>{q.rows!.map((row,ri)=>{
                         const slot=rowSlot(q,ri);
-                        const winner=myGroup?.participants.find(p=>p.number===myGroup.selected[slot]);
+                        const winner=myGroup?.participants.find(p=>p.number===myGroup?.selected[slot]);
                         const cells=readTableCells(winner?.opinions[slot],q.columns!.length);
                         return <tr key={slot}><th className="border border-slate-200 bg-slate-50 p-2 text-left">{row}</th>
                           {cells.map((cell,ci)=><td key={ci} className="whitespace-pre-wrap break-words border border-slate-200 p-2">
