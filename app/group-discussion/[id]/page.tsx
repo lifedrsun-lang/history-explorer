@@ -154,7 +154,7 @@ export default function StudentGroupDiscussion({ params }: { params: Promise<{ i
             {recorder && !myGroup?.submitted && data.status==="open" && <section className="rounded-3xl bg-white p-5 shadow-sm">
               <h2 className="font-black">모둠 최종 제출</h2>
               <p className="mt-1 text-sm text-slate-600">모든 문제에서 왕관 하나씩 선정한 후 제출하세요. 제출 후에는 선생님이 다시 열어야 수정할 수 있습니다.</p>
-              <button className={button+" mt-3 w-full bg-emerald-600 text-white"} disabled={busy || data.questions.some(q=>!myGroup.selected[q.id])}
+              <button className={button+" mt-3 w-full bg-emerald-600 text-white"} disabled={busy || data.questions.some(q=>!myGroup?.selected[q.id])}
                 onClick={()=>{if(window.confirm("모둠 답안을 최종 제출할까요?")) void action({action:"submit"});}}>👑 모둠 최종 제출하기</button>
             </section>}
             {!recorder && !myGroup?.submitted && <p className="rounded-xl bg-white p-4 text-center text-sm text-slate-600">왕관 선정과 최종 제출은 선생님이 지정한 기록 담당자만 할 수 있습니다.</p>}
