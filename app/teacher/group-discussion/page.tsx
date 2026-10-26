@@ -4,8 +4,14 @@ import Link from "next/link";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { useCallback, useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
+import { type DiscussionQuestion, isTableQuestion, opinionSlots, rowSlot, formatOpinion, readTableCells } from "@/lib/groupDiscussionFormat";
 
-type Question = { id: string; text: string };
+type Question = DiscussionQuestion;
+type QuestionDraft = {type: "text" | "table"; text: string; columns: string[]; rows: string[] };
+const freshQuestion = (type: QuestionDraft["type"]="text"): QuestionDraft => ({
+  type, text:"", columns:["인공지능이 만든 작품","사람이 만든 작품"],
+  rows:["표현 방식","감정 표현","창의성","전체 느낌"],
+});
 type Person = { number: number; name: string; opinions: Record<string, string> };
 type Group = { group: number; recorder: number | null; selected: Record<string, number>; submitted: boolean; submittedAt: string | null; participants: Person[] };
 type Activity = {
@@ -24,7 +30,9 @@ export default function TeacherGroupDiscussionPage() {
   const [list, setList] = useState<ListItem[]>([]);
   const [current, setCurrent] = useState<Activity | null>(null);
   const [title, setTitle] = useState("");
-  const [questions, setQuestions] = useState([""]);
+  const [questions, setQuestions] = useState<QuestionDraft[]>([freshQuestion()]);
+  const editQuestion = (index: number, next: Partial<QuestionDraft>) =>
+    setQuestions(old=>old.map((q,i)=>i===index?{...q,...next}:q));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -68,7 +76,7 @@ export default function TeacherGroupDiscussionPage() {
       const activity = await api(payload);
       setCurrent(activity as Activity);
       setOpenCreation(false);
-      if(!payload.id) {setTitle("");setQuestions([""]);setMessage("새 토론 활동을 만들었습니다.");}
+      if(!payload.id) {setTitle("");setQuestions([freshQuestion()]);setMessage("새 토론 활동을 만들었습니다.");}
       else setMessage("설정이 저장되었습니다.");
       await loadList();
     } catch(e){setError(e instanceof Error?e.message:"저장 실패");}
@@ -86,8 +94,13 @@ export default function TeacherGroupDiscussionPage() {
       rows.push(" ");
       rows.push(question.id+"번. "+question.text);
       for(const group of current.groups) {
-        const winner = group.participants.find(p=>p.number===group.selected[question.id]);
-        rows.push(group.group+"모둠 👑 "+(winner?.opinions[question.id] || "미선정"));
+        for (const slot of opinionSlots(question)) {
+          const winner = group.participants.find(p=>p.number===group.selected[slot]);
+          const rowIndex = opinionSlots(question).indexOf(slot);
+          const rowLabel = isTableQuestion(question) ? question.rows![rowIndex]+": " : "";
+          const answer = winner?.opinions[slot] || "";
+          rows.push(group.group+"모둠 👑 "+rowLabel+(answer?formatOpinion(question,slot,answer):"미선정"));
+        }
       }
     }
     const canvas = document.createElement("canvas"), ctx=canvas.getContext("2d");
@@ -136,15 +149,73 @@ export default function TeacherGroupDiscussionPage() {
           <label className="text-sm font-bold">활동 제목
             <input className={formControl+" mt-1"} value={title} maxLength={100} onChange={e=>setTitle(e.target.value)} placeholder="예: AI 작품 탐정" />
           </label>
-          <p className="text-sm font-bold">토론 문제 (1~10개)</p>
-          {questions.map((q,i)=><div key={i} className="flex gap-2">
-            <textarea aria-label={(i+1)+"번 토론 문제"} className={formControl+" min-h-20"} maxLength={250} value={q} placeholder={(i+1)+"번 문제"}
-              onChange={e=>setQuestions(old=>old.map((v,index)=>index===i?e.target.value:v))}/>
-            {questions.length>1 && <button className={secondary} onClick={()=>setQuestions(old=>old.filter((_,index)=>index!==i))}>삭제</button>}
+          <p className="text-sm font-bold">토론 문제 (서술형 또는 비교표형 · 1~10개)</p>
+          {questions.map((q,i)=><div key={i} className="rounded-2xl border border-indigo-100 bg-slate-50 p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-black">문제 {i+1}</h3>
+              <div className="flex items-center gap-2">
+                <select aria-label={(i+1)+"번 문제 유형"} className={formControl+" w-auto"}
+                  value={q.type} onChange={e=>editQuestion(i,{type:e.target.value as QuestionDraft["type"]})}>
+                  <option value="text">서술형</option>
+                  <option value="table">비교표형</option>
+                </select>
+                {questions.length>1 && <button className={secondary} onClick={()=>setQuestions(old=>old.filter((_,index)=>index!==i))}>문제 삭제</button>}
+              </div>
+            </div>
+            <label className="block text-sm font-bold">질문 내용
+              <textarea aria-label={(i+1)+"번 토론 문제"} className={formControl+" mt-1 min-h-20"} maxLength={250}
+                value={q.text} placeholder="예: 인공지능과 사람의 작품을 비교해 봅시다."
+                onChange={e=>editQuestion(i,{text:e.target.value})}/>
+            </label>
+            {q.type==="table" && <div className="mt-4 space-y-4">
+              <div>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-black">비교 열 제목 (2~4개)</h4>
+                  <button className={secondary} disabled={q.columns.length>=4}
+                    onClick={()=>editQuestion(i,{columns:[...q.columns,""]})}>+ 비교 열 추가</button>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {q.columns.map((col, ci)=><div key={ci} className="flex min-w-44 flex-1 items-center gap-1">
+                    <input className={formControl} maxLength={60} aria-label={(ci+1)+"열 제목"} value={col}
+                      onChange={e=>editQuestion(i,{columns:q.columns.map((c,n)=>n===ci?e.target.value:c)})}/>
+                    {q.columns.length>2 && <button className={secondary} aria-label={(ci+1)+"열 삭제"}
+                      onClick={()=>editQuestion(i,{columns:q.columns.filter((_,n)=>n!==ci)})}>×</button>}
+                  </div>)}
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-black">비교 항목 (1~8개)</h4>
+                  <button className={secondary} disabled={q.rows.length>=8}
+                    onClick={()=>editQuestion(i,{rows:[...q.rows,""]})}>+ 항목 추가</button>
+                </div>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  {q.rows.map((row,ri)=><div key={ri} className="flex gap-1">
+                    <input className={formControl} maxLength={60} aria-label={"비교 항목 "+(ri+1)}
+                      value={row} onChange={e=>editQuestion(i,{rows:q.rows.map((v,n)=>n===ri?e.target.value:v)})}/>
+                    {q.rows.length>1 && <button className={secondary} aria-label={"비교 항목 "+(ri+1)+" 삭제"}
+                      onClick={()=>editQuestion(i,{rows:q.rows.filter((_,n)=>n!==ri)})}>×</button>}
+                  </div>)}
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[520px] border-collapse text-sm">
+                  <thead><tr className="bg-indigo-100"><th className="border border-indigo-200 p-2">비교 항목</th>
+                    {q.columns.map((col,ci)=><th key={ci} className="border border-indigo-200 p-2">{col||"열 "+(ci+1)}</th>)}</tr></thead>
+                  <tbody>{q.rows.map((row,ri)=><tr key={ri}><th className="border border-slate-200 p-2 text-left">{row||"항목 "+(ri+1)}</th>
+                    {q.columns.map((_,ci)=><td key={ci} className="border border-slate-200 bg-white p-2 text-center text-slate-400">학생 답안</td>)}</tr>)}</tbody>
+                </table>
+              </div>
+              <p className="text-xs text-slate-600">학생은 표의 각 행을 모두 작성합니다. 기록 담당자는 행마다 완성된 비교 의견 한 세트에 왕관을 선정합니다.</p>
+            </div>}
           </div>)}
           <div className="flex flex-wrap gap-2">
-            <button disabled={questions.length>=10} className={secondary} onClick={()=>setQuestions(old=>[...old,""])}>+ 문제 추가</button>
-            <button disabled={busy||!title.trim()||questions.some(q=>!q.trim())} className={primary} onClick={()=>void submit({title,questions})}>활동 생성</button>
+            <button disabled={questions.length>=10} className={secondary} onClick={()=>setQuestions(old=>[...old,freshQuestion()])}>+ 문제 추가</button>
+            <button disabled={busy||!title.trim()||questions.some(q=>!q.text.trim() ||
+              (q.type==="table"&&(q.columns.some(v=>!v.trim())||q.rows.some(v=>!v.trim()))))}
+              className={primary}
+              onClick={()=>void submit({title,questions:questions.map(q=>q.type==="table" ?
+                {type:"table",text:q.text,columns:q.columns,rows:q.rows} : {type:"text",text:q.text})})}>활동 생성</button>
           </div>
           <p className="text-xs text-slate-500">새 활동을 만들면 고유 학생 접속 링크가 생성됩니다. 링크를 가진 학생만 활동을 찾을 수 있으며, 교사는 각 모둠의 기록 담당자를 지정해야 합니다.</p>
         </div>}
@@ -194,7 +265,33 @@ export default function TeacherGroupDiscussionPage() {
             {group.participants.length===0 && <p className="mt-3 text-sm text-slate-500">아직 참여한 학생이 없습니다.</p>}
             {current.questions.map((q,idx)=><div key={q.id} className="mt-4 rounded-xl border border-slate-200 p-3">
               <h4 className="font-bold">{idx+1}번. {q.text}</h4>
-              {group.participants.map(p=><div key={p.number} className={"mt-2 rounded-lg p-2 text-sm "+(group.selected[q.id]===p.number?"bg-amber-50":"bg-slate-50")}>
+              {isTableQuestion(q) ? <>
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full min-w-[520px] border-collapse text-sm">
+                    <thead><tr className="bg-indigo-100"><th className="border border-slate-200 p-2">비교 항목</th>
+                      {q.columns!.map((column,i)=><th key={i} className="border border-slate-200 p-2">{column}</th>)}</tr></thead>
+                    <tbody>{q.rows!.map((row,ri)=>{
+                      const slot=rowSlot(q,ri);
+                      const winner=group.participants.find(p=>p.number===group.selected[slot]);
+                      const cells=readTableCells(winner?.opinions[slot],q.columns!.length);
+                      return <tr key={slot}><th className="border border-slate-200 bg-slate-50 p-2 text-left">{row}</th>
+                        {cells.map((cell,ci)=><td key={ci} className="whitespace-pre-wrap border border-slate-200 bg-amber-50/50 p-2">
+                          {cell||"미선정"} {winner && ci===0?"👑":""}
+                        </td>)}</tr>;
+                    })}</tbody>
+                  </table>
+                </div>
+                {q.rows!.map((row,ri)=>{
+                  const slot=rowSlot(q,ri);
+                  return <details key={slot} className="mt-2 rounded-xl border border-slate-200 p-2">
+                    <summary className="cursor-pointer text-sm font-bold">{row} · 학생별 의견 펼치기</summary>
+                    {group.participants.map(p=><div key={p.number} className="mt-2 rounded-lg bg-slate-50 p-2 text-sm">
+                      <div className="font-bold">{group.selected[slot]===p.number?"👑 ":""}{p.number}번 {p.name}</div>
+                      <p className="mt-1 whitespace-pre-wrap">{p.opinions[slot]?formatOpinion(q,slot,p.opinions[slot]):"미작성"}</p>
+                    </div>)}
+                  </details>;
+                })}
+              </> : group.participants.map(p=><div key={p.number} className={"mt-2 rounded-lg p-2 text-sm "+(group.selected[q.id]===p.number?"bg-amber-50":"bg-slate-50")}>
                 <div className="font-bold">{group.selected[q.id]===p.number?"👑 ":""}{p.number}번 {p.name}</div>
                 <p className="mt-1 whitespace-pre-wrap break-words">{p.opinions[q.id]||"미작성"}</p>
               </div>)}
