@@ -8,12 +8,14 @@ import styles from "@/app/opinion/opinion.module.css";
 // Draw measured text runs, not a separate list layout. Positions, wrapping,
 // colour and font are taken from the actual opinion board.
 function drawText(ctx:CanvasRenderingContext2D,element:HTMLElement,origin:DOMRect) {
-  const style=getComputedStyle(element);
-  ctx.font=`${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-  ctx.fillStyle=style.color;ctx.textAlign="left";ctx.textBaseline="alphabetic";
+  ctx.textAlign="left";ctx.textBaseline="alphabetic";
   const walker=document.createTreeWalker(element,NodeFilter.SHOW_TEXT);
   let node:Node|null;
   while((node=walker.nextNode())) {
+    const parent=node.parentElement || element;
+    const style=getComputedStyle(parent);
+    ctx.font=`${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    ctx.fillStyle=style.color;
     let offset=0;
     for(const char of Array.from(node.textContent || "")) {
       const range=document.createRange();range.setStart(node,offset);offset+=char.length;range.setEnd(node,offset);
@@ -61,7 +63,7 @@ export async function makeOpinionPng(topic:string,opinions:Opinion[],visibleBoar
   await document.fonts.ready;
   const matchesSnapshot=(board:HTMLDivElement)=>{
     const cards=Array.from(board.querySelectorAll<HTMLElement>('[data-testid="opinion-card"]'));
-    return board.querySelector('[data-testid="opinion-topic"] h2')?.textContent===topic && cards.length===opinions.length && cards.every(card=>opinions.some(o=>o.id===card.dataset.id && o.text===card.textContent));
+    return board.querySelector('[data-testid="opinion-topic"] h2')?.textContent===topic && cards.length===opinions.length && cards.every(card=>opinions.some(o=>o.id===card.dataset.id && o.text===card.querySelector("[data-opinion-text]")?.textContent && (o.name || "기존 익명")===card.querySelector("[data-opinion-author]")?.textContent));
   };
   // A full board on screen is saved with those exact measured positions.
   if(visibleBoard && visibleBoard.clientWidth && matchesSnapshot(visibleBoard)) {

@@ -56,17 +56,17 @@ export default function OpinionBoard({topic,opinions,onSelect,listMode,onFallbac
   return <>
     <div className={styles.board} ref={boardRef} data-testid="opinion-board" style={listMode?{display:"none"}:undefined}>
       <div ref={centreRef} className={styles.centre} data-testid="opinion-topic"><span>우리의 생각</span><h2>{topic}</h2><div aria-hidden>✦</div></div>
-      <div ref={measureRef} className={styles.measure} aria-hidden>{opinions.map(o=><div key={o.id} data-id={o.id} className={styles.opinionCard}>{o.text}</div>)}</div>
+      <div ref={measureRef} className={styles.measure} aria-hidden>{opinions.map(o=><div key={o.id} data-id={o.id} className={styles.opinionCard}><span className={styles.opinionAuthor} data-opinion-author>{o.name || "기존 익명"}</span><span className={styles.opinionBody} data-opinion-text>{o.text}</span></div>)}</div>
       {layout.positions.map(position=>{
         const opinion=byId.get(position.id);
         if(!opinion) return null;
         const index=opinions.findIndex(o=>o.id===position.id);
         return <button key={opinion.id} type="button" data-testid="opinion-card" data-id={opinion.id} className={`${styles.opinionCard} ${styles.placed}`} onClick={()=>onSelect(opinion)}
-          style={{width:layout.width,fontSize:layout.font,transform:`translate(${position.x}px,${position.y}px)`,background:["#ecfdf5","#eff6ff","#fef3c7","#f3e8ff","#ffe4e6"][index%5]}}>{opinion.text}</button>;
+          style={{width:layout.width,fontSize:layout.font,transform:`translate(${position.x}px,${position.y}px)`,background:["#ecfdf5","#eff6ff","#fef3c7","#f3e8ff","#ffe4e6"][index%5]}}><span className={styles.opinionAuthor} data-opinion-author>{opinion.name || "기존 익명"}</span><span className={styles.opinionBody} data-opinion-text>{opinion.text}</span></button>;
       })}
       {opinions.length===0 && <p className={styles.empty}>학생들의 의견이 여기에 모여요.</p>}
       {layout.fallback && <p className={styles.fallback}>모든 의견을 읽기 쉽게 표시하려면 <strong>전체 목록 보기</strong>를 눌러 주세요.</p>}
     </div>
-    {listMode && <div className={styles.projectorList}><h2>{topic}</h2><div className={styles.listGrid}>{opinions.map(o=><button key={o.id} className={styles.listItem} onClick={()=>onSelect(o)}>{o.text}</button>)}</div>{!opinions.length && <p>아직 등록된 의견이 없습니다.</p>}</div>}
+    {listMode && <div className={styles.projectorList}><h2>{topic}</h2><div className={styles.listGrid}>{opinions.map(o=><button key={o.id} className={styles.listItem} onClick={()=>onSelect(o)}><span><strong className={styles.listAuthor}>{o.name || "기존 익명"}</strong><span className={styles.opinionBody}>{o.text}</span></span></button>)}</div>{!opinions.length && <p>아직 등록된 의견이 없습니다.</p>}</div>}
   </>;
 }
