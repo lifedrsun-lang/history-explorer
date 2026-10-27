@@ -100,10 +100,12 @@ export default function TeacherGroupDiscussionPage() {
     void submit({id:current.id,action:"reset",expectedRound:current.round,confirm:"RESET_GROUP_DISCUSSION"});
   };
   const link = current ? "https://sunlab.me.kr/group-discussion/"+current.id : "";
+  const submittedGroupCount = current?.groups.filter(group => group.submitted).length ?? 0;
+  const hasSubmittedGroups = submittedGroupCount > 0;
   const saveDiscussionResults = async () => {
     if(!current || imageBusy) return;
     setError("");
-    if (!current.groups.some(group => group.submitted)) {
+    if (!hasSubmittedGroups) {
       setError("학교 차시 저장은 최소 1개 모둠의 최종 제출 후 이용할 수 있습니다.");
       return;
     }
@@ -276,10 +278,29 @@ export default function TeacherGroupDiscussionPage() {
             <button disabled={busy||current.status==="closed"} className={secondary} onClick={()=>{if(window.confirm("활동을 종료할까요? 학생 의견 작성이 중단됩니다."))act("close");}}>활동 종료</button>
             <button disabled={busy||current.published} className={primary} onClick={()=>act("publish")}>최종 결과 공개</button>
             <button disabled={busy||!current.published} className={secondary} onClick={()=>act("hide")}>결과 비공개</button>
-            <button className={secondary} disabled={imageBusy || busy} onClick={() => void saveDiscussionResults()}>{imageBusy ? "이미지 생성 중…" : "👑 최종 답안 저장 (파일 / 학교 차시)"}</button>
+            <button
+              className={secondary}
+              disabled={imageBusy || busy || !hasSubmittedGroups}
+              aria-describedby="group-discussion-save-status"
+              title={hasSubmittedGroups ? "제출된 모둠의 최종 답안을 저장합니다." : "최소 1개 모둠의 최종 제출이 필요합니다."}
+              onClick={() => void saveDiscussionResults()}
+            >
+              {imageBusy ? "이미지 생성 중…" : hasSubmittedGroups ? "👑 최종 답안 저장 (파일 / 학교 차시)" : "👑 최종 답안 저장 (최종 제출 대기)"}
+            </button>
             <button type="button" className={btn+" border border-rose-300 bg-rose-50 text-rose-700"} disabled={busy || imageBusy || Boolean(imageCapture)}
               onClick={() => {setResetAcknowledged(false);setResetConfirmation(true);}}>🔄 활동 리셋 · 다시 사용</button>
           </div>
+          <p
+            id="group-discussion-save-status"
+            aria-live="polite"
+            className={"mt-3 rounded-xl border p-3 text-sm font-bold "+(hasSubmittedGroups
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-amber-200 bg-amber-50 text-amber-900")}
+          >
+            {hasSubmittedGroups
+              ? `✅ ${submittedGroupCount}개 모둠의 최종 제출이 확인되어 저장할 수 있습니다. 활동 종료 여부와 관계없이 저장 가능합니다.`
+              : "⏳ 저장하려면 먼저 학생 화면에서 기록 담당자가 왕관 답안을 선택하고 ‘모둠 최종 제출’을 완료해야 합니다. 활동 종료만으로는 최종 제출되지 않습니다."}
+          </p>
           <p className="mt-2 text-xs text-slate-500">활동 중에는 모둠별 의견을 다른 모둠에 공개하지 않습니다. 결과 공개 버튼을 눌렀을 때 선택된 최종 의견만 학생들에게 표시됩니다.</p>
         </section>
         <section className="grid gap-3 md:grid-cols-2">
