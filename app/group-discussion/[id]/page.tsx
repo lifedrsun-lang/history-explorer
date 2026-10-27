@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import { type DiscussionQuestion, isTableQuestion, opinionSlots, rowSlot, readTableCells } from "@/lib/groupDiscussionFormat";
 
 type Question = DiscussionQuestion;
 type Participant = { number: number; name: string; opinions: Record<string, string> };
 type Group = { group: number; recorder: number | null; selected: Record<string, number>; submitted: boolean; participants: Participant[] };
 type State = {
-  id: string; title: string; questions: Question[]; status: "open" | "closed"; published: boolean;
+  id: string; title: string; questions: Question[]; status: "open" | "closed"; published: boolean; round: number;
   joined: boolean; me: { number: number; name: string; group: number } | null;
   currentGroup: Group | null;
   results: { group: number; submitted: boolean; selections: { questionId: string; text: string }[] }[] | null;
@@ -18,6 +18,7 @@ const input = "w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 te
 export default function StudentGroupDiscussion({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [data, setData] = useState<State | null>(null);
+  const previousRound = useRef<number | null>(null);
   const [number, setNumber] = useState("");
   const [name, setName] = useState("");
   const [group, setGroup] = useState(1);
@@ -27,6 +28,19 @@ export default function StudentGroupDiscussion({ params }: { params: Promise<{ i
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (data?.round === undefined) return;
+    if (previousRound.current !== null && previousRound.current !== data.round) {
+      setDrafts({});
+      setTableDrafts({});
+      setNumber("");
+      setName("");
+      setGroup(1);
+      setNotice("선생님이 새로운 토론 회차를 시작했습니다. 출석번호와 이름을 다시 입력해 주세요.");
+    }
+    previousRound.current = data.round;
+  }, [data?.round]);
 
   const refresh = useCallback(async () => {
     try {
@@ -80,6 +94,7 @@ export default function StudentGroupDiscussion({ params }: { params: Promise<{ i
         <header className="rounded-3xl bg-indigo-700 px-5 py-6 text-white shadow-sm">
           <div className="text-xs font-bold text-indigo-100">Sun Lab · 우리 모둠 토론방</div>
           <h1 className="mt-1 text-2xl font-black">{data?.title || "모둠 토론 활동"}</h1>
+          {data && <p className="mt-1 text-xs font-bold text-indigo-100">{data.round}회차 활동</p>}
           {data?.joined && <p className="mt-2 text-sm text-indigo-100">{data.me?.group}모둠 · {data.me?.number}번 {data.me?.name}</p>}
         </header>
         {error && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm font-bold text-red-800">{error}</div>}

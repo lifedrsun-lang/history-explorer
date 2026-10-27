@@ -16,10 +16,14 @@ export type DiscussionGroup = {
 export type Discussion = {
   title: string; questions: DiscussionQuestion[]; createdBy: string; createdAt: string;
   status: "open" | "closed"; published: boolean;
+  round?: number; lastResetAt?: string;
   students: Record<string, DiscussionStudent>; groups: Record<string, DiscussionGroup>;
 };
 const COLLECTION = "group_discussions";
 const GROUPS = [1, 2, 3, 4, 5];
+const emptyGroups = (): Record<string, DiscussionGroup> => Object.fromEntries(
+  GROUPS.map(group => [String(group), {recorder:null, selected:{}, submitted:false, submittedAt:null}])
+);
 const cookieName = (id: string) => "sunlab_group_" + id.replace(/-/g, "");
 const safeId = (id: string) => {
   if (!/^[0-9a-f]{8}-[0-9a-f-]{27,28}$/i.test(id)) throw new DiscussionError(400, "올바르지 않은 활동 링크입니다.");
@@ -96,6 +100,7 @@ const resultView = (data: Discussion) => GROUPS.map(group => {
 });
 const baseView = (id: string, data: Discussion) => ({
   id, title: data.title, questions: data.questions, status: data.status, published: data.published,
+  round: data.round ?? 1,
 });
 const studentView = (id: string, data: Discussion, student: DiscussionStudent | null) => ({
   ...baseView(id, data), joined: Boolean(student),
@@ -104,7 +109,7 @@ const studentView = (id: string, data: Discussion, student: DiscussionStudent | 
   results: student && data.published ? resultView(data) : null,
 });
 const teacherView = (id: string, data: Discussion) => ({
-  ...baseView(id, data), createdAt: data.createdAt,
+  ...baseView(id, data), createdAt: data.createdAt, lastResetAt: data.lastResetAt ?? null,
   groups: GROUPS.map(group => groupView(data, group)),
   results: resultView(data),
 });
@@ -246,11 +251,10 @@ export async function createTeacher(request: Request, body: Record<string, unkno
     return {id,text,type:"table",columns,rows};
   });
   const id = randomUUID(), createdAt = now();
-  const groups: Record<string, DiscussionGroup> = {};
-  for (const group of GROUPS) groups[String(group)] = { recorder: null, selected: {}, submitted: false, submittedAt: null };
+  const groups = emptyGroups();
   const data: Discussion = {
     title, questions,
-    createdAt, createdBy: user.uid, status: "open", published: false, students: {}, groups,
+    createdAt, createdBy: user.uid, status: "open", published: false, round: 1, students: {}, groups,
   };
   await ref(id).create(data);
   return teacherView(id, data);
@@ -264,7 +268,20 @@ export async function mutateTeacher(request: Request, id: string, body: Record<s
     const data = snap.data() as Discussion;
     if (data.createdBy !== user.uid) throw new DiscussionError(403, "이 활동을 수정할 권한이 없습니다.");
     const action = body.action;
-    if (action === "setRecorder") {
+    if (action === "reset") {
+      // Reuse the same activity link and prompts; no previous student session can
+      // access the next round because its server-side session record is removed.
+      const round = data.round ?? 1;
+      if (body.confirm !== "RESET_GROUP_DISCUSSION" || Number(body.expectedRound) !== round) {
+        throw new DiscussionError(409, "활동 회차가 변경되었거나 초기화 확인이 누락됐습니다. 새로고침 후 다시 확인해 주세요.");
+      }
+      data.students = {};
+      data.groups = emptyGroups();
+      data.published = false;
+      data.status = "open";
+      data.round = round + 1;
+      data.lastResetAt = now();
+    } else if (action === "setRecorder") {
       requireOpen(data);
       const group = Number(body.group), number = Number(body.number);
       if (!GROUPS.includes(group) || data.groups[String(group)].submitted)
