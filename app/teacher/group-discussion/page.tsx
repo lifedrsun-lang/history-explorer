@@ -352,7 +352,7 @@ export default function TeacherGroupDiscussionPage() {
               onClick={resetDiscussion}>{busy?"초기화 중…":"이 회차 리셋하고 다시 사용"}</button>
           </div>
         </section>
-      </div>
+      </div>}
       <footer className="pb-5 text-center text-xs text-slate-500">학생의 이름·번호 및 의견은 수업 관리 목적에 한해 확인해 주세요.</footer>
     </div>
   </main>;
