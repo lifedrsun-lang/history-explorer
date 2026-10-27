@@ -16,7 +16,7 @@ const freshQuestion = (type: QuestionDraft["type"]="text"): QuestionDraft => ({
 type Person = { number: number; name: string; opinions: Record<string, string> };
 type Group = { group: number; recorder: number | null; selected: Record<string, number>; submitted: boolean; submittedAt: string | null; participants: Person[] };
 type Activity = {
-  id: string; title: string; createdAt: string; status: "open" | "closed"; published: boolean;
+  id: string; title: string; createdAt: string; status: "open" | "closed"; published: boolean; round: number;
   questions: Question[]; groups: Group[];
   results: { group: number; submitted: boolean; selections: { questionId: string; text: string }[] }[];
 };
@@ -40,6 +40,8 @@ export default function TeacherGroupDiscussionPage() {
   const [openCreation, setOpenCreation] = useState(true);
   const [imageCapture, setImageCapture] = useState<DiscussionImageCapture | null>(null);
   const [imageBusy, setImageBusy] = useState(false);
+  const [resetConfirmation, setResetConfirmation] = useState(false);
+  const [resetAcknowledged, setResetAcknowledged] = useState(false);
 
   useEffect(() => onAuthStateChanged(auth, u=>{ setUser(u); setChecking(false); }), []);
   const api = useCallback(async (payload?: Record<string,unknown>, id?: string) => {
@@ -80,13 +82,22 @@ export default function TeacherGroupDiscussionPage() {
       setCurrent(activity as Activity);
       setOpenCreation(false);
       if(!payload.id) {setTitle("");setQuestions([freshQuestion()]);setMessage("새 토론 활동을 만들었습니다.");}
-      else setMessage("설정이 저장되었습니다.");
+      else if(payload.action==="reset") {
+        setResetConfirmation(false);
+        setResetAcknowledged(false);
+        setImageCapture(null);
+        setMessage("모둠 토론을 리셋했습니다. 기존 문제와 학생 링크는 유지하며, 새 회차가 시작되었습니다.");
+      } else setMessage("설정이 저장되었습니다.");
       await loadList();
     } catch(e){setError(e instanceof Error?e.message:"저장 실패");}
     finally{setBusy(false);}
   };
   const act = (action:string, extra: Record<string,unknown>={}) => {
     if(current) void submit({id:current.id,action,...extra});
+  };
+  const resetDiscussion = () => {
+    if(!current || busy || imageBusy || imageCapture || !resetAcknowledged) return;
+    void submit({id:current.id,action:"reset",expectedRound:current.round,confirm:"RESET_GROUP_DISCUSSION"});
   };
   const link = current ? "https://sunlab.me.kr/group-discussion/"+current.id : "";
   const saveDiscussionResults = async () => {
@@ -253,7 +264,7 @@ export default function TeacherGroupDiscussionPage() {
       </section>
       {current && <>
         <section className="rounded-3xl bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-black">{current.title}</h2>
+          <h2 className="text-lg font-black">{current.title} <span className="ml-2 inline-block rounded-lg bg-indigo-50 px-2 py-1 text-sm font-bold text-indigo-700">{current.round}회차</span></h2>
           <p className="mt-1 text-sm text-slate-600">학생 접속 주소 · 활동마다 별도 링크</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <input className={formControl+" min-w-0 flex-1"} readOnly aria-label="학생 접속 주소" value={link}/>
@@ -265,7 +276,9 @@ export default function TeacherGroupDiscussionPage() {
             <button disabled={busy||current.status==="closed"} className={secondary} onClick={()=>{if(window.confirm("활동을 종료할까요? 학생 의견 작성이 중단됩니다."))act("close");}}>활동 종료</button>
             <button disabled={busy||current.published} className={primary} onClick={()=>act("publish")}>최종 결과 공개</button>
             <button disabled={busy||!current.published} className={secondary} onClick={()=>act("hide")}>결과 비공개</button>
-            <button className={secondary} disabled={imageBusy} onClick={() => void saveDiscussionResults()}>{imageBusy ? "이미지 생성 중…" : "👑 최종 답안 저장 (파일 / 학교 차시)"}</button>
+            <button className={secondary} disabled={imageBusy || busy} onClick={() => void saveDiscussionResults()}>{imageBusy ? "이미지 생성 중…" : "👑 최종 답안 저장 (파일 / 학교 차시)"}</button>
+            <button type="button" className={btn+" border border-rose-300 bg-rose-50 text-rose-700"} disabled={busy || imageBusy || Boolean(imageCapture)}
+              onClick={() => {setResetAcknowledged(false);setResetConfirmation(true);}}>🔄 활동 리셋 · 다시 사용</button>
           </div>
           <p className="mt-2 text-xs text-slate-500">활동 중에는 모둠별 의견을 다른 모둠에 공개하지 않습니다. 결과 공개 버튼을 눌렀을 때 선택된 최종 의견만 학생들에게 표시됩니다.</p>
         </section>
@@ -321,6 +334,25 @@ export default function TeacherGroupDiscussionPage() {
         </section>
       </>}
       {imageCapture && user && <GroupDiscussionSaveDialog capture={imageCapture} user={user} onClose={() => setImageCapture(null)} onSaved={setMessage} />}
+      {resetConfirmation && current && <div role="presentation" className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 p-4">
+        <section role="dialog" aria-modal="true" aria-labelledby="group-reset-title" className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+          <h2 id="group-reset-title" className="text-xl font-black text-rose-800">🔄 {current.title} · {current.round}회차 리셋</h2>
+          <p className="mt-3 text-sm font-bold text-slate-800">수업 결과를 PNG 파일이나 학교 차시에 저장했는지 확인해 주세요.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">리셋하면 이 회차의 모둠원 이름·출석번호, 개인 의견, 기록 담당자, 👑 왕관 선택, 제출 및 결과 공개 상태가 모두 초기화됩니다. <strong className="text-rose-700">저장하지 않은 이전 의견은 복구할 수 없습니다.</strong></p>
+          <p className="mt-2 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800">활동 제목·문제·비교표 및 학생 접속 링크는 유지됩니다. 이미 차시에 저장한 결과 사진도 유지됩니다. 리셋 후 학생들이 다시 접속해 다음 회차를 시작할 수 있습니다.</p>
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-bold text-rose-900">
+            <input type="checkbox" className="mt-0.5 h-5 w-5" checked={resetAcknowledged} disabled={busy}
+              onChange={e => setResetAcknowledged(e.target.checked)}/>
+            이전 회차의 학생 의견이 삭제되는 것을 확인했으며, 필요한 결과를 저장했습니다.
+          </label>
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <button type="button" className={secondary} disabled={busy}
+              onClick={() => {setResetConfirmation(false);setResetAcknowledged(false);}}>취소</button>
+            <button type="button" className={btn+" bg-rose-600 text-white"} disabled={busy || !resetAcknowledged}
+              onClick={resetDiscussion}>{busy?"초기화 중…":"이 회차 리셋하고 다시 사용"}</button>
+          </div>
+        </section>
+      </div>
       <footer className="pb-5 text-center text-xs text-slate-500">학생의 이름·번호 및 의견은 수업 관리 목적에 한해 확인해 주세요.</footer>
     </div>
   </main>;
