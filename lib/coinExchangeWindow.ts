@@ -11,6 +11,8 @@ const SEOUL_TIME_ZONE = "Asia/Seoul";
 const EXCHANGE_OPEN_DAYS_BEFORE_END = 14;
 
 const SCHOOL_TERM_END_DATES: Record<string, string> = {
+  김포하늘빛초: "2026-11-04",
+  하늘빛초: "2026-11-04",
   화성새솔초: "2026-08-28",
   김포사우초: "2026-08-28",
 };
