@@ -15,6 +15,7 @@ type StudentAccess = {
   enrollmentStatus: string;
   timelineCompletedIssues: number[];
   timelineAccessSource: "explicit" | "current_stage";
+  timelineVisibleWhileHidden: boolean;
 };
 
 export default function HistoryTimelineAdminPage() {
@@ -27,6 +28,7 @@ export default function HistoryTimelineAdminPage() {
   const [savingVisibility, setSavingVisibility] = useState(false);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState("");
+  const [grantingPair, setGrantingPair] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
@@ -124,6 +126,67 @@ export default function HistoryTimelineAdminPage() {
     }
   };
 
+  const toggleStudentException = async (student: StudentAccess) => {
+    if (savingId) return;
+    const next = !student.timelineVisibleWhileHidden;
+    if (!window.confirm(`${student.name} (${student.school}) 학생의 전체 미노출 예외 열람을 ${next ? "허용" : "해제"}하시겠습니까?`)) return;
+    setSavingId(student.studentId);
+    setError("");
+    setNotice("");
+    try {
+      const data = await request({
+        method: "PATCH",
+        body: JSON.stringify({
+          studentId: student.studentId,
+          timelineVisibleWhileHidden: next,
+        }),
+      });
+      setStudents((current) =>
+        current.map((item) =>
+          item.studentId === student.studentId
+            ? { ...item, timelineVisibleWhileHidden: data.timelineVisibleWhileHidden === true }
+            : item
+        )
+      );
+      setNotice(`${student.name} 학생의 예외 열람을 ${next ? "허용" : "해제"}했습니다.`);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "예외 열람을 변경하지 못했습니다.");
+    } finally {
+      setSavingId("");
+    }
+  };
+
+  const grantRequestedPair = async () => {
+    if (grantingPair) return;
+    setGrantingPair(true);
+    setError("");
+    setNotice("");
+    try {
+      const names = ["이민서", "이민채"];
+      const resolved = await request({
+        method: "POST",
+        body: JSON.stringify({ action: "resolve", names }),
+      });
+      const identified = (resolved.students || []) as Array<{
+        name: string; school: string; grade: string; studentId: string;
+      }>;
+      if (identified.length !== 2) throw new Error("두 학생을 모두 확인하지 못했습니다.");
+      const summary = identified.map((item) => `${item.name} · ${item.school} · ${item.grade}학년`).join("\n");
+      if (!window.confirm(`다음 학생 두 명만 전체 미노출 예외로 허용하시겠습니까?\n\n${summary}\n\n다른 학생은 미노출 상태를 유지합니다.`)) return;
+      const expectedStudentIds = Object.fromEntries(identified.map((item) => [item.name, item.studentId]));
+      const result = await request({
+        method: "POST",
+        body: JSON.stringify({ action: "grant", names, expectedStudentIds }),
+      });
+      setNotice(`이민서·이민채 ${result.count}명의 예외 열람을 허용했습니다.`);
+      await load();
+    } catch (grantError) {
+      setError(grantError instanceof Error ? grantError.message : "두 학생의 예외 열람을 설정하지 못했습니다.");
+    } finally {
+      setGrantingPair(false);
+    }
+  };
+
   const save = async (student: StudentAccess, completedIssues: number[]) => {
     setSavingId(student.studentId);
     setError("");
@@ -199,7 +262,7 @@ export default function HistoryTimelineAdminPage() {
               <h2 className="text-xl font-black text-slate-900">🔐 전체 학생 공개 설정</h2>
               <p className="mt-2 text-sm font-bold leading-relaxed text-slate-600">
                 전체 미노출 상태에서는 학생 수업방의 연표 버튼과 직접 링크 열람이 차단됩니다.
-                학생별 진도와 기존 호수 체크 기록은 삭제되지 않습니다.
+                학생별 진도와 기존 호수 체크 기록은 삭제되지 않습니다. 예외 허용된 학생은 전체 미노출 상태에서도 열람할 수 있습니다.
               </p>
             </div>
             <div className="flex shrink-0 flex-col items-stretch gap-2">
@@ -216,6 +279,21 @@ export default function HistoryTimelineAdminPage() {
               </button>
             </div>
           </div>
+        </section>
+
+        <section className="mt-4 rounded-3xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+          <h2 className="text-lg font-black text-slate-900">👤 지정 학생 예외 열람</h2>
+          <p className="mt-2 text-sm font-bold text-slate-600">
+            전체 미노출을 유지한 채 특정 학생만 허용합니다. 동명이인 여부를 검사하고 학교·학년을 확인한 후 적용합니다.
+          </p>
+          <button
+            type="button"
+            disabled={!visibilityLoaded || grantingPair}
+            onClick={() => void grantRequestedPair()}
+            className="mt-3 rounded-2xl bg-blue-700 px-5 py-3 text-sm font-black text-white disabled:opacity-50"
+          >
+            {grantingPair ? "학생 확인 중…" : "이민서·이민채 예외 열람 일괄 허용"}
+          </button>
         </section>
 
         <section className="mt-4 rounded-3xl bg-white p-4 shadow-sm">
@@ -239,8 +317,19 @@ export default function HistoryTimelineAdminPage() {
                   <h2 className="text-xl font-black text-slate-900">{student.name || "이름없음"}</h2>
                   <p className="mt-1 text-xs font-bold text-slate-500">{student.school || "학교 미지정"}{student.grade ? ` · ${student.grade}학년` : ""}{student.className ? ` ${student.className}반` : ""}</p>
                 </div>
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{studentVisible ? "공개" : "공개 예정"} {student.timelineCompletedIssues.length}호</span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{studentVisible || student.timelineVisibleWhileHidden ? "공개" : "공개 예정"} {student.timelineCompletedIssues.length}호</span>
+                  {student.timelineVisibleWhileHidden && <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-700">예외 열람 허용</span>}
+                </div>
               </div>
+              <button
+                type="button"
+                disabled={Boolean(savingId)}
+                onClick={() => void toggleStudentException(student)}
+                className={`mt-3 rounded-xl px-4 py-2 text-xs font-black disabled:opacity-50 ${student.timelineVisibleWhileHidden ? "bg-slate-200 text-slate-700" : "bg-blue-100 text-blue-700"}`}
+              >
+                {student.timelineVisibleWhileHidden ? "예외 열람 해제" : "이 학생만 예외 열람 허용"}
+              </button>
               <div className="mt-4 grid grid-cols-6 gap-1.5 sm:grid-cols-8">
                 {Array.from({ length: maxIssue }, (_, index) => index + 1).map((issue) => {
                   const checked = student.timelineCompletedIssues.includes(issue);

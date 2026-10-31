@@ -17,11 +17,20 @@ export default function HistoryTimelineLaunchButton({ student }: Props) {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/history/timeline/visibility", { cache: "no-store" })
+    fetch("/api/history/timeline/visibility", {
+      method: "POST",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        studentId: String(student.id || ""),
+        studentCollection: String(student.collectionName || "students"),
+        studentPassword: String(student.password || ""),
+      }),
+    })
       .then(async (response) => {
         if (!response.ok) return false;
         const data = await response.json().catch(() => ({}));
-        return data.studentVisible === true;
+        return data.canView === true;
       })
       .then((visible) => {
         if (active) setStudentVisible(visible);
@@ -32,7 +41,7 @@ export default function HistoryTimelineLaunchButton({ student }: Props) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [student.id, student.collectionName, student.password]);
 
   const openTimeline = async () => {
     setLoading(true);
@@ -57,7 +66,7 @@ export default function HistoryTimelineLaunchButton({ student }: Props) {
     }
   };
 
-  // 전체 미노출 시 학생 수업방에 연표 버튼 자체를 표시하지 않는다.
+  // 전체 미노출 시에도 예외 허용된 학생에게만 연표 진입 버튼을 표시한다.
   if (!studentVisible) return null;
 
   return (
