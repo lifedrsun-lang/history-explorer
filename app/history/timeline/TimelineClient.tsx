@@ -28,7 +28,7 @@ type TimelinePayload = {
 
 const FILTERS = [
   ["전체", "전체"],
-  ["선사", "선사 문화"],
+  ["선사", "도구와 생활"],
   ["고조선", "고조선"],
   ["여러나라", "여러 나라"],
   ["고구려", "고구려"],
@@ -41,15 +41,16 @@ const FILTERS = [
 const PERIODS = [
   {
     key: "prehistoric",
-    title: "선사 문화의 시작",
-    columns: ["선사 시대"],
+    title: "도구와 생활 모습이 바뀌던 시기",
+    // 국가가 생기기 전의 국가 칸은 제목도, 내용도 비워 둔다.
+    columns: ["주요 사건", ""],
     milestone: false,
     includes: (year: number) => year < -2333,
   },
   {
     key: "gojoseon",
-    title: "고조선의 시작과 선사 문화의 변화",
-    columns: ["선사 시대", "고조선"],
+    title: "고조선의 등장과 문화의 변화",
+    columns: ["주요 사건", "고조선"],
     milestone: false,
     includes: (year: number) => year >= -2333 && year < -108,
   },
@@ -428,12 +429,20 @@ export default function TimelineClient() {
                   );
                 }
 
+                // 선사 문화는 특정 국가의 사건이 아니므로 고조선 멸망 이전의
+                // '주요 사건' 열에만 놓는다. 이후에는 그 열 자체가 사라진다.
+                const eventColumn = (event: StudentEvent) =>
+                  (period.key === "prehistoric" || period.key === "gojoseon") &&
+                  event.eraFilter === "선사"
+                    ? "주요 사건"
+                    : event.stateOrEra;
+
                 // 앞으로 새 국가가 등장해도 기존 사건이 누락되지 않도록 열을 자동 확장한다.
                 const columns = [
                   // 각 시대의 기본 국가 열은 사건이 아직 없어도 항상 보여준다.
                   // 다음 호수를 공부하면 기존 빈 칸에 사건이 채워지도록 유지한다.
                   ...period.columns,
-                  ...[...new Set(periodEvents.map((event) => event.stateOrEra))].filter(
+                  ...[...new Set(periodEvents.map(eventColumn))].filter(
                     (column) => !(period.columns as readonly string[]).includes(column)
                   ),
                 ];
@@ -458,7 +467,14 @@ export default function TimelineClient() {
                         <div className={styles.tableHeader} style={gridStyle}>
                           <div className={styles.yearHeader}>연도</div>
                           {columns.map((column) => (
-                            <div className={styles.countryHeader} key={column}>{column}</div>
+                            <div
+                              className={styles.countryHeader}
+                              key={column || "empty-country-header"}
+                              data-country={column}
+                              aria-label={column || "나라가 등장하기 전 빈 칸"}
+                            >
+                              {column}
+                            </div>
                           ))}
                         </div>
                         {dates.map((date) => (
@@ -467,7 +483,7 @@ export default function TimelineClient() {
                             {columns.map((column) => (
                               <div className={styles.countryCell} key={column}>
                                 {date.events
-                                  .filter((event) => event.stateOrEra === column)
+                                  .filter((event) => eventColumn(event) === column)
                                   .map((event) => (
                                     <article className={styles.gridCard} key={event.id}>
                                       <span className={styles.gridEmoji} role="img" aria-label={event.image.alt}>{event.image.value}</span>
