@@ -9,8 +9,9 @@ import type { HistoryTimelineEvent } from "@/lib/historyTimeline";
 
 import styles from "./timeline.module.css";
 
-type StudentEvent = Omit<HistoryTimelineEvent, "sourceIssueNumbers"> & {
+type StudentEvent = Omit<HistoryTimelineEvent, "sourceIssueNumbers" | "textbookPages"> & {
   sourceIssueNumbers?: number[];
+  textbookPages?: string[];
   textbookIssues?: number[];
 };
 
