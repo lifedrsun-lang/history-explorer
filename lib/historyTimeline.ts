@@ -1,4 +1,9 @@
 import { HISTORY_TIMELINE_EXTRA_EVENTS } from "./historyTimelineExtra";
+import {
+  HISTORY_TIMELINE_FOURTH_EVENTS,
+  HISTORY_TIMELINE_FOURTH_SHARED_IDS,
+  HISTORY_TIMELINE_FOURTH_SHARED_SOURCE,
+} from "./historyTimelineFourth";
 
 export const HISTORY_TIMELINE_MAX_ISSUE = 23;
 
@@ -171,9 +176,18 @@ const HISTORY_TIMELINE_EVENT_SOURCE: HistoryTimelineEvent[] = [
 export const HISTORY_TIMELINE_EVENTS = [
   ...HISTORY_TIMELINE_EVENT_SOURCE,
   ...HISTORY_TIMELINE_EXTRA_EVENTS,
-].sort(
-  (a, b) => a.sortYear - b.sortYear || a.id.localeCompare(b.id)
-);
+  ...HISTORY_TIMELINE_FOURTH_EVENTS,
+]
+  .map((event) =>
+    HISTORY_TIMELINE_FOURTH_SHARED_IDS.has(event.id)
+      ? {
+          ...event,
+          sourceIssueNumbers: [...new Set([...event.sourceIssueNumbers, 4])],
+          textbookPages: [...event.textbookPages, HISTORY_TIMELINE_FOURTH_SHARED_SOURCE],
+        }
+      : event
+  )
+  .sort((a, b) => a.sortYear - b.sortYear || a.id.localeCompare(b.id));
 
 export const normalizeTimelineIssues = (value: unknown): number[] => {
   if (!Array.isArray(value)) return [];
