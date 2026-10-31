@@ -4,7 +4,7 @@ import {
   getTimelineEventsForIssues,
   HISTORY_TIMELINE_EVENTS,
   HISTORY_TIMELINE_MAX_ISSUE,
-  normalizeTimelineIssues,
+  resolveTimelineCompletedIssues,
   toStudentTimelineEvent,
 } from "@/lib/historyTimeline";
 import {
@@ -79,7 +79,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const completedIssues = normalizeTimelineIssues(student.timelineCompletedIssues);
+  const completedIssues = resolveTimelineCompletedIssues(student).issues;
   const events = getTimelineEventsForIssues(completedIssues).map(toStudentTimelineEvent);
 
   return privateJson({

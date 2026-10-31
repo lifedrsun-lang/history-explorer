@@ -4,6 +4,7 @@ import {
   getTimelineEventsForIssues,
   HISTORY_TIMELINE_EVENTS,
   normalizeTimelineIssues,
+  resolveTimelineCompletedIssues,
   toStudentTimelineEvent,
 } from "../lib/historyTimeline.ts";
 
@@ -34,6 +35,14 @@ assert.equal(getTimelineEventsForIssues([]).length, 0);
 assert.equal(getTimelineEventsForIssues([1]).length, 10);
 assert.equal(getTimelineEventsForIssues([2]).length, 0);
 assert.deepEqual(normalizeTimelineIssues([1, "1", 0, 24, 2]), [1, 2]);
+assert.deepEqual(resolveTimelineCompletedIssues({ stage: "book_3" }), {
+  issues: [1, 2],
+  source: "current_stage",
+});
+assert.deepEqual(
+  resolveTimelineCompletedIssues({ stage: "book_3", timelineCompletedIssues: [] }),
+  { issues: [], source: "explicit" }
+);
 assert.equal(
   "sourceIssueNumbers" in toStudentTimelineEvent(HISTORY_TIMELINE_EVENTS[0]),
   false,

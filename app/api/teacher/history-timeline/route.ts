@@ -9,6 +9,7 @@ import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import {
   HISTORY_TIMELINE_MAX_ISSUE,
   normalizeTimelineIssues,
+  resolveTimelineCompletedIssues,
 } from "@/lib/historyTimeline";
 
 export const runtime = "nodejs";
@@ -28,6 +29,7 @@ export async function GET(request: Request) {
     const students = snapshot.docs
       .map((docItem) => {
         const data = docItem.data() || {};
+        const timelineAccess = resolveTimelineCompletedIssues(data);
         return {
           studentId: docItem.id,
           name: normalize(data.name),
@@ -35,7 +37,8 @@ export async function GET(request: Request) {
           grade: normalize(data.grade),
           className: normalize(data.class),
           enrollmentStatus: normalize(data.enrollmentStatus) || (data.isActive === false ? "paused" : "active"),
-          timelineCompletedIssues: normalizeTimelineIssues(data.timelineCompletedIssues),
+          timelineCompletedIssues: timelineAccess.issues,
+          timelineAccessSource: timelineAccess.source,
         };
       })
       .sort((a, b) =>

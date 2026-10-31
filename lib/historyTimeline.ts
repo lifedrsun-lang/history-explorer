@@ -185,6 +185,39 @@ export const normalizeTimelineIssues = (value: unknown): number[] => {
     .sort((a, b) => a - b);
 };
 
+const getTimelineBookNumber = (stageInput: unknown) => {
+  const stage = String(stageInput || "").trim();
+  const bookMatch = stage.match(/^book_(\d+)$/);
+  if (bookMatch) return Number(bookMatch[1]);
+
+  const lessonMatch = stage.match(/^(\d+)-\d+$/);
+  if (lessonMatch) return Number(lessonMatch[1]);
+
+  const numeric = Number(stage);
+  return Number.isFinite(numeric) && numeric > 0 ? Math.floor(numeric) : 1;
+};
+
+export const resolveTimelineCompletedIssues = (student: {
+  timelineCompletedIssues?: unknown;
+  stage?: unknown;
+}) => {
+  if (Array.isArray(student.timelineCompletedIssues)) {
+    return {
+      issues: normalizeTimelineIssues(student.timelineCompletedIssues),
+      source: "explicit" as const,
+    };
+  }
+
+  const completedThrough = Math.min(
+    HISTORY_TIMELINE_MAX_ISSUE,
+    Math.max(0, getTimelineBookNumber(student.stage) - 1)
+  );
+  return {
+    issues: Array.from({ length: completedThrough }, (_, index) => index + 1),
+    source: "current_stage" as const,
+  };
+};
+
 export const getTimelineEventsForIssues = (issuesInput: unknown) => {
   const issues = new Set(normalizeTimelineIssues(issuesInput));
   return HISTORY_TIMELINE_EVENTS.filter((event) =>

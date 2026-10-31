@@ -14,6 +14,7 @@ type StudentAccess = {
   className: string;
   enrollmentStatus: string;
   timelineCompletedIssues: number[];
+  timelineAccessSource: "explicit" | "current_stage";
 };
 
 export default function HistoryTimelineAdminPage() {
@@ -103,7 +104,11 @@ export default function HistoryTimelineAdminPage() {
       setStudents((current) =>
         current.map((item) =>
           item.studentId === student.studentId
-            ? { ...item, timelineCompletedIssues: next }
+            ? {
+                ...item,
+                timelineCompletedIssues: next,
+                timelineAccessSource: "explicit",
+              }
             : item
         )
       );
@@ -188,7 +193,12 @@ export default function HistoryTimelineAdminPage() {
                   );
                 })}
               </div>
-              <p className="mt-3 text-[11px] font-bold text-slate-400">숫자를 누르면 즉시 저장됩니다. 학생 화면에는 호수 번호가 표시되지 않습니다.</p>
+              <p className="mt-3 text-[11px] font-bold text-slate-400">
+                {student.timelineAccessSource === "current_stage"
+                  ? "현재 진도 바로 전 호수까지 자동 공개 중 · 숫자를 누르면 학생별 설정으로 저장됩니다."
+                  : "학생별 공개 설정 · 숫자를 누르면 즉시 저장됩니다."}
+                {" "}학생 화면에는 호수 번호가 표시되지 않습니다.
+              </p>
             </article>
           ))}
           {!loading && visibleStudents.length === 0 && <div className="rounded-3xl bg-white p-10 text-center font-bold text-slate-500 lg:col-span-2">조건에 맞는 별꼼역사 수강생이 없습니다.</div>}
