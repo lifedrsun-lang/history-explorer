@@ -1,3 +1,5 @@
+import { HISTORY_TIMELINE_EXTRA_EVENTS } from "./historyTimelineExtra";
+
 export const HISTORY_TIMELINE_MAX_ISSUE = 23;
 
 export type HistoryTimelineImage = {
@@ -11,7 +13,7 @@ export type HistoryTimelineEvent = {
   sortYear: number;
   dateLabel: string;
   stateOrEra: string;
-  eraFilter: "선사" | "고조선" | "여러나라";
+  eraFilter: "선사" | "고조선" | "여러나라" | "고구려" | "발해";
   title: string;
   summary: string;
   life: string;
@@ -36,7 +38,7 @@ const HISTORY_TIMELINE_EVENT_SOURCE: HistoryTimelineEvent[] = [
     artifact: "주먹도끼 · 찍개",
     image: { kind: "emoji", value: "🪨", alt: "구석기 뗀석기" },
     textbookPages: ["6~7쪽"],
-    sourceIssueNumbers: [1],
+    sourceIssueNumbers: [1, 2],
   },
   {
     id: "prehistoric-neolithic-begins",
@@ -50,7 +52,7 @@ const HISTORY_TIMELINE_EVENT_SOURCE: HistoryTimelineEvent[] = [
     artifact: "빗살무늬 토기 · 갈돌과 갈판",
     image: { kind: "emoji", value: "🏺", alt: "신석기 토기" },
     textbookPages: ["6~7쪽"],
-    sourceIssueNumbers: [1],
+    sourceIssueNumbers: [1, 2],
   },
   {
     id: "gojoseon-dangun-founding",
@@ -64,7 +66,7 @@ const HISTORY_TIMELINE_EVENT_SOURCE: HistoryTimelineEvent[] = [
     artifact: "관련 학습: 단군 건국 이야기",
     image: { kind: "emoji", value: "👑", alt: "고조선 건국 이야기" },
     textbookPages: ["6~7쪽"],
-    sourceIssueNumbers: [1],
+    sourceIssueNumbers: [1, 2],
   },
   {
     id: "prehistoric-bronze-culture-spreads",
@@ -78,7 +80,7 @@ const HISTORY_TIMELINE_EVENT_SOURCE: HistoryTimelineEvent[] = [
     artifact: "비파형 동검 · 고인돌 · 민무늬 토기",
     image: { kind: "emoji", value: "⚱️", alt: "청동기 시대 유물" },
     textbookPages: ["6~7쪽"],
-    sourceIssueNumbers: [1],
+    sourceIssueNumbers: [1, 2],
   },
   {
     id: "prehistoric-iron-age-begins",
@@ -92,7 +94,7 @@ const HISTORY_TIMELINE_EVENT_SOURCE: HistoryTimelineEvent[] = [
     artifact: "철제 농기구 · 철제 무기",
     image: { kind: "emoji", value: "⚒️", alt: "철기 시대 도구" },
     textbookPages: ["6~7쪽"],
-    sourceIssueNumbers: [1],
+    sourceIssueNumbers: [1, 2],
   },
   {
     id: "prehistoric-iron-culture-spreads",
@@ -106,7 +108,7 @@ const HISTORY_TIMELINE_EVENT_SOURCE: HistoryTimelineEvent[] = [
     artifact: "철제 도구",
     image: { kind: "emoji", value: "🔧", alt: "널리 사용된 철제 도구" },
     textbookPages: ["6~7쪽"],
-    sourceIssueNumbers: [1],
+    sourceIssueNumbers: [1, 2],
   },
   {
     id: "gojoseon-wiman-enters",
@@ -120,7 +122,7 @@ const HISTORY_TIMELINE_EVENT_SOURCE: HistoryTimelineEvent[] = [
     artifact: "본문 추가 대조 필요",
     image: { kind: "emoji", value: "📜", alt: "고조선 기록" },
     textbookPages: ["6~7쪽"],
-    sourceIssueNumbers: [1],
+    sourceIssueNumbers: [1, 2],
   },
   {
     id: "gojoseon-wiman-becomes-king",
@@ -134,7 +136,7 @@ const HISTORY_TIMELINE_EVENT_SOURCE: HistoryTimelineEvent[] = [
     artifact: "본문 추가 대조 필요",
     image: { kind: "emoji", value: "👑", alt: "고조선의 왕" },
     textbookPages: ["6~7쪽"],
-    sourceIssueNumbers: [1],
+    sourceIssueNumbers: [1, 2],
   },
   {
     id: "gojoseon-falls",
@@ -148,7 +150,7 @@ const HISTORY_TIMELINE_EVENT_SOURCE: HistoryTimelineEvent[] = [
     artifact: "본문 추가 대조 필요",
     image: { kind: "emoji", value: "🏛️", alt: "고조선의 멸망" },
     textbookPages: ["6~7쪽"],
-    sourceIssueNumbers: [1],
+    sourceIssueNumbers: [1, 2],
   },
   {
     id: "early-states-emerge",
@@ -162,11 +164,14 @@ const HISTORY_TIMELINE_EVENT_SOURCE: HistoryTimelineEvent[] = [
     artifact: "각 나라의 풍습·유물은 다음 호에서 확장",
     image: { kind: "emoji", value: "🗺️", alt: "여러 나라가 표시된 지도" },
     textbookPages: ["6~7쪽"],
-    sourceIssueNumbers: [1],
+    sourceIssueNumbers: [1, 2],
   },
 ];
 
-export const HISTORY_TIMELINE_EVENTS = [...HISTORY_TIMELINE_EVENT_SOURCE].sort(
+export const HISTORY_TIMELINE_EVENTS = [
+  ...HISTORY_TIMELINE_EVENT_SOURCE,
+  ...HISTORY_TIMELINE_EXTRA_EVENTS,
+].sort(
   (a, b) => a.sortYear - b.sortYear || a.id.localeCompare(b.id)
 );
 
