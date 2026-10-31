@@ -8,7 +8,7 @@ import {
   toStudentTimelineEvent,
 } from "../lib/historyTimeline.ts";
 
-assert.equal(HISTORY_TIMELINE_EVENTS.length, 29, "1~3호 누적 사건은 중복 없이 29개여야 합니다.");
+assert.equal(HISTORY_TIMELINE_EVENTS.length, 30, "1~3호 누적 사건은 중복 없이 30개여야 합니다.");
 assert.equal(
   new Set(HISTORY_TIMELINE_EVENTS.map((event) => event.id)).size,
   HISTORY_TIMELINE_EVENTS.length,
@@ -34,11 +34,11 @@ for (const event of HISTORY_TIMELINE_EVENTS) {
 
 assert.equal(getTimelineEventsForIssues([]).length, 0);
 assert.equal(getTimelineEventsForIssues([1]).length, 10);
-assert.equal(getTimelineEventsForIssues([2]).length, 14);
+assert.equal(getTimelineEventsForIssues([2]).length, 15);
 assert.equal(getTimelineEventsForIssues([3]).length, 15);
-assert.equal(getTimelineEventsForIssues([1, 2]).length, 14);
-assert.equal(getTimelineEventsForIssues([1, 2, 3]).length, 29);
-assert.equal(HISTORY_TIMELINE_EVENTS.filter((event) => event.stateOrEra === "고구려").length, 14);
+assert.equal(getTimelineEventsForIssues([1, 2]).length, 15);
+assert.equal(getTimelineEventsForIssues([1, 2, 3]).length, 30);
+assert.equal(HISTORY_TIMELINE_EVENTS.filter((event) => event.stateOrEra === "고구려").length, 15);
 assert.equal(HISTORY_TIMELINE_EVENTS.find((event) => event.id === "balhae-founded")?.sortYear, 698);
 assert.deepEqual(normalizeTimelineIssues([1, "1", 0, 24, 2]), [1, 2]);
 assert.deepEqual(resolveTimelineCompletedIssues({ stage: "book_3" }), {
