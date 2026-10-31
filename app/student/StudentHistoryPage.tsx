@@ -21,6 +21,7 @@ import StudentProfile from "./components/StudentProfile";
 import ClassProgressBoard from "./components/ClassProgressBoard";
 import SearchDropdown from "./components/SearchDropdown";
 import LoadingSpinner from "./components/LoadingSpinner";
+import HistoryTimelineLaunchButton from "./components/HistoryTimelineLaunchButton";
 
 import { getStageInfo } from "./data/stageData";
 import {
@@ -876,6 +877,8 @@ export default function StudentHistoryPage({
                 changeCharacter
               }
             />
+
+            <HistoryTimelineLaunchButton student={selectedStudent} />
 
             <button
               onClick={() => {
