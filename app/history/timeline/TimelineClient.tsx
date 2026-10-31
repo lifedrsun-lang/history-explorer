@@ -69,10 +69,17 @@ const PERIODS = [
   },
   {
     key: "early-kingdoms",
-    title: "고조선 이후 여러 나라의 성장",
-    columns: ["부여", "고구려", "옥저", "동예", "삼한", "백제", "신라", "가야"],
+    title: "고조선 이후 여러 나라의 생활과 성장",
+    columns: ["부여", "고구려", "옥저", "동예", "삼한"],
     milestone: false,
-    includes: (year: number) => year > -100 && year <= 676,
+    includes: (year: number) => year > -100 && year < -37,
+  },
+  {
+    key: "three-kingdoms",
+    title: "고구려·백제·신라·가야로 이어지는 시대",
+    columns: ["고구려", "백제", "신라", "가야"],
+    milestone: false,
+    includes: (year: number) => year >= -37 && year <= 676,
   },
   {
     key: "north-south",
