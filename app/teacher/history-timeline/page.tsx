@@ -29,6 +29,7 @@ export default function HistoryTimelineAdminPage() {
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState("");
   const [grantingPair, setGrantingPair] = useState(false);
+  const [grantNames, setGrantNames] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
@@ -162,7 +163,13 @@ export default function HistoryTimelineAdminPage() {
     setError("");
     setNotice("");
     try {
-      const names = ["이민서", "이민채"];
+      const names = grantNames
+        .split(/[,，\n]/)
+        .map((name) => name.trim())
+        .filter(Boolean);
+      if (names.length === 0 || names.length > 10 || new Set(names).size !== names.length) {
+        throw new Error("학생 이름을 중복 없이 1~10명 입력해 주세요.");
+      }
       const resolved = await request({
         method: "POST",
         body: JSON.stringify({ action: "resolve", names }),
@@ -170,16 +177,16 @@ export default function HistoryTimelineAdminPage() {
       const identified = (resolved.students || []) as Array<{
         name: string; school: string; grade: string; studentId: string;
       }>;
-      if (identified.length !== 2) throw new Error("두 학생을 모두 확인하지 못했습니다.");
+      if (identified.length !== names.length) throw new Error("입력한 학생을 모두 확인하지 못했습니다.");
       const summary = identified.map((item) => `${item.name} · ${item.school} · ${item.grade}학년`).join("\n");
-      if (!window.confirm(`다음 학생 두 명만 전체 미노출 예외로 허용하시겠습니까?\n\n${summary}\n\n다른 학생은 미노출 상태를 유지합니다.`)) return;
+      if (!window.confirm(`다음 학생만 전체 미노출 예외로 허용하시겠습니까?\n\n${summary}\n\n다른 학생은 미노출 상태를 유지합니다.`)) return;
       const expectedStudentIds = Object.fromEntries(identified.map((item) => [item.name, item.studentId]));
       const result = await request({
         method: "POST",
         body: JSON.stringify({ action: "grant", names, expectedStudentIds }),
       });
-      setNotice(`이민서·이민채 ${result.count}명의 예외 열람을 허용했습니다.`);
       await load();
+      setNotice(`${result.count}명의 예외 열람을 허용했습니다.`);
     } catch (grantError) {
       setError(grantError instanceof Error ? grantError.message : "두 학생의 예외 열람을 설정하지 못했습니다.");
     } finally {
@@ -286,14 +293,23 @@ export default function HistoryTimelineAdminPage() {
           <p className="mt-2 text-sm font-bold text-slate-600">
             전체 미노출을 유지한 채 특정 학생만 허용합니다. 동명이인 여부를 검사하고 학교·학년을 확인한 후 적용합니다.
           </p>
-          <button
-            type="button"
-            disabled={!visibilityLoaded || grantingPair}
-            onClick={() => void grantRequestedPair()}
-            className="mt-3 rounded-2xl bg-blue-700 px-5 py-3 text-sm font-black text-white disabled:opacity-50"
-          >
-            {grantingPair ? "학생 확인 중…" : "이민서·이민채 예외 열람 일괄 허용"}
-          </button>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <input
+              value={grantNames}
+              onChange={(event) => setGrantNames(event.target.value)}
+              placeholder="학생 이름 (쉼표로 구분, 최대 10명)"
+              aria-label="예외 열람을 허용할 학생 이름"
+              className="min-w-0 flex-1 rounded-2xl border border-blue-200 px-4 py-3 text-sm font-bold"
+            />
+            <button
+              type="button"
+              disabled={!visibilityLoaded || grantingPair || !grantNames.trim()}
+              onClick={() => void grantRequestedPair()}
+              className="rounded-2xl bg-blue-700 px-5 py-3 text-sm font-black text-white disabled:opacity-50"
+            >
+              {grantingPair ? "학생 확인 중…" : "학생 계정 확인 후 일괄 허용"}
+            </button>
+          </div>
         </section>
 
         <section className="mt-4 rounded-3xl bg-white p-4 shadow-sm">
