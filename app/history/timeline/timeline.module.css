@@ -45,3 +45,67 @@
 .transitionDetail{display:flex;gap:8px;font-size:12px;line-height:1.55;padding:5px 0;color:#d6e6db}
 .transitionDetail b{flex:0 0 110px;color:#aee5cc}
 @media(max-width:600px){.transitionBlock{margin-top:12px;padding:10px}.transitionCard{display:block;padding:14px}.transitionDate{width:max-content;max-width:100%;font-size:13px;padding:7px 12px;margin-bottom:12px}.transitionDetail{display:block}.transitionDetail b{display:block;margin-bottom:2px}}
+
+
+/* 아이보리 교과서형 Preview: 기존 기능/반응형/고정 열은 유지하고 색상만 변경 */
+.page,.loginPage,.loadingPage{background:#f8f4e9;color:#2d352f}
+.hero{background:radial-gradient(circle at 10% 0%,#fff5dc 0,transparent 42%),linear-gradient(135deg,#fbf1dc,#eee7d6);border-bottom:1px solid #d6c9aa}
+.brand{color:#39675c}
+.viewerActions{color:#39473d}
+.viewerActions a,.viewerActions button{border-color:#c7d1c2;background:#fffefa;color:#33584b}
+.teacherBadge{background:#f8ddb0;color:#63461d}
+.hero>p{color:#5f6d63}
+.introGrid article,.card{background:#fffdf8;border-color:#e4d9c5;color:#26342d;box-shadow:0 3px 12px #493c2410}
+.introGrid p{color:#5b675f}
+.tip{background:#eaf2e4;border-left-color:#789c7f;color:#334936}
+.sectionHeading p{color:#58685e}
+.sectionHeading>span{background:#e4ede4;color:#356450}
+.filters button{background:#fffdf6;color:#485749;border-color:#d2d2be}
+.filters .activeFilter{background:#386e56;color:#fff;border-color:#386e56}
+.empty{background:#fffdf8;border-color:#c4bdab;color:#38453b}
+.empty p{color:#607066}
+.error{background:#fff0ed;border-color:#d8a7a0;color:#8f322e}
+.periodBlock{background:#fffdf7;border:1px solid #e6d9c4;box-shadow:0 5px 15px #473a2512}
+.periodTop h3{color:#313d33}
+.periodTop span{color:#597166}
+.periodViewport{border-color:#d6cbb9;scrollbar-color:#b7bbaa #f4eee2;background:#fffdf7}
+.periodViewport:focus-visible{outline-color:#698f7b}
+.tableHeader{background:#f0eadc;box-shadow:0 2px 4px #453a211c}
+.yearHeader,.countryHeader{border-right-color:#d8ccbb;border-bottom-color:#b6c9bc;color:#35463c}
+.yearHeader{background:#e6eddf;color:#365744}
+.countryHeader{background:#f1eee3;color:#394840}
+.countryHeader[data-country="고조선"]{background:#f8e8ce;border-bottom:3px solid #c48c42}
+.countryHeader[data-country="부여"]{background:#f6e8d5;border-bottom:3px solid #b79055}
+.countryHeader[data-country="고구려"]{background:#e7effd;border-bottom:3px solid #6386bb}
+.countryHeader[data-country="백제"]{background:#f6e7f1;border-bottom:3px solid #ad75ab}
+.countryHeader[data-country="신라"],.countryHeader[data-country="통일신라"]{background:#fff2ce;border-bottom:3px solid #ca9c39}
+.countryHeader[data-country="가야"]{background:#e5f1e9;border-bottom:3px solid #669a7c}
+.countryHeader[data-country="발해"]{background:#e8e7fa;border-bottom:3px solid #8182bf}
+.countryHeader[data-country="옥저"],.countryHeader[data-country="동예"],.countryHeader[data-country="삼한"]{background:#edf0e7;border-bottom:3px solid #96a17e}
+.tableRow{background:#fffdf8}
+.tableRow:nth-child(odd){background:#f9f6ee}
+.yearCell{background:#eaf0e5;color:#355a48;border-right-color:#abc2b0;border-bottom-color:#d8ddcf}
+.countryCell{border-right-color:#e2d9c9;border-bottom-color:#e5dccf}
+.gridCard{background:#fff;border-color:#d8d7ca;box-shadow:0 2px 9px #31382710}
+.gridCard h4{color:#24382c}
+.gridSummary{color:#3d4b41}
+.gridDetails{border-top-color:#e2e9df}
+.gridDetails b{color:#356c53}
+.gridDetails p{color:#536257}
+.gridSource{color:#6d776c}
+.transitionBlock{background:linear-gradient(100deg,#f5ecd9,#f0f3e9);border-color:#b8c8af}
+.transitionBlock::before{background:#4f7d64;color:white}
+.transitionCard{background:#fffcf5}
+.transitionDate{background:#e2eadf;color:#31533f}
+.transitionBody h3{color:#2d573f}
+.transitionBody>p{color:#394a40}
+.transitionDetail{color:#4b5c4d}
+.transitionDetail b{color:#406d53}
+.loginPage,.loadingPage{background:radial-gradient(circle at top,#fff9eb,#eee6d6)}
+.loginCard,.loadingCard{background:#fffdf7;border-color:#d8cfba;box-shadow:0 18px 55px #40372822;color:#304238}
+.loginCard>p,.loadingCard{color:#5e6c62}
+.loginForm label{color:#3a6952}
+.loginForm input{background:#fff;color:#24362d;border-color:#c4d2c5}
+.loginForm button{background:#396f55;color:#fff}
+.loginLinks a{color:#356d55}
+@media(max-width:600px){.periodTop h3{line-height:1.4}}
