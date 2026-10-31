@@ -40,6 +40,7 @@ export default function TimelineClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [needsLogin, setNeedsLogin] = useState(false);
+  const [unpublished, setUnpublished] = useState(false);
   const [filter, setFilter] = useState<(typeof FILTERS)[number][0]>("전체");
   const [name, setName] = useState("");
   const [school, setSchool] = useState("");
@@ -70,6 +71,12 @@ export default function TimelineClient() {
       };
 
       if (!response.ok) {
+        if (response.status === 403 && data.code === "timeline_not_published") {
+          setPayload(null);
+          setNeedsLogin(false);
+          setUnpublished(true);
+          return;
+        }
         if (response.status === 401 && data.code === "student_auth_required") {
           setNeedsLogin(true);
           setPayload(null);
@@ -80,6 +87,7 @@ export default function TimelineClient() {
 
       setPayload(data);
       setNeedsLogin(false);
+      setUnpublished(false);
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -96,6 +104,20 @@ export default function TimelineClient() {
     const timer = window.setTimeout(() => void loadTimeline(teacher), 0);
     return () => window.clearTimeout(timer);
   }, [authReady, teacher]);
+
+  // 이미 열어 둔 학생 페이지도 탭 복귀 또는 주기적인 재조회 시 공개 중단을 반영한다.
+  useEffect(() => {
+    if (!authReady || teacher || !payload || payload.viewer.role !== "student") return;
+    const refresh = () => {
+      if (document.visibilityState === "visible") void loadTimeline(null);
+    };
+    const timer = window.setInterval(refresh, 30000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [authReady, teacher, payload]);
 
   const visibleEvents = useMemo(() => {
     if (!payload) return [];
@@ -140,6 +162,21 @@ export default function TimelineClient() {
     return (
       <main className={styles.loadingPage}>
         <div className={styles.loadingCard}>한국사 시간여행을 준비하고 있어요…</div>
+      </main>
+    );
+  }
+
+  if (unpublished && !teacher) {
+    return (
+      <main className={styles.loginPage}>
+        <section className={styles.loginCard}>
+          <div className={styles.loginSymbol}>🔒</div>
+          <h1>한국사 연표 공개 준비 중</h1>
+          <p>선생님이 전체 학생 공개를 켜면 이용할 수 있어요.</p>
+          <div className={styles.loginLinks}>
+            <Link href="/student/history">학생 수업방으로</Link>
+          </div>
+        </section>
       </main>
     );
   }

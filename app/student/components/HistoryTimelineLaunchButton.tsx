@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Props = {
   student: {
@@ -13,6 +13,26 @@ type Props = {
 export default function HistoryTimelineLaunchButton({ student }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [studentVisible, setStudentVisible] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/history/timeline/visibility", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) return false;
+        const data = await response.json().catch(() => ({}));
+        return data.studentVisible === true;
+      })
+      .then((visible) => {
+        if (active) setStudentVisible(visible);
+      })
+      .catch(() => {
+        if (active) setStudentVisible(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const openTimeline = async () => {
     setLoading(true);
@@ -36,6 +56,9 @@ export default function HistoryTimelineLaunchButton({ student }: Props) {
       setLoading(false);
     }
   };
+
+  // 전체 미노출 시 학생 수업방에 연표 버튼 자체를 표시하지 않는다.
+  if (!studentVisible) return null;
 
   return (
     <div>

@@ -22,6 +22,9 @@ export default function HistoryTimelineAdminPage() {
   const [authReady, setAuthReady] = useState(false);
   const [students, setStudents] = useState<StudentAccess[]>([]);
   const [maxIssue, setMaxIssue] = useState(23);
+  const [studentVisible, setStudentVisible] = useState(false);
+  const [visibilityLoaded, setVisibilityLoaded] = useState(false);
+  const [savingVisibility, setSavingVisibility] = useState(false);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState("");
   const [error, setError] = useState("");
@@ -61,11 +64,14 @@ export default function HistoryTimelineAdminPage() {
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
+    setVisibilityLoaded(false);
     setError("");
     try {
       const data = await request();
       setStudents(Array.isArray(data.students) ? data.students : []);
       setMaxIssue(Number(data.maxIssue) || 23);
+      setStudentVisible(data.studentVisible === true);
+      setVisibilityLoaded(true);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "학생 정보를 불러오지 못했습니다.");
     } finally {
@@ -90,6 +96,33 @@ export default function HistoryTimelineAdminPage() {
       );
     });
   }, [search, status, students]);
+
+  const toggleAllStudentVisibility = async () => {
+    if (!visibilityLoaded || savingVisibility) return;
+    const nextVisible = !studentVisible;
+    const confirmed = window.confirm(
+      nextVisible
+        ? "기존 학생별 체크 기록에 따라 연표가 모든 해당 학생에게 다시 공개됩니다. 전체 공개하시겠습니까?"
+        : "모든 학생의 한국사 연표 열람을 중단합니다. 학생별 체크 기록은 유지됩니다. 전체 미노출로 변경하시겠습니까?"
+    );
+    if (!confirmed) return;
+
+    setSavingVisibility(true);
+    setError("");
+    setNotice("");
+    try {
+      const data = await request({
+        method: "PUT",
+        body: JSON.stringify({ studentVisible: nextVisible }),
+      });
+      setStudentVisible(data.studentVisible === true);
+      setNotice(nextVisible ? "전체 학생 공개를 활성화했습니다." : "전체 학생의 연표를 미노출로 변경했습니다.");
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "전체 공개 상태를 저장하지 못했습니다.");
+    } finally {
+      setSavingVisibility(false);
+    }
+  };
 
   const save = async (student: StudentAccess, completedIssues: number[]) => {
     setSavingId(student.studentId);
@@ -151,11 +184,36 @@ export default function HistoryTimelineAdminPage() {
             <div>
               <div className="text-xs font-black tracking-[.18em] text-emerald-200">BYEOLKKUM HISTORY TIMELINE</div>
               <h1 className="mt-2 text-3xl font-black">🧭 한국사 연표 공개 관리</h1>
-              <p className="mt-2 max-w-2xl text-sm font-bold leading-relaxed text-emerald-50/80">학생이 수강 완료한 호수만 체크하세요. 학생 링크에서는 체크된 호수의 사건만 서버에서 선별해 보여줍니다.</p>
+              <p className="mt-2 max-w-2xl text-sm font-bold leading-relaxed text-emerald-50/80">전체 공개 스위치로 모든 학생의 열람을 한 번에 차단하거나 허용할 수 있습니다. 학생별 호수 체크 기록은 그대로 유지됩니다.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link href="/history/timeline" className="rounded-2xl bg-amber-300 px-4 py-2 text-sm font-black text-slate-900">전체 연표 보기</Link>
               <Link href="/teacher" className="rounded-2xl bg-white/10 px-4 py-2 text-sm font-black text-white">교사용 홈</Link>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-4 rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-xl font-black text-slate-900">🔐 전체 학생 공개 설정</h2>
+              <p className="mt-2 text-sm font-bold leading-relaxed text-slate-600">
+                전체 미노출 상태에서는 학생 수업방의 연표 버튼과 직접 링크 열람이 차단됩니다.
+                학생별 진도와 기존 호수 체크 기록은 삭제되지 않습니다.
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-col items-stretch gap-2">
+              <span className={`rounded-full px-4 py-2 text-center text-xs font-black ${studentVisible && visibilityLoaded ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-800"}`}>
+                {!visibilityLoaded ? "공개 상태 확인 중" : studentVisible ? "🟢 전체 학생 공개 중" : "🔒 전체 학생 미노출 중"}
+              </span>
+              <button
+                type="button"
+                disabled={!visibilityLoaded || savingVisibility}
+                onClick={() => void toggleAllStudentVisibility()}
+                className={`rounded-2xl px-5 py-3 text-sm font-black text-white disabled:opacity-50 ${studentVisible ? "bg-slate-800" : "bg-emerald-700"}`}
+              >
+                {savingVisibility ? "변경 중…" : studentVisible ? "🔒 전체 학생 미노출" : "🔓 전체 학생 공개"}
+              </button>
             </div>
           </div>
         </section>
@@ -181,7 +239,7 @@ export default function HistoryTimelineAdminPage() {
                   <h2 className="text-xl font-black text-slate-900">{student.name || "이름없음"}</h2>
                   <p className="mt-1 text-xs font-bold text-slate-500">{student.school || "학교 미지정"}{student.grade ? ` · ${student.grade}학년` : ""}{student.className ? ` ${student.className}반` : ""}</p>
                 </div>
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">공개 {student.timelineCompletedIssues.length}호</span>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{studentVisible ? "공개" : "공개 예정"} {student.timelineCompletedIssues.length}호</span>
               </div>
               <div className="mt-4 grid grid-cols-6 gap-1.5 sm:grid-cols-8">
                 {Array.from({ length: maxIssue }, (_, index) => index + 1).map((issue) => {
