@@ -364,9 +364,9 @@ export default function TimelineClient() {
                 if (periodEvents.length === 0) return null;
                 // 앞으로 새 국가가 등장해도 기존 사건이 누락되지 않도록 열을 자동 확장한다.
                 const columns = [
-                  ...period.columns.filter((column) =>
-                    periodEvents.some((event) => event.stateOrEra === column)
-                  ),
+                  // 각 시대의 기본 국가 열은 사건이 아직 없어도 항상 보여준다.
+                  // 다음 호수를 공부하면 기존 빈 칸에 사건이 채워지도록 유지한다.
+                  ...period.columns,
                   ...[...new Set(periodEvents.map((event) => event.stateOrEra))].filter(
                     (column) => !(period.columns as readonly string[]).includes(column)
                   ),
