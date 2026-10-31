@@ -26,6 +26,29 @@ export const HISTORY_TIMELINE_EXTRA_EVENTS: HistoryTimelineEvent[] = [
     ]
   },
   {
+    "id": "goguryeo-seookje",
+    "sortYear": -99,
+    "dateLabel": "여러 나라의 성장기 · 정확한 연도 미상",
+    "stateOrEra": "고구려",
+    "eraFilter": "여러나라",
+    "title": "고구려의 서옥제",
+    "summary": "고구려에는 혼인한 남편이 아내의 집에서 생활하는 서옥제 풍습이 있었어요.",
+    "life": "가족의 혼인과 장례 등에는 각 지역의 특징적인 풍습이 있었어요.",
+    "artifact": "서옥제에 관한 풍습 기록",
+    "image": {
+      "kind": "emoji",
+      "value": "🏠",
+      "alt": "고구려의 서옥제"
+    },
+    "textbookPages": [
+      "PDF 20~21쪽 연표",
+      "본문 23쪽"
+    ],
+    "sourceIssueNumbers": [
+      2
+    ]
+  },
+  {
     "id": "okjeo-marriage-custom",
     "sortYear": -99,
     "dateLabel": "여러 나라의 성장기 · 정확한 연도 미상",
