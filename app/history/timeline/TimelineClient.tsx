@@ -470,6 +470,7 @@ export default function TimelineClient() {
                             <div
                               className={styles.countryHeader}
                               key={column || "empty-country-header"}
+                              data-country={column}
                               aria-label={column || "나라가 등장하기 전 빈 칸"}
                             >
                               {column}
