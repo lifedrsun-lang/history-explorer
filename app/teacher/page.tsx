@@ -1075,13 +1075,6 @@ export default function TeacherPage() {
     <div className="min-h-[100dvh] bg-[#f5f7fb] p-3">
       <div className="mx-auto mb-3 flex max-w-7xl flex-wrap justify-end gap-2">
         <Link
-          href="/teacher/history-timeline"
-          className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 shadow-sm"
-        >
-          🧭 한국사 연표 관리
-        </Link>
-
-        <Link
           href="/teacher/group-discussion"
           className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-bold text-indigo-700 shadow-sm"
         >
@@ -1152,6 +1145,46 @@ export default function TeacherPage() {
             </button>
           </div>
         </div>
+
+        {/* 한국사 통합 연표 교사용 바로가기: 관리소 제목 바로 아래 */}
+        <section
+          aria-labelledby="teacher-history-timeline-title"
+          className="mb-4 rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-4 shadow-md sm:p-5"
+        >
+          <div className="flex items-start gap-3">
+            <div
+              aria-hidden="true"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-2xl shadow-sm"
+            >
+              📜
+            </div>
+            <div className="min-w-0">
+              <h2
+                id="teacher-history-timeline-title"
+                className="text-xl font-black text-slate-900 sm:text-2xl"
+              >
+                한국사 시간여행
+              </h2>
+              <p className="mt-1 text-sm font-medium leading-relaxed text-slate-600">
+                1~23호 통합 한국사 연표를 확인하고 학생별 공개 범위를 관리하세요.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Link
+              href="/history/timeline"
+              className="flex min-h-12 items-center justify-center rounded-2xl bg-emerald-700 px-4 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+            >
+              📖 전체 연표 보기
+            </Link>
+            <Link
+              href="/teacher/history-timeline"
+              className="flex min-h-12 items-center justify-center rounded-2xl border border-emerald-300 bg-white px-4 py-3 text-center text-sm font-bold text-emerald-800 shadow-sm transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+            >
+              🔐 학생별 공개 관리
+            </Link>
+          </div>
+        </section>
 
         {/* 학생 수 / 반 선택 */}
         <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
