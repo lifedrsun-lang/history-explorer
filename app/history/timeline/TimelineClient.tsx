@@ -31,7 +31,55 @@ const FILTERS = [
   ["선사", "선사 문화"],
   ["고조선", "고조선"],
   ["여러나라", "여러 나라"],
+  ["고구려", "고구려"],
+  ["발해", "발해"],
 ] as const;
+
+/** 시대에 따라 국가 열을 바꾸되, 연도는 공통 축으로 고정한다. */
+const PERIODS = [
+  {
+    key: "beginnings",
+    title: "선사 시대 · 고조선과 여러 나라",
+    columns: ["선사 시대", "고조선", "부여", "고구려", "옥저", "동예", "삼한", "여러 나라"],
+    includes: (year: number) => year < -37,
+  },
+  {
+    key: "kingdoms",
+    title: "삼국 시대 · 여러 나라를 나란히 비교해요",
+    columns: ["고구려", "백제", "신라", "가야", "부여", "옥저", "동예", "삼한"],
+    includes: (year: number) => year >= -37 && year <= 676,
+  },
+  {
+    key: "north-south",
+    title: "남북국 시대 · 통일신라와 발해",
+    columns: ["통일신라", "발해", "신라"],
+    includes: (year: number) => year > 676 && year < 892,
+  },
+  {
+    key: "late-three",
+    title: "후삼국 시대 · 여러 나라의 변화",
+    columns: ["신라", "발해", "후백제", "후고구려", "태봉", "고려"],
+    includes: (year: number) => year >= 892 && year < 936,
+  },
+  {
+    key: "later",
+    title: "고려 이후의 한국사",
+    columns: ["고려", "조선", "대한제국", "일제강점기", "대한민국"],
+    includes: (year: number) => year >= 936,
+  },
+] as const;
+
+function groupSameDates(events: StudentEvent[]) {
+  const groups = new Map<string, { key: string; dateLabel: string; events: StudentEvent[] }>();
+  for (const event of events) {
+    // '정확한 연도 미상' 등의 시대 설명은 같은 연도 사건으로 오인하지 않도록 별도 행으로 묶는다.
+    const key = `${event.sortYear}:${event.dateLabel}`;
+    const current = groups.get(key) ?? { key, dateLabel: event.dateLabel, events: [] };
+    current.events.push(event);
+    groups.set(key, current);
+  }
+  return [...groups.values()];
+}
 
 export default function TimelineClient() {
   const [teacher, setTeacher] = useState<User | null>(null);
@@ -256,8 +304,8 @@ export default function TimelineClient() {
             )}
           </div>
         </div>
-        <h1>처음 우리 땅에 산 사람들</h1>
-        <p>선사 시대에서 고조선, 여러 나라의 등장까지</p>
+        <h1>한국사 시간여행</h1>
+        <p>같은 시대에 여러 나라에서 일어난 일을 함께 살펴봐요.</p>
       </header>
 
       <div className={styles.wrap}>
@@ -284,7 +332,7 @@ export default function TimelineClient() {
           <div className={styles.sectionHeading}>
             <div>
               <h2>시간을 따라가는 한국사 연표</h2>
-              <p>배운 사건은 새 호수가 공개될 때마다 실제 연도 위치에 이어져요.</p>
+              <p>연도는 고정하고, 국가별 열을 좌우로 밀어 비교해요. 배운 사건만 표시돼요.</p>
             </div>
             <span>{payload?.events.length || 0}개 사건</span>
           </div>
@@ -310,41 +358,76 @@ export default function TimelineClient() {
               <p>수강을 마치면 선생님이 배운 연표를 열어 줄 거예요.</p>
             </div>
           ) : (
-            <div className={styles.timeline}>
-              {visibleEvents.map((event) => (
-                <article className={styles.event} key={event.id}>
-                  <div className={styles.date}>{event.dateLabel}</div>
-                  <div className={styles.stem} aria-hidden="true" />
-                  <div className={styles.card}>
+            <div className={styles.periods}>
+              {PERIODS.map((period) => {
+                const periodEvents = visibleEvents.filter((event) => period.includes(event.sortYear));
+                if (periodEvents.length === 0) return null;
+                // 앞으로 새 국가가 등장해도 기존 사건이 누락되지 않도록 열을 자동 확장한다.
+                const columns = [
+                  ...period.columns.filter((column) =>
+                    periodEvents.some((event) => event.stateOrEra === column)
+                  ),
+                  ...[...new Set(periodEvents.map((event) => event.stateOrEra))].filter(
+                    (column) => !(period.columns as readonly string[]).includes(column)
+                  ),
+                ];
+                const gridStyle = {
+                  gridTemplateColumns: `116px repeat(${columns.length}, minmax(245px, 1fr))`,
+                };
+                const dates = groupSameDates(periodEvents);
+
+                return (
+                  <section className={styles.periodBlock} key={period.key}>
+                    <div className={styles.periodTop}>
+                      <h3>{period.title}</h3>
+                      <span>↔ 좌우로 밀어 다른 나라 보기</span>
+                    </div>
                     <div
-                      className={styles.visual}
-                      role="img"
-                      aria-label={event.image.alt}
+                      className={styles.periodViewport}
+                      tabIndex={0}
+                      role="region"
+                      aria-label={`${period.title} 국가별 가로 연표`}
                     >
-                      {event.image.value}
-                    </div>
-                    <div className={styles.tag}>{event.stateOrEra}</div>
-                    <h3>{event.title}</h3>
-                    <p className={styles.summary}>{event.summary}</p>
-                    <div className={styles.details}>
-                      <div>
-                        <b>🏠 생활 모습</b>
-                        <p>{event.life}</p>
+                      <div className={styles.periodGrid} style={{ minWidth: 116 + 245 * columns.length }}>
+                        <div className={styles.tableHeader} style={gridStyle}>
+                          <div className={styles.yearHeader}>연도</div>
+                          {columns.map((column) => (
+                            <div className={styles.countryHeader} key={column}>{column}</div>
+                          ))}
+                        </div>
+                        {dates.map((date) => (
+                          <div className={styles.tableRow} style={gridStyle} key={date.key}>
+                            <div className={styles.yearCell}>{date.dateLabel}</div>
+                            {columns.map((column) => (
+                              <div className={styles.countryCell} key={column}>
+                                {date.events
+                                  .filter((event) => event.stateOrEra === column)
+                                  .map((event) => (
+                                    <article className={styles.gridCard} key={event.id}>
+                                      <span className={styles.gridEmoji} role="img" aria-label={event.image.alt}>{event.image.value}</span>
+                                      <h4>{event.title}</h4>
+                                      <p className={styles.gridSummary}>{event.summary}</p>
+                                      <div className={styles.gridDetails}>
+                                        <b>생활 모습</b><p>{event.life}</p>
+                                        <b>대표 유물 · 관련 자료</b><p>{event.artifact}</p>
+                                      </div>
+                                      <small className={styles.gridSource}>
+                                        교재 {event.textbookPages.join(", ")}
+                                        {payload?.viewer.role === "teacher" && event.sourceIssueNumbers
+                                          ? ` · 관리용 ${event.sourceIssueNumbers.join(", ")}호`
+                                          : ""}
+                                      </small>
+                                    </article>
+                                  ))}
+                              </div>
+                            ))}
+                          </div>
+                        ))}
                       </div>
-                      <div>
-                        <b>🏺 대표 유물 · 관련 자료</b>
-                        <p>{event.artifact}</p>
-                      </div>
                     </div>
-                    <div className={styles.sourceRow}>
-                      교재 {event.textbookPages.join(", ")}
-                      {payload?.viewer.role === "teacher" && event.sourceIssueNumbers
-                        ? ` · 관리용 ${event.sourceIssueNumbers.join(", ")}호`
-                        : ""}
-                    </div>
-                  </div>
-                </article>
-              ))}
+                  </section>
+                );
+              })}
             </div>
           )}
         </section>
