@@ -8,7 +8,7 @@ import {
   toStudentTimelineEvent,
 } from "../lib/historyTimeline.ts";
 
-assert.equal(HISTORY_TIMELINE_EVENTS.length, 30, "1~3호 누적 사건은 중복 없이 30개여야 합니다.");
+assert.equal(HISTORY_TIMELINE_EVENTS.length, 34, "1~4호 누적 사건은 중복 없이 34개여야 합니다.");
 assert.equal(
   new Set(HISTORY_TIMELINE_EVENTS.map((event) => event.id)).size,
   HISTORY_TIMELINE_EVENTS.length,
@@ -29,7 +29,7 @@ for (const event of HISTORY_TIMELINE_EVENTS) {
   assert.ok(event.image.value && event.image.alt);
   assert.ok(event.textbookPages.length > 0);
   assert.ok(event.sourceIssueNumbers.length > 0);
-  assert.ok(event.sourceIssueNumbers.every((issue) => issue >= 1 && issue <= 3));
+  assert.ok(event.sourceIssueNumbers.every((issue) => issue >= 1 && issue <= 4));
 }
 
 assert.equal(getTimelineEventsForIssues([]).length, 0);
@@ -38,7 +38,13 @@ assert.equal(getTimelineEventsForIssues([2]).length, 15);
 assert.equal(getTimelineEventsForIssues([3]).length, 15);
 assert.equal(getTimelineEventsForIssues([1, 2]).length, 15);
 assert.equal(getTimelineEventsForIssues([1, 2, 3]).length, 30);
-assert.equal(HISTORY_TIMELINE_EVENTS.filter((event) => event.stateOrEra === "고구려").length, 15);
+assert.equal(getTimelineEventsForIssues([4]).length, 19);
+assert.equal(getTimelineEventsForIssues([1, 2, 3, 4]).length, 34);
+assert.equal(HISTORY_TIMELINE_EVENTS.filter((event) => event.sourceIssueNumbers.includes(4)).length, 19);
+assert.ok(HISTORY_TIMELINE_EVENTS.find((event) => event.id === "goguryeo-falls")?.sourceIssueNumbers.includes(4));
+assert.ok(HISTORY_TIMELINE_EVENTS.find((event) => event.id === "goguryeo-salsu")?.sourceIssueNumbers.includes(4));
+assert.ok(HISTORY_TIMELINE_EVENTS.find((event) => event.id === "goguryeo-sui-war-begins")?.sourceIssueNumbers.includes(4));
+assert.equal(HISTORY_TIMELINE_EVENTS.filter((event) => event.stateOrEra === "고구려").length, 18);
 assert.equal(HISTORY_TIMELINE_EVENTS.find((event) => event.id === "balhae-founded")?.sortYear, 698);
 assert.deepEqual(normalizeTimelineIssues([1, "1", 0, 24, 2]), [1, 2]);
 assert.deepEqual(resolveTimelineCompletedIssues({ stage: "book_3" }), {
