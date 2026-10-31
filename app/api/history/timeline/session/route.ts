@@ -1,5 +1,6 @@
 import { getVerifiedStudent, handleRouteError, jsonError } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
+import { getHistoryTimelineStudentVisible } from "@/lib/historyTimelineVisibility";
 import {
   buildExpiredHistoryTimelineSessionCookie,
   buildHistoryTimelineSessionCookie,
@@ -100,6 +101,10 @@ const loginByIdentity = async (body: Record<string, unknown>) => {
 
 export async function POST(request: Request) {
   try {
+    if (!(await getHistoryTimelineStudentVisible())) {
+      return jsonError("한국사 연표는 아직 학생에게 공개되지 않았습니다.", 403, "timeline_not_published");
+    }
+
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const student = normalize(body.studentId)
       ? await loginByKnownStudent(body)

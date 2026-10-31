@@ -1,5 +1,6 @@
 import { verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
+import { getHistoryTimelineStudentVisible } from "@/lib/historyTimelineVisibility";
 import {
   getTimelineEventsForIssues,
   HISTORY_TIMELINE_EVENTS,
@@ -45,6 +46,14 @@ const teacherResponse = async (request: Request) => {
 export async function GET(request: Request) {
   const teacher = await teacherResponse(request);
   if (teacher) return teacher;
+
+  // 기존 학생 세션과 개별 체크 여부에도 전체 미노출 설정을 우선 적용한다.
+  if (!(await getHistoryTimelineStudentVisible())) {
+    return privateJson(
+      { error: "한국사 연표는 아직 학생에게 공개되지 않았습니다.", code: "timeline_not_published" },
+      { status: 403 }
+    );
+  }
 
   const sessionId = readRequestCookie(request, HISTORY_TIMELINE_SESSION_COOKIE);
   const session = await getHistoryTimelineSession(sessionId);

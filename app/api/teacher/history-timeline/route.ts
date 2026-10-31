@@ -7,6 +7,10 @@ import {
 } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import {
+  getHistoryTimelineStudentVisible,
+  setHistoryTimelineStudentVisible,
+} from "@/lib/historyTimelineVisibility";
+import {
   HISTORY_TIMELINE_MAX_ISSUE,
   normalizeTimelineIssues,
   resolveTimelineCompletedIssues,
@@ -21,10 +25,10 @@ export async function GET(request: Request) {
   try {
     await verifyTeacherRequest(request);
     const { db } = getFirebaseAdmin();
-    const snapshot = await db
-      .collection("students")
-      .where("program", "==", "byeolkkum_history")
-      .get();
+    const [snapshot, studentVisible] = await Promise.all([
+      db.collection("students").where("program", "==", "byeolkkum_history").get(),
+      getHistoryTimelineStudentVisible(),
+    ]);
 
     const students = snapshot.docs
       .map((docItem) => {
@@ -46,7 +50,27 @@ export async function GET(request: Request) {
         a.name.localeCompare(b.name, "ko-KR")
       );
 
-    return Response.json({ students, maxIssue: HISTORY_TIMELINE_MAX_ISSUE });
+    return Response.json({ students, maxIssue: HISTORY_TIMELINE_MAX_ISSUE, studentVisible });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "teacher_auth_required") {
+      return jsonError("교사 로그인이 필요합니다.", 401, message);
+    }
+    return handleRouteError(error);
+  }
+}
+
+// 전체 공개 스위치는 학생별 진도/체크 기록을 삭제하지 않는다.
+export async function PUT(request: Request) {
+  try {
+    const teacher = await verifyTeacherRequest(request);
+    const body = await request.json().catch(() => ({}));
+    if (typeof body?.studentVisible !== "boolean") {
+      return jsonError("전체 공개 상태를 확인해 주세요.", 400, "invalid_visibility");
+    }
+
+    await setHistoryTimelineStudentVisible(body.studentVisible, teacher.uid);
+    return Response.json({ ok: true, studentVisible: body.studentVisible });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "teacher_auth_required") {
