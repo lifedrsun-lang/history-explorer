@@ -35,36 +35,71 @@ const FILTERS = [
   ["발해", "발해"],
 ] as const;
 
-/** 시대에 따라 국가 열을 바꾸되, 연도는 공통 축으로 고정한다. */
+/** 나라가 존재하지 않던 시기에 미래의 국가 열이 나타나지 않도록 역사적 전환점을 분리한다.
+ * 건국 연대가 확정되지 않은 나라의 비교표는 '등장과 성장'이라는 시대 설명으로만 사용한다.
+ */
 const PERIODS = [
   {
-    key: "beginnings",
-    title: "선사 시대 · 고조선과 여러 나라",
-    columns: ["선사 시대", "고조선", "부여", "고구려", "옥저", "동예", "삼한", "여러 나라"],
-    includes: (year: number) => year < -37,
+    key: "prehistoric",
+    title: "선사 문화의 시작",
+    columns: ["선사 시대"],
+    milestone: false,
+    includes: (year: number) => year < -2333,
   },
   {
-    key: "kingdoms",
-    title: "삼국 시대 · 여러 나라를 나란히 비교해요",
-    columns: ["고구려", "백제", "신라", "가야", "부여", "옥저", "동예", "삼한"],
+    key: "gojoseon",
+    title: "고조선의 시작과 선사 문화의 변화",
+    columns: ["선사 시대", "고조선"],
+    milestone: false,
+    includes: (year: number) => year >= -2333 && year < -108,
+  },
+  {
+    key: "gojoseon-falls",
+    title: "고조선 멸망",
+    columns: [],
+    milestone: true,
+    includes: (year: number) => year === -108,
+  },
+  {
+    key: "early-states-start",
+    title: "여러 나라의 등장",
+    columns: [],
+    milestone: true,
+    includes: (year: number) => year === -100,
+  },
+  {
+    key: "early-kingdoms",
+    title: "고조선 이후 여러 나라의 생활과 성장",
+    columns: ["부여", "고구려", "옥저", "동예", "삼한"],
+    milestone: false,
+    includes: (year: number) => year > -100 && year < -37,
+  },
+  {
+    key: "three-kingdoms",
+    title: "고구려·백제·신라·가야로 이어지는 시대",
+    columns: ["고구려", "백제", "신라", "가야"],
+    milestone: false,
     includes: (year: number) => year >= -37 && year <= 676,
   },
   {
     key: "north-south",
     title: "남북국 시대 · 통일신라와 발해",
     columns: ["통일신라", "발해", "신라"],
+    milestone: false,
     includes: (year: number) => year > 676 && year < 892,
   },
   {
     key: "late-three",
     title: "후삼국 시대 · 여러 나라의 변화",
     columns: ["신라", "발해", "후백제", "후고구려", "태봉", "고려"],
+    milestone: false,
     includes: (year: number) => year >= 892 && year < 936,
   },
   {
     key: "later",
     title: "고려 이후의 한국사",
     columns: ["고려", "조선", "대한제국", "일제강점기", "대한민국"],
+    milestone: false,
     includes: (year: number) => year >= 936,
   },
 ] as const;
@@ -362,6 +397,37 @@ export default function TimelineClient() {
               {PERIODS.map((period) => {
                 const periodEvents = visibleEvents.filter((event) => period.includes(event.sortYear));
                 if (periodEvents.length === 0) return null;
+
+                // 중요한 역사적 전환점은 국가별 표가 아닌 독립된 구분 카드로 표시한다.
+                // 위에서 아래로: 고조선 멸망 → 여러 나라의 등장 → 국가별 비교표.
+                if (period.milestone) {
+                  return (
+                    <section className={styles.transitionBlock} key={period.key} aria-label={period.title}>
+                      {periodEvents.map((event) => (
+                        <article className={styles.transitionCard} key={event.id}>
+                          <div className={styles.transitionDate}>{event.dateLabel}</div>
+                          <div className={styles.transitionBody}>
+                            <h3>{event.title}</h3>
+                            <p>{event.summary}</p>
+                            <div className={styles.transitionDetail}>
+                              <b>생활 모습</b><span>{event.life}</span>
+                            </div>
+                            <div className={styles.transitionDetail}>
+                              <b>대표 유물 · 관련 자료</b><span>{event.artifact}</span>
+                            </div>
+                            <small className={styles.gridSource}>
+                              교재 {event.textbookPages.join(", ")}
+                              {payload?.viewer.role === "teacher" && event.sourceIssueNumbers
+                                ? ` · 관리용 ${event.sourceIssueNumbers.join(", ")}호`
+                                : ""}
+                            </small>
+                          </div>
+                        </article>
+                      ))}
+                    </section>
+                  );
+                }
+
                 // 앞으로 새 국가가 등장해도 기존 사건이 누락되지 않도록 열을 자동 확장한다.
                 const columns = [
                   // 각 시대의 기본 국가 열은 사건이 아직 없어도 항상 보여준다.

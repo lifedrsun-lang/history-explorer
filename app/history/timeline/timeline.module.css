@@ -31,3 +31,17 @@
 .gridDetails p{margin:3px 0 8px;line-height:1.5;color:#d5e4db}
 .gridSource{display:block;margin-top:10px;font-size:10px;line-height:1.5;color:#a9bfb4}
 @media(max-width:600px){.periodBlock{padding:9px;border-radius:14px}.periodTop{padding:4px}.periodTop span{font-size:11px}.periodViewport{max-height:74vh}.yearCell{font-size:12px}.gridCard{padding:10px}}
+
+
+/* 건국 이전에는 미래 국가 열을 표시하지 않으며, 역사적 전환점은 구분 카드로 보여 준다. */
+.transitionBlock{position:relative;display:block;margin:4px 0 6px;padding:12px 10px;background:linear-gradient(100deg,#214a3b,#142d2a);border:2px solid #83bda8;border-radius:18px}
+.transitionBlock::before{content:"↓ 역사 흐름";position:absolute;top:-14px;left:16px;padding:3px 11px;border-radius:999px;background:#b0ead1;color:#143b32;font-size:11px;font-weight:950}
+.transitionCard{display:flex;gap:18px;align-items:flex-start;background:#192e29;border-radius:14px;padding:18px}
+.transitionCard+.transitionCard{margin-top:12px}
+.transitionDate{flex:0 0 120px;border-radius:12px;background:#306554;color:#f1fff7;font-weight:950;padding:12px;text-align:center;line-height:1.5}
+.transitionBody{flex:1;min-width:0}
+.transitionBody h3{font-size:clamp(20px,3vw,28px);font-weight:950;color:#d8f4e2;margin:0 0 8px}
+.transitionBody>p{margin:0 0 12px;color:#f3faf6;line-height:1.6}
+.transitionDetail{display:flex;gap:8px;font-size:12px;line-height:1.55;padding:5px 0;color:#d6e6db}
+.transitionDetail b{flex:0 0 110px;color:#aee5cc}
+@media(max-width:600px){.transitionBlock{margin-top:12px;padding:10px}.transitionCard{display:block;padding:14px}.transitionDate{width:max-content;max-width:100%;font-size:13px;padding:7px 12px;margin-bottom:12px}.transitionDetail{display:block}.transitionDetail b{display:block;margin-bottom:2px}}
