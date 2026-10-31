@@ -1122,7 +1122,7 @@ export default function TeacherPage() {
       <div className="max-w-7xl mx-auto">
         {/* 제목 */}
         <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
-          <h1 className="text-3xl font-bold">🏫 역사 탐험 관리소</h1>
+          <h1 className="text-3xl font-bold">🏫 교사관리실</h1>
 
           <p className="text-gray-500 mt-1 text-sm">
             학생 탐험 현황 관리
