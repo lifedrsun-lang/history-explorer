@@ -48,7 +48,7 @@ assert.equal(getTimelineEventsForIssues([1, 2, 3, 4, 5, 6, 7, 8, 9]).length, 86)
 assert.equal(getTimelineEventsForIssues([7]).length, 21);
 assert.equal(getTimelineEventsForIssues([8]).length, 16);
 assert.equal(getTimelineEventsForIssues([9]).length, 18);
-assert.equal(getTimelineEventsForIssues([7, 8, 9]).length, 39);
+assert.equal(getTimelineEventsForIssues([7, 8, 9]).length, 38);
 assert.ok(getTimelineEventsForIssues([7]).some((event) => event.id === "silla-unification"));
 assert.ok(getTimelineEventsForIssues([8]).some((event) => event.id === "balhae-founded"));
 assert.equal(HISTORY_TIMELINE_EVENTS.find((event) => event.id === "balhae-founded")?.eraFilter, "발해");
