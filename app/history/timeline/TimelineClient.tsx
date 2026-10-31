@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Fragment, FormEvent, useEffect, useMemo, useState } from "react";
 
 import { auth } from "@/lib/firebase";
 import type { HistoryTimelineEvent } from "@/lib/historyTimeline";
 
 import styles from "./timeline.module.css";
 
-type StudentEvent = Omit<HistoryTimelineEvent, "sourceIssueNumbers"> & {
+type StudentEvent = Omit<HistoryTimelineEvent, "sourceIssueNumbers" | "textbookPages"> & {
   sourceIssueNumbers?: number[];
+  textbookPages?: string[];
+  textbookIssues?: number[];
 };
 
 type Viewer = {
@@ -33,7 +35,10 @@ const FILTERS = [
   ["여러나라", "여러 나라"],
   ["고구려", "고구려"],
   ["백제", "백제"],
+  ["신라", "신라"],
+  ["가야", "가야"],
   ["발해", "발해"],
+  ["후삼국", "후삼국"],
 ] as const;
 
 /** 나라가 존재하지 않던 시기에 미래의 국가 열이 나타나지 않도록 역사적 전환점을 분리한다.
@@ -70,41 +75,52 @@ const PERIODS = [
     includes: (year: number) => year === -100,
   },
   {
-    key: "early-kingdoms",
-    title: "고조선 이후 여러 나라의 생활과 성장",
-    columns: ["부여", "고구려", "옥저", "동예", "삼한"],
+    key: "connected",
+    title: "여러 나라에서 삼국·남북국·후삼국으로 이어지는 역사",
+    // 국가별 세로 열을 하나의 표 안에서 유지한다. 시대 전환은 표 안의 큰 배너로 표시한다.
+    columns: ["부여", "고구려", "옥저", "동예", "삼한", "백제", "신라", "가야", "발해", "후백제", "후고구려", "고려", "조선", "대한제국", "일제강점기", "대한민국"],
     milestone: false,
-    includes: (year: number) => year > -100 && year < -37,
-  },
-  {
-    key: "three-kingdoms",
-    title: "고구려·백제·신라·가야로 이어지는 시대",
-    columns: ["고구려", "백제", "신라", "가야"],
-    milestone: false,
-    includes: (year: number) => year >= -37 && year <= 676,
-  },
-  {
-    key: "north-south",
-    title: "남북국 시대 · 통일신라와 발해",
-    columns: ["통일신라", "발해", "신라"],
-    milestone: false,
-    includes: (year: number) => year > 676 && year < 892,
-  },
-  {
-    key: "late-three",
-    title: "후삼국 시대 · 여러 나라의 변화",
-    columns: ["신라", "발해", "후백제", "후고구려", "태봉", "고려"],
-    milestone: false,
-    includes: (year: number) => year >= 892 && year < 936,
-  },
-  {
-    key: "later",
-    title: "고려 이후의 한국사",
-    columns: ["고려", "조선", "대한제국", "일제강점기", "대한민국"],
-    milestone: false,
-    includes: (year: number) => year >= 936,
+    includes: (year: number) => year > -100,
   },
 ] as const;
+
+// 큰 시대 카드는 실제 전환 사건을 배운 경우에만 나타난다.
+const EPOCH_MARKERS = [
+  {
+    eventId: "gaya-suro-founded",
+    key: "three",
+    title: "삼국 시대(고구려·백제·신라)와 가야",
+    description: "세 나라와 가야의 역사를 같은 시간축에서 비교해요.",
+    className: "epochThree",
+  },
+  {
+    eventId: "silla-unification",
+    key: "unified",
+    title: "통일 신라",
+    description: "676년 이후에도 신라의 역사는 같은 세로줄로 이어집니다.",
+    className: "epochUnified",
+  },
+  {
+    eventId: "balhae-founded",
+    key: "northsouth",
+    title: "남북국 시대(통일 신라·발해)",
+    description: "676년 통일 이후 22년이 지난 698년에 발해가 세워졌어요. 통일 신라와 발해가 함께 존재합니다.",
+    className: "epochNorthSouth",
+  },
+  {
+    eventId: "later-goguryeo-founded",
+    key: "laterthree",
+    title: "후삼국 시대(신라·후백제·후고구려)",
+    description: "900년 후백제와 901년 후고구려가 등장했어요. 발해도 926년까지 따로 이어졌어요.",
+    className: "epochLaterThree",
+  },
+] as const;
+
+const textbookSourceLabel = (event: StudentEvent) => {
+  const issues = event.textbookIssues ?? event.sourceIssueNumbers ?? [];
+  const unique = [...new Set(issues)].sort((a, b) => a - b);
+  return unique.length ? unique.map((issue) => `교재 ${issue}호`).join(" · ") : "교재 확인";
+};
 
 function groupSameDates(events: StudentEvent[]) {
   const groups = new Map<string, { key: string; dateLabel: string; events: StudentEvent[] }>();
@@ -418,10 +434,7 @@ export default function TimelineClient() {
                               <b>대표 유물 · 관련 자료</b><span>{event.artifact}</span>
                             </div>
                             <small className={styles.gridSource}>
-                              교재 {event.textbookPages.join(", ")}
-                              {payload?.viewer.role === "teacher" && event.sourceIssueNumbers
-                                ? ` · 관리용 ${event.sourceIssueNumbers.join(", ")}호`
-                                : ""}
+                              {textbookSourceLabel(event)}
                             </small>
                           </div>
                         </article>
@@ -439,11 +452,14 @@ export default function TimelineClient() {
                     : event.stateOrEra;
 
                 // 앞으로 새 국가가 등장해도 기존 사건이 누락되지 않도록 열을 자동 확장한다.
+                // 연결 연표는 배운 국가만 보이되, 등장한 국가의 세로줄은
+                // 시대 전환 뒤에도 같은 위치로 계속 유지한다.
+                const eventCountries = new Set(periodEvents.map(eventColumn));
                 const columns = [
-                  // 각 시대의 기본 국가 열은 사건이 아직 없어도 항상 보여준다.
-                  // 다음 호수를 공부하면 기존 빈 칸에 사건이 채워지도록 유지한다.
-                  ...period.columns,
-                  ...[...new Set(periodEvents.map(eventColumn))].filter(
+                  ...(period.key === "connected"
+                    ? (period.columns as readonly string[]).filter((column) => eventCountries.has(column))
+                    : [...period.columns]),
+                  ...[...eventCountries].filter(
                     (column) => !(period.columns as readonly string[]).includes(column)
                   ),
                 ];
@@ -474,12 +490,13 @@ export default function TimelineClient() {
                               data-country={column}
                               aria-label={column || "나라가 등장하기 전 빈 칸"}
                             >
-                              {column}
+                              {column === "신라" && period.key === "connected" ? "신라 → 통일 신라" : column}
                             </div>
                           ))}
                         </div>
                         {dates.map((date) => (
-                          <div className={styles.tableRow} style={gridStyle} key={date.key}>
+                          <Fragment key={date.key}>
+                          <div className={styles.tableRow} style={gridStyle}>
                             <div className={styles.yearCell}>{date.dateLabel}</div>
                             {columns.map((column) => (
                               <div className={styles.countryCell} key={column}>
@@ -495,16 +512,35 @@ export default function TimelineClient() {
                                         <b>대표 유물 · 관련 자료</b><p>{event.artifact}</p>
                                       </div>
                                       <small className={styles.gridSource}>
-                                        교재 {event.textbookPages.join(", ")}
-                                        {payload?.viewer.role === "teacher" && event.sourceIssueNumbers
-                                          ? ` · 관리용 ${event.sourceIssueNumbers.join(", ")}호`
-                                          : ""}
+                                        {textbookSourceLabel(event)}
                                       </small>
                                     </article>
                                   ))}
                               </div>
                             ))}
                           </div>
+                          {period.key === "connected" && EPOCH_MARKERS.filter(
+                            (marker) => date.events.some((event) => event.id === marker.eventId) &&
+                              (marker.key !== "northsouth" ||
+                                periodEvents.some((event) => event.id === "silla-unification"))
+                          ).map((marker) => (
+                            <div
+                              className={styles.epochRow}
+                              style={gridStyle}
+                              key={marker.key}
+                              aria-label={marker.title}
+                            >
+                              <div className={styles.epochDate}>시대 변화 ↓</div>
+                              <div
+                                className={`${styles.epochCard} ${styles[marker.className]}`}
+                                style={{ gridColumn: `2 / span ${columns.length}` }}
+                              >
+                                <strong>{marker.title}</strong>
+                                <p>{marker.description}</p>
+                              </div>
+                            </div>
+                          ))}
+                          </Fragment>
                         ))}
                       </div>
                     </div>

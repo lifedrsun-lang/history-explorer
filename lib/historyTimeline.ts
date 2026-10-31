@@ -1,5 +1,6 @@
 import { HISTORY_TIMELINE_EXTRA_EVENTS } from "./historyTimelineExtra";
 import { HISTORY_TIMELINE_BAEKJE_EVENTS } from "./historyTimelineBaekje";
+import { HISTORY_TIMELINE_SILLA_BALHAE_EVENTS } from "./historyTimelineSillaBalhae";
 import {
   HISTORY_TIMELINE_FOURTH_EVENTS,
   HISTORY_TIMELINE_FOURTH_SHARED_IDS,
@@ -19,7 +20,7 @@ export type HistoryTimelineEvent = {
   sortYear: number;
   dateLabel: string;
   stateOrEra: string;
-  eraFilter: "선사" | "고조선" | "여러나라" | "고구려" | "백제" | "발해";
+  eraFilter: "선사" | "고조선" | "여러나라" | "고구려" | "백제" | "신라" | "가야" | "발해" | "후삼국";
   title: string;
   summary: string;
   life: string;
@@ -179,16 +180,32 @@ export const HISTORY_TIMELINE_EVENTS = [
   ...HISTORY_TIMELINE_EXTRA_EVENTS,
   ...HISTORY_TIMELINE_FOURTH_EVENTS,
   ...HISTORY_TIMELINE_BAEKJE_EVENTS,
+  ...HISTORY_TIMELINE_SILLA_BALHAE_EVENTS,
 ]
-  .map((event) =>
-    HISTORY_TIMELINE_FOURTH_SHARED_IDS.has(event.id)
-      ? {
-          ...event,
-          sourceIssueNumbers: [...new Set([...event.sourceIssueNumbers, 4])],
-          textbookPages: [...event.textbookPages, HISTORY_TIMELINE_FOURTH_SHARED_SOURCE],
-        }
-      : event
-  )
+  .map((event) => {
+    // 같은 역사적 사건을 재수록한 교재는 한 사건 카드에 호수만 연결한다.
+    const extraIssues: Record<string, number[]> = {
+      "balhae-founded": [8, 9],
+      "silla-kim-chunchu-seeks-goguryeo-help": [7],
+      "goguryeo-falls": [7],
+      "baekje-falls": [7],
+    };
+    const fourthIssue = HISTORY_TIMELINE_FOURTH_SHARED_IDS.has(event.id);
+    return {
+      ...event,
+      eraFilter: event.id === "balhae-founded" ? "발해" as const
+        : event.id === "silla-kim-chunchu-seeks-goguryeo-help" ? "신라" as const
+        : event.eraFilter,
+      sourceIssueNumbers: [...new Set([
+        ...event.sourceIssueNumbers,
+        ...(fourthIssue ? [4] : []),
+        ...(extraIssues[event.id] || []),
+      ])].sort((a, b) => a - b),
+      textbookPages: fourthIssue
+        ? [...event.textbookPages, HISTORY_TIMELINE_FOURTH_SHARED_SOURCE]
+        : event.textbookPages,
+    };
+  })
   .sort((a, b) => a.sortYear - b.sortYear || a.id.localeCompare(b.id));
 
 export const normalizeTimelineIssues = (value: unknown): number[] => {
@@ -246,9 +263,13 @@ export const getTimelineEventsForIssues = (issuesInput: unknown) => {
   );
 };
 
+// 학생에게 내부 출처 전체 목록을 주지 않고, 선택된 호수만 표시용으로 전달한다.
 export const toStudentTimelineEvent = (
-  event: HistoryTimelineEvent
-): Omit<HistoryTimelineEvent, "sourceIssueNumbers"> => ({
+  event: HistoryTimelineEvent,
+  allowedIssues: number[] = event.sourceIssueNumbers
+): Omit<HistoryTimelineEvent, "sourceIssueNumbers" | "textbookPages"> & {
+  textbookIssues: number[];
+} => ({
   id: event.id,
   sortYear: event.sortYear,
   dateLabel: event.dateLabel,
@@ -259,5 +280,5 @@ export const toStudentTimelineEvent = (
   life: event.life,
   artifact: event.artifact,
   image: event.image,
-  textbookPages: event.textbookPages,
+  textbookIssues: event.sourceIssueNumbers.filter((issue) => allowedIssues.includes(issue)),
 });

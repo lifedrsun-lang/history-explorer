@@ -109,3 +109,19 @@
 .loginForm button{background:#396f55;color:#fff}
 .loginLinks a{color:#356d55}
 @media(max-width:600px){.periodTop h3{line-height:1.4}}
+
+
+/* 시대가 바뀌어도 국가의 세로줄은 끊기지 않는 통합 비교 연표 */
+.epochRow{display:grid;align-items:stretch;background:#faf8f0;border-bottom:2px solid #d8cdb3}
+.epochDate{position:sticky;left:0;z-index:4;display:flex;justify-content:center;align-items:center;text-align:center;padding:12px 7px;background:#f0eee4;border-right:2px solid #bfc7b1;font-size:12px;font-weight:950;color:#46634e;word-break:keep-all}
+.epochCard{margin:12px 14px 12px 8px;padding:19px 24px;border-radius:16px;border:2px solid #d0d7c4;box-shadow:0 3px 10px #453f3017;white-space:normal;color:#2a4738}
+.epochCard strong{display:block;font-size:clamp(20px,3vw,28px);line-height:1.35;letter-spacing:-.02em}
+.epochCard p{margin:8px 0 0;font-size:14px;line-height:1.55;color:#485c4f}
+.epochThree{background:linear-gradient(110deg,#eaf0ff,#f8f7e8);border-color:#93acd9}
+.epochUnified{background:linear-gradient(110deg,#fff0bd,#fff9e8);border-color:#ddb765}
+.epochNorthSouth{background:linear-gradient(110deg,#dcefd9,#f2f6e9);border-color:#89b486}
+.epochLaterThree{background:linear-gradient(110deg,#f6e5da,#fef4e9);border-color:#d6a588}
+.countryHeader[data-country="후백제"]{background:#f9e9d8;border-bottom:3px solid #cf9563}
+.countryHeader[data-country="후고구려"]{background:#e7eafa;border-bottom:3px solid #728abe}
+.countryHeader[data-country="고려"]{background:#ecf0fb;border-bottom:3px solid #6b83aa}
+@media(max-width:600px){.epochDate{font-size:11px;padding:9px 4px}.epochCard{padding:15px 14px;margin:10px 9px}.epochCard strong{font-size:20px}.epochCard p{font-size:13px}}

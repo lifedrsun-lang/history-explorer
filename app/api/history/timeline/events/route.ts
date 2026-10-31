@@ -88,7 +88,9 @@ export async function GET(request: Request) {
   }
 
   const completedIssues = resolveTimelineCompletedIssues(student).issues;
-  const events = getTimelineEventsForIssues(completedIssues).map(toStudentTimelineEvent);
+  const events = getTimelineEventsForIssues(completedIssues).map((event) =>
+    toStudentTimelineEvent(event, completedIssues)
+  );
 
   return privateJson({
     viewer: {
