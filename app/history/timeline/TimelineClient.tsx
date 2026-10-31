@@ -52,8 +52,20 @@ const PERIODS = [
   {
     key: "north-south",
     title: "남북국 시대 · 통일신라와 발해",
-    columns: ["통일신라", "발해", "고구려", "백제", "신라"],
-    includes: (year: number) => year > 676 && year < 1000,
+    columns: ["통일신라", "발해", "신라"],
+    includes: (year: number) => year > 676 && year < 892,
+  },
+  {
+    key: "late-three",
+    title: "후삼국 시대 · 여러 나라의 변화",
+    columns: ["신라", "발해", "후백제", "후고구려", "태봉", "고려"],
+    includes: (year: number) => year >= 892 && year < 936,
+  },
+  {
+    key: "later",
+    title: "고려 이후의 한국사",
+    columns: ["고려", "조선", "대한제국", "일제강점기", "대한민국"],
+    includes: (year: number) => year >= 936,
   },
 ] as const;
 
@@ -313,9 +325,15 @@ export default function TimelineClient() {
               {PERIODS.map((period) => {
                 const periodEvents = visibleEvents.filter((event) => period.includes(event.sortYear));
                 if (periodEvents.length === 0) return null;
-                const columns = period.columns.filter(
-                  (column) => periodEvents.some((event) => event.stateOrEra === column)
-                );
+                // 앞으로 새 국가가 등장해도 기존 사건이 누락되지 않도록 열을 자동 확장한다.
+                const columns = [
+                  ...period.columns.filter((column) =>
+                    periodEvents.some((event) => event.stateOrEra === column)
+                  ),
+                  ...[...new Set(periodEvents.map((event) => event.stateOrEra))].filter(
+                    (column) => !(period.columns as readonly string[]).includes(column)
+                  ),
+                ];
                 const gridStyle = {
                   gridTemplateColumns: `116px repeat(${columns.length}, minmax(245px, 1fr))`,
                 };
