@@ -1,4 +1,5 @@
 import { HISTORY_TIMELINE_EXTRA_EVENTS } from "./historyTimelineExtra";
+import { HISTORY_TIMELINE_BAEKJE_EVENTS } from "./historyTimelineBaekje";
 import {
   HISTORY_TIMELINE_FOURTH_EVENTS,
   HISTORY_TIMELINE_FOURTH_SHARED_IDS,
@@ -18,7 +19,7 @@ export type HistoryTimelineEvent = {
   sortYear: number;
   dateLabel: string;
   stateOrEra: string;
-  eraFilter: "선사" | "고조선" | "여러나라" | "고구려" | "발해";
+  eraFilter: "선사" | "고조선" | "여러나라" | "고구려" | "백제" | "발해";
   title: string;
   summary: string;
   life: string;
@@ -177,6 +178,7 @@ export const HISTORY_TIMELINE_EVENTS = [
   ...HISTORY_TIMELINE_EVENT_SOURCE,
   ...HISTORY_TIMELINE_EXTRA_EVENTS,
   ...HISTORY_TIMELINE_FOURTH_EVENTS,
+  ...HISTORY_TIMELINE_BAEKJE_EVENTS,
 ]
   .map((event) =>
     HISTORY_TIMELINE_FOURTH_SHARED_IDS.has(event.id)
