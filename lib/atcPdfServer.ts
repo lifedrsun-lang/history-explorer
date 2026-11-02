@@ -46,8 +46,8 @@ export async function renderAtcPdf(doc: AtcMailDocument, outputVersionValue: Con
     schoolName: String(c.schoolName), yearMonth: String(c.yearMonth),
     educatorName: resolveAtcEducatorName(c, String(profile.name || "")), educatorPhone: String(profile.phone || ""),
     educatorSignatureDataUrl: resolveAtcEducatorSignature(c, String(profile.name || ""), null),
-    schoolVerifierName: String(c.schoolVerifierName), schoolSignatureDataUrl: String(c.schoolSignatureDataUrl),
-    schoolSignedAt: String(c.schoolSignedAt), operationPeriodStart: String(c.operationPeriodStart),
+    schoolVerifierName: String(c.schoolVerifierName || ""), schoolSignatureDataUrl: typeof c.schoolSignatureDataUrl === "string" ? c.schoolSignatureDataUrl : null,
+    schoolSignedAt: typeof c.schoolSignedAt === "string" ? c.schoolSignedAt : "", operationPeriodStart: String(c.operationPeriodStart),
     operationPeriodEnd: String(c.operationPeriodEnd), rows: aggregateRows(c.scheduleSnapshot),
     logoSrc: logo, forPdf: true,
   });

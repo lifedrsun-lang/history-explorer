@@ -55,9 +55,7 @@ export default function AtcPrintSheet(props: AtcPrintProps): ReactNode {
   const paddedPrintRows: Array<AtcDailyRow | null> = [...printRows];
   while (paddedPrintRows.length < 22) paddedPrintRows.push(null);
   const totalSessions = printRows.reduce((sum, row) => sum + row.sessions, 0);
-  const confirmationDate = schoolSignatureDataUrl
-    ? formatAtcSignedDate(schoolSignedAt)
-    : formatAtcSignedDate(new Date().toISOString());
+  const confirmationDate = schoolSignatureDataUrl ? formatAtcSignedDate(schoolSignedAt) : "";
   return (
         <section className={`atc-print-sheet mx-auto max-w-[850px] bg-white p-8 shadow-lg ${outputVersion === "class4edu" ? "class4edu-print-sheet" : ""}`}>
           <div className="atc-logo-row">

@@ -53,11 +53,12 @@ export async function getAtcMailDocument(uid: string, id: string): Promise<AtcMa
   const confirmation = snap.data();
   const profile = profileSnap.data() || {};
   if (!confirmation || confirmation.teacherUid !== uid) throw new Error("confirmation_not_found");
+  const hasSchoolSignature = Boolean(confirmation.schoolSignatureDataUrl);
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(clean(confirmation.yearMonth)) ||
       !clean(confirmation.schoolName) || !resolveAtcEducatorName(confirmation, clean(profile.name)) || !clean(confirmation.schoolVerifierName) ||
-      !clean(confirmation.schoolSignatureDataUrl, 350_000).startsWith("data:image/png;base64,") ||
+      (hasSchoolSignature && !clean(confirmation.schoolSignatureDataUrl, 350_000).startsWith("data:image/png;base64,")) ||
       !clean(resolveAtcEducatorSignature(confirmation, clean(profile.name), null), 350_000).startsWith("data:image/png;base64,") ||
-      !clean(confirmation.schoolSignedAt) || Number.isNaN(Date.parse(confirmation.schoolSignedAt)) ||
+      (hasSchoolSignature && (!clean(confirmation.schoolSignedAt) || Number.isNaN(Date.parse(confirmation.schoolSignedAt)))) ||
       !clean(confirmation.operationPeriodStart) || !clean(confirmation.operationPeriodEnd) ||
       !Array.isArray(confirmation.scheduleSnapshot) || confirmation.scheduleSnapshot.length === 0) {
     throw new Error("incomplete_confirmation");
@@ -82,6 +83,7 @@ export function makeAtcMailInfo(doc: AtcMailDocument, settings: AtcMailSettings,
     educatorName: fields.강사명,
   });
   return { from: ATC_GMAIL_FROM, to: outputVersion === "class4edu" ? CLASS4EDU_MAIL_TO : settings.to, bcc: settings.bcc, subject, body: render(settings.bodyTemplate), filename,
+    schoolSignatureMissing: !Boolean(confirmation.schoolSignatureDataUrl),
     sentAt: clean(confirmation.mailSentAt), mailStatus: clean(confirmation.mailStatus), revision: doc.revision };
 }
 
