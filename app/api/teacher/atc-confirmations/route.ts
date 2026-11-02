@@ -300,7 +300,7 @@ export async function PUT(request: Request) {
           : previouslySigned || nowIso
         : "";
 
-      let submittedAt = signedContentChanged || educatorSignatureChanged ? "" : previouslySubmitted;
+      let submittedAt = signedContentChanged || educatorSignatureChanged || signatureChanged ? "" : previouslySubmitted;
 
       if (markSubmitted) {
         if (scheduleSnapshot.length === 0) {
