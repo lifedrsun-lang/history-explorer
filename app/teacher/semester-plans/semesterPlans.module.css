@@ -53,3 +53,20 @@
 .preview th,.preview td { border:1px solid #b5c1d3; padding:10px; vertical-align:top; white-space:pre-wrap; overflow-wrap:anywhere; }
 .preview th { background:#edf2f9; text-align:left; }
 @media(max-width:700px) { .shell { padding:16px; }.shell h1 { font-size:1.65rem; }.panel,.preview { padding:16px; border-radius:14px; }.formGrid,.contentFields { grid-template-columns:1fr; }.row { align-items:flex-start; flex-wrap:wrap; }.meta { grid-template-columns:100px 1fr; }.weekBody { padding:12px; }.header { align-items:flex-start; }.actions { gap:6px; } }
+
+
+.formGrid .wide { grid-column:1 / -1; }
+.araPage { background:#fff; max-width:840px; margin:20px auto 0; padding:26px; border:1px solid #b6c1d3; color:#111; }
+.araPage h2 { clear:both; font-size:1.25rem; text-align:center; margin:30px 0 24px; }
+.araPage h3 { text-align:center; font-size:1rem; margin:24px 0 10px; }
+.araPage table { width:100%; min-width:0; table-layout:fixed; border-collapse:collapse; font-size:.82rem; }
+.araPage th,.araPage td { border:1px solid #555; padding:7px 9px; white-space:pre-wrap; overflow-wrap:anywhere; vertical-align:middle; }
+.araPage th { text-align:center; background:#f6f6f6; font-weight:700; }
+.araPage .araApproval { width:48%; float:right; margin-bottom:14px; }
+.araApproval th,.araApproval td { text-align:center; }
+.araApproval td { height:26px; }
+.araDetails th { width:28%; }
+.araWeeks th:first-child,.araWeeks td:first-child { width:8%; text-align:center; }
+.araWeeks th:last-child,.araWeeks td:last-child { width:18%; }
+.araWeeks td { min-height:38px; }
+@media(max-width:700px) { .araPage { padding:10px; overflow-x:auto; }.araPage .araApproval { width:60%; }.formGrid .wide { grid-column:auto; } }
