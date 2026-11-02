@@ -19,7 +19,7 @@ export default function SunLabTimelineAccessPage() {
     if (!current) { setLoading(false); return; }
     try {
       const token = await current.getIdToken();
-      const res = await fetch("/api/teacher/history-timeline/sun-lab-access", {
+      const res = await fetch("/api/teacher/history-timeline/sun-lab-members", {
         headers: { Authorization: `Bearer ${token}` }, cache: "no-store",
       });
       const data = await res.json().catch(() => ({}));
@@ -34,7 +34,7 @@ export default function SunLabTimelineAccessPage() {
     setSaving(member.studentId); setMessage(""); setError("");
     try {
       const token = await user.getIdToken();
-      const res = await fetch("/api/teacher/history-timeline/sun-lab-access", {
+      const res = await fetch("/api/teacher/history-timeline/sun-lab-members", {
         method: "PATCH", headers: {
           Authorization: `Bearer ${token}`, "Content-Type": "application/json",
         },
