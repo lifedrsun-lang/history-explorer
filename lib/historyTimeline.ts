@@ -1,4 +1,5 @@
 import { HISTORY_TIMELINE_EXTRA_EVENTS } from "./historyTimelineExtra";
+import { HISTORY_TIMELINE_TRANSITION_EVENTS } from "./historyTimelineTransitions";
 import { HISTORY_TIMELINE_BAEKJE_EVENTS } from "./historyTimelineBaekje";
 import { HISTORY_TIMELINE_SILLA_BALHAE_EVENTS } from "./historyTimelineSillaBalhae";
 import {
@@ -181,6 +182,7 @@ export const HISTORY_TIMELINE_EVENTS = [
   ...HISTORY_TIMELINE_FOURTH_EVENTS,
   ...HISTORY_TIMELINE_BAEKJE_EVENTS,
   ...HISTORY_TIMELINE_SILLA_BALHAE_EVENTS,
+  ...HISTORY_TIMELINE_TRANSITION_EVENTS,
 ]
   .map((event) => {
     // 같은 역사적 사건을 재수록한 교재는 한 사건 카드에 호수만 연결한다.
