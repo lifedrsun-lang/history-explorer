@@ -7,6 +7,7 @@ import { Fragment, FormEvent, useEffect, useMemo, useState } from "react";
 import { auth } from "@/lib/firebase";
 import type { HistoryTimelineEvent } from "@/lib/historyTimeline";
 import TimelineExamReferences, { type ExamReference } from "./TimelineExamReferences";
+import TimelineWarSummary from "./TimelineWarSummary";
 
 import styles from "./timeline.module.css";
 
@@ -506,17 +507,22 @@ export default function TimelineClient() {
                           <div className={styles.tableRow} style={gridStyle}>
                             <div className={styles.yearCell}>{date.dateLabel}</div>
                             {columns.map((column) => (
-                              <div className={styles.countryCell} key={column}>
+                              <div className={`${styles.countryCell} ${fallenYears[column] !== undefined && date.events[0]?.sortYear > fallenYears[column] ? styles.fallenCell : ""}`} key={column}>
                                 {date.events
                                   .filter((event) => eventColumn(event) === column)
                                   .map((event) => (
-                                    <article className={styles.gridCard} key={event.id}>
+                                    <article className={`${styles.gridCard} ${renameEvents.has(event.id) ? styles.renameCard : ""} ${capitalEvents.has(event.id) ? styles.capitalCard : ""} ${/멸망|귀부/.test(event.title) ? styles.fallCard : ""}`} key={event.id}>
+                                      {renameEvents.has(event.id) && <span className={styles.changeBadge}>국호 변경</span>}
+                                      {capitalEvents.has(event.id) && <span className={styles.capitalBadge}>수도 이전</span>}
+                                      {event.id === "goryeo-founded-918" && <span className={styles.changeBadge}>왕조 교체</span>}
+                                      {/멸망|귀부/.test(event.title) && <span className={styles.fallBadge}>멸망·통합</span>}
                                       <span className={styles.gridEmoji} role="img" aria-label={event.image.alt}>{event.image.value}</span>
                                       <h4>{event.title}</h4>
                                       <p className={styles.gridSummary}>{event.summary}</p>
+                                      <TimelineWarSummary id={event.id} />
                                       <div className={styles.gridDetails}>
-                                        <b>생활 모습</b><p>{event.life}</p>
-                                        <b>대표 유물 · 관련 자료</b><p>{event.artifact}</p>
+                                        <b>{event.eraFilter === "선사" || event.eraFilter === "여러나라" ? "생활 모습" : "핵심 설명"}</b><p>{event.life}</p>
+                                        <b>{event.eraFilter === "선사" || event.eraFilter === "여러나라" ? "대표 유물 · 관련 자료" : "관련 기록·자료"}</b><p>{event.artifact}</p>
                                       </div>
                                       <small className={styles.gridSource}>
                                         {textbookSourceLabel(event)}
@@ -527,27 +533,6 @@ export default function TimelineClient() {
                               </div>
                             ))}
                           </div>
-                          {period.key === "connected" && EPOCH_MARKERS.filter(
-                            (marker) => date.events.some((event) => event.id === marker.eventId) &&
-                              (marker.key !== "northsouth" ||
-                                periodEvents.some((event) => event.id === "silla-unification"))
-                          ).map((marker) => (
-                            <div
-                              className={styles.epochRow}
-                              style={gridStyle}
-                              key={marker.key}
-                              aria-label={marker.title}
-                            >
-                              <div className={styles.epochDate}>시대 변화 ↓</div>
-                              <div
-                                className={`${styles.epochCard} ${styles[marker.className]}`}
-                                style={{ gridColumn: `2 / span ${columns.length}` }}
-                              >
-                                <strong>{marker.title}</strong>
-                                <p>{marker.description}</p>
-                              </div>
-                            </div>
-                          ))}
                           </Fragment>
                         ))}
                       </div>
