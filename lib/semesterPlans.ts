@@ -42,6 +42,8 @@ export type SemesterPlan = {
   total_lessons: number;
   instructor: string;
   notes: string;
+  overall_objective?: string;
+  instruction_hours?: string;
   weeks: PlanWeek[];
   revision: number;
   updated_at: string;
@@ -54,7 +56,7 @@ export const newWeek = (number: number): PlanWeek => ({
 export const newPlan = (): SemesterPlan => ({
   id: "", title: "", program: "", year: new Date().getFullYear(), operation: "",
   period_start: "", period_end: "", target: "", total_lessons: 0,
-  instructor: "이화선", notes: "", weeks: [], revision: 0, updated_at: "",
+  instructor: "이화선", notes: "", overall_objective: "", instruction_hours: "", weeks: [], revision: 0, updated_at: "",
 });
 export function orderWeeks(weeks: PlanWeek[]): PlanWeek[] {
   return weeks.map((week, index) => ({ ...week, week_number: index + 1 }));
@@ -111,7 +113,9 @@ export function validatePlan(body: Record<string, unknown>): Omit<SemesterPlan, 
   const result = { title, program, year: integer(body.year, 2000, 2200), operation: text(body.operation, 200),
     ...(body.format === "atc" ? { format: "atc" as const, school_slug: validId(body.school_slug), school_name: text(body.school_name, 200).trim() } : {}),
     period_start: date(body.period_start), period_end: date(body.period_end), target: text(body.target, 500),
-    total_lessons: integer(body.total_lessons, 0, 999), instructor: text(body.instructor, 200), notes: text(body.notes), weeks };
+    total_lessons: integer(body.total_lessons, 0, 999), instructor: text(body.instructor, 200), notes: text(body.notes),
+    overall_objective: body.overall_objective == null ? "" : text(body.overall_objective, 4000),
+    instruction_hours: body.instruction_hours == null ? "" : text(body.instruction_hours, 200), weeks };
   if (result.period_start && result.period_end && result.period_start > result.period_end) throw new PlanInputError("종료일은 시작일 이후로 입력해주세요.");
   if (body.format === "atc") {
     if (!result.school_name || !weeks.length || nextLesson - 1 > 999) throw new PlanInputError("학교명과 수업 내용을 확인해주세요.");
