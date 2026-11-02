@@ -75,7 +75,11 @@ export function makeAtcMailInfo(doc: AtcMailDocument, settings: AtcMailSettings,
   const schoolName = rawSchoolName.endsWith("초") ? `${rawSchoolName.slice(0, -1)}초등학교` : rawSchoolName;
   const fields: Record<string, string> = { 연도: year, 학교명: schoolName, 해당월: month, 강사명: resolveAtcEducatorName(confirmation, clean(profile.name)) };
   const render = (template: string) => template.replace(/\{(연도|학교명|해당월|강사명)\}/g, (_match, key: string) => fields[key]);
-  const subject = render(settings.subjectTemplate);
+  const baseSubject = render(settings.subjectTemplate);
+  // Keep unsigned mail subjects unchanged; label signed copies for easy identification.
+  const subject = confirmation.schoolSignatureDataUrl && !baseSubject.endsWith("(서명 유)")
+    ? `${baseSubject} (서명 유)`
+    : baseSubject;
   const filename = getConfirmationPdfFileName({
     version: outputVersion,
     yearMonth: String(confirmation.yearMonth),
