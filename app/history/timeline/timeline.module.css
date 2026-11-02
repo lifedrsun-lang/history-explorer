@@ -140,3 +140,6 @@
 .countryHeader[data-country="통일 신라"]{background:#ffe8ad;border-bottom:3px solid #c99c3d}
 .countryHeader[data-country="진(震)"]{background:#e9e6fa;border-bottom:3px solid #8985bc}
 .countryHeader[data-country="마진"],.countryHeader[data-country="태봉"]{background:#e7eafa;border-bottom:3px solid #728abe}
+
+.nationEndLabel{display:block;margin-top:5px;font-size:10px;font-weight:800;color:#676d68;white-space:normal}
+.nationEndNote{width:100%;margin:0;font-size:11px;line-height:1.5;color:#5d6b61}
