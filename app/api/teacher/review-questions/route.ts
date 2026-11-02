@@ -1,4 +1,5 @@
 import { normalizeReviewBookNumber, buildReviewDistributionIndex } from "@/lib/reviewQuestionMetadata";
+import { normalizeTimelineExamLinks } from "@/lib/historyTimelineExam";
 import { FieldValue } from "firebase-admin/firestore";
 
 import {
@@ -74,6 +75,7 @@ const serializeQuestion = async (
     examLevel: normalizeExamLevel(data?.examLevel),
     examRound: normalizeExamNumber(data?.examRound),
     examQuestionNumber: normalizeExamNumber(data?.examQuestionNumber),
+    timelineLinks: normalizeTimelineExamLinks(data?.timelineLinks),
     bookNumber: normalizeBookNumber(data?.bookNumber),
     lesson: normalizeLesson(data?.lesson, data?.topic),
     topic: normalizeText(data?.topic),
@@ -159,6 +161,7 @@ const parseQuestionBody = (body: Record<string, unknown>) => {
       examLevel: "",
       examRound: "",
       examQuestionNumber: "",
+      timelineLinks: [],
       bookNumber,
       lesson,
       topic,
@@ -193,6 +196,7 @@ const parseQuestionBody = (body: Record<string, unknown>) => {
     examLevel,
     examRound,
     examQuestionNumber,
+    timelineLinks: normalizeTimelineExamLinks(body?.timelineLinks),
     bookNumber,
     lesson,
     topic,

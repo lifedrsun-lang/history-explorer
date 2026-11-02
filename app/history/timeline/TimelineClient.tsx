@@ -6,6 +6,8 @@ import { Fragment, FormEvent, useEffect, useMemo, useState } from "react";
 
 import { auth } from "@/lib/firebase";
 import type { HistoryTimelineEvent } from "@/lib/historyTimeline";
+import TimelineExamReferences, { type ExamReference } from "./TimelineExamReferences";
+import TimelineWarSummary from "./TimelineWarSummary";
 
 import styles from "./timeline.module.css";
 
@@ -25,6 +27,7 @@ type Viewer = {
 type TimelinePayload = {
   viewer: Viewer;
   events: StudentEvent[];
+  examLinks?: Record<string, ExamReference[]>;
   maxIssue: number;
 };
 
@@ -45,76 +48,88 @@ const FILTERS = [
  * 건국 연대가 확정되지 않은 나라의 비교표는 '등장과 성장'이라는 시대 설명으로만 사용한다.
  */
 const PERIODS = [
-  {
-    key: "prehistoric",
-    title: "도구와 생활 모습이 바뀌던 시기",
-    // 국가가 생기기 전의 국가 칸은 제목도, 내용도 비워 둔다.
-    columns: ["주요 사건", ""],
-    milestone: false,
-    includes: (year: number) => year < -2333,
-  },
-  {
-    key: "gojoseon",
-    title: "고조선의 등장과 문화의 변화",
-    columns: ["주요 사건", "고조선"],
-    milestone: false,
-    includes: (year: number) => year >= -2333 && year < -108,
-  },
-  {
-    key: "gojoseon-falls",
-    title: "고조선 멸망",
-    columns: [],
-    milestone: true,
-    includes: (year: number) => year === -108,
-  },
-  {
-    key: "early-states-start",
-    title: "여러 나라의 등장",
-    columns: [],
-    milestone: true,
-    includes: (year: number) => year === -100,
-  },
-  {
-    key: "connected",
-    title: "여러 나라에서 삼국·남북국·후삼국으로 이어지는 역사",
-    // 국가별 세로 열을 하나의 표 안에서 유지한다. 시대 전환은 표 안의 큰 배너로 표시한다.
-    columns: ["부여", "고구려", "옥저", "동예", "삼한", "백제", "신라", "가야", "발해", "후백제", "후고구려", "고려", "조선", "대한제국", "일제강점기", "대한민국"],
-    milestone: false,
-    includes: (year: number) => year > -100,
-  },
+  { key: "prehistoric", title: "도구와 생활 모습이 바뀌던 시기",
+    columns: ["주요 사건"], milestone: false, includes: (year: number) => year < -2333 },
+  { key: "gojoseon", title: "고조선의 등장과 문화의 변화",
+    columns: ["주요 사건", "고조선"], milestone: false,
+    includes: (year: number) => year >= -2333 && year < -108 },
+  { key: "gojoseon-falls", title: "고조선 멸망", columns: [], milestone: true,
+    includes: (year: number) => year === -108 },
+  { key: "early-states-start", title: "여러 나라의 등장", columns: [], milestone: true,
+    includes: (year: number) => year === -100 },
+  { key: "early-states", title: "여러 나라의 성장",
+    columns: ["고구려","부여","옥저","동예","삼한","사로국"], milestone: false,
+    includes: (year: number) => year >= -99 && year < -18 },
+  { key: "three-early", title: "삼국 시대와 가야 · 초기",
+    columns: ["고구려","백제","사로국","가야"], milestone: false,
+    includes: (year: number) => year >= -18 && year < 503 },
+  { key: "three", title: "삼국 시대 · 국호 신라 확정 이후",
+    columns: ["고구려","백제","신라","가야"], milestone: false,
+    includes: (year: number) => year >= 503 && year < 676 },
+  { key: "unified", title: "통일 신라",
+    columns: ["통일 신라"], milestone: false,
+    includes: (year: number) => year >= 676 && year < 698 },
+  { key: "northsouth-early", title: "남북국 시대의 시작 · 진(震)과 통일 신라",
+    columns: ["통일 신라","진(震)"], milestone: false,
+    includes: (year: number) => year >= 698 && year < 713 },
+  { key: "northsouth", title: "남북국 시대 · 통일 신라와 발해",
+    columns: ["통일 신라","발해"], milestone: false,
+    includes: (year: number) => year >= 713 && year < 900 },
+  { key: "later-900", title: "후삼국 시대 · 후백제 등장",
+    columns: ["신라","발해","후백제"], milestone: false,
+    includes: (year: number) => year >= 900 && year < 901 },
+  { key: "later-early", title: "후삼국 시대 · 후고구려 등장",
+    columns: ["신라","발해","후고구려","후백제"], milestone: false,
+    includes: (year: number) => year >= 901 && year < 904 },
+  { key: "later-majin", title: "후삼국 시대 · 마진",
+    columns: ["신라","발해","마진","후백제"], milestone: false,
+    includes: (year: number) => year >= 904 && year < 911 },
+  { key: "later-taebong", title: "후삼국 시대 · 태봉",
+    columns: ["신라","발해","태봉","후백제"], milestone: false,
+    includes: (year: number) => year >= 911 && year < 918 },
+  { key: "later-goryeo-balhae", title: "후삼국 시대 · 신라·발해·고려·후백제",
+    columns: ["신라","발해","고려","후백제"], milestone: false,
+    includes: (year: number) => year >= 918 && year < 926 },
+  { key: "later-after-balhae", title: "후삼국 시대 · 926년 발해 멸망",
+    columns: ["신라","발해","고려","후백제"], milestone: false,
+    includes: (year: number) => year >= 926 && year < 935 },
+  { key: "later-after-silla", title: "후삼국 시대 · 935년 신라 귀부",
+    columns: ["신라","고려","후백제"], milestone: false,
+    includes: (year: number) => year >= 935 && year < 936 },
+  { key: "goryeo", title: "936년 후삼국 통일과 고려",
+    columns: ["고려","후백제"], milestone: false,
+    includes: (year: number) => year >= 936 && year < 99999 },
 ] as const;
 
-// 큰 시대 카드는 실제 전환 사건을 배운 경우에만 나타난다.
-const EPOCH_MARKERS = [
-  {
-    eventId: "gaya-suro-founded",
-    key: "three",
-    title: "삼국 시대(고구려·백제·신라)와 가야",
-    description: "세 나라와 가야의 역사를 같은 시간축에서 비교해요.",
-    className: "epochThree",
-  },
-  {
-    eventId: "silla-unification",
-    key: "unified",
-    title: "통일 신라",
-    description: "676년 이후에도 신라의 역사는 같은 세로줄로 이어집니다.",
-    className: "epochUnified",
-  },
-  {
-    eventId: "balhae-founded",
-    key: "northsouth",
-    title: "남북국 시대(통일 신라·발해)",
-    description: "676년 통일 이후 22년이 지난 698년에 발해가 세워졌어요. 통일 신라와 발해가 함께 존재합니다.",
-    className: "epochNorthSouth",
-  },
-  {
-    eventId: "later-goguryeo-founded",
-    key: "laterthree",
-    title: "후삼국 시대(신라·후백제·후고구려)",
-    description: "900년 후백제와 901년 후고구려가 등장했어요. 발해도 926년까지 따로 이어졌어요.",
-    className: "epochLaterThree",
-  },
-] as const;
+// 새 국가가 등장하면 열을 추가하고, 국호를 바꾸면 같은 위치의 명칭을 갱신한다.
+const renameEvents = new Set(["silla-jijeung-reform", "balhae-name-713",
+  "later-goguryeo-majin-904", "later-goguryeo-taebong-911"]);
+const capitalEvents = new Set(["goguryeo-domestic-capital", "goguryeo-pyeongyang-move",
+  "baekje-ungjin-capital", "baekje-sabi-capital", "balhae-sanggyeong",
+  "later-goguryeo-capital-905"]);
+const earlyNationEndings: Record<string, string> = {
+  "부여": "494년", "옥저": "—", "동예": "—", "삼한": "—",
+};
+const fallenYears: Record<string, number> = {
+  "백제": 660, "고구려": 668, "가야": 562, "발해": 926, "진(震)": 926,
+  "신라": 935, "통일 신라": 935, "후백제": 936,
+};
+function getNationColumn(event: StudentEvent, key: string) {
+  const year = event.sortYear;
+  if ((key === "prehistoric" || key === "gojoseon") && event.eraFilter === "선사") return "주요 사건";
+  if (event.stateOrEra === "신라") {
+    if (year < 503) return "사로국";
+    if (year >= 676 && year < 900) return "통일 신라";
+    return "신라";
+  }
+  if (event.stateOrEra === "발해" && year < 713) return "진(震)";
+  if (event.stateOrEra === "후고구려") {
+    if (year >= 911) return "태봉";
+    if (year >= 904) return "마진";
+    return "후고구려";
+  }
+  return event.stateOrEra;
+}
 
 const textbookSourceLabel = (event: StudentEvent) => {
   const issues = event.textbookIssues ?? event.sourceIssueNumbers ?? [];
@@ -445,18 +460,14 @@ export default function TimelineClient() {
 
                 // 선사 문화는 특정 국가의 사건이 아니므로 고조선 멸망 이전의
                 // '주요 사건' 열에만 놓는다. 이후에는 그 열 자체가 사라진다.
-                const eventColumn = (event: StudentEvent) =>
-                  (period.key === "prehistoric" || period.key === "gojoseon") &&
-                  event.eraFilter === "선사"
-                    ? "주요 사건"
-                    : event.stateOrEra;
+                const eventColumn = (event: StudentEvent) => getNationColumn(event, period.key);
 
                 // 앞으로 새 국가가 등장해도 기존 사건이 누락되지 않도록 열을 자동 확장한다.
                 // 연결 연표는 배운 국가만 보이되, 등장한 국가의 세로줄은
                 // 시대 전환 뒤에도 같은 위치로 계속 유지한다.
                 const eventCountries = new Set(periodEvents.map(eventColumn));
                 const columns = [
-                  ...(period.key === "connected"
+                  ...(period.key !== "prehistoric" && period.key !== "gojoseon"
                     ? (period.columns as readonly string[]).filter((column) => eventCountries.has(column))
                     : [...period.columns]),
                   ...[...eventCountries].filter(
@@ -473,6 +484,7 @@ export default function TimelineClient() {
                     <div className={styles.periodTop}>
                       <h3>{period.title}</h3>
                       <span>↔ 좌우로 밀어 다른 나라 보기</span>
+                      {period.key === "early-states" && <p className={styles.nationEndNote}>‘—’는 단일 멸망 연도를 확인할 수 없거나 하나의 국가로 묶기 어려운 경우입니다.</p>}
                     </div>
                     <div
                       className={styles.periodViewport}
@@ -490,7 +502,10 @@ export default function TimelineClient() {
                               data-country={column}
                               aria-label={column || "나라가 등장하기 전 빈 칸"}
                             >
-                              {column === "신라" && period.key === "connected" ? "신라 → 통일 신라" : column}
+                              {column}
+                              {period.key === "early-states" && earlyNationEndings[column] && (
+                                <small className={styles.nationEndLabel}>변천·소멸: {earlyNationEndings[column]}</small>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -499,47 +514,32 @@ export default function TimelineClient() {
                           <div className={styles.tableRow} style={gridStyle}>
                             <div className={styles.yearCell}>{date.dateLabel}</div>
                             {columns.map((column) => (
-                              <div className={styles.countryCell} key={column}>
+                              <div className={`${styles.countryCell} ${fallenYears[column] !== undefined && date.events[0]?.sortYear > fallenYears[column] ? styles.fallenCell : ""}`} key={column}>
                                 {date.events
                                   .filter((event) => eventColumn(event) === column)
                                   .map((event) => (
-                                    <article className={styles.gridCard} key={event.id}>
+                                    <article className={`${styles.gridCard} ${renameEvents.has(event.id) ? styles.renameCard : ""} ${capitalEvents.has(event.id) ? styles.capitalCard : ""} ${/멸망|귀부/.test(event.title) ? styles.fallCard : ""}`} key={event.id}>
+                                      {renameEvents.has(event.id) && <span className={styles.changeBadge}>국호 변경</span>}
+                                      {capitalEvents.has(event.id) && <span className={styles.capitalBadge}>수도 이전</span>}
+                                      {event.id === "goryeo-founded-918" && <span className={styles.changeBadge}>왕조 교체</span>}
+                                      {/멸망|귀부/.test(event.title) && <span className={styles.fallBadge}>멸망·통합</span>}
                                       <span className={styles.gridEmoji} role="img" aria-label={event.image.alt}>{event.image.value}</span>
                                       <h4>{event.title}</h4>
                                       <p className={styles.gridSummary}>{event.summary}</p>
+                                      <TimelineWarSummary id={event.id} />
                                       <div className={styles.gridDetails}>
-                                        <b>생활 모습</b><p>{event.life}</p>
-                                        <b>대표 유물 · 관련 자료</b><p>{event.artifact}</p>
+                                        <b>{event.eraFilter === "선사" || event.eraFilter === "여러나라" ? "생활 모습" : "핵심 설명"}</b><p>{event.life}</p>
+                                        <b>{event.eraFilter === "선사" || event.eraFilter === "여러나라" ? "대표 유물 · 관련 자료" : "관련 기록·자료"}</b><p>{event.artifact}</p>
                                       </div>
                                       <small className={styles.gridSource}>
                                         {textbookSourceLabel(event)}
                                       </small>
+                                      <TimelineExamReferences refs={payload?.examLinks?.[event.id] || []} />
                                     </article>
                                   ))}
                               </div>
                             ))}
                           </div>
-                          {period.key === "connected" && EPOCH_MARKERS.filter(
-                            (marker) => date.events.some((event) => event.id === marker.eventId) &&
-                              (marker.key !== "northsouth" ||
-                                periodEvents.some((event) => event.id === "silla-unification"))
-                          ).map((marker) => (
-                            <div
-                              className={styles.epochRow}
-                              style={gridStyle}
-                              key={marker.key}
-                              aria-label={marker.title}
-                            >
-                              <div className={styles.epochDate}>시대 변화 ↓</div>
-                              <div
-                                className={`${styles.epochCard} ${styles[marker.className]}`}
-                                style={{ gridColumn: `2 / span ${columns.length}` }}
-                              >
-                                <strong>{marker.title}</strong>
-                                <p>{marker.description}</p>
-                              </div>
-                            </div>
-                          ))}
                           </Fragment>
                         ))}
                       </div>

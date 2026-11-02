@@ -258,6 +258,8 @@ export default function HistoryTimelineAdminPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Link href="/history/timeline" className="rounded-2xl bg-amber-300 px-4 py-2 text-sm font-black text-slate-900">전체 연표 보기</Link>
+              <Link href="/teacher/history-timeline/exam-links" className="rounded-2xl bg-emerald-200 px-4 py-2 text-sm font-black text-emerald-950">♣ 한능검 연결</Link>
+              <Link href="/teacher/history-timeline/sun-lab-access" className="rounded-2xl bg-sky-200 px-4 py-2 text-sm font-black text-sky-950">🌞 SUN LAB 열람 권한</Link>
               <Link href="/teacher" className="rounded-2xl bg-white/10 px-4 py-2 text-sm font-black text-white">교사용 홈</Link>
             </div>
           </div>
