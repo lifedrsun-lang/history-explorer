@@ -9,6 +9,13 @@ import { auth } from "@/lib/firebase";
 import type { SunLabPermission } from "@/lib/sunLabMember";
 
 const HELLO_MAPLE_URL = "https://www.hellomaple.org/ko";
+const MINECRAFT_EDUCATION_URL = "https://education.minecraft.net/";
+
+type MinecraftEducationAccount = {
+  name: string;
+  id: string;
+  password: string;
+};
 
 type HelloMapleMission = {
   id: string;
@@ -25,10 +32,11 @@ type Member = {
     password: string;
   } | null;
   helloMapleMissions?: HelloMapleMission[];
+  minecraftEducationAvailable?: boolean;
 };
 
 type ResourceCard = {
-  permission: SunLabPermission;
+  permission: SunLabPermission | "minecraft_education";
   emoji: string;
   title: string;
   description: string;
@@ -50,6 +58,12 @@ const RESOURCE_CARDS: ResourceCard[] = [
     emoji: "🍁",
     title: "헬로메이플",
     description: "내 계정을 확인하고 바로 시작해요.",
+  },
+  {
+    permission: "minecraft_education",
+    emoji: "⛏️",
+    title: "마인크래프트 에듀케이션",
+    description: "내 수업 계정을 확인하고 설치해요.",
   },
   {
     permission: "byeolkkum_history",
@@ -116,6 +130,16 @@ function SunLabStudentPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showHelloMaple, setShowHelloMaple] = useState(false);
+  const [showMinecraftEducation, setShowMinecraftEducation] = useState(false);
+  const [minecraftAccount, setMinecraftAccount] =
+    useState<MinecraftEducationAccount | null>(null);
+  const [minecraftLoading, setMinecraftLoading] = useState(false);
+  const [minecraftError, setMinecraftError] = useState("");
+  const [showMinecraftPassword, setShowMinecraftPassword] = useState(false);
+  const [minecraftCopyState, setMinecraftCopyState] = useState<{
+    field: "id" | "password" | null;
+    status: "idle" | "copied" | "failed";
+  }>({ field: null, status: "idle" });
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">(
     "idle"
   );
@@ -126,6 +150,11 @@ function SunLabStudentPage() {
     setBirthDate("");
     setError("");
     setShowHelloMaple(false);
+    setShowMinecraftEducation(false);
+    setMinecraftAccount(null);
+    setMinecraftError("");
+    setShowMinecraftPassword(false);
+    setMinecraftCopyState({ field: null, status: "idle" });
     setCopyState("idle");
   };
 
@@ -134,6 +163,11 @@ function SunLabStudentPage() {
     setError("");
     setMember(null);
     setShowHelloMaple(false);
+    setShowMinecraftEducation(false);
+    setMinecraftAccount(null);
+    setMinecraftError("");
+    setShowMinecraftPassword(false);
+    setMinecraftCopyState({ field: null, status: "idle" });
     setCopyState("idle");
 
     const cleanName = name.trim();
@@ -183,6 +217,58 @@ function SunLabStudentPage() {
       window.setTimeout(() => setCopyState("idle"), 1600);
     } catch {
       setCopyState("failed");
+    }
+  };
+
+  const toggleMinecraftEducation = async () => {
+    if (showMinecraftEducation) {
+      setShowMinecraftEducation(false);
+      return;
+    }
+
+    setShowHelloMaple(false);
+    setShowMinecraftEducation(true);
+    setMinecraftError("");
+
+    if (minecraftAccount) return;
+
+    setMinecraftLoading(true);
+    try {
+      const response = await fetch(
+        "/api/student/minecraft-education-account",
+        { cache: "no-store" }
+      );
+      const data = (await response.json().catch(() => ({}))) as {
+        account?: MinecraftEducationAccount;
+        error?: string;
+      };
+
+      if (!response.ok || !data.account) {
+        setMinecraftError(data.error || "계정을 불러오지 못했습니다.");
+        return;
+      }
+
+      setMinecraftAccount(data.account);
+    } catch {
+      setMinecraftError("계정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setMinecraftLoading(false);
+    }
+  };
+
+  const copyMinecraftValue = async (field: "id" | "password") => {
+    const value = minecraftAccount?.[field];
+    if (!value) return;
+
+    try {
+      await navigator.clipboard.writeText(value);
+      setMinecraftCopyState({ field, status: "copied" });
+      window.setTimeout(
+        () => setMinecraftCopyState({ field: null, status: "idle" }),
+        1600
+      );
+    } catch {
+      setMinecraftCopyState({ field, status: "failed" });
     }
   };
 
@@ -272,9 +358,13 @@ function SunLabStudentPage() {
     );
   }
 
-  const visibleCards = RESOURCE_CARDS.filter((card) =>
-    member.permissions.includes(card.permission)
-  );
+  const visibleCards = RESOURCE_CARDS.filter((card) => {
+    if (card.permission === "minecraft_education") {
+      return member.minecraftEducationAvailable === true;
+    }
+
+    return member.permissions.includes(card.permission);
+  });
   const helloMapleMissions = member.helloMapleMissions || [];
 
   return (
@@ -329,8 +419,24 @@ function SunLabStudentPage() {
                   <button
                     key={card.permission}
                     type="button"
-                    onClick={() => setShowHelloMaple((current) => !current)}
+                    onClick={() => {
+                      setShowMinecraftEducation(false);
+                      setShowHelloMaple((current) => !current);
+                    }}
                     className={`${cardClassName} hover:bg-sky-50`}
+                  >
+                    {cardBody}
+                  </button>
+                );
+              }
+
+              if (card.permission === "minecraft_education") {
+                return (
+                  <button
+                    key={card.permission}
+                    type="button"
+                    onClick={() => void toggleMinecraftEducation()}
+                    className={`${cardClassName} border-emerald-100 hover:bg-emerald-50`}
                   >
                     {cardBody}
                   </button>
@@ -503,6 +609,116 @@ function SunLabStudentPage() {
                 </div>
               )}
             </div>
+          </section>
+        )}
+
+        {showMinecraftEducation && member.minecraftEducationAvailable && (
+          <section className="mt-4 rounded-[28px] border border-emerald-200 bg-white/95 p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-black text-emerald-700">
+                  ⛏️ 마인크래프트 에듀케이션 계정
+                </div>
+                <div className="mt-1 text-lg font-black text-slate-800">
+                  {member.name}님의 수업 계정
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMinecraftEducation(false)}
+                className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600"
+              >
+                닫기
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-black leading-6 text-amber-800">
+              마인크래프트 에듀케이션을 설치한 후 학생 계정으로 로그인까지 완료해 주세요. 설치만으로는 수업 준비가 완료되지 않습니다.
+            </div>
+
+            {minecraftLoading && (
+              <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-5 text-center text-sm font-bold text-slate-500">
+                계정을 안전하게 불러오고 있어요.
+              </div>
+            )}
+
+            {minecraftError && (
+              <div className="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-center text-sm font-black text-rose-600">
+                {minecraftError}
+              </div>
+            )}
+
+            {minecraftAccount && (
+              <div className="mt-4 space-y-3">
+                <div className="rounded-2xl bg-sky-50 p-3">
+                  <div className="text-xs font-black text-slate-400">
+                    마인크래프트 아이디
+                  </div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <div className="min-w-0 flex-1 break-all text-base font-black text-slate-800 sm:text-lg">
+                      {minecraftAccount.id}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void copyMinecraftValue("id")}
+                      className="shrink-0 rounded-xl bg-sky-500 px-3 py-2 text-xs font-black text-white"
+                    >
+                      {minecraftCopyState.field === "id" &&
+                      minecraftCopyState.status === "copied"
+                        ? "복사됨 ✓"
+                        : "아이디 복사"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-emerald-50 p-3">
+                  <div className="text-xs font-black text-slate-400">
+                    마인크래프트 비밀번호
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <div className="min-w-0 flex-1 break-all text-lg font-black tracking-wide text-slate-800">
+                      {showMinecraftPassword
+                        ? minecraftAccount.password
+                        : "••••••••••"}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowMinecraftPassword((current) => !current)
+                      }
+                      className="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-black text-emerald-700"
+                    >
+                      {showMinecraftPassword ? "숨기기" : "표시"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void copyMinecraftValue("password")}
+                      className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white"
+                    >
+                      {minecraftCopyState.field === "password" &&
+                      minecraftCopyState.status === "copied"
+                        ? "복사됨 ✓"
+                        : "비밀번호 복사"}
+                    </button>
+                  </div>
+                </div>
+
+                {minecraftCopyState.status === "failed" && (
+                  <div className="text-xs font-bold text-rose-500">
+                    복사하지 못했어요. 값을 표시한 뒤 길게 눌러 복사해 주세요.
+                  </div>
+                )}
+              </div>
+            )}
+
+            <a
+              href={MINECRAFT_EDUCATION_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 block w-full rounded-2xl bg-emerald-600 py-3.5 text-center text-base font-black text-white shadow-sm transition hover:bg-emerald-700"
+            >
+              ⛏️ 마인크래프트 에듀케이션 설치하기
+            </a>
           </section>
         )}
 

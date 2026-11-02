@@ -13,6 +13,7 @@ import {
   buildSunLabStudentSessionCookie,
   createSunLabStudentSession,
 } from "@/lib/sunLabStudentSession";
+import { hasMinecraftEducationAccountForName } from "@/lib/minecraftEducation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -177,6 +178,8 @@ export async function POST(request: Request) {
               }
             : null,
         helloMapleMissions,
+        minecraftEducationAvailable:
+          hasMinecraftEducationAccountForName(memberName),
       },
     });
 

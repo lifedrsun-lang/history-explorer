@@ -198,6 +198,13 @@ const sections: Record<string, ManagementSection> = {
         className: "border-orange-200 bg-orange-50 text-orange-900",
       },
       {
+        href: "/teacher/minecraft-education",
+        icon: "⛏️",
+        title: "마인크래프트 계정",
+        description: "민서·민채의 에듀케이션 아이디·비밀번호 확인",
+        className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+      },
+      {
         href: "/teacher/library",
         icon: "📚",
         title: "선랩 도서관",
