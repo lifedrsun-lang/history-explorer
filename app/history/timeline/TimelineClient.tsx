@@ -6,6 +6,7 @@ import { Fragment, FormEvent, useEffect, useMemo, useState } from "react";
 
 import { auth } from "@/lib/firebase";
 import type { HistoryTimelineEvent } from "@/lib/historyTimeline";
+import TimelineExamReferences, { type ExamReference } from "./TimelineExamReferences";
 
 import styles from "./timeline.module.css";
 
@@ -25,6 +26,7 @@ type Viewer = {
 type TimelinePayload = {
   viewer: Viewer;
   events: StudentEvent[];
+  examLinks?: Record<string, ExamReference[]>;
   maxIssue: number;
 };
 
@@ -514,6 +516,7 @@ export default function TimelineClient() {
                                       <small className={styles.gridSource}>
                                         {textbookSourceLabel(event)}
                                       </small>
+                                      <TimelineExamReferences refs={payload?.examLinks?.[event.id] || []} />
                                     </article>
                                   ))}
                               </div>
