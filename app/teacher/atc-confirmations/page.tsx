@@ -70,12 +70,13 @@ type Confirmation = AtcEducatorRecord & {
   updatedAt?: string;
   mailSentAt?: string;
   mailStatus?: string;
+  mailSignatureState?: "unsigned" | "signed";
 };
 
 type MailSettings = { to: string; bcc: string; subjectTemplate: string; bodyTemplate: string };
 type GmailStatus = { configured: boolean; connected: boolean; email: string };
 type MailPreview = {
-  info: { from: string; to: string; bcc: string; subject: string; body: string; filename: string; sentAt: string };
+  info: { from: string; to: string; bcc: string; subject: string; body: string; filename: string; sentAt: string; schoolSignatureMissing: boolean };
   fingerprint: string;
   pdfUrl: string;
   confirmationId: string;
@@ -258,6 +259,9 @@ const getStatusLabel = (
 ) => {
   if (!confirmation) return scheduleCount > 0 ? "작성완료" : "미생성";
   if (scheduleChanged && confirmation.schoolSignatureDataUrl) return "일정변경 확인필요";
+  if (confirmation.mailSentAt && confirmation.mailSignatureState === "unsigned") {
+    return confirmation.schoolSignatureDataUrl ? "서명 보완됨 · 재발송 필요" : "서명 보완 필요 · 발송됨";
+  }
   if (confirmation.submittedAt || confirmation.status === "submitted") return "제출완료";
   if (confirmation.schoolSignatureDataUrl) return "서명완료";
   if (scheduleCount > 0) return "교사서명대기";
@@ -849,8 +853,8 @@ export default function AtcConfirmationsPage() {
       showPrepareMailError("현재 화면과 저장된 확인서 내용이 다릅니다. 변경 사항을 저장하고 서명 상태를 확인해 주세요.");
       return;
     }
-    if (!selectedConfirmation.schoolSignedAt) {
-      showPrepareMailError("저장된 실제 서명일을 확인할 수 없습니다. 담당교사 서명을 확인해 주세요.");
+    if (selectedConfirmation.schoolSignatureDataUrl && !selectedConfirmation.schoolSignedAt) {
+      showPrepareMailError("서명된 확인서의 실제 서명일을 확인할 수 없습니다. 담당교사 서명을 확인해 주세요.");
       return;
     }
     setMailBusy(true);
@@ -880,12 +884,14 @@ export default function AtcConfirmationsPage() {
     setMailBusy(true);
     setErrorMessage("");
     try {
-      await requestJson("/api/teacher/atc-confirmations/mail-send", {
+      const result = await requestJson("/api/teacher/atc-confirmations/mail-send", {
         method: "POST", body: JSON.stringify({ confirmationId: mailPreview.confirmationId, fingerprint: mailPreview.fingerprint, confirmRepeat, outputVersion: mailPreview.outputVersion }),
       });
       closeMailPreview();
       await loadMonth();
-      setNoticeMessage("Gmail API가 발송을 확인했습니다. 참여확인서를 제출완료로 기록했습니다.");
+      setNoticeMessage(result.signaturePending
+        ? "서명 없이 메일을 발송했습니다. 담당교사 서명을 보완한 뒤 최종본을 재발송해 주세요."
+        : "Gmail API가 발송을 확인했습니다. 참여확인서를 제출완료로 기록했습니다.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "메일 발송에 실패했습니다. 참여확인서는 제출완료 처리되지 않았습니다.";
       closeMailPreview();
@@ -1154,10 +1160,11 @@ export default function AtcConfirmationsPage() {
                 <dt className="font-black">첨부파일</dt><dd>{mailPreview.info.filename}</dd>
               </dl>
               <a href={mailPreview.pdfUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-sm font-bold text-blue-700 underline">첨부 PDF 열어 확인</a>
+              {mailPreview.info.schoolSignatureMissing && <p role="alert" className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-bold text-amber-900">학교 담당교사 서명이 없습니다. 서명 없는 PDF로 우선 발송하며, 나중에 같은 확인서에 서명을 추가해 최종본을 재발송할 수 있습니다. 메일 제목과 본문은 기존 설정을 유지합니다.</p>}
               {mailPreview.info.sentAt && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-800">이미 발송된 확인서입니다. 재발송 시 한 번 더 확인합니다.</p>}
               <div className="mt-5 flex justify-end gap-2">
                 <button type="button" onClick={closeMailPreview} disabled={mailBusy} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-black disabled:opacity-50">취소</button>
-                <button type="button" onClick={() => void sendMail()} disabled={mailBusy || !gmailStatus?.connected} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50">{mailBusy ? "발송 중" : "메일 발송"}</button>
+                <button type="button" onClick={() => void sendMail()} disabled={mailBusy || !gmailStatus?.connected} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-black text-white disabled:opacity-50">{mailBusy ? "발송 중" : mailPreview.info.schoolSignatureMissing ? "서명 없이 발송" : "메일 발송"}</button>
               </div>
               {!gmailStatus?.connected && <p className="mt-2 text-sm font-bold text-rose-700">Gmail 계정을 연결한 뒤 발송할 수 있습니다.</p>}
             </div>
