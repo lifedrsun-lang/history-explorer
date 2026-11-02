@@ -4,6 +4,7 @@ import Link from "next/link";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { auth } from "@/lib/firebase";
+import { ARA_WEEK_COUNT, araDocumentTitle, araLearningGoal, araPeriod, araWeekRows, type AraPlanKind } from "@/lib/araSemesterPlans";
 import { copyLesson, newPlan, newWeek, orderWeeks, validatePlan, validateLesson, type CurriculumLesson, type LessonContent, type SemesterPlan, type PlanWeek } from "@/lib/semesterPlans";
 import styles from "./semesterPlans.module.css";
 
@@ -23,6 +24,30 @@ function PlanPreview({ plan }: { plan: SemesterPlan }) {
     <div className={styles.tableScroll}><table><thead><tr><th>주차 / 차시</th><th>학습주제</th><th>학습목표</th><th>주요 활동</th><th>준비물 / 자료</th><th>비고</th></tr></thead><tbody>{plan.weeks.map(w => <tr key={w.id}><td>{w.week_number}주 / {w.lesson_number}차시</td><td>{w.topic}</td><td>{w.objective}</td><td>{w.activities}</td><td>{w.materials}</td><td>{w.notes}</td></tr>)}</tbody></table></div>
   </section>;
 }
+function AraPreview({ plan, kind }: { plan: SemesterPlan; kind: AraPlanKind }) {
+  if (plan.weeks.length > ARA_WEEK_COUNT) return <section className={styles.preview}>
+    <p role="alert" className={styles.error}>아라협동조합은 최대 12주 양식입니다. {plan.weeks.length}주 중 일부를 숨기지 않도록 계획안을 나누어 주세요.</p>
+  </section>;
+  const rows = plan.weeks.length ? araWeekRows(plan) : [];
+  return <section className={styles.preview} aria-label="아라협동조합 지도계획서 미리보기">
+    <p className={styles.muted}>아라협동조합 제출양식 구성 미리보기 · 12주 기준 · 실제 HWPX 파일은 내려받아 확인하세요.</p>
+    <div className={styles.araPage}>
+      <table className={styles.araApproval}><tbody><tr><th>결재</th><th>늘봄실무사</th><th>교감</th><th>교장</th></tr><tr><td></td><td></td><td></td><td></td></tr></tbody></table>
+      <h2>{araDocumentTitle(plan, kind)}</h2>
+      <table className={styles.araDetails}><tbody>
+        <tr><th>프로그램명</th><td>{plan.program}</td></tr>
+        <tr><th>지도교사</th><td>{plan.instructor}</td></tr>
+        <tr><th>대상학년</th><td>{plan.target}</td></tr>
+        <tr><th>지도시수</th><td>{plan.instruction_hours || "미입력"}</td></tr>
+        <tr><th>지도기간</th><td>{araPeriod(plan)}</td></tr>
+        <tr><th>학습목표</th><td className={styles.prewrap}>{araLearningGoal(plan)}</td></tr>
+      </tbody></table>
+      <h3>주별 지도계획</h3>
+      <table className={styles.araWeeks}><thead><tr><th>주</th><th>주 제 및 학 습 내 용</th><th>비 고</th></tr></thead>
+        <tbody>{rows.map(row => <tr key={row.week}><td>{row.week}</td><td className={styles.prewrap}>{row.content}</td><td className={styles.prewrap}>{row.notes}</td></tr>)}</tbody></table>
+    </div>
+  </section>;
+}
 export default function SemesterPlansPage() {
   const [user, setUser] = useState<User | null>(null);
   const [checked, setChecked] = useState(false);
@@ -38,6 +63,9 @@ export default function SemesterPlansPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState(false);
+  const [planVendor, setPlanVendor] = useState<"chamdasom" | "ara">("chamdasom");
+  const [araKind, setAraKind] = useState<AraPlanKind>("after-school");
+  const [downloadingAra, setDownloadingAra] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [picker, setPicker] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -203,6 +231,37 @@ export default function SemesterPlansPage() {
     } catch (e) { setError(e instanceof Error ? e.message : "자료를 가져오지 못했습니다."); }
     finally { setBusy(false); }
   };
+  const downloadAra = async () => {
+    if (!editor || downloadingAra) return;
+    if (!editor.weeks.length || editor.weeks.length > ARA_WEEK_COUNT) {
+      setError("아라협동조합 양식은 1~12주까지 출력할 수 있습니다."); return;
+    }
+    setDownloadingAra(true); setError(""); setMessage("");
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("교사용 로그인이 필요합니다.");
+      const response = await fetch("/api/teacher/semester-plans/ara-hwpx", {
+        method: "POST", cache: "no-store",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: editor, kind: araKind }),
+      });
+      if (!response.ok) {
+        const result = await response.json() as { error?: string };
+        throw new Error(result.error || "양식을 만들지 못했습니다.");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${editor.year}년_${editor.operation || "학기"}_아라협동조합_${araKind === "custom" ? "맞춤형" : "방과후"}_지도계획서.hwpx`.replace(/[\\/:*?"<>|]/g, "_");
+      document.body.appendChild(link);
+      link.click(); link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setMessage("아라협동조합 HWPX 문서를 생성했습니다. 한글에서 열어 내용과 페이지를 확인하세요.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "아라협동조합 문서 생성에 실패했습니다.");
+    } finally { setDownloadingAra(false); }
+  };
   const filtered = lessons.filter(l => !issueFilter || String(l.issue_number) === issueFilter);
   const issues = [...new Set(lessons.map(l => l.issue_number))];
   const status = busy ? "저장 중…" : dirty ? "저장하지 않은 변경사항" : message === "저장 완료" ? "저장 완료" : "";
@@ -243,7 +302,32 @@ export default function SemesterPlansPage() {
       {sourceOpen && <pre className={styles.source}>{lessonEditor.source_text}</pre>}
       {!!lessonEditor.video_urls.length && <div className={styles.videoList}>{lessonEditor.video_urls.map(url => <a key={url} href={url} target="_blank" rel="noopener noreferrer">{url}</a>)}</div>}
     </section>}
-    {editor && (preview ? <PlanPreview plan={editor} /> : <>
+    {editor && <section className={styles.panel} aria-label="업체별 지도계획서 출력">
+      <div className={styles.row}>
+        <h2>업체별 계획안 양식</h2>
+        <div className={styles.actions}>
+          <label>업체 선택
+            <select value={planVendor} onChange={e => setPlanVendor(e.target.value as "chamdasom" | "ara")}>
+              <option value="chamdasom">참다솜 (기존)</option>
+              <option value="ara">아라협동조합</option>
+            </select>
+          </label>
+          {planVendor === "ara" && <label>아라 양식 종류
+            <select value={araKind} onChange={e => setAraKind(e.target.value as AraPlanKind)}>
+              <option value="after-school">일반 방과후</option>
+              <option value="custom">맞춤형</option>
+            </select>
+          </label>}
+          {planVendor === "ara" && <button type="button" className={styles.primary}
+            disabled={downloadingAra || busy || !editor.weeks.length || editor.weeks.length > ARA_WEEK_COUNT}
+            onClick={() => void downloadAra()}>{downloadingAra ? "문서 생성 중…" : "아라 양식 HWPX 다운로드"}</button>}
+        </div>
+      </div>
+      {planVendor === "ara" ? <p className={styles.muted}>아라협동조합 제공 양식(결재란·기본정보·1~12주)을 적용합니다. 원본 수업자료는 유지하며, 현재 입력 중인 내용으로 출력됩니다. 한글 HWPX 형식입니다.</p> :
+        <p className={styles.muted}>기존 참다솜 계획안 작성 및 미리보기는 변경하지 않았습니다. 크로바 양식은 아직 제공되지 않아 제외했습니다.</p>}
+      {message && <p role="status" className={styles.muted}>{message}</p>}
+    </section>}
+    {editor && (preview ? (planVendor === "ara" ? <AraPreview plan={editor} kind={araKind} /> : <PlanPreview plan={editor} />) : <>
       <fieldset disabled={busy} className={styles.panel}><h2>기본정보</h2><div className={styles.formGrid}>
         <label>계획안명 *<input value={editor.title} maxLength={200} onChange={e => setEditor({ ...editor, title: e.target.value })} placeholder="예: 2026년 2학기 역사논술탐험" /></label>
         <label>과목명 / 프로그램명 *<input value={editor.program} maxLength={200} onChange={e => setEditor({ ...editor, program: e.target.value })} placeholder="예: 역사논술탐험" /></label>
@@ -254,6 +338,8 @@ export default function SemesterPlansPage() {
         <label>대상<input value={editor.target} maxLength={500} onChange={e => setEditor({ ...editor, target: e.target.value })} placeholder="예: 초등 1~2학년" /></label>
         <label>총 차시<input type="number" min={0} max={999} value={editor.total_lessons || ""} onChange={e => setEditor({ ...editor, total_lessons: Number(e.target.value) })} placeholder="직접 입력" /></label>
         <label>강사명<input value={editor.instructor} maxLength={200} onChange={e => setEditor({ ...editor, instructor: e.target.value })} /></label>
+        <label>지도시수 (아라협동조합 출력용)<input value={editor.instruction_hours || ""} maxLength={200} onChange={e => setEditor({ ...editor, instruction_hours: e.target.value })} placeholder="예: 주 1회 80분" /></label>
+        <label className={styles.wide}>학기 전체 학습목표 (아라협동조합 출력용)<textarea rows={3} maxLength={4000} value={editor.overall_objective || ""} onChange={e => setEditor({ ...editor, overall_objective: e.target.value })} placeholder="미입력 시 주차별 학습목표를 모아 표시합니다." /></label>
         <label>비고<textarea rows={2} value={editor.notes} onChange={e => setEditor({ ...editor, notes: e.target.value })} /></label>
       </div></fieldset>
       <section className={styles.panel}><div className={styles.row}><h2>주차별 계획 · {editor.weeks.length}주</h2><div className={styles.actions}><button onClick={() => setExpanded(new Set(editor.weeks.map(w => w.id)))}>전체 펼치기</button><button onClick={() => setExpanded(new Set())}>전체 접기</button></div></div>
