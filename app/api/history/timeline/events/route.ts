@@ -1,6 +1,7 @@
 import { verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { getTimelineExamReferences } from "@/lib/historyTimelineExam";
+import { getSunLabStudentSession, SUNLAB_STUDENT_SESSION_COOKIE } from "@/lib/sunLabStudentSession";
 import { isHistoryTimelineVisibleForStudent } from "@/lib/historyTimelineVisibility";
 import {
   getTimelineEventsForIssues,
@@ -53,6 +54,30 @@ export async function GET(request: Request) {
   const sessionId = readRequestCookie(request, HISTORY_TIMELINE_SESSION_COOKIE);
   const session = await getHistoryTimelineSession(sessionId);
   if (!session) {
+    const memberSessionId = readRequestCookie(request, SUNLAB_STUDENT_SESSION_COOKIE);
+    const memberSession = await getSunLabStudentSession(memberSessionId);
+    if (memberSession) {
+      const { db } = getFirebaseAdmin();
+      const [studentDoc, memberProfileDoc] = await Promise.all([
+        db.collection("students").doc(memberSession.studentId).get(),
+        db.collection("sun_lab_members").doc(memberSession.studentId).get(),
+      ]);
+      const member = studentDoc.data() || {};
+      if (studentDoc.exists &&
+          (member.sunLabMember === true || member.program === "sun_lab") &&
+          member.isActive !== false &&
+          String(member.enrollmentStatus || "active") === "active" &&
+          memberProfileDoc.data()?.timelineFullAccess === true) {
+        const completedIssues = Array.from({ length: HISTORY_TIMELINE_MAX_ISSUE }, (_, i) => i + 1);
+        const events = getTimelineEventsForIssues(completedIssues).map(event =>
+          toStudentTimelineEvent(event, completedIssues));
+        const examLinks = await getTimelineExamReferences(new Set(events.map(event => event.id)));
+        return privateJson({
+          viewer: { role: "student", name: String(member.name || "SUN LAB 회원"), completedIssueCount: completedIssues.length },
+          examLinks, events, maxIssue: HISTORY_TIMELINE_MAX_ISSUE,
+        });
+      }
+    }
     return privateJson(
       { error: "학생 로그인이 필요합니다.", code: "student_auth_required" },
       { status: 401 }
