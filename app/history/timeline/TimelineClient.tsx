@@ -107,6 +107,9 @@ const renameEvents = new Set(["silla-jijeung-reform", "balhae-name-713",
 const capitalEvents = new Set(["goguryeo-domestic-capital", "goguryeo-pyeongyang-move",
   "baekje-ungjin-capital", "baekje-sabi-capital", "balhae-sanggyeong",
   "later-goguryeo-capital-905"]);
+const earlyNationEndings: Record<string, string> = {
+  "부여": "494년", "옥저": "—", "동예": "—", "삼한": "—",
+};
 const fallenYears: Record<string, number> = {
   "백제": 660, "고구려": 668, "가야": 562, "발해": 926, "진(震)": 926,
   "신라": 935, "통일 신라": 935, "후백제": 936,
@@ -481,6 +484,7 @@ export default function TimelineClient() {
                     <div className={styles.periodTop}>
                       <h3>{period.title}</h3>
                       <span>↔ 좌우로 밀어 다른 나라 보기</span>
+                      {period.key === "early-states" && <p className={styles.nationEndNote}>‘—’는 단일 멸망 연도를 확인할 수 없거나 하나의 국가로 묶기 어려운 경우입니다.</p>}
                     </div>
                     <div
                       className={styles.periodViewport}
@@ -499,6 +503,9 @@ export default function TimelineClient() {
                               aria-label={column || "나라가 등장하기 전 빈 칸"}
                             >
                               {column}
+                              {period.key === "early-states" && earlyNationEndings[column] && (
+                                <small className={styles.nationEndLabel}>변천·소멸: {earlyNationEndings[column]}</small>
+                              )}
                             </div>
                           ))}
                         </div>
