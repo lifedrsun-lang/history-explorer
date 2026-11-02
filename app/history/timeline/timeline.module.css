@@ -125,3 +125,18 @@
 .countryHeader[data-country="후고구려"]{background:#e7eafa;border-bottom:3px solid #728abe}
 .countryHeader[data-country="고려"]{background:#ecf0fb;border-bottom:3px solid #6b83aa}
 @media(max-width:600px){.epochDate{font-size:11px;padding:9px 4px}.epochCard{padding:15px 14px;margin:10px 9px}.epochCard strong{font-size:20px}.epochCard p{font-size:13px}}
+
+
+/* 사건 유형별 강조: 국호 변경 노랑, 수도 이전 하늘, 멸망 회색 */
+.renameCard{background:#fff2c9!important;border:2px solid #d7a640!important}
+.capitalCard{background:#e8f4ff!important;border:2px solid #83b3df!important}
+.fallCard{background:#efefed!important;border:2px solid #acb0ad!important}
+.changeBadge,.capitalBadge,.fallBadge{display:inline-block;margin-bottom:8px;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:900;line-height:1.4}
+.changeBadge{background:#eecb70;color:#664600}
+.capitalBadge{background:#9cd0f3;color:#1a4e73}
+.fallBadge{background:#d4d7d4;color:#4a514d}
+.fallenCell{background:repeating-linear-gradient(135deg,#f0efeb,#f0efeb 9px,#e8e6e1 9px,#e8e6e1 18px);opacity:.75}
+.countryHeader[data-country="사로국"]{background:#fff0c8;border-bottom:3px solid #ca9c39}
+.countryHeader[data-country="통일 신라"]{background:#ffe8ad;border-bottom:3px solid #c99c3d}
+.countryHeader[data-country="진(震)"]{background:#e9e6fa;border-bottom:3px solid #8985bc}
+.countryHeader[data-country="마진"],.countryHeader[data-country="태봉"]{background:#e7eafa;border-bottom:3px solid #728abe}
