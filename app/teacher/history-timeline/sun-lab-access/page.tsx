@@ -4,7 +4,7 @@ import { onAuthStateChanged, type User } from "firebase/auth";
 import { useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
 
-type Member = { studentId: string; name: string; school: string; timelineFullAccess: boolean };
+type Member = { studentId: string; name: string; school: string; profileLinked: boolean; timelineFullAccess: boolean };
 
 export default function SunLabTimelineAccessPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -19,7 +19,7 @@ export default function SunLabTimelineAccessPage() {
     if (!current) { setLoading(false); return; }
     try {
       const token = await current.getIdToken();
-      const res = await fetch("/api/teacher/history-timeline/sun-lab-members", {
+      const res = await fetch("/api/teacher/history-timeline/sun-lab-verified", {
         headers: { Authorization: `Bearer ${token}` }, cache: "no-store",
       });
       const data = await res.json().catch(() => ({}));
@@ -34,7 +34,7 @@ export default function SunLabTimelineAccessPage() {
     setSaving(member.studentId); setMessage(""); setError("");
     try {
       const token = await user.getIdToken();
-      const res = await fetch("/api/teacher/history-timeline/sun-lab-members", {
+      const res = await fetch("/api/teacher/history-timeline/sun-lab-verified", {
         method: "PATCH", headers: {
           Authorization: `Bearer ${token}`, "Content-Type": "application/json",
         },
@@ -66,8 +66,8 @@ export default function SunLabTimelineAccessPage() {
       <section className="mt-4 space-y-2">
         {members.map(member => <article key={member.studentId}
           className="flex items-center justify-between gap-3 rounded-2xl bg-white p-4 shadow-sm">
-          <div><div className="font-black">{member.name}</div><div className="text-xs text-slate-500">{member.school || "학교 미지정"}</div></div>
-          <button type="button" disabled={saving === member.studentId} onClick={() => void toggle(member)}
+          <div><div className="font-black">{member.name}</div><div className="text-xs text-slate-500">{member.school || "학교 미지정"}</div>{!member.profileLinked && <div className="mt-1 text-xs font-bold text-red-600">회원관리에서 계정 정보 연결 필요</div>}</div>
+          <button type="button" disabled={saving === member.studentId || !member.profileLinked} onClick={() => void toggle(member)}
             className={`rounded-xl border px-4 py-2.5 text-xs font-black disabled:opacity-50 ${member.timelineFullAccess ?
               "border-green-200 bg-green-100 text-green-800" : "border-slate-200 bg-slate-100 text-slate-700"}`}>
             {saving === member.studentId ? "저장 중..." : member.timelineFullAccess ? "연표 허용됨 · 해제" : "연표 전체 열람 허용"}
