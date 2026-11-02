@@ -162,9 +162,6 @@ export default function MinecraftEducationTeacherPage() {
           })}
         </section>
 
-        <a href="https://education.minecraft.net/" target="_blank" rel="noreferrer" className="mt-4 block w-full rounded-2xl bg-emerald-600 py-4 text-center text-base font-black text-white shadow-sm">
-          마인크래프트 에듀케이션 설치하기 ↗
-        </a>
       </div>
     </main>
   );
