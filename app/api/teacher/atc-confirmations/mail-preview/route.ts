@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof Error && error.message === "teacher_auth_required") return jsonError("교사 로그인이 필요합니다.", 401);
     if (error instanceof Error && error.message === "confirmation_not_found") return jsonError("저장된 확인서를 찾을 수 없습니다.", 404);
-    if (error instanceof Error && error.message === "incomplete_confirmation") return jsonError("저장된 출강일정·운영기간·담당교사 서명·서명일·에듀케이터 정보를 확인해 주세요.", 400);
+    if (error instanceof Error && error.message === "incomplete_confirmation") return jsonError("저장된 출강일정·운영기간·담당교사 성명·에듀케이터 서명을 확인해 주세요.", 400);
     return handleRouteError(error);
   }
 }
