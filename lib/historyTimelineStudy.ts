@@ -1,0 +1,59 @@
+import { HISTORY_STUDY_EARLY } from "./historyTimelineStudyEarly";
+import { HISTORY_STUDY_THREE_KINGDOMS } from "./historyTimelineStudyThreeKingdoms";
+import { HISTORY_STUDY_NORTH_SOUTH } from "./historyTimelineStudyNorthSouth";
+import type {
+  TimelineStudyNote,
+  TimelineStudyNotesIndex,
+} from "./historyTimelineStudyTypes";
+
+export type { TimelineStudyNote } from "./historyTimelineStudyTypes";
+
+/**
+ * 사건 하나에 교재 여러 호의 설명이 연결될 수 있다.
+ * 본문 학습 요점은 학생이 실제로 열람할 수 있는 교재 호수만 API에 전송한다.
+ * 시대 전환 설명은 교재 원문 출처로 오인하지 않도록 따로 구분한다.
+ */
+export const HISTORY_TIMELINE_STUDY_INDEX: TimelineStudyNotesIndex = {
+  ...HISTORY_STUDY_EARLY,
+  ...HISTORY_STUDY_THREE_KINGDOMS,
+  ...HISTORY_STUDY_NORTH_SOUTH,
+};
+
+const SUPPLEMENT_IDS = new Set([
+  "balhae-name-713",
+  "later-goguryeo-majin-904",
+  "later-goguryeo-capital-905",
+  "later-goguryeo-taebong-911",
+  "goryeo-founded-918",
+  "later-baekje-falls-936",
+]);
+
+export function getHistoryTimelineStudyNotes(
+  eventId: string,
+  allowedIssues: readonly number[]
+): TimelineStudyNote[] {
+  const allowed = new Set(allowedIssues);
+  return (HISTORY_TIMELINE_STUDY_INDEX[eventId] ?? [])
+    .filter(([issue]) => allowed.has(issue))
+    .map(([issue, heading, ...points]) => ({
+      issue,
+      heading,
+      points,
+      kind: SUPPLEMENT_IDS.has(eventId) ? "supplement" as const : "textbook" as const,
+    }));
+}
+
+export function shouldShowTimelineMaterial(value: string | undefined): boolean {
+  const text = (value ?? "").trim();
+  if (!text) return false;
+  const generic = [
+    "역사 사료·연표 보충 자료",
+    "본문 추가 대조 필요",
+    "교재 본문 확인 필요",
+    "교재 확인 필요",
+    "역사 사료",
+    "관련 기록",
+    "추가 자료",
+  ];
+  return !generic.includes(text);
+}
