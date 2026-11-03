@@ -190,3 +190,22 @@
   .periodBlock[data-period="later-three"] .periodTop h3,
   .periodBlock[data-period="goryeo"] .periodTop h3 {font-size:22px}
 }
+
+
+/* 연표의 간결함은 유지하면서 선택 시에만 교재 상세 학습을 펼친다. */
+.lessonDisclosure{margin-top:12px;border:1px solid #bed7c5;background:#f4faf5;border-radius:12px;overflow:hidden;color:#2d4737}
+.lessonDisclosure>summary{cursor:pointer;padding:11px 10px;line-height:1.5;font-size:12px;font-weight:950;color:#275940;list-style-position:inside;word-break:keep-all}
+.lessonDisclosure>summary span{display:block;font-size:10px;font-weight:800;color:#597665;margin:3px 0 0}
+.lessonDisclosure[open]>summary{border-bottom:1px solid #c4d9c8;background:#e8f5e9}
+.lessonList{display:grid;gap:10px;padding:11px}
+.lessonSection{border-radius:10px;border:1px solid #dfebe0;background:#fff;padding:10px}
+.lessonSource{display:inline-block;border-radius:99px;background:#d9ede1;color:#2e6647;font-weight:900;font-size:10px;padding:3px 8px}
+.lessonSection h5{margin:7px 0;font-size:13px;font-weight:950;line-height:1.5;color:#1e3d2a;overflow-wrap:anywhere}
+.lessonSection ul{margin:0;padding-left:18px;display:grid;gap:6px}
+.lessonSection li{font-size:12px;line-height:1.65;color:#405647;word-break:keep-all;overflow-wrap:anywhere}
+.transitionBody .lessonDisclosure{margin:12px 0;max-width:780px}
+@media(max-width:600px){
+ .lessonDisclosure>summary{padding:9px;font-size:12px}
+ .lessonSection{padding:9px}
+ .lessonSection li{font-size:12px}
+}

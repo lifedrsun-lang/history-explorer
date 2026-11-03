@@ -6,6 +6,7 @@ import { Fragment, FormEvent, useEffect, useMemo, useState } from "react";
 
 import { auth } from "@/lib/firebase";
 import type { HistoryTimelineEvent } from "@/lib/historyTimeline";
+import { shouldShowTimelineMaterial } from "@/lib/historyTimelinePresentation";
 import {
   HISTORY_TIMELINE_PERIODS as PERIODS,
   HISTORY_TIMELINE_EPOCH_MARKERS,
@@ -14,6 +15,7 @@ import {
 } from "@/lib/historyTimelineLayout";
 import TimelineExamReferences, { type ExamReference } from "./TimelineExamReferences";
 import TimelineWarSummary from "./TimelineWarSummary";
+import TimelineStudyDetails from "./TimelineStudyDetails";
 
 import styles from "./timeline.module.css";
 
@@ -374,9 +376,12 @@ export default function TimelineClient() {
                             <div className={styles.transitionDetail}>
                               <b>생활 모습</b><span>{event.life}</span>
                             </div>
-                            <div className={styles.transitionDetail}>
-                              <b>대표 유물 · 관련 자료</b><span>{event.artifact}</span>
-                            </div>
+                            {shouldShowTimelineMaterial(event.artifact) && (
+                              <div className={styles.transitionDetail}>
+                                <b>대표 유물 · 관련 자료</b><span>{event.artifact}</span>
+                              </div>
+                            )}
+                            <TimelineStudyDetails notes={event.studyNotes ?? []} />
                             <small className={styles.gridSource}>
                               {textbookSourceLabel(event)}
                             </small>
@@ -467,8 +472,14 @@ export default function TimelineClient() {
                                       <TimelineWarSummary id={event.id} />
                                       <div className={styles.gridDetails}>
                                         <b>{event.eraFilter === "선사" || event.eraFilter === "여러나라" ? "생활 모습" : "핵심 설명"}</b><p>{event.life}</p>
-                                        <b>{event.eraFilter === "선사" || event.eraFilter === "여러나라" ? "대표 유물 · 관련 자료" : "관련 기록·자료"}</b><p>{event.artifact}</p>
+                                        {shouldShowTimelineMaterial(event.artifact) && (
+                                          <>
+                                            <b>{event.eraFilter === "선사" || event.eraFilter === "여러나라" ? "대표 유물 · 관련 자료" : "관련 기록·자료"}</b>
+                                            <p>{event.artifact}</p>
+                                          </>
+                                        )}
                                       </div>
+                                      <TimelineStudyDetails notes={event.studyNotes ?? []} />
                                       <small className={styles.gridSource}>
                                         {textbookSourceLabel(event)}
                                       </small>
