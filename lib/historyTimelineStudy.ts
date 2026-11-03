@@ -43,17 +43,3 @@ export function getHistoryTimelineStudyNotes(
     }));
 }
 
-export function shouldShowTimelineMaterial(value: string | undefined): boolean {
-  const text = (value ?? "").trim();
-  if (!text) return false;
-  const generic = [
-    "역사 사료·연표 보충 자료",
-    "본문 추가 대조 필요",
-    "교재 본문 확인 필요",
-    "교재 확인 필요",
-    "역사 사료",
-    "관련 기록",
-    "추가 자료",
-  ];
-  return !generic.includes(text);
-}
