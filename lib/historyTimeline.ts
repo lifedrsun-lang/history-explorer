@@ -1,4 +1,5 @@
 import { HISTORY_TIMELINE_EXTRA_EVENTS } from "./historyTimelineExtra";
+import { getHistoryTimelineStudyNotes, type TimelineStudyNote } from "./historyTimelineStudy";
 import { HISTORY_TIMELINE_TRANSITION_EVENTS } from "./historyTimelineTransitions";
 import { HISTORY_TIMELINE_BAEKJE_EVENTS } from "./historyTimelineBaekje";
 import { HISTORY_TIMELINE_SILLA_BALHAE_EVENTS } from "./historyTimelineSillaBalhae";
@@ -29,6 +30,7 @@ export type HistoryTimelineEvent = {
   image: HistoryTimelineImage;
   textbookPages: string[];
   sourceIssueNumbers: number[];
+  studyNotes?: TimelineStudyNote[];
 };
 
 // 사건은 고유 ID 하나당 한 번만 정의한다. 이후 다른 호수에서 같은 사건을
@@ -193,16 +195,18 @@ export const HISTORY_TIMELINE_EVENTS = [
       "baekje-falls": [7],
     };
     const fourthIssue = HISTORY_TIMELINE_FOURTH_SHARED_IDS.has(event.id);
+    const sourceIssueNumbers = [...new Set([
+      ...event.sourceIssueNumbers,
+      ...(fourthIssue ? [4] : []),
+      ...(extraIssues[event.id] || []),
+    ])].sort((a, b) => a - b);
     return {
       ...event,
       eraFilter: event.id === "balhae-founded" ? "발해" as const
         : event.id === "silla-kim-chunchu-seeks-goguryeo-help" ? "신라" as const
         : event.eraFilter,
-      sourceIssueNumbers: [...new Set([
-        ...event.sourceIssueNumbers,
-        ...(fourthIssue ? [4] : []),
-        ...(extraIssues[event.id] || []),
-      ])].sort((a, b) => a - b),
+      sourceIssueNumbers,
+      studyNotes: getHistoryTimelineStudyNotes(event.id, sourceIssueNumbers),
       textbookPages: fourthIssue
         ? [...event.textbookPages, HISTORY_TIMELINE_FOURTH_SHARED_SOURCE]
         : event.textbookPages,
@@ -283,4 +287,5 @@ export const toStudentTimelineEvent = (
   artifact: event.artifact,
   image: event.image,
   textbookIssues: event.sourceIssueNumbers.filter((issue) => allowedIssues.includes(issue)),
+  studyNotes: (event.studyNotes ?? []).filter((note) => allowedIssues.includes(note.issue)),
 });
