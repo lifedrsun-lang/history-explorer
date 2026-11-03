@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { shouldShowTimelineMaterial } from "../lib/historyTimelinePresentation.ts";
+import { HISTORY_TIMELINE_STUDY_INDEX } from "../lib/historyTimelineStudy.ts";
 import {
   HISTORY_TIMELINE_PERIODS,
   HISTORY_TIMELINE_EPOCH_MARKERS,
@@ -122,7 +124,7 @@ assert.deepEqual(
 );
 assert.deepEqual(
   HISTORY_TIMELINE_PERIODS.find((period) => period.key === "three")?.columns,
-  ["고구려", "백제", "신라", "가야"],
+  ["신라", "고구려", "백제", "가야"],
 );
 assert.deepEqual(
   HISTORY_TIMELINE_PERIODS.find((period) => period.key === "northsouth")?.columns,
@@ -130,7 +132,7 @@ assert.deepEqual(
 );
 assert.deepEqual(
   HISTORY_TIMELINE_PERIODS.find((period) => period.key === "later-three")?.columns,
-  ["신라", "발해", "후고구려 → 고려", "후백제"],
+  ["신라", "발해", "후백제", "후고구려 → 고려"],
 );
 assert.equal(getTimelinePeriodForYear(-58), "early-states");
 assert.equal(getTimelinePeriodForYear(-57), "three");
@@ -182,5 +184,31 @@ assert.ok(earlyLife.length > 0);
 assert.ok(earlyLife.every((event) => event.dateLabel === "여러 나라의 성장기 · 정확한 연도 미상"));
 assert.ok(HISTORY_TIMELINE_EVENTS.find((event) => event.id === "goryeo-founded-918"));
 assert.ok(HISTORY_TIMELINE_EVENTS.find((event) => event.id === "later-baekje-falls-936"));
+
+
+// 교재 상세 요점은 사건마다 연결하되, 학생별 수강 호수를 절대 넘겨 주지 않는다.
+const studyIds = Object.keys(HISTORY_TIMELINE_STUDY_INDEX);
+assert.ok(studyIds.length >= 85, "1~9호 본문 학습 내용이 주요 사건 전반에 연결되어야 합니다.");
+const noteTotal = HISTORY_TIMELINE_EVENTS.reduce((sum, event) => sum + (event.studyNotes?.length ?? 0), 0);
+assert.ok(noteTotal >= 90, "본문 심화 학습 주제는 90개 이상이어야 합니다.");
+for (const event of HISTORY_TIMELINE_EVENTS) {
+  for (const note of event.studyNotes ?? []) {
+    assert.ok(event.sourceIssueNumbers.includes(note.issue), `${event.id}의 학습 내용 출처 교재 호수가 이벤트 출처와 다릅니다.`);
+    assert.ok(note.points.length >= 2, `${event.id}의 설명은 2개 이상이어야 합니다.`);
+    assert.ok(note.points.every(point => point.trim().length > 12));
+  }
+}
+assert.equal(HISTORY_TIMELINE_EVENTS.filter(event => event.studyNotes?.length).length >= 85, true);
+const restricted = toStudentTimelineEvent(HISTORY_TIMELINE_EVENTS.find(e => e.id === "baekje-chiljido"), [5]);
+assert.deepEqual(restricted.studyNotes.map(note => note.issue), [5]);
+const restricted6 = toStudentTimelineEvent(HISTORY_TIMELINE_EVENTS.find(e => e.id === "baekje-chiljido"), [6]);
+assert.deepEqual(restricted6.studyNotes.map(note => note.issue), [6]);
+assert.equal(toStudentTimelineEvent(HISTORY_TIMELINE_EVENTS.find(e => e.id === "goguryeo-salsu"), [3]).studyNotes.length, 0);
+assert.equal(toStudentTimelineEvent(HISTORY_TIMELINE_EVENTS.find(e => e.id === "goguryeo-salsu"), [4]).studyNotes.length, 1);
+assert.equal(shouldShowTimelineMaterial("역사 사료·연표 보충 자료"), false);
+assert.equal(shouldShowTimelineMaterial("본문 추가 대조 필요"), false);
+assert.equal(shouldShowTimelineMaterial("광개토 대왕릉비에 남은 기록"), true);
+assert.equal(shouldShowTimelineMaterial("칠지도"), true);
+assert.equal(shouldShowTimelineMaterial(""), false);
 
 console.log("history timeline verification passed");
