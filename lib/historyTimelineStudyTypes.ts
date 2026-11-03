@@ -4,4 +4,4 @@
  */
 export type TimelineStudyNoteTuple = [issue: number, heading: string, ...points: string[]];
 export type TimelineStudyNotesIndex = Record<string, TimelineStudyNoteTuple[]>;
-export type TimelineStudyNote = { issue: number; heading: string; points: string[] };
+export type TimelineStudyNote = { issue: number; heading: string; points: string[]; kind: "textbook" | "supplement" };
