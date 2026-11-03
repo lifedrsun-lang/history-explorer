@@ -143,3 +143,50 @@
 
 .nationEndLabel{display:block;margin-top:5px;font-size:10px;font-weight:800;color:#676d68;white-space:normal}
 .nationEndNote{width:100%;margin:0;font-size:11px;line-height:1.5;color:#5d6b61}
+
+
+/* 8개 의견을 반영한 대시대 통합 연표: 구간은 적게, 국호 변화는 사건 안에 표시 */
+.periodBlock[data-period="early-states"] .periodTop,
+.periodBlock[data-period="three"] .periodTop,
+.periodBlock[data-period="northsouth"] .periodTop,
+.periodBlock[data-period="later-three"] .periodTop,
+.periodBlock[data-period="goryeo"] .periodTop {
+  margin:-14px -14px 14px;
+  padding:15px 20px;
+  border-radius:17px 17px 0 0;
+  border-bottom:2px solid #d2d6c6;
+  background:#f4f0e5;
+}
+.periodBlock[data-period="early-states"] .periodTop{background:#f0eee4;border-bottom-color:#afb99b}
+.periodBlock[data-period="three"] .periodTop{background:#e7ecfa;border-bottom-color:#819ecb}
+.periodBlock[data-period="northsouth"] .periodTop{background:#e1eee0;border-bottom-color:#7eaf91}
+.periodBlock[data-period="later-three"] .periodTop{background:#f5e8dc;border-bottom-color:#d29c80}
+.periodBlock[data-period="goryeo"] .periodTop{background:#e6edf8;border-bottom-color:#829ac3}
+.periodBlock[data-period="early-states"] .periodTop h3,
+.periodBlock[data-period="three"] .periodTop h3,
+.periodBlock[data-period="northsouth"] .periodTop h3,
+.periodBlock[data-period="later-three"] .periodTop h3,
+.periodBlock[data-period="goryeo"] .periodTop h3 {
+  font-size:clamp(22px,3vw,30px);font-weight:950;letter-spacing:-.03em
+}
+.epochGoryeo{background:linear-gradient(110deg,#e2eaf8,#f6f8fd);border-color:#7894c3}
+.historicNameBadge{display:inline-flex;align-items:center;padding:5px 10px;margin:0 6px 9px 0;border-radius:999px;
+  background:#f4dc86;border:1px solid #c5a448;color:#5a4313;font-size:11px;font-weight:950;line-height:1.35}
+.historicNameBadge[data-nation="발해"]{background:#e4dffc;border-color:#aea1df;color:#4d477a}
+.historicNameBadge[data-nation="후고구려"]{background:#e1e8fc;border-color:#a3b2de;color:#3d527b}
+.dynastyCard{background:#edf4ff!important;border:2px solid #7d9dcf!important;box-shadow:0 4px 14px #405f8f1f}
+.countryHeader[data-country="후고구려 → 고려"]{background:#e5eafa;border-bottom:3px solid #6e88bf;white-space:normal}
+.countryHeader[data-country="통일 신라"]{background:#fff2ce;border-bottom:3px solid #ca9c39}
+.periodBlock[data-period="three"] .countryHeader[data-country="신라"]{background:#fff2ce}
+@media(max-width:600px){
+  .periodBlock[data-period="early-states"] .periodTop,
+  .periodBlock[data-period="three"] .periodTop,
+  .periodBlock[data-period="northsouth"] .periodTop,
+  .periodBlock[data-period="later-three"] .periodTop,
+  .periodBlock[data-period="goryeo"] .periodTop {margin:-9px -9px 10px;padding:13px 12px}
+  .periodBlock[data-period="early-states"] .periodTop h3,
+  .periodBlock[data-period="three"] .periodTop h3,
+  .periodBlock[data-period="northsouth"] .periodTop h3,
+  .periodBlock[data-period="later-three"] .periodTop h3,
+  .periodBlock[data-period="goryeo"] .periodTop h3 {font-size:22px}
+}
