@@ -36,7 +36,7 @@ export const HISTORY_TIMELINE_PERIODS = [
   },
   {
     key: "three", title: "삼국 시대",
-    columns: ["고구려", "백제", "신라", "가야"], milestone: false,
+    columns: ["신라", "고구려", "백제", "가야"], milestone: false,
     includes: (year: number) => year >= -57 && year < 698,
   },
   {
@@ -46,7 +46,7 @@ export const HISTORY_TIMELINE_PERIODS = [
   },
   {
     key: "later-three", title: "후삼국 시대",
-    columns: ["신라", "발해", "후고구려 → 고려", "후백제"], milestone: false,
+    columns: ["신라", "발해", "후백제", "후고구려 → 고려"], milestone: false,
     includes: (year: number) => year >= 900 && year <= 936,
   },
   {
