@@ -227,3 +227,19 @@
   .earlyStatesOverviewDate{justify-self:start;padding:7px 11px}
   .earlyStatesOverviewBody>p{font-size:13px}
 }
+
+
+/* 고려 10~12호의 날짜 없는 생활·문화 주제는 실제 연표의 연도에 끼워넣지 않는다. */
+.goryeoTopics{margin:4px 0 16px;border:1px solid #b2c7e3;border-radius:15px;background:#f2f6fd;color:#233d60;overflow:hidden}
+.goryeoTopics>summary{list-style-position:inside;cursor:pointer;padding:14px 16px;font-size:15px;font-weight:950;line-height:1.5}
+.goryeoTopics>summary span{display:inline-block;margin-left:8px;color:#516c8a;font-size:12px;font-weight:750}
+.goryeoTopics[open]>summary{background:#e4edfa;border-bottom:1px solid #bed0e7}
+.goryeoTopicsIntro{padding:12px 16px 5px;font-size:12px;line-height:1.6;color:#506480}
+.goryeoTopicGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:10px;padding:12px}
+.goryeoTopicCard{min-width:0;border:1px solid #d0dceb;border-radius:12px;background:white;padding:12px;color:#203850}
+.goryeoTopicCard>summary{cursor:pointer;font-size:13px;font-weight:950;line-height:1.65;word-break:keep-all}
+.goryeoTopicIssue{display:inline-block;margin-right:8px;border:1px solid #a4b9d5;border-radius:999px;padding:2px 7px;color:#31547e;background:#e5edf9;font-size:10px;white-space:nowrap}
+.goryeoTopicCard ul{margin:10px 0;padding-left:19px;display:grid;gap:8px}
+.goryeoTopicCard li{color:#43576c;font-size:12px;line-height:1.65;word-break:keep-all}
+.goryeoTopicCard small{display:block;padding-top:8px;border-top:1px solid #e4eaf3;color:#60758e;font-size:10px}
+@media(max-width:600px){.goryeoTopics>summary{padding:12px;font-size:14px}.goryeoTopics>summary span{display:block;margin:3px 0 0}.goryeoTopicGrid{padding:9px}.goryeoTopicsIntro{padding:9px 12px 3px}}
