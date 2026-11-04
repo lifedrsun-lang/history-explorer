@@ -7,6 +7,11 @@ const PLACEHOLDER_MATERIALS = new Set([
   "역사 사료",
   "관련 기록",
   "추가 자료",
+  // 02호 '여러 나라의 성장'에서 자료의 이름·종류를 특정하지 않은 표현.
+  // 본문 사건·생활 풍습 설명은 남기되 유물·기록으로 오인할 항목은 숨긴다.
+  "부여의 법과 풍습 기록",
+  "서옥제에 관한 풍습 기록",
+  "옥저의 생활 풍습 기록",
 ]);
 export function shouldShowTimelineMaterial(value?: string): boolean {
   const text = (value ?? "").trim();
