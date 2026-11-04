@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import { shouldShowTimelineMaterial } from "../lib/historyTimelinePresentation.ts";
 import { GORYEO_STUDY_TOPICS, getTimelineTopicsForIssues } from "../lib/historyTimelineGoryeoTopics.ts";
+import { HISTORY_TIMELINE_LATE_TOPICS, getTimelineLateTopicsForIssues } from "../lib/historyTimelineLateTopics.ts";
 import { HISTORY_TIMELINE_STUDY_INDEX } from "../lib/historyTimelineStudy.ts";
 import {
   HISTORY_TIMELINE_PERIODS,
   HISTORY_TIMELINE_EPOCH_MARKERS,
   getTimelinePeriodForYear,
+  getTimelinePeriodForEvent,
   getTimelineNationColumn,
   getHistoricNameBadge,
 } from "../lib/historyTimelineLayout.ts";
@@ -18,7 +20,7 @@ import {
   toStudentTimelineEvent,
 } from "../lib/historyTimeline.ts";
 
-assert.equal(HISTORY_TIMELINE_EVENTS.length, 116, "기존 92개 + 10~12호의 새로운 역사 사건 24개 = 116개여야 합니다.");
+assert.equal(HISTORY_TIMELINE_EVENTS.length, 140, "기존 116개 + 13~14호의 새로운 역사 사건 24개 = 140개여야 합니다. (15호 공유 사건 중복 제외)");
 assert.equal(
   new Set(HISTORY_TIMELINE_EVENTS.map((event) => event.id)).size,
   HISTORY_TIMELINE_EVENTS.length,
@@ -39,7 +41,7 @@ for (const event of HISTORY_TIMELINE_EVENTS) {
   assert.ok(event.image.value && event.image.alt);
   assert.ok(event.textbookPages.length > 0);
   assert.ok(event.sourceIssueNumbers.length > 0);
-  assert.ok(event.sourceIssueNumbers.every((issue) => issue >= 1 && issue <= 12));
+  assert.ok(event.sourceIssueNumbers.every((issue) => issue >= 1 && issue <= 15));
 }
 
 assert.equal(getTimelineEventsForIssues([]).length, 0);
@@ -61,6 +63,49 @@ assert.equal(getTimelineEventsForIssues([11]).length, 14); // 신규 8 + 고려 
 assert.equal(getTimelineEventsForIssues([12]).length, 9);
 assert.equal(getTimelineEventsForIssues([10, 11, 12]).length, 26); // 신규 24 + 공유 2
 assert.equal(getTimelineEventsForIssues(Array.from({ length: 12 }, (_, i) => i + 1)).length, 116);
+assert.equal(getTimelineEventsForIssues([13]).length, 13, "13호 고려 후기 신규 사건 13개");
+assert.equal(getTimelineEventsForIssues([14]).length, 11, "14호 조선 초기 사건 11개");
+assert.equal(getTimelineEventsForIssues([15]).length, 5, "15호는 14호와 공유한 핵심 사건 5개");
+assert.equal(getTimelineEventsForIssues([13, 14, 15]).length, 24, "중복을 제거한 13~15호 새 사건 24개");
+assert.equal(getTimelineEventsForIssues(Array.from({ length: 15 }, (_, i) => i + 1)).length, 140);
+assert.equal(HISTORY_TIMELINE_LATE_TOPICS.length, 19);
+assert.equal(getTimelineLateTopicsForIssues([13]).length, 5);
+assert.equal(getTimelineLateTopicsForIssues([14]).length, 6);
+assert.equal(getTimelineLateTopicsForIssues([15]).length, 8);
+assert.equal(getTimelineLateTopicsForIssues([13, 14, 15]).length, 19);
+assert.deepEqual(getTimelineLateTopicsForIssues([1, 2, 3, 10, 11, 12]), []);
+assert.ok(getTimelineLateTopicsForIssues([14]).every(topic => topic.issue === 14));
+assert.ok(getTimelineLateTopicsForIssues([15]).every(topic => topic.issue === 15));
+assert.equal(new Set(HISTORY_TIMELINE_LATE_TOPICS.map(topic => topic.id)).size, 19);
+assert.ok(HISTORY_TIMELINE_LATE_TOPICS.every(topic => topic.pages.includes(`${topic.issue}호`) && topic.points.length >= 2));
+assert.equal(getTimelineEventsForIssues([12]).some(event => event.id === "goryeo-gongmin-1351"), false);
+assert.equal(getTimelineEventsForIssues([13]).some(event => event.id === "joseon-sejong-1418"), false);
+assert.equal(getTimelineEventsForIssues([14]).some(event => event.id === "goryeo-gongmin-1351"), false);
+assert.equal(getTimelineEventsForIssues([15]).some(event => event.id === "joseon-hunminjeongeum-1443"), true);
+assert.equal(HISTORY_TIMELINE_EVENTS.filter(event => event.id === "joseon-sejong-1418").length, 1);
+assert.equal(HISTORY_TIMELINE_EVENTS.filter(event => event.id === "joseon-hunminjeongeum-1443").length, 1);
+assert.equal(getTimelinePeriodForYear(1391), "goryeo");
+assert.equal(getTimelinePeriodForYear(1392), "joseon");
+assert.equal(getTimelinePeriodForYear(1443), "joseon");
+const goryeoEnd1392 = HISTORY_TIMELINE_EVENTS.find(event => event.id === "goryeo-falls-1392");
+const joseonBegins1392 = HISTORY_TIMELINE_EVENTS.find(event => event.id === "joseon-founded-1392");
+assert.ok(goryeoEnd1392 && joseonBegins1392);
+assert.equal(getTimelinePeriodForEvent(goryeoEnd1392), "goryeo");
+assert.equal(getTimelinePeriodForEvent(joseonBegins1392), "joseon");
+assert.deepEqual(HISTORY_TIMELINE_PERIODS.find(period => period.key === "joseon")?.columns, ["조선"]);
+assert.ok(HISTORY_TIMELINE_EVENTS.filter(event => event.eraFilter === "조선")
+   .every(event => getTimelinePeriodForEvent(event) === "joseon"));
+assert.equal(getTimelineEventsForIssues([13]).some(event => event.id === "goryeo-falls-1392"), true);
+assert.equal(getTimelineEventsForIssues([15]).some(event => event.id === "goryeo-falls-1392"), false);
+const sejongEvent = HISTORY_TIMELINE_EVENTS.find(event => event.id === "joseon-sejong-1418");
+assert.deepEqual(sejongEvent.sourceIssueNumbers, [14, 15]);
+assert.deepEqual(toStudentTimelineEvent(sejongEvent, [14]).studyNotes.map(note => note.issue), [14]);
+assert.deepEqual(toStudentTimelineEvent(sejongEvent, [15]).studyNotes.map(note => note.issue), [15]);
+assert.ok(HISTORY_TIMELINE_EVENTS.filter(event => event.sourceIssueNumbers.includes(13)).every(event => event.studyNotes?.some(note => note.issue === 13)));
+assert.ok(HISTORY_TIMELINE_EVENTS.filter(event => event.sourceIssueNumbers.includes(14)).every(event => event.studyNotes?.some(note => note.issue === 14)));
+assert.ok(HISTORY_TIMELINE_EVENTS.filter(event => event.sourceIssueNumbers.includes(15)).every(event => event.studyNotes?.some(note => note.issue === 15)));
+assert.ok(HISTORY_TIMELINE_EVENTS.filter(event => event.sourceIssueNumbers.includes(13) || event.sourceIssueNumbers.includes(14) || event.sourceIssueNumbers.includes(15))
+  .every(event => !shouldShowTimelineMaterial(event.artifact)), "실물 없는 자료명은 숨겨야 합니다.");
 assert.equal(GORYEO_STUDY_TOPICS.length, 13);
 assert.deepEqual(getTimelineTopicsForIssues([1, 2, 3, 4, 5, 6, 7, 8, 9]), []);
 assert.equal(getTimelineTopicsForIssues([10]).length, 4);
@@ -86,7 +131,7 @@ assert.ok(HISTORY_TIMELINE_STUDY_INDEX["later-baekje-falls-936"].some(note => no
 assert.ok(HISTORY_TIMELINE_STUDY_INDEX["later-baekje-falls-936"].some(note => note[0] === 10));
 assert.ok(HISTORY_TIMELINE_EVENTS.filter(event => event.eraFilter === "고려").length >= 24);
 assert.ok(HISTORY_TIMELINE_EVENTS.filter(event => event.eraFilter === "고려")
-  .every(event => getTimelinePeriodForYear(event.sortYear) === "goryeo"));
+  .every(event => getTimelinePeriodForEvent(event) === "goryeo"));
 assert.ok(HISTORY_TIMELINE_EVENTS.filter(event => event.eraFilter === "고려")
   .every(event => !shouldShowTimelineMaterial(event.artifact)),
   "실물 사진이나 확인된 유물명이 없는 신규 사건에는 가상 관련 자료를 보이지 않습니다.");
@@ -151,7 +196,7 @@ assert.deepEqual(resolveTimelineCompletedIssues({
 const keys = HISTORY_TIMELINE_PERIODS.filter((period) => !period.milestone)
   .map((period) => period.key);
 assert.deepEqual(keys, [
-  "prehistoric", "gojoseon", "early-states", "three", "northsouth", "later-three", "goryeo",
+  "prehistoric", "gojoseon", "early-states", "three", "northsouth", "later-three", "goryeo", "joseon",
 ], "시대별 표를 초기·국호 변화별로 잘게 분리하지 않아야 합니다.");
 assert.deepEqual(
   HISTORY_TIMELINE_PERIODS.find((period) => period.key === "early-states")?.columns,
@@ -298,8 +343,8 @@ assert.equal(shouldShowTimelineMaterial(""), false);
 const displayedMaterials = HISTORY_TIMELINE_EVENTS.filter(event =>
   shouldShowTimelineMaterial(event.artifact));
 assert.equal(displayedMaterials.length, 33, "검토된 구체 자료 33건만 표시해야 합니다.");
-assert.equal(HISTORY_TIMELINE_EVENTS.length - displayedMaterials.length, 83,
-  "기존 숨김 59건과 10~12호 신규 24건의 자료 없는 항목은 렌더링하지 않습니다.");
+assert.equal(HISTORY_TIMELINE_EVENTS.length - displayedMaterials.length, 107,
+  "기존 숨김 83건에 13~15호 신규 24건도 구체 자료가 없으면 숨깁니다.");
 assert.ok(displayedMaterials.every(event => !/지도|관련 기록|관련 자료|재위 연표/.test(event.artifact)),
   "지도 이미지가 없는 지도명이나 불분명한 기록은 표시하지 않아야 합니다.");
 for (const value of [
