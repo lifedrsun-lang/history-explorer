@@ -38,7 +38,7 @@ export const HISTORY_TIMELINE_GORYEO_LATE_EVENTS: HistoryTimelineEvent[] = [
     "title": "일연이 『삼국유사』를 씀",
     "summary": "일연이 옛 나라의 신화·설화와 불교 이야기를 담은 『삼국유사』를 편찬했어요.",
     "life": "『삼국유사』에는 단군의 고조선 건국 이야기를 비롯한 옛 기록들이 전해져요.",
-    "artifact": "자료명 미등록",
+    "artifact": "『삼국유사』",
     "image": {
       "kind": "emoji",
       "value": "📜",
