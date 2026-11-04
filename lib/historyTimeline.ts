@@ -164,12 +164,13 @@ const HISTORY_TIMELINE_EVENT_SOURCE: HistoryTimelineEvent[] = [
   },
   {
     id: "early-states-emerge",
+    // 개괄 사건의 정렬 위치일 뿐, 여러 나라가 기원전 100년에 함께 건국되었다는 뜻은 아니다.
     sortYear: -100,
-    dateLabel: "기원전 100년경",
+    dateLabel: "고조선 멸망 전후 · 나라별 연도 다름",
     stateOrEra: "여러 나라",
     eraFilter: "여러나라",
     title: "여러 나라의 등장",
-    summary: "고조선 멸망 전후로 부여·고구려·옥저·동예·삼한 등 여러 나라의 성장 과정을 살펴봐요. 모든 나라가 이 해에 함께 건국된 것은 아니에요.",
+    summary: "고조선 멸망 전후의 여러 나라를 함께 살펴봐요. 부여·고구려·옥저·동예·삼한은 한 해에 모두 건국된 것이 아니며, 성장 시기도 서로 달라요.",
     life: "나라마다 생활 방식과 풍습이 달랐어요. 자세한 비교는 다음 호와 연결해요.",
     artifact: "각 나라의 풍습·유물은 다음 호에서 확장",
     image: { kind: "emoji", value: "🗺️", alt: "여러 나라가 표시된 지도" },
