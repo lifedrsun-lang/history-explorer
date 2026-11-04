@@ -104,8 +104,15 @@ assert.deepEqual(toStudentTimelineEvent(sejongEvent, [15]).studyNotes.map(note =
 assert.ok(HISTORY_TIMELINE_EVENTS.filter(event => event.sourceIssueNumbers.includes(13)).every(event => event.studyNotes?.some(note => note.issue === 13)));
 assert.ok(HISTORY_TIMELINE_EVENTS.filter(event => event.sourceIssueNumbers.includes(14)).every(event => event.studyNotes?.some(note => note.issue === 14)));
 assert.ok(HISTORY_TIMELINE_EVENTS.filter(event => event.sourceIssueNumbers.includes(15)).every(event => event.studyNotes?.some(note => note.issue === 15)));
-assert.ok(HISTORY_TIMELINE_EVENTS.filter(event => event.sourceIssueNumbers.includes(13) || event.sourceIssueNumbers.includes(14) || event.sourceIssueNumbers.includes(15))
-  .every(event => !shouldShowTimelineMaterial(event.artifact)), "실물 없는 자료명은 숨겨야 합니다.");
+const namedMaterials1315 = new Set(["『삼국유사』", "서울 경복궁", "서울 한양도성·숭례문", "『농사직설』", "『훈민정음』 해례본"]);
+const shown1315 = HISTORY_TIMELINE_EVENTS.filter(event => [13, 14, 15].some(issue => event.sourceIssueNumbers.includes(issue)))
+  .filter(event => shouldShowTimelineMaterial(event.artifact));
+assert.equal(shown1315.length, 5, "13~15호에 추가한 자료는 정확한 명칭이 확인된 5개만 표시합니다.");
+assert.ok(shown1315.every(event => namedMaterials1315.has(event.artifact)));
+assert.ok(HISTORY_TIMELINE_EVENTS.filter(event => [13,14,15].some(issue => event.sourceIssueNumbers.includes(issue)))
+  .filter(event => !namedMaterials1315.has(event.artifact))
+  .every(event => !shouldShowTimelineMaterial(event.artifact)),
+  "실물 없는 지도·유적·관련 기록 문구를 자료가 있는 것처럼 보이면 안 됩니다.");
 assert.equal(GORYEO_STUDY_TOPICS.length, 13);
 assert.deepEqual(getTimelineTopicsForIssues([1, 2, 3, 4, 5, 6, 7, 8, 9]), []);
 assert.equal(getTimelineTopicsForIssues([10]).length, 4);
@@ -342,9 +349,9 @@ assert.equal(shouldShowTimelineMaterial(""), false);
 // 이미지가 없는 가상의 지도와 '○○ 관련 기록'은 실제로 제공하는 자료로 오해할 수 있다.
 const displayedMaterials = HISTORY_TIMELINE_EVENTS.filter(event =>
   shouldShowTimelineMaterial(event.artifact));
-assert.equal(displayedMaterials.length, 33, "검토된 구체 자료 33건만 표시해야 합니다.");
-assert.equal(HISTORY_TIMELINE_EVENTS.length - displayedMaterials.length, 107,
-  "기존 숨김 83건에 13~15호 신규 24건도 구체 자료가 없으면 숨깁니다.");
+assert.equal(displayedMaterials.length, 38, "기존 33건과 13~15호의 실물 자료 5건만 표시해야 합니다.");
+assert.equal(HISTORY_TIMELINE_EVENTS.length - displayedMaterials.length, 102,
+  "고유한 자료명이 없는 사건 102건은 유물·유적 영역을 만들지 않아야 합니다.");
 assert.ok(displayedMaterials.every(event => !/지도|관련 기록|관련 자료|재위 연표/.test(event.artifact)),
   "지도 이미지가 없는 지도명이나 불분명한 기록은 표시하지 않아야 합니다.");
 for (const value of [
