@@ -1,6 +1,7 @@
 import { HISTORY_STUDY_EARLY } from "./historyTimelineStudyEarly";
 import { HISTORY_STUDY_THREE_KINGDOMS } from "./historyTimelineStudyThreeKingdoms";
 import { HISTORY_STUDY_NORTH_SOUTH } from "./historyTimelineStudyNorthSouth";
+import { HISTORY_STUDY_GORYEO } from "./historyTimelineGoryeo";
 import type {
   TimelineStudyNote,
   TimelineStudyNotesIndex,
@@ -17,6 +18,7 @@ export const HISTORY_TIMELINE_STUDY_INDEX: TimelineStudyNotesIndex = {
   ...HISTORY_STUDY_EARLY,
   ...HISTORY_STUDY_THREE_KINGDOMS,
   ...HISTORY_STUDY_NORTH_SOUTH,
+  ...HISTORY_STUDY_GORYEO,
 };
 
 const SUPPLEMENT_IDS = new Set([
