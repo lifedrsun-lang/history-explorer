@@ -10,6 +10,7 @@ type TimelineEventOption = { id: string; dateLabel: string; stateOrEra: string; 
 type ExamQuestion = {
   id: string; examRound: string; examLevel: string; examQuestionNumber: string;
   bookNumber: string; topic: string; explanation: string; timelineLinks: TimelineLink[];
+  curatedAutoMatched?: boolean;
 };
 
 export default function TimelineExamLinksPage() {
@@ -82,7 +83,7 @@ export default function TimelineExamLinksPage() {
           문제은행의 기존 문항에 연표 사건을 연결합니다. 정답 직접 출제와 지문·선택지 연계를 구분하며
           원본 문제·정답·배포 내역은 수정하지 않습니다. 연결하지 않은 문제는 연표 출제 횟수에 포함되지 않습니다.
         </p>
-        <div className="mt-3 text-sm font-bold text-slate-600">기출문항 {questions.length}개 · 연결 문항 {questions.filter(q => q.timelineLinks.length > 0).length}개</div>
+        <div className="mt-3 text-sm font-bold text-slate-600">기출문항 {questions.length}개 · 연결 문항 {questions.filter(q => q.timelineLinks.length > 0).length}개 · 검증 자료 자동 연결 {questions.filter(q => q.curatedAutoMatched).length}개</div>
         <input className="mt-4 w-full rounded-xl border px-4 py-3" placeholder="회차·번호·교재 호수·주제로 찾기" value={search} onChange={e => setSearch(e.target.value)} />
       </header>
       {error && <div role="alert" className="rounded-xl bg-red-100 p-3 text-sm font-bold text-red-800">{error}</div>}
@@ -93,6 +94,7 @@ export default function TimelineExamLinksPage() {
         return <article key={q.id} className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm">
           <div className="font-black">제{q.examRound || "?"}회 · {q.examLevel === "advanced" ? "심화" : "기본"} · {q.examQuestionNumber || "?"}번</div>
           <div className="mt-1 text-xs text-slate-500">{q.bookNumber || "호수 미분류"} · {q.topic || "주제 미입력"}</div>
+          {q.curatedAutoMatched && <div className="mt-2 inline-block rounded-full bg-sky-100 px-2.5 py-1 text-xs font-black text-sky-800">📘 기존 검증 자료 기반 자동 연결 · 원본 문제은행 수정 없음</div>}
           {q.explanation && <p className="mt-2 text-sm text-slate-700">해설: {q.explanation}</p>}
           <label className="mt-4 block text-sm font-bold text-emerald-800">
             사건 연결 추가
