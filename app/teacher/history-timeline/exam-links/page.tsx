@@ -13,6 +13,7 @@ type ExamQuestion = {
   id: string; examRound: string; examLevel: string; examQuestionNumber: string;
   bookNumber: string; topic: string; explanation: string; timelineLinks: TimelineLink[];
   curatedAutoMatched?: boolean;
+  curatedAwaitingEvent?: boolean;
   timelineLinkStatus: QueueStatus;
   timelineLinkMemo: string;
 };
@@ -141,6 +142,7 @@ export default function TimelineExamLinksPage() {
           <div className="font-black">제{q.examRound || "?"}회 · {q.examLevel === "advanced" ? "심화" : "기본"} · {q.examQuestionNumber || "?"}번</div>
           <div className="mt-1 text-xs text-slate-500">{q.bookNumber || "호수 미분류"} · {q.topic || "주제 미입력"}</div>
           {q.curatedAutoMatched && <div className="mt-2 inline-block rounded-full bg-sky-100 px-2.5 py-1 text-xs font-black text-sky-800">📘 기존 검증 자료 기반 자동 연결 · 원본 문제은행 수정 없음</div>}
+          {q.curatedAwaitingEvent && <div className="mt-2 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-black text-amber-900">🗂️ 기존 검증 기록 대조 · 해당 사건 카드 추가 후 연결</div>}
           <div className="mt-2 text-xs font-bold text-slate-600">
             {links.length ? "✅ 연표 사건 연결됨" : (queueStatuses[q.id] || "review") === "awaiting_event"
               ? "🗂️ 연표 사건 추가 대기" : "🔎 내용 확인 필요"}
