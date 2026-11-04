@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import ClassroomBoard from "./ClassroomBoard";
 import ClassroomLockoutReset from "./ClassroomLockoutReset";
 import { CLASSROOM_LOCKOUT_MS } from "@/lib/classroomLockout";
+import { TEACHER_KAKAO_INQUIRY_URL } from "@/lib/teacherContact";
 import SchoolQrPanel from "@/app/components/SchoolQrPanel";
 import {
   CLASSROOM_MONSTERS,
@@ -33,6 +34,7 @@ type Props = {
 };
 
 export default function SchoolMonsterClassPortal({ schoolSlug, schoolDisplayName, classrooms, onChangeSchool }: Props) {
+  const isIndividualLesson = /개별\s*수업/.test(schoolDisplayName) || /(?:individual|private)[-_]?(?:class|lesson)/i.test(schoolSlug);
   const [selectedClassroom, setSelectedClassroom] = useState<SchoolClassroom | null>(null);
   const [monsterOptions, setMonsterOptions] = useState<ClassroomMonster[]>(() => shuffleMonsters());
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -165,6 +167,20 @@ export default function SchoolMonsterClassPortal({ schoolSlug, schoolDisplayName
             <button type="button" onClick={onChangeSchool} className="shrink-0 rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-black text-amber-700">학교 변경</button>
           </div>
         </header>
+
+        {!currentClassroom && isIndividualLesson && (
+          <div className="rounded-[24px] border border-amber-200 bg-white/95 p-3 text-center shadow-sm">
+            <p className="mb-2 text-xs font-bold text-slate-600">궁금한 점이 있나요? 보호자와 함께 문의해 주세요.</p>
+            <a
+              href={TEACHER_KAKAO_INQUIRY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex min-h-12 w-full items-center justify-center rounded-2xl bg-[#FEE500] px-4 py-3 text-base font-black text-slate-800 transition hover:brightness-95"
+            >
+              💬 선생님께 카톡 문의하기
+            </a>
+          </div>
+        )}
 
         {!currentClassroom ? (
           <section className="rounded-[30px] border border-white/80 bg-white/95 p-4 shadow-sm">
