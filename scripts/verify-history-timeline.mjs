@@ -207,6 +207,19 @@ assert.equal(toStudentTimelineEvent(HISTORY_TIMELINE_EVENTS.find(e => e.id === "
 assert.equal(toStudentTimelineEvent(HISTORY_TIMELINE_EVENTS.find(e => e.id === "goguryeo-salsu"), [4]).studyNotes.length, 1);
 assert.equal(shouldShowTimelineMaterial("역사 사료·연표 보충 자료"), false);
 assert.equal(shouldShowTimelineMaterial("본문 추가 대조 필요"), false);
+for (const [id, hiddenLabel] of [
+  ["buyeo-four-chiefs", "부여의 법과 풍습 기록"],
+  ["goguryeo-seookje", "서옥제에 관한 풍습 기록"],
+  ["okjeo-marriage-custom", "옥저의 생활 풍습 기록"],
+]) {
+  assert.equal(HISTORY_TIMELINE_EVENTS.find(event => event.id === id)?.artifact, hiddenLabel);
+  assert.equal(shouldShowTimelineMaterial(hiddenLabel), false, `${id} 일반적인 풍습 기록 문구는 숨겨야 합니다.`);
+}
+assert.equal(shouldShowTimelineMaterial("단궁 · 과하마 · 반어피"), true);
+assert.equal(shouldShowTimelineMaterial("솟대 · 철기 도구"), true);
+assert.ok(HISTORY_TIMELINE_EVENTS.find(event => event.id === "buyeo-four-chiefs")?.studyNotes?.length);
+assert.ok(HISTORY_TIMELINE_EVENTS.find(event => event.id === "goguryeo-seookje")?.studyNotes?.length);
+assert.ok(HISTORY_TIMELINE_EVENTS.find(event => event.id === "okjeo-marriage-custom")?.studyNotes?.length);
 assert.equal(shouldShowTimelineMaterial("광개토 대왕릉비에 남은 기록"), true);
 assert.equal(shouldShowTimelineMaterial("칠지도"), true);
 assert.equal(shouldShowTimelineMaterial(""), false);
