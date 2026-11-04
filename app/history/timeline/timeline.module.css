@@ -243,3 +243,31 @@
 .goryeoTopicCard li{color:#43576c;font-size:12px;line-height:1.65;word-break:keep-all}
 .goryeoTopicCard small{display:block;padding-top:8px;border-top:1px solid #e4eaf3;color:#60758e;font-size:10px}
 @media(max-width:600px){.goryeoTopics>summary{padding:12px;font-size:14px}.goryeoTopics>summary span{display:block;margin:3px 0 0}.goryeoTopicGrid{padding:9px}.goryeoTopicsIntro{padding:9px 12px 3px}}
+
+
+/* 별꼼역사 14~15호: 고려 멸망(1392) 다음 조선 건국 연표가 자연스럽게 연결된다. */
+.periodBlock[data-period="joseon"] .periodTop {
+  margin:-14px -14px 14px;
+  padding:15px 20px;
+  border-radius:17px 17px 0 0;
+  border-bottom:2px solid #bc9b72;
+  background:#f0e7dd;
+}
+.periodBlock[data-period="joseon"] .periodTop h3 {
+  font-size:clamp(22px,3vw,30px);
+  font-weight:950;
+  letter-spacing:-.03em;
+  color:#513a2c;
+}
+.periodBlock[data-period="joseon"] .countryHeader[data-country="조선"]{
+  background:#eaddc9;
+  color:#4c3729;
+  border-bottom:3px solid #b48759;
+}
+@media(max-width:600px){
+  .periodBlock[data-period="joseon"] .periodTop {
+    margin:-9px -9px 10px;
+    padding:13px 12px;
+  }
+  .periodBlock[data-period="joseon"] .periodTop h3{font-size:22px}
+}
