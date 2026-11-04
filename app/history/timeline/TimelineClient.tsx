@@ -362,8 +362,8 @@ export default function TimelineClient() {
                 const periodEvents = visibleEvents.filter((event) => period.includes(event.sortYear));
                 if (periodEvents.length === 0) return null;
 
-                // 중요한 역사적 전환점은 국가별 표가 아닌 독립된 구분 카드로 표시한다.
-                // 위에서 아래로: 고조선 멸망 → 여러 나라의 등장 → 국가별 비교표.
+                // 고조선 멸망은 독립된 전환점으로 유지한다.
+                // 여러 나라의 등장은 별도 시대 표가 아니라 성장 비교표 안의 도입 카드로 표시한다.
                 if (period.milestone) {
                   return (
                     <section className={styles.transitionBlock} key={period.key} aria-label={period.title}>
@@ -373,15 +373,15 @@ export default function TimelineClient() {
                           <div className={styles.transitionBody}>
                             <h3>{event.title}</h3>
                             <p>{event.summary}</p>
-                            <div className={styles.transitionDetail}>
-                              <b>생활 모습</b><span>{event.life}</span>
-                            </div>
+                            <TimelineStudyDetails
+                              notes={event.studyNotes ?? []}
+                              fallback={{ heading: event.title, text: event.life }}
+                            />
                             {shouldShowTimelineMaterial(event.artifact) && (
                               <div className={styles.transitionDetail}>
                                 <b>대표 유물·유적</b><span>{event.artifact}</span>
                               </div>
                             )}
-                            <TimelineStudyDetails notes={event.studyNotes ?? []} />
                             <small className={styles.gridSource}>
                               {textbookSourceLabel(event)}
                             </small>
@@ -396,10 +396,17 @@ export default function TimelineClient() {
                 // '주요 사건' 열에만 놓는다. 이후에는 그 열 자체가 사라진다.
                 const eventColumn = (event: StudentEvent) => getTimelineNationColumn(event, period.key);
 
+                // '여러 나라의 등장'은 별도 시기 구분이 아닌 이 표의 도입 카드다.
+                // 나라별 열을 새로 만들지 않고, 학생에게 허용된 1~2호 학습 내용만 보여 준다.
+                const overviewEvent = period.key === "early-states"
+                  ? periodEvents.find((event) => event.id === "early-states-emerge")
+                  : undefined;
+                const comparisonEvents = overviewEvent
+                  ? periodEvents.filter((event) => event.id !== overviewEvent.id)
+                  : periodEvents;
+
                 // 앞으로 새 국가가 등장해도 기존 사건이 누락되지 않도록 열을 자동 확장한다.
-                // 연결 연표는 배운 국가만 보이되, 등장한 국가의 세로줄은
-                // 시대 전환 뒤에도 같은 위치로 계속 유지한다.
-                const eventCountries = new Set(periodEvents.map(eventColumn));
+                const eventCountries = new Set(comparisonEvents.map(eventColumn));
                 // 시대별 지정 국가 열은 빈 사건이 있어도 유지해 국가 간 위치를 비교한다.
                 const columns = [
                   ...period.columns,
@@ -410,15 +417,31 @@ export default function TimelineClient() {
                 const gridStyle = {
                   gridTemplateColumns: `116px repeat(${columns.length}, minmax(245px, 1fr))`,
                 };
-                const dates = groupSameDates(periodEvents);
+                const dates = groupSameDates(comparisonEvents);
 
                 return (
                   <section className={styles.periodBlock} data-period={period.key} key={period.key}>
                     <div className={styles.periodTop}>
                       <h3>{period.title}</h3>
-                      <span>↔ 좌우로 밀어 다른 나라 보기</span>
-                      {period.key === "early-states" && <p className={styles.nationEndNote}>정확한 발생 연도가 전해지지 않는 생활·풍습은 ‘여러 나라의 성장기 · 정확한 연도 미상’으로 표시합니다.</p>}
+                      {comparisonEvents.length > 0 && <span>↔ 좌우로 밀어 다른 나라 보기</span>}
+                      {period.key === "early-states" && <p className={styles.nationEndNote}>여러 나라는 같은 해에 함께 세워진 것이 아니에요. 연도가 확실하지 않은 풍습은 ‘여러 나라의 성장기 · 정확한 연도 미상’으로 표시합니다.</p>}
                     </div>
+                    {overviewEvent && (
+                      <article className={styles.earlyStatesOverview} aria-label="여러 나라의 등장">
+                        <div className={styles.earlyStatesOverviewDate}>{overviewEvent.dateLabel}</div>
+                        <div className={styles.earlyStatesOverviewBody}>
+                          <h4>{overviewEvent.title}</h4>
+                          <p>{overviewEvent.summary}</p>
+                          <TimelineStudyDetails
+                            notes={overviewEvent.studyNotes ?? []}
+                            fallback={{ heading: overviewEvent.title, text: overviewEvent.life }}
+                          />
+                          <small className={styles.gridSource}>{textbookSourceLabel(overviewEvent)}</small>
+                          <TimelineExamReferences refs={payload?.examLinks?.[overviewEvent.id] || []} />
+                        </div>
+                      </article>
+                    )}
+                    {comparisonEvents.length > 0 && (
                     <div
                       className={styles.periodViewport}
                       tabIndex={0}
@@ -505,6 +528,7 @@ export default function TimelineClient() {
                         ))}
                       </div>
                     </div>
+                    )}
                   </section>
                 );
               })}
