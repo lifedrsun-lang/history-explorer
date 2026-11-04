@@ -19,6 +19,35 @@ const VERIFIED: Record<string, TimelineExamLink[]> = {
   "basic:79:2": [{ eventId: "gojoseon-falls", relation: "answer" }],
   "basic:79:3": [{ eventId: "baekje-onjo-founded", relation: "context" }],
   "basic:79:8": [{ eventId: "silla-kimchunchu-tang", relation: "answer" }],
+  // 제63·64회 기본: 운영 등록 검증서 'production-release-report.md'의
+  // 문항별 정답 주제와 기존 연표 사건명을 대조한 추가 연결.
+  "basic:63:1": [{ eventId: "prehistoric-neolithic-begins", relation: "context" }],
+  "basic:63:3": [{ eventId: "goguryeo-cheolli", relation: "context" }],
+  "basic:63:5": [{ eventId: "baekje-chiljido", relation: "answer" }],
+  "basic:63:11": [
+    { eventId: "goryeo-ija-gyeom-revolt-1126", relation: "context" },
+    { eventId: "goryeo-myo-cheong-revolt-1135", relation: "context" },
+    { eventId: "goryeo-military-coup-1170", relation: "context" },
+  ],
+  "basic:63:21": [{ eventId: "goryeo-gwiju-1019", relation: "answer" }],
+  "basic:64:1": [{ eventId: "prehistoric-bronze-culture-spreads", relation: "context" }],
+  "basic:64:2": [{ eventId: "dongye-mucheon", relation: "answer" }],
+  "basic:64:4": [{ eventId: "goguryeo-yeongaesomun-coup", relation: "answer" }],
+  "basic:64:7": [{ eventId: "silla-late-disorder", relation: "context" }],
+  "basic:64:10": [{ eventId: "goryeo-gwageo-958", relation: "answer" }],
+  "basic:64:11": [{ eventId: "goryeo-yun-gwan-1107", relation: "answer" }],
+  "basic:64:14": [{ eventId: "goryeo-military-coup-1170", relation: "answer" }],
+  "basic:64:16": [{ eventId: "silla-hwangnyongsa", relation: "answer" }],
+  // 제75·79회 기본: 저장·정답 검증서의 문항별 핵심 주제 참조.
+  // 시대별 사건의 '순서'를 묻는 문제는 단일 사건의 직접 정답 횟수로 세지 않음.
+  "basic:75:11": [
+    { eventId: "goryeo-myo-cheong-revolt-1135", relation: "context" },
+    { eventId: "goryeo-military-coup-1170", relation: "context" },
+    { eventId: "goryeo-manjeok-1198", relation: "context" },
+  ],
+  "basic:75:17": [{ eventId: "goryeo-yun-gwan-1107", relation: "answer" }],
+  "basic:79:12": [{ eventId: "goryeo-gwiju-1019", relation: "answer" }],
+  "basic:79:13": [{ eventId: "goryeo-military-coup-1170", relation: "answer" }],
 };
 
 export function knownTimelineExamLinks(examLevel: unknown, examRound: unknown,
