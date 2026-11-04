@@ -26,7 +26,7 @@ export const HISTORY_TIMELINE_BYEOLBYEOL_NOTES: Readonly<Record<string, Verified
     {
       level: "basic",
       heading: "옷과 생활 도구의 변화",
-      points: ["신석기 사람들은 가락바퀴를 이용해 실을 잣고, 뼈바늘로 옷을 만드는 데 필요한 바느질을 했어요.", "빗살무늬 토기는 음식을 저장하고 조리하는 생활과 연결되는 유물이에요."],
+      points: ["신석기 사람들은 가락바퀴를 이용해 실을 잣고, 뼈바늘로 옷을 만드는 데 필요한 바느질을 했어요."],
       reference: { book: "별별 한국사 능력검정시험 기본", printedPage: 13 },
     },
   ],
@@ -124,14 +124,6 @@ export const HISTORY_TIMELINE_BYEOLBYEOL_NOTES: Readonly<Record<string, Verified
       heading: "22담로에 왕족을 보내다",
       points: ["무령왕은 지방 통제를 강화하기 위해 22담로에 왕족을 파견했어요.", "왕족을 지방에 보내는 일은 중앙의 왕권이 지방에 미치도록 하려는 정책이었어요."],
       reference: { book: "별별 한국사 능력검정시험 기본", printedPage: 25 },
-    },
-  ],
-  "silla-founded": [
-    {
-      level: "basic",
-      heading: "신라의 왕 칭호가 달라진 까닭",
-      points: ["신라 초기에 왕을 부르는 말은 거서간·차차웅·이사금·마립간 등으로 바뀌었어요.", "왕 칭호의 변화는 여러 집단을 다스리는 나라로 성장해 간 과정과 관련 있어요."],
-      reference: { book: "별별 한국사 능력검정시험 기본", printedPage: 27 },
     },
   ],
   "silla-jinheung-king": [
