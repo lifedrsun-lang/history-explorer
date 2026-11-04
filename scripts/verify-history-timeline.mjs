@@ -134,6 +134,32 @@ assert.deepEqual(
   HISTORY_TIMELINE_PERIODS.find((period) => period.key === "later-three")?.columns,
   ["신라", "발해", "후백제", "후고구려 → 고려"],
 );
+// 단일 시대 블록: -100년대의 등장과 나라별 성장을 하나의 비교표로 묶는다.
+assert.equal(HISTORY_TIMELINE_PERIODS.some(period => period.key === "early-states-start"), false);
+assert.equal(HISTORY_TIMELINE_PERIODS.find(period => period.key === "early-states")?.title,
+  "여러 나라의 등장과 성장");
+assert.equal(getTimelinePeriodForYear(-108), "gojoseon-falls");
+assert.equal(getTimelinePeriodForYear(-100), "early-states");
+assert.equal(getTimelinePeriodForYear(-99), "early-states");
+assert.equal(getTimelinePeriodForYear(-57), "three");
+const gojoseonFallOverview = HISTORY_TIMELINE_EVENTS.find(event => event.id === "gojoseon-falls");
+const earlyStatesOverview = HISTORY_TIMELINE_EVENTS.find(event => event.id === "early-states-emerge");
+assert.ok(gojoseonFallOverview && earlyStatesOverview);
+assert.ok(gojoseonFallOverview.sourceIssueNumbers.includes(1));
+assert.ok(gojoseonFallOverview.sourceIssueNumbers.includes(2));
+assert.ok(earlyStatesOverview.sourceIssueNumbers.includes(1));
+assert.ok(earlyStatesOverview.sourceIssueNumbers.includes(2));
+assert.equal(earlyStatesOverview.sortYear, -100, "정렬 위치는 유지합니다.");
+assert.match(earlyStatesOverview.dateLabel, /나라별 연도 다름/,
+  "여러 나라가 기원전 100년에 모두 건국되었다는 인상을 주지 않아야 합니다.");
+for (const event of [gojoseonFallOverview, earlyStatesOverview]) {
+  assert.equal(toStudentTimelineEvent(event, [1]).studyNotes.length, 0,
+    "1호 수강생에게 2호 교재 상세 본문을 노출하면 안 됩니다.");
+  assert.ok(toStudentTimelineEvent(event, [2]).studyNotes.length > 0,
+    "2호 수강생은 기존 교재 핵심 상세 요점을 펼칠 수 있어야 합니다.");
+  assert.ok(event.life.length > 0,
+    "1호 수강생에게는 이미 공개된 사건 설명을 접어 볼 수 있습니다.");
+}
 assert.equal(getTimelinePeriodForYear(-58), "early-states");
 assert.equal(getTimelinePeriodForYear(-57), "three");
 assert.equal(getTimelinePeriodForYear(-18), "three");
