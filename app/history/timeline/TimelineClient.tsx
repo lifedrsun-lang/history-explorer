@@ -382,6 +382,7 @@ export default function TimelineClient() {
                                 <b>대표 유물·유적</b><span>{event.artifact}</span>
                               </div>
                             )}
+                            <TimelineExamReferences eventId={event.id} refs={payload?.examLinks?.[event.id] || []} />
                             <small className={styles.gridSource}>
                               {textbookSourceLabel(event)}
                             </small>
@@ -437,7 +438,7 @@ export default function TimelineClient() {
                             fallback={{ heading: overviewEvent.title, text: overviewEvent.life }}
                           />
                           <small className={styles.gridSource}>{textbookSourceLabel(overviewEvent)}</small>
-                          <TimelineExamReferences refs={payload?.examLinks?.[overviewEvent.id] || []} />
+                          <TimelineExamReferences eventId={overviewEvent.id} refs={payload?.examLinks?.[overviewEvent.id] || []} />
                         </div>
                       </article>
                     )}
@@ -506,7 +507,7 @@ export default function TimelineClient() {
                                       <small className={styles.gridSource}>
                                         {textbookSourceLabel(event)}
                                       </small>
-                                      <TimelineExamReferences refs={payload?.examLinks?.[event.id] || []} />
+                                      <TimelineExamReferences eventId={event.id} refs={payload?.examLinks?.[event.id] || []} />
                                     </article>
                                   ))}
                               </div>
