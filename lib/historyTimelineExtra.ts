@@ -1,6 +1,11 @@
 import type { HistoryTimelineEvent } from "./historyTimeline";
 
-/** 02·03호 교재의 두 연표와 본문을 대조한 누적 사건. */
+/** 02·03호 교재의 두 연표와 본문을 대조한 누적 사건.
+ * 졸본의 추정 현 위치 및 오녀산성 관련:
+ * 한국민족문화대백과사전 '졸본' https://encykorea.aks.ac.kr/Article/E0052865
+ * 국사편찬위원회 우리역사넷 '오녀산성' https://contents.history.go.kr/mobile/kc/view.do?code=kc_age_10&levelId=kc_r100495
+ * 오녀산성이 졸본의 정확한 왕성인지에 대해서는 해석이 엇갈리므로 단정하지 않는다.
+ */
 export const HISTORY_TIMELINE_EXTRA_EVENTS: HistoryTimelineEvent[] = [
   {
     "id": "buyeo-four-chiefs",
@@ -124,9 +129,9 @@ export const HISTORY_TIMELINE_EXTRA_EVENTS: HistoryTimelineEvent[] = [
     "stateOrEra": "고구려",
     "eraFilter": "고구려",
     "title": "주몽, 고구려를 세움",
-    "summary": "주몽이 졸본 지역에 고구려를 세웠어요.",
+    "summary": "주몽이 졸본(현재 중국 랴오닝성 환런 일대로 추정)에 고구려를 세웠다고 전해져요.",
     "life": "여러 부족이 함께 살며 나라의 기틀을 다졌어요.",
-    "artifact": "졸본 지역의 고구려 유적",
+    "artifact": "오녀산성(현재 중국 랴오닝성 환런 지역의 고구려 초기 유적)",
     "image": {
       "kind": "emoji",
       "value": "🏹",
