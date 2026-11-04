@@ -20,6 +20,8 @@ export async function GET(request: Request) {
         bookNumber: String(q.bookNumber || ""),
         topic: String(q.topic || ""),
         explanation: String(q.explanation || ""),
+        timelineLinkStatus: q.timelineLinkStatus === "awaiting_event" ? "awaiting_event" : "review",
+        timelineLinkMemo: String(q.timelineLinkMemo || "").slice(0, 400),
         timelineLinks: resolveTimelineExamLinks(q),
         curatedAutoMatched: !Array.isArray(q.timelineLinks) && resolveTimelineExamLinks(q).length > 0,
       };
@@ -52,12 +54,21 @@ export async function PATCH(request: Request) {
     if (links.length !== body.timelineLinks.length) {
       return jsonError("존재하는 연표 사건과 연결 유형을 확인해 주세요.", 400, "invalid_timeline_links");
     }
+    const status = String(body.timelineLinkStatus || "review");
+    const memo = typeof body.timelineLinkMemo === "string" ? body.timelineLinkMemo.trim() : "";
+    if (!["review", "awaiting_event"].includes(status) || memo.length > 400) {
+      return jsonError("대기 분류와 검토 메모를 확인해 주세요.", 400, "invalid_review_status");
+    }
+    // 정답·이미지·학생 배포 기록은 수정하지 않는다.
     await ref.update({
       timelineLinks: links,
+      timelineLinkStatus: links.length ? "linked" : status,
+      timelineLinkMemo: memo,
       updatedBy: teacher.uid,
       updatedAt: FieldValue.serverTimestamp(),
     });
-    return Response.json({ ok: true, questionId, timelineLinks: links });
+    return Response.json({ ok: true, questionId, timelineLinks: links,
+      timelineLinkStatus: links.length ? "linked" : status, timelineLinkMemo: memo });
   } catch (error) {
     if (error instanceof Error && error.message === "teacher_auth_required") {
       return jsonError("교사 로그인이 필요합니다.", 401, "teacher_auth_required");

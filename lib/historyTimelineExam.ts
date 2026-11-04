@@ -7,6 +7,7 @@ import { knownTimelineExamLinks } from "./historyTimelineKnownExamLinks";
 export type TimelineExamRelation = "answer" | "context";
 export type TimelineExamLink = { eventId: string; relation: TimelineExamRelation };
 export type TimelineExamReference = {
+  questionId: string;
   examRound: string;
   examLevel: "basic" | "advanced";
   examQuestionNumber: string;
@@ -70,7 +71,7 @@ export async function getTimelineExamReferences(visibleEventIds: Set<string>):
       const records = grouped.get(link.eventId) ?? new Map<string, TimelineExamReference>();
       const existing = records.get(key);
       if (!existing || link.relation === "answer") {
-        records.set(key, { examLevel, examRound, examQuestionNumber, relation: link.relation });
+        records.set(key, { questionId: doc.id, examLevel, examRound, examQuestionNumber, relation: link.relation });
       }
       grouped.set(link.eventId, records);
     }
