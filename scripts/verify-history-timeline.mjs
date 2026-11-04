@@ -217,6 +217,12 @@ for (const [id, hiddenLabel] of [
 }
 assert.equal(shouldShowTimelineMaterial("단궁 · 과하마 · 반어피"), true);
 assert.equal(shouldShowTimelineMaterial("솟대 · 철기 도구"), true);
+const jumongFoundation = HISTORY_TIMELINE_EVENTS.find(event => event.id === "goguryeo-jumong-founded");
+assert.ok(jumongFoundation);
+assert.match(jumongFoundation.summary, /졸본.*중국 랴오닝성 환런 일대로 추정/);
+assert.match(jumongFoundation.artifact, /오녀산성.*중국 랴오닝성 환런/);
+assert.equal(shouldShowTimelineMaterial(jumongFoundation.artifact), true);
+
 assert.ok(HISTORY_TIMELINE_EVENTS.find(event => event.id === "buyeo-four-chiefs")?.studyNotes?.length);
 assert.ok(HISTORY_TIMELINE_EVENTS.find(event => event.id === "goguryeo-seookje")?.studyNotes?.length);
 assert.ok(HISTORY_TIMELINE_EVENTS.find(event => event.id === "okjeo-marriage-custom")?.studyNotes?.length);
