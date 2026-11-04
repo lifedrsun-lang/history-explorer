@@ -31,6 +31,16 @@ const WARS: Record<string, { opponent: string; place: string; result: string }> 
     place: "평양성 등",
     result: "고구려 패배 · 668년 멸망",
   },
+  "goryeo-honggeonjeok-1359": {
+    opponent: "홍건적",
+    place: "고려 북쪽 국경과 서북 지역",
+    result: "고려군이 침입에 맞서 싸움 · 이후 다시 침입한 홍건적도 물리침",
+  },
+  "goryeo-hwangsan-1380": {
+    opponent: "왜구",
+    place: "황산(오늘날 전북 남원 지역)",
+    result: "고려 승리 · 이성계가 왜구를 크게 물리침",
+  },
   "goryeo-khitan-first-993": {
     opponent: "거란",
     place: "고려 북쪽 국경 · 외교 담판",

@@ -2,6 +2,7 @@ import { verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { getTimelineExamReferences } from "@/lib/historyTimelineExam";
 import { getTimelineTopicsForIssues } from "@/lib/historyTimelineGoryeoTopics";
+import { getTimelineLateTopicsForIssues } from "@/lib/historyTimelineLateTopics";
 import { getSunLabStudentSession, SUNLAB_STUDENT_SESSION_COOKIE } from "@/lib/sunLabStudentSession";
 import { isHistoryTimelineVisibleForStudent } from "@/lib/historyTimelineVisibility";
 import {
@@ -36,7 +37,7 @@ const teacherResponse = async (request: Request) => {
     const examLinks = await getTimelineExamReferences(new Set(HISTORY_TIMELINE_EVENTS.map(event => event.id)));
     return privateJson({
       examLinks,
-      studyTopics: getTimelineTopicsForIssues([10, 11, 12]),
+      studyTopics: [...getTimelineTopicsForIssues([10, 11, 12]), ...getTimelineLateTopicsForIssues([13, 14, 15])],
       viewer: { role: "teacher", name: "교사", completedIssues: [] },
       events: HISTORY_TIMELINE_EVENTS,
       maxIssue: HISTORY_TIMELINE_MAX_ISSUE,
@@ -77,7 +78,7 @@ export async function GET(request: Request) {
         return privateJson({
           viewer: { role: "student", name: String(member.name || "SUN LAB 회원"), completedIssueCount: completedIssues.length },
           examLinks, events,
-          studyTopics: getTimelineTopicsForIssues(completedIssues),
+          studyTopics: [...getTimelineTopicsForIssues(completedIssues), ...getTimelineLateTopicsForIssues(completedIssues)],
           maxIssue: HISTORY_TIMELINE_MAX_ISSUE,
         });
       }
@@ -127,7 +128,7 @@ export async function GET(request: Request) {
   const examLinks = await getTimelineExamReferences(new Set(events.map(event => event.id)));
   return privateJson({
     examLinks,
-    studyTopics: getTimelineTopicsForIssues(completedIssues),
+    studyTopics: [...getTimelineTopicsForIssues(completedIssues), ...getTimelineLateTopicsForIssues(completedIssues)],
     viewer: {
       role: "student",
       name: String(student.name || "학생"),

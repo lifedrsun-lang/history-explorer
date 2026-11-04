@@ -11,6 +11,7 @@ import {
   HISTORY_TIMELINE_PERIODS as PERIODS,
   HISTORY_TIMELINE_EPOCH_MARKERS,
   getTimelineNationColumn,
+  getTimelinePeriodForEvent,
   getHistoricNameBadge,
 } from "@/lib/historyTimelineLayout";
 import TimelineExamReferences, { type ExamReference } from "./TimelineExamReferences";
@@ -54,6 +55,7 @@ const FILTERS = [
   ["발해", "발해"],
   ["후삼국", "후삼국"],
   ["고려", "고려"],
+  ["조선", "조선"],
 ] as const;
 
 // 새 국가가 등장하면 열을 추가하고, 국호를 바꾸면 같은 위치의 명칭을 갱신한다.
@@ -366,7 +368,7 @@ export default function TimelineClient() {
           ) : (
             <div className={styles.periods}>
               {PERIODS.map((period) => {
-                const periodEvents = visibleEvents.filter((event) => period.includes(event.sortYear));
+                const periodEvents = visibleEvents.filter((event) => getTimelinePeriodForEvent(event) === period.key);
                 if (periodEvents.length === 0) return null;
 
                 // 고조선 멸망은 독립된 전환점으로 유지한다.
@@ -435,7 +437,16 @@ export default function TimelineClient() {
                       {period.key === "early-states" && <p className={styles.nationEndNote}>여러 나라는 같은 해에 함께 세워진 것이 아니에요. 연도가 확실하지 않은 풍습은 ‘여러 나라의 성장기 · 정확한 연도 미상’으로 표시합니다.</p>}
                     </div>
                     {period.key === "goryeo" && (
-                      <TimelineGoryeoTopics topics={payload?.studyTopics ?? []} />
+                      <TimelineGoryeoTopics
+                        era="고려"
+                        topics={(payload?.studyTopics ?? []).filter((topic) => topic.issue >= 10 && topic.issue <= 13)}
+                      />
+                    )}
+                    {period.key === "joseon" && (
+                      <TimelineGoryeoTopics
+                        era="조선"
+                        topics={(payload?.studyTopics ?? []).filter((topic) => topic.issue >= 14 && topic.issue <= 15)}
+                      />
                     )}
                     {overviewEvent && (
                       <article className={styles.earlyStatesOverview} aria-label="여러 나라의 등장">

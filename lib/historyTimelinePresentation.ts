@@ -41,6 +41,12 @@ export const DISPLAYABLE_HISTORY_MATERIALS: ReadonlySet<string> = new Set([
   "경주 불국사·다보탑·석가탑",
   "상경 용천부 궁성터(현재 중국 헤이룽장성 닝안 일대)",
   "완도 장도 청해진 유적",
+  // 13~15호에서 실제 이름을 확인할 수 있는 역사책·궁궐·성곽·문헌.
+  "『삼국유사』",
+  "서울 경복궁",
+  "서울 한양도성·숭례문",
+  "『농사직설』",
+  "『훈민정음』 해례본",
 ]);
 
 export function shouldShowTimelineMaterial(value?: string): boolean {
