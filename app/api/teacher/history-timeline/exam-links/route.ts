@@ -1,7 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { verifyTeacherRequest, handleRouteError, jsonError } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
-import { normalizeTimelineExamLinks } from "@/lib/historyTimelineExam";
+import { normalizeTimelineExamLinks, resolveTimelineExamLinks } from "@/lib/historyTimelineExam";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,7 +20,8 @@ export async function GET(request: Request) {
         bookNumber: String(q.bookNumber || ""),
         topic: String(q.topic || ""),
         explanation: String(q.explanation || ""),
-        timelineLinks: normalizeTimelineExamLinks(q.timelineLinks),
+        timelineLinks: resolveTimelineExamLinks(q),
+        curatedAutoMatched: !Array.isArray(q.timelineLinks) && resolveTimelineExamLinks(q).length > 0,
       };
     }).sort((a, b) => Number(b.examRound) - Number(a.examRound) ||
       Number(a.examQuestionNumber) - Number(b.examQuestionNumber));
