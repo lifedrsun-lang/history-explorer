@@ -378,7 +378,7 @@ export default function TimelineClient() {
                             </div>
                             {shouldShowTimelineMaterial(event.artifact) && (
                               <div className={styles.transitionDetail}>
-                                <b>대표 유물 · 관련 자료</b><span>{event.artifact}</span>
+                                <b>대표 유물·유적</b><span>{event.artifact}</span>
                               </div>
                             )}
                             <TimelineStudyDetails notes={event.studyNotes ?? []} />
@@ -474,7 +474,7 @@ export default function TimelineClient() {
                                         <b>{event.eraFilter === "선사" || event.eraFilter === "여러나라" ? "생활 모습" : "핵심 설명"}</b><p>{event.life}</p>
                                         {shouldShowTimelineMaterial(event.artifact) && (
                                           <>
-                                            <b>{event.eraFilter === "선사" || event.eraFilter === "여러나라" ? "대표 유물 · 관련 자료" : "관련 기록·자료"}</b>
+                                            <b>{event.eraFilter === "여러나라" ? "유물·특산물" : event.eraFilter === "선사" ? "대표 유물" : "관련 유물·유적"}</b>
                                             <p>{event.artifact}</p>
                                           </>
                                         )}
