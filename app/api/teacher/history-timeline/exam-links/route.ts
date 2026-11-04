@@ -2,6 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { verifyTeacherRequest, handleRouteError, jsonError } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { normalizeTimelineExamLinks, resolveTimelineExamLinks } from "@/lib/historyTimelineExam";
+import { knownTimelineExamPending } from "@/lib/historyTimelineKnownExamLinks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,7 +21,13 @@ export async function GET(request: Request) {
         bookNumber: String(q.bookNumber || ""),
         topic: String(q.topic || ""),
         explanation: String(q.explanation || ""),
-        timelineLinkStatus: q.timelineLinkStatus === "awaiting_event" ? "awaiting_event" : "review",
+        timelineLinkStatus: q.timelineLinkStatus === "awaiting_event" ? "awaiting_event"
+          : q.timelineLinkStatus === "review" ? "review"
+          : knownTimelineExamPending(q.examLevel, q.examRound, q.examQuestionNumber)
+            ? "awaiting_event" : "review",
+        curatedAwaitingEvent: !q.timelineLinkStatus &&
+          !resolveTimelineExamLinks(q).length &&
+          knownTimelineExamPending(q.examLevel, q.examRound, q.examQuestionNumber),
         timelineLinkMemo: String(q.timelineLinkMemo || "").slice(0, 400),
         timelineLinks: resolveTimelineExamLinks(q),
         curatedAutoMatched: !Array.isArray(q.timelineLinks) && resolveTimelineExamLinks(q).length > 0,
