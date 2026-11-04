@@ -226,8 +226,51 @@ assert.equal(shouldShowTimelineMaterial(jumongFoundation.artifact), true);
 assert.ok(HISTORY_TIMELINE_EVENTS.find(event => event.id === "buyeo-four-chiefs")?.studyNotes?.length);
 assert.ok(HISTORY_TIMELINE_EVENTS.find(event => event.id === "goguryeo-seookje")?.studyNotes?.length);
 assert.ok(HISTORY_TIMELINE_EVENTS.find(event => event.id === "okjeo-marriage-custom")?.studyNotes?.length);
-assert.equal(shouldShowTimelineMaterial("광개토 대왕릉비에 남은 기록"), true);
+assert.equal(shouldShowTimelineMaterial("광개토 대왕릉비"), true);
 assert.equal(shouldShowTimelineMaterial("칠지도"), true);
 assert.equal(shouldShowTimelineMaterial(""), false);
+
+
+// 관련 자료 표시 정책: 실제 확인 가능한 유물·유적·특산물에만 열을 표시한다.
+// 이미지가 없는 가상의 지도와 '○○ 관련 기록'은 실제로 제공하는 자료로 오해할 수 있다.
+const displayedMaterials = HISTORY_TIMELINE_EVENTS.filter(event =>
+  shouldShowTimelineMaterial(event.artifact));
+assert.equal(displayedMaterials.length, 33, "검토된 구체 자료 33건만 표시해야 합니다.");
+assert.equal(HISTORY_TIMELINE_EVENTS.length - displayedMaterials.length, 59,
+  "근거 없는 자료명 59건은 유물·유적 영역을 만들지 않아야 합니다.");
+assert.ok(displayedMaterials.every(event => !/지도|관련 기록|관련 자료|재위 연표/.test(event.artifact)),
+  "지도 이미지가 없는 지도명이나 불분명한 기록은 표시하지 않아야 합니다.");
+for (const value of [
+  "진대법에 관한 역사 기록",
+  "수로왕 관련 기록",
+  "마한·백제의 영역 변화 지도",
+  "근초고왕 때 백제의 영역 지도",
+  "불상 · 절터 관련 자료",
+  "근초고왕의 재위 연표",
+  "마라난타 관련 기록·백제 불교 유적",
+  "관미성 관련 역사 기록",
+  "고구려·백제의 영토 변화 지도",
+  "지증왕 관련 역사 기록",
+  "신라·대가야 관계 기록",
+  "관산성 전투 관련 기록",
+  "수나라와 고구려의 전쟁 경로 지도",
+  "살수 대첩 관련 기록",
+  "9주 5소경 지도",
+]) {
+  assert.equal(shouldShowTimelineMaterial(value), false,
+    `실물 없는 '관련 자료' 항목은 숨겨야 합니다: ${value}`);
+}
+const ichadon = HISTORY_TIMELINE_EVENTS.find(event => event.id === "silla-buddhism");
+assert.equal(ichadon?.artifact,
+  "이차돈 순교비(818년 건립·국립경주박물관 소장)");
+assert.equal(shouldShowTimelineMaterial(ichadon.artifact), true);
+assert.ok(!ichadon.artifact.includes("신라 불상"),
+  "이차돈 순교 사건에 후대의 불상을 직접 관련 사료처럼 붙이지 않아야 합니다.");
+assert.equal(shouldShowTimelineMaterial(
+  HISTORY_TIMELINE_EVENTS.find(event => event.id === "silla-jinheung-king")?.artifact), true);
+assert.equal(shouldShowTimelineMaterial(
+  HISTORY_TIMELINE_EVENTS.find(event => event.id === "balhae-sanggyeong")?.artifact), true);
+assert.equal(shouldShowTimelineMaterial(
+  HISTORY_TIMELINE_EVENTS.find(event => event.id === "baekje-revival-movement")?.artifact), true);
 
 console.log("history timeline verification passed");
