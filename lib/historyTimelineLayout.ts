@@ -1,11 +1,12 @@
 import type { HistoryTimelineEvent } from "./historyTimeline";
 
 export type TimelinePeriodKey =
-  | "prehistoric" | "gojoseon" | "gojoseon-falls" | "early-states-start"
+  | "prehistoric" | "gojoseon" | "gojoseon-falls"
   | "early-states" | "three" | "northsouth" | "later-three" | "goryeo";
 
 /**
  * 각 시대는 큰 단위로 한 번만 구분한다.
+ * - 여러 나라의 등장·성장은 기원전 100년경의 개괄 카드와 나라별 풍습을 한 표에 묶는다.
  * - 기원전 57년은 삼국 시대 표의 시작(신라 건국 전승).
  * - 676년은 신라 열 안의 전환점이며, 남북국 시대는 발해 건국(698년)에 시작한다.
  * - 918년 고려 건국은 후삼국 표에서, 936년 통일은 후삼국 표의 마지막에 표시한다.
@@ -26,13 +27,9 @@ export const HISTORY_TIMELINE_PERIODS = [
     columns: [], milestone: true, includes: (year: number) => year === -108,
   },
   {
-    key: "early-states-start", title: "여러 나라의 등장",
-    columns: [], milestone: true, includes: (year: number) => year === -100,
-  },
-  {
-    key: "early-states", title: "여러 나라의 성장",
+    key: "early-states", title: "여러 나라의 등장과 성장",
     columns: ["부여", "고구려", "옥저", "동예", "삼한"], milestone: false,
-    includes: (year: number) => year >= -99 && year < -57,
+    includes: (year: number) => year >= -100 && year < -57,
   },
   {
     key: "three", title: "삼국 시대",
