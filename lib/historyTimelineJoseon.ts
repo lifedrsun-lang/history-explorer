@@ -62,7 +62,7 @@ export const HISTORY_TIMELINE_JOSEON_EVENTS: HistoryTimelineEvent[] = [
     "title": "조선이 한양으로 수도를 옮김",
     "summary": "조선이 새 수도를 한양(오늘날 서울)으로 정했어요.",
     "life": "한양의 지리적 위치를 이용해 새 궁궐과 도성, 도로 등을 마련했어요.",
-    "artifact": "자료명 미등록",
+    "artifact": "서울 경복궁",
     "image": {
       "kind": "emoji",
       "value": "🏯",
@@ -84,7 +84,7 @@ export const HISTORY_TIMELINE_JOSEON_EVENTS: HistoryTimelineEvent[] = [
     "title": "한양의 도성을 완성함",
     "summary": "조선이 한양을 둘러싼 도성의 성곽을 건설했어요.",
     "life": "도성의 문과 성곽은 수도를 보호하고 공간을 구분하는 역할을 했어요.",
-    "artifact": "자료명 미등록",
+    "artifact": "서울 한양도성·숭례문",
     "image": {
       "kind": "emoji",
       "value": "🏯",
@@ -218,7 +218,7 @@ export const HISTORY_TIMELINE_JOSEON_EVENTS: HistoryTimelineEvent[] = [
     "title": "정초와 변효문이 『농사직설』을 편찬함",
     "summary": "정초·변효문 등이 우리나라의 농사 경험을 모아 『농사직설』을 편찬했어요.",
     "life": "지역에 맞는 농사법을 정리해 농민에게 도움이 되도록 하려 했어요.",
-    "artifact": "자료명 미등록",
+    "artifact": "『농사직설』",
     "image": {
       "kind": "emoji",
       "value": "🌾",
@@ -241,7 +241,7 @@ export const HISTORY_TIMELINE_JOSEON_EVENTS: HistoryTimelineEvent[] = [
     "title": "세종이 훈민정음을 창제함",
     "summary": "세종이 백성이 쉽게 배우고 쓸 수 있는 새로운 문자 훈민정음을 만들었어요.",
     "life": "우리말의 소리를 적을 수 있도록 자음과 모음을 체계적으로 만들었어요.",
-    "artifact": "자료명 미등록",
+    "artifact": "『훈민정음』 해례본",
     "image": {
       "kind": "emoji",
       "value": "✍️",
