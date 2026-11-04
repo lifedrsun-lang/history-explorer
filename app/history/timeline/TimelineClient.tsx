@@ -142,15 +142,19 @@ export default function TimelineClient() {
 
       setPayload(data);
       // 별도의 권한 검사가 적용된 자료만 불러온다. 기존 연표 API에는 합치지 않는다.
-      const extraResponse = await fetch("/api/history/timeline/byeolbyeol", {
-        cache: "no-store",
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-      if (extraResponse.ok) {
-        const extra = (await extraResponse.json().catch(() => ({}))) as {
-          notes?: Record<string, ByeolbyeolNote[]>;
-        };
-        setByeolbyeolNotes(extra.notes ?? {});
+      try {
+        const extraResponse = await fetch("/api/history/timeline/byeolbyeol", {
+          cache: "no-store",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (extraResponse.ok) {
+          const extra = (await extraResponse.json().catch(() => ({}))) as {
+            notes?: Record<string, ByeolbyeolNote[]>;
+          };
+          setByeolbyeolNotes(extra.notes ?? {});
+        }
+      } catch {
+        // 보충 자료 조회 오류가 기본 연표 이용을 막지 않도록 한다.
       }
       setNeedsLogin(false);
       setUnpublished(false);
@@ -380,6 +384,7 @@ export default function TimelineClient() {
               <label><input type="checkbox" checked={showByeolbyeolAdvanced}
                 onChange={e => setShowByeolbyeolAdvanced(e.target.checked)} />별별한국사 (심화)</label>
               <span>체크한 자료만 아래 연표에서 펼쳐 볼 수 있습니다.</span>
+              <Link href="/teacher/history-timeline/byeolbyeol-access">민서·민채 열람 권한 확인 →</Link>
             </div>
           )}
           {error && <div className={styles.error}>{error}</div>}
