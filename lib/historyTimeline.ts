@@ -3,6 +3,7 @@ import { getHistoryTimelineStudyNotes, type TimelineStudyNote } from "./historyT
 import { HISTORY_TIMELINE_TRANSITION_EVENTS } from "./historyTimelineTransitions";
 import { HISTORY_TIMELINE_BAEKJE_EVENTS } from "./historyTimelineBaekje";
 import { HISTORY_TIMELINE_SILLA_BALHAE_EVENTS } from "./historyTimelineSillaBalhae";
+import { HISTORY_TIMELINE_GORYEO_EVENTS } from "./historyTimelineGoryeo";
 import {
   HISTORY_TIMELINE_FOURTH_EVENTS,
   HISTORY_TIMELINE_FOURTH_SHARED_IDS,
@@ -22,7 +23,7 @@ export type HistoryTimelineEvent = {
   sortYear: number;
   dateLabel: string;
   stateOrEra: string;
-  eraFilter: "선사" | "고조선" | "여러나라" | "고구려" | "백제" | "신라" | "가야" | "발해" | "후삼국";
+  eraFilter: "선사" | "고조선" | "여러나라" | "고구려" | "백제" | "신라" | "가야" | "발해" | "후삼국" | "고려";
   title: string;
   summary: string;
   life: string;
@@ -186,10 +187,20 @@ export const HISTORY_TIMELINE_EVENTS = [
   ...HISTORY_TIMELINE_BAEKJE_EVENTS,
   ...HISTORY_TIMELINE_SILLA_BALHAE_EVENTS,
   ...HISTORY_TIMELINE_TRANSITION_EVENTS,
+  ...HISTORY_TIMELINE_GORYEO_EVENTS,
 ]
   .map((event) => {
     // 같은 역사적 사건을 재수록한 교재는 한 사건 카드에 호수만 연결한다.
     const extraIssues: Record<string, number[]> = {
+      // 왕건의 고려 건국과 후삼국 통일은 10·11호에서도 다루지만
+      // 기존 8·9호 사건 ID를 그대로 사용한다.
+      "goryeo-founded-918": [10, 11],
+      "later-baekje-falls-936": [10, 11],
+      // 11호의 6~7쪽에는 10호에서 배운 고려 초기 연표가 다시 수록된다.
+      "goryeo-hyejong-943": [11],
+      "goryeo-gwangjong-949": [11],
+      "goryeo-nobi-956": [11],
+      "goryeo-seongjong-981": [11],
       "balhae-founded": [8, 9],
       "silla-kim-chunchu-seeks-goguryeo-help": [7],
       "goguryeo-falls": [7],

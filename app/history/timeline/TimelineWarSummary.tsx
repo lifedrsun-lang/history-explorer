@@ -31,6 +31,31 @@ const WARS: Record<string, { opponent: string; place: string; result: string }> 
     place: "평양성 등",
     result: "고구려 패배 · 668년 멸망",
   },
+  "goryeo-khitan-first-993": {
+    opponent: "거란",
+    place: "고려 북쪽 국경 · 외교 담판",
+    result: "서희의 담판으로 협상을 이끌어 냄 · 고려가 강동 6주를 확보",
+  },
+  "goryeo-khitan-second-1010": {
+    opponent: "거란",
+    place: "고려 북부와 개경 등",
+    result: "개경이 위협받고 현종이 피란함 · 전쟁 뒤 고려가 국방을 재정비",
+  },
+  "goryeo-khitan-third-1018": {
+    opponent: "거란",
+    place: "고려 북부 · 흥화진 등",
+    result: "고려군이 침입한 거란군에 맞서 싸움 · 이듬해 귀주에서 결정적 승리",
+  },
+  "goryeo-gwiju-1019": {
+    opponent: "거란",
+    place: "귀주(현재 북한 평안북도 일대)",
+    result: "고려 승리 · 강감찬이 지휘한 고려군이 거란군을 크게 물리침",
+  },
+  "goryeo-yun-gwan-1107": {
+    opponent: "여진",
+    place: "고려 북동쪽 변경",
+    result: "고려가 여진 세력을 밀어내고 동북 9성을 설치 · 뒤에 성을 반환",
+  },
   "balhae-deungju-attack": {
     opponent: "당나라",
     place: "등주(중국 산둥반도)",

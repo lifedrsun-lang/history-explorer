@@ -16,6 +16,8 @@ import {
 import TimelineExamReferences, { type ExamReference } from "./TimelineExamReferences";
 import TimelineWarSummary from "./TimelineWarSummary";
 import TimelineStudyDetails from "./TimelineStudyDetails";
+import TimelineGoryeoTopics from "./TimelineGoryeoTopics";
+import type { HistoryTimelineStudyTopic } from "@/lib/historyTimelineGoryeoTopics";
 
 import styles from "./timeline.module.css";
 
@@ -36,6 +38,7 @@ type TimelinePayload = {
   viewer: Viewer;
   events: StudentEvent[];
   examLinks?: Record<string, ExamReference[]>;
+  studyTopics?: HistoryTimelineStudyTopic[];
   maxIssue: number;
 };
 
@@ -50,6 +53,7 @@ const FILTERS = [
   ["가야", "가야"],
   ["발해", "발해"],
   ["후삼국", "후삼국"],
+  ["고려", "고려"],
 ] as const;
 
 // 새 국가가 등장하면 열을 추가하고, 국호를 바꾸면 같은 위치의 명칭을 갱신한다.
@@ -168,8 +172,11 @@ export default function TimelineClient() {
 
   const visibleEvents = useMemo(() => {
     if (!payload) return [];
-    return payload.events.filter(
-      (event) => filter === "전체" || event.eraFilter === filter
+    return payload.events.filter((event) =>
+      filter === "전체" ||
+      event.eraFilter === filter ||
+      (filter === "고려" &&
+        (event.id === "goryeo-founded-918" || event.id === "later-baekje-falls-936"))
     );
   }, [filter, payload]);
 
@@ -427,6 +434,9 @@ export default function TimelineClient() {
                       {comparisonEvents.length > 0 && <span>↔ 좌우로 밀어 다른 나라 보기</span>}
                       {period.key === "early-states" && <p className={styles.nationEndNote}>여러 나라는 같은 해에 함께 세워진 것이 아니에요. 연도가 확실하지 않은 풍습은 ‘여러 나라의 성장기 · 정확한 연도 미상’으로 표시합니다.</p>}
                     </div>
+                    {period.key === "goryeo" && (
+                      <TimelineGoryeoTopics topics={payload?.studyTopics ?? []} />
+                    )}
                     {overviewEvent && (
                       <article className={styles.earlyStatesOverview} aria-label="여러 나라의 등장">
                         <div className={styles.earlyStatesOverviewDate}>{overviewEvent.dateLabel}</div>
