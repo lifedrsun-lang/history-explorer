@@ -2,7 +2,7 @@ import type { HistoryTimelineEvent } from "./historyTimeline";
 
 export type TimelinePeriodKey =
   | "prehistoric" | "gojoseon" | "gojoseon-falls"
-  | "early-states" | "three" | "northsouth" | "later-three" | "goryeo";
+  | "early-states" | "three" | "northsouth" | "later-three" | "goryeo" | "joseon";
 
 /**
  * 각 시대는 큰 단위로 한 번만 구분한다.
@@ -10,7 +10,9 @@ export type TimelinePeriodKey =
  * - 기원전 57년은 삼국 시대 표의 시작(신라 건국 전승).
  * - 676년은 신라 열 안의 전환점이며, 남북국 시대는 발해 건국(698년)에 시작한다.
  * - 918년 고려 건국은 후삼국 표에서, 936년 통일은 후삼국 표의 마지막에 표시한다.
- * - 937년 이후 사건은 고려 시대 표에 연결한다.
+ * - 937~1392년 고려 사건은 고려 시대 표에 연결한다.
+ * - 1392년 고려 멸망(고려 열)과 조선 건국(조선 열)은 같은 해 다른 시대 사건으로 구분한다.
+ * - 1392년부터 조선 시대 표를 이어 보여 준다.
  */
 export const HISTORY_TIMELINE_PERIODS = [
   {
@@ -48,12 +50,22 @@ export const HISTORY_TIMELINE_PERIODS = [
   },
   {
     key: "goryeo", title: "고려 시대",
-    columns: ["고려"], milestone: false, includes: (year: number) => year > 936,
+    columns: ["고려"], milestone: false, includes: (year: number) => year > 936 && year < 1392,
+  },
+  {
+    key: "joseon", title: "조선 시대",
+    columns: ["조선"], milestone: false, includes: (year: number) => year >= 1392,
   },
 ] as const;
 
 export const getTimelinePeriodForYear = (year: number): TimelinePeriodKey | null =>
   HISTORY_TIMELINE_PERIODS.find((period) => period.includes(year))?.key ?? null;
+
+/** 같은 1392년에 고려 멸망과 조선 건국이 일어나므로 국가 맥락을 함께 반영한다. */
+export const getTimelinePeriodForEvent = (event: Pick<HistoryTimelineEvent, "sortYear" | "stateOrEra">): TimelinePeriodKey | null =>
+  event.sortYear === 1392 && event.stateOrEra === "고려"
+    ? "goryeo"
+    : getTimelinePeriodForYear(event.sortYear);
 
 type PositionEvent = Pick<HistoryTimelineEvent, "sortYear" | "stateOrEra" | "eraFilter">;
 
