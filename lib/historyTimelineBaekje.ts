@@ -17,7 +17,7 @@ export const HISTORY_TIMELINE_BAEKJE_EVENTS: HistoryTimelineEvent[] = [
     "title": "온조, 백제를 세움",
     "summary": "온조가 한강 남쪽에 백제를 세웠다고 전해져요.",
     "life": "한강 유역을 중심으로 나라의 기틀을 마련했어요.",
-    "artifact": "위례성·풍납토성·몽촌토성 유적",
+    "artifact": "서울 풍납토성·몽촌토성",
     "image": {
       "kind": "emoji",
       "value": "🏯",
@@ -217,7 +217,7 @@ export const HISTORY_TIMELINE_BAEKJE_EVENTS: HistoryTimelineEvent[] = [
     "title": "백제, 웅진으로 수도를 옮김",
     "summary": "고구려에 한성이 함락된 뒤 백제는 수도를 웅진으로 옮겼어요.",
     "life": "지금의 공주를 중심으로 나라를 다시 안정시키려고 노력했어요.",
-    "artifact": "공주 공산성·송산리 고분군",
+    "artifact": "공주 공산성·무령왕릉과 왕릉원",
     "image": {
       "kind": "emoji",
       "value": "🏰",
@@ -414,7 +414,7 @@ export const HISTORY_TIMELINE_BAEKJE_EVENTS: HistoryTimelineEvent[] = [
     "title": "백제 멸망",
     "summary": "백제는 신라와 당나라 연합군의 공격으로 멸망했어요.",
     "life": "백제의 마지막 수도였던 사비가 함락되었어요.",
-    "artifact": "부여 사비성 관련 유적",
+    "artifact": "부여 부소산성",
     "image": {
       "kind": "emoji",
       "value": "🏛️",
@@ -439,7 +439,7 @@ export const HISTORY_TIMELINE_BAEKJE_EVENTS: HistoryTimelineEvent[] = [
     "title": "백제 부흥 운동이 일어남",
     "summary": "백제가 멸망한 뒤 복신과 도침 등은 나라를 다시 세우려 했어요.",
     "life": "주류성·임존성 등을 중심으로 백제 유민이 부흥 운동을 이어 갔어요.",
-    "artifact": "주류성·임존성 유적",
+    "artifact": "예산 임존성",
     "image": {
       "kind": "emoji",
       "value": "🚩",
