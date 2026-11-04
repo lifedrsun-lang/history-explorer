@@ -60,3 +60,48 @@ export function knownTimelineExamLinks(examLevel: unknown, examRound: unknown,
       !Number.isInteger(number) || number < 1 || number > 50) return [];
   return VERIFIED[`${level}:${round}:${number}`] || [];
 }
+
+
+// 기존 정답 검증표에서 주제는 확인됐지만, 현재 연표에 해당 세부 사건 카드가 없는 문항.
+// 이 목록은 '정답·지문 대조 필요'와 구별하여 교사용 대기 목록에만 사용한다.
+// 완전히 동일한 사건 카드를 확인하기 전까지 연표 출제 횟수에는 포함하지 않는다.
+const AWAITING_EVENT = new Set([
+  "basic:63:2",   // 고조선 범금 8조
+  "basic:63:4",   // 신라 화백회의
+  "basic:63:6",   // 발해 해동성국
+  "basic:63:7",   // 신라 집사부
+  "basic:63:8",   // 통일 신라 동시전
+  "basic:63:9",   // 최치원
+  "basic:63:10",  // 태조 왕건 기인제도
+  "basic:63:12",  // 고려 지방 통치 양계·병마사
+  "basic:63:13",  // 고구려 경당
+  "basic:64:5",   // 신라 골품제
+  "basic:64:6",   // 분황사 모전석탑
+  "basic:64:8",   // 공산 전투
+  "basic:64:9",   // 발해 영광탑
+  "basic:64:12",  // 숙종 해동통보
+  "basic:64:13",  // 팔만대장경판
+  "basic:64:15",  // 왕건 흑창
+  "basic:75:3",   // 고조선 범금 8조
+  "basic:75:4",   // 가야 금동관
+  "basic:75:6",   // 통일 신라 국학
+  "basic:75:9",   // 발해 해동성국
+  "basic:75:10",  // 고려 성종 12목
+  "basic:75:12",  // 왕건 사심관 제도
+  "basic:79:4",   // 진흥왕 화랑도 정비 (즉위 사건과 구분)
+  "basic:79:5",   // 발해 정효공주 무덤 벽화
+  "basic:79:6",   // 신라 골품제
+  "basic:79:7",   // 관촉사 석조미륵보살입상
+  "basic:79:9",   // 발해 연꽃무늬 수막새
+  "basic:79:10",  // 왕건 훈요10조
+  "basic:79:11",  // 고려 양계·북계·동계
+]);
+
+export function knownTimelineExamPending(examLevel: unknown, examRound: unknown,
+  examQuestionNumber: unknown): boolean {
+  const level = String(examLevel ?? "").trim();
+  const round = Number(String(examRound ?? "").replace(/\D/g, ""));
+  const number = Number(String(examQuestionNumber ?? "").replace(/\D/g, ""));
+  return Number.isInteger(round) && Number.isInteger(number) &&
+    AWAITING_EVENT.has(`${level}:${round}:${number}`);
+}
