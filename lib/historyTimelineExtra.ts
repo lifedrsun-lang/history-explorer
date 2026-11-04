@@ -154,7 +154,7 @@ export const HISTORY_TIMELINE_EXTRA_EVENTS: HistoryTimelineEvent[] = [
     "title": "국내성으로 수도를 옮김",
     "summary": "고구려가 수도를 국내성으로 옮겼어요.",
     "life": "산성과 도성을 이용해 나라를 지키고 다스렸어요.",
-    "artifact": "국내성 · 환도산성 유적",
+    "artifact": "국내성·환도산성(현재 중국 지린성 지안 지역)",
     "image": {
       "kind": "emoji",
       "value": "🏯",
