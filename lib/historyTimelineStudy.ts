@@ -2,6 +2,8 @@ import { HISTORY_STUDY_EARLY } from "./historyTimelineStudyEarly";
 import { HISTORY_STUDY_THREE_KINGDOMS } from "./historyTimelineStudyThreeKingdoms";
 import { HISTORY_STUDY_NORTH_SOUTH } from "./historyTimelineStudyNorthSouth";
 import { HISTORY_STUDY_GORYEO } from "./historyTimelineGoryeo";
+import { HISTORY_STUDY_GORYEO_LATE } from "./historyTimelineGoryeoLate";
+import { HISTORY_STUDY_JOSEON } from "./historyTimelineJoseon";
 import type {
   TimelineStudyNote,
   TimelineStudyNotesIndex,
@@ -20,6 +22,8 @@ export const HISTORY_TIMELINE_STUDY_INDEX: TimelineStudyNotesIndex = [
   HISTORY_STUDY_THREE_KINGDOMS,
   HISTORY_STUDY_NORTH_SOUTH,
   HISTORY_STUDY_GORYEO,
+  HISTORY_STUDY_GORYEO_LATE,
+  HISTORY_STUDY_JOSEON,
 ].reduce((index, section) => {
   for (const [eventId, notes] of Object.entries(section)) {
     index[eventId] = [...(index[eventId] ?? []), ...notes];
