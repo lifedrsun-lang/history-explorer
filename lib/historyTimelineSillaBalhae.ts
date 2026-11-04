@@ -16,7 +16,7 @@ export const HISTORY_TIMELINE_SILLA_BALHAE_EVENTS: HistoryTimelineEvent[] = [
     "title": "박혁거세, 신라를 세움",
     "summary": "박혁거세가 신라의 첫 왕으로 세워졌다고 전해져요.",
     "life": "처음에는 사로국으로 시작해 주변 세력과 함께 성장했어요.",
-    "artifact": "경주 오릉과 건국 전승",
+    "artifact": "경주 오릉(박혁거세 관련 전승)",
     "image": {
       "kind": "emoji",
       "value": "👑",
@@ -104,7 +104,7 @@ export const HISTORY_TIMELINE_SILLA_BALHAE_EVENTS: HistoryTimelineEvent[] = [
     "title": "내물왕, 왕위에 오름",
     "summary": "내물왕 때 김씨가 왕위를 이어 가는 체제가 굳어졌어요.",
     "life": "고구려의 도움을 받아 외적의 침입을 막기도 했어요.",
-    "artifact": "신라 왕실과 경주 고분군",
+    "artifact": "경주 대릉원 고분군",
     "image": {
       "kind": "emoji",
       "value": "👑",
@@ -126,7 +126,7 @@ export const HISTORY_TIMELINE_SILLA_BALHAE_EVENTS: HistoryTimelineEvent[] = [
     "title": "신라, 고구려의 도움을 받음",
     "summary": "고구려 광개토 대왕이 신라를 돕기 위해 군대를 보냈어요.",
     "life": "신라는 가야와 왜의 공격에 맞섰고 고구려의 영향을 받았어요.",
-    "artifact": "광개토 대왕릉비에 남은 기록",
+    "artifact": "광개토 대왕릉비",
     "image": {
       "kind": "emoji",
       "value": "🛡️",
@@ -214,7 +214,7 @@ export const HISTORY_TIMELINE_SILLA_BALHAE_EVENTS: HistoryTimelineEvent[] = [
     "title": "법흥왕, 불교를 공식적으로 받아들임",
     "summary": "이차돈의 순교를 계기로 불교가 공인되었다고 전해져요.",
     "life": "불교는 신라 왕권과 문화의 발전에 영향을 주었어요.",
-    "artifact": "이차돈 순교 관련 기록·신라 불상",
+    "artifact": "이차돈 순교비(818년 건립·국립경주박물관 소장)",
     "image": {
       "kind": "emoji",
       "value": "🪷",
@@ -236,7 +236,7 @@ export const HISTORY_TIMELINE_SILLA_BALHAE_EVENTS: HistoryTimelineEvent[] = [
     "title": "진흥왕, 왕위에 오름",
     "summary": "진흥왕이 왕위에 올라 신라의 영토를 넓혔어요.",
     "life": "한강 유역 등으로 세력을 확장했어요.",
-    "artifact": "진흥왕 순수비",
+    "artifact": "북한산 신라 진흥왕 순수비(국립중앙박물관 소장)",
     "image": {
       "kind": "emoji",
       "value": "👑",
@@ -280,7 +280,7 @@ export const HISTORY_TIMELINE_SILLA_BALHAE_EVENTS: HistoryTimelineEvent[] = [
     "title": "선덕여왕, 왕위에 오름",
     "summary": "선덕여왕이 신라의 왕위에 올랐어요.",
     "life": "선덕여왕 때 신라의 불교문화와 국가 사업이 발전했어요.",
-    "artifact": "첨성대·황룡사 관련 기록",
+    "artifact": "경주 첨성대·황룡사 터",
     "image": {
       "kind": "emoji",
       "value": "👑",
@@ -324,7 +324,7 @@ export const HISTORY_TIMELINE_SILLA_BALHAE_EVENTS: HistoryTimelineEvent[] = [
     "title": "황룡사 구층 목탑을 세움",
     "summary": "선덕여왕 때 황룡사에 커다란 목탑을 완성했어요.",
     "life": "나라의 안녕과 삼국 통일을 바라는 뜻을 담았어요.",
-    "artifact": "황룡사 구층 목탑 터",
+    "artifact": "경주 황룡사 구층 목탑 터",
     "image": {
       "kind": "emoji",
       "value": "🏯",
@@ -483,7 +483,7 @@ export const HISTORY_TIMELINE_SILLA_BALHAE_EVENTS: HistoryTimelineEvent[] = [
     "title": "의상이 세상을 떠남",
     "summary": "화엄 사상을 전한 의상이 세상을 떠났어요.",
     "life": "의상은 부석사 등 불교문화 발전에 영향을 주었어요.",
-    "artifact": "의상·부석사 관련 유적",
+    "artifact": "영주 부석사",
     "image": {
       "kind": "emoji",
       "value": "🪷",
@@ -552,7 +552,7 @@ export const HISTORY_TIMELINE_SILLA_BALHAE_EVENTS: HistoryTimelineEvent[] = [
     "title": "발해, 상경으로 수도를 옮김",
     "summary": "발해 문왕 때 상경으로 수도를 옮겼어요.",
     "life": "발해는 여러 민족이 함께 살며 중국·일본 등과 교류했어요.",
-    "artifact": "상경 용천부 유적",
+    "artifact": "상경 용천부 궁성터(현재 중국 헤이룽장성 닝안 일대)",
     "image": {
       "kind": "emoji",
       "value": "🏯",
@@ -598,7 +598,7 @@ export const HISTORY_TIMELINE_SILLA_BALHAE_EVENTS: HistoryTimelineEvent[] = [
     "title": "장보고, 청해진을 설치함",
     "summary": "장보고가 완도에 청해진을 설치하고 바닷길을 지켰어요.",
     "life": "신라와 중국·일본을 오가는 해상 무역이 활발해졌어요.",
-    "artifact": "완도 청해진 유적",
+    "artifact": "완도 장도 청해진 유적",
     "image": {
       "kind": "emoji",
       "value": "⛵",
