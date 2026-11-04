@@ -16,6 +16,9 @@ import {
 import TimelineExamReferences, { type ExamReference } from "./TimelineExamReferences";
 import TimelineWarSummary from "./TimelineWarSummary";
 import TimelineStudyDetails from "./TimelineStudyDetails";
+import TimelineByeolbyeolDetails from "./TimelineByeolbyeolDetails";
+import type { ByeolbyeolLevel, ByeolbyeolNote } from "@/lib/historyTimelineByeolbyeolTypes";
+import supplementStyles from "./timelineByeolbyeol.module.css";
 
 import styles from "./timeline.module.css";
 
@@ -84,6 +87,9 @@ export default function TimelineClient() {
   const [teacher, setTeacher] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [payload, setPayload] = useState<TimelinePayload | null>(null);
+  const [byeolbyeolNotes, setByeolbyeolNotes] = useState<Record<string, ByeolbyeolNote[]>>({});
+  const [showByeolbyeolBasic, setShowByeolbyeolBasic] = useState(false);
+  const [showByeolbyeolAdvanced, setShowByeolbyeolAdvanced] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [needsLogin, setNeedsLogin] = useState(false);
@@ -106,6 +112,8 @@ export default function TimelineClient() {
   const loadTimeline = async (currentTeacher: User | null) => {
     setLoading(true);
     setError("");
+    // 로그인 계정이 바뀌면 이전 학생의 보충 자료를 즉시 비운다.
+    setByeolbyeolNotes({});
     try {
       const token = currentTeacher ? await currentTeacher.getIdToken() : "";
       const response = await fetch("/api/history/timeline/events", {
@@ -133,6 +141,17 @@ export default function TimelineClient() {
       }
 
       setPayload(data);
+      // 별도의 권한 검사가 적용된 자료만 불러온다. 기존 연표 API에는 합치지 않는다.
+      const extraResponse = await fetch("/api/history/timeline/byeolbyeol", {
+        cache: "no-store",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (extraResponse.ok) {
+        const extra = (await extraResponse.json().catch(() => ({}))) as {
+          notes?: Record<string, ByeolbyeolNote[]>;
+        };
+        setByeolbyeolNotes(extra.notes ?? {});
+      }
       setNeedsLogin(false);
       setUnpublished(false);
     } catch (loadError) {
@@ -165,6 +184,11 @@ export default function TimelineClient() {
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [authReady, teacher, payload]);
+
+  const enabledByeolbyeolLevels: ByeolbyeolLevel[] = payload?.viewer.role === "teacher"
+    ? [ ...(showByeolbyeolBasic ? ["basic" as const] : []),
+        ...(showByeolbyeolAdvanced ? ["advanced" as const] : []) ]
+    : ["basic", "advanced"];
 
   const visibleEvents = useMemo(() => {
     if (!payload) return [];
@@ -349,6 +373,15 @@ export default function TimelineClient() {
             ))}
           </nav>
 
+          {payload?.viewer.role === "teacher" && (
+            <div className={supplementStyles.teacherControls} aria-label="별별한국사 보충 설명 표시 선택">
+              <label><input type="checkbox" checked={showByeolbyeolBasic}
+                onChange={e => setShowByeolbyeolBasic(e.target.checked)} />별별한국사 (기본)</label>
+              <label><input type="checkbox" checked={showByeolbyeolAdvanced}
+                onChange={e => setShowByeolbyeolAdvanced(e.target.checked)} />별별한국사 (심화)</label>
+              <span>체크한 자료만 아래 연표에서 펼쳐 볼 수 있습니다.</span>
+            </div>
+          )}
           {error && <div className={styles.error}>{error}</div>}
           {visibleEvents.length === 0 ? (
             <div className={styles.empty}>
@@ -377,6 +410,8 @@ export default function TimelineClient() {
                               notes={event.studyNotes ?? []}
                               fallback={{ heading: event.title, text: event.life }}
                             />
+                            <TimelineByeolbyeolDetails notes={byeolbyeolNotes[event.id]}
+                              enabledLevels={enabledByeolbyeolLevels} />
                             {shouldShowTimelineMaterial(event.artifact) && (
                               <div className={styles.transitionDetail}>
                                 <b>대표 유물·유적</b><span>{event.artifact}</span>
@@ -436,6 +471,8 @@ export default function TimelineClient() {
                             notes={overviewEvent.studyNotes ?? []}
                             fallback={{ heading: overviewEvent.title, text: overviewEvent.life }}
                           />
+                          <TimelineByeolbyeolDetails notes={byeolbyeolNotes[overviewEvent.id]}
+                            enabledLevels={enabledByeolbyeolLevels} />
                           <small className={styles.gridSource}>{textbookSourceLabel(overviewEvent)}</small>
                           <TimelineExamReferences refs={payload?.examLinks?.[overviewEvent.id] || []} />
                         </div>
@@ -503,6 +540,8 @@ export default function TimelineClient() {
                                         )}
                                       </div>
                                       <TimelineStudyDetails notes={event.studyNotes ?? []} />
+                                      <TimelineByeolbyeolDetails notes={byeolbyeolNotes[event.id]}
+                                        enabledLevels={enabledByeolbyeolLevels} />
                                       <small className={styles.gridSource}>
                                         {textbookSourceLabel(event)}
                                       </small>
