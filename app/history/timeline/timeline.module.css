@@ -308,3 +308,11 @@
   .periodBlock[data-period="liberation"] .periodTop h3,
   .periodBlock[data-period="republic"] .periodTop h3{font-size:22px}
 }
+
+/* 모바일 연표: 연도 열을 축소해 사건 카드의 가시 영역을 확보한다. */
+.periodGrid{--timeline-year-width:116px}
+@media(max-width:600px){
+  .periodGrid{--timeline-year-width:62px}
+  .yearHeader,.yearCell{padding-left:3px;padding-right:3px;font-size:12px;overflow-wrap:anywhere}
+  .epochDate{padding-left:3px;padding-right:3px}
+}

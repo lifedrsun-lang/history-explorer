@@ -489,7 +489,7 @@ export default function TimelineClient() {
                   ),
                 ];
                 const gridStyle = {
-                  gridTemplateColumns: `116px repeat(${columns.length}, minmax(245px, 1fr))`,
+                  gridTemplateColumns: `var(--timeline-year-width, 116px) repeat(${columns.length}, minmax(245px, 1fr))`,
                 };
                 const dates = groupSameDates(comparisonEvents);
 
@@ -562,7 +562,7 @@ export default function TimelineClient() {
                       role="region"
                       aria-label={`${period.title} 국가별 가로 연표`}
                     >
-                      <div className={styles.periodGrid} style={{ minWidth: 116 + 245 * columns.length }}>
+                      <div className={styles.periodGrid} style={{ minWidth: `calc(var(--timeline-year-width, 116px) + ${245 * columns.length}px)` }}>
                         <div className={styles.tableHeader} style={gridStyle}>
                           <div className={styles.yearHeader}>연도</div>
                           {columns.map((column) => (
