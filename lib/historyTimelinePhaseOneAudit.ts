@@ -231,7 +231,7 @@ export const HISTORY_TIMELINE_PHASE_ONE_EVENTS: readonly PhaseOneChronologyEvent
     "textbookPages": [],
     "phaseOneEvidence": {
       "book": "한국사 읽기책",
-      "pdfPage": 414,
+      "pdfPage": 415,
       "official": "https://theme.archives.go.kr/next/unikorea/seven/seven01.do"
     }
   },
@@ -331,7 +331,7 @@ export const HISTORY_TIMELINE_PHASE_ONE_EVENTS: readonly PhaseOneChronologyEvent
     "textbookPages": [],
     "phaseOneEvidence": {
       "book": "한국사 읽기책",
-      "pdfPage": 414,
+      "pdfPage": 416,
       "official": "https://theme.archives.go.kr/next/unikorea/1991/cont1991_1.do"
     }
   }
