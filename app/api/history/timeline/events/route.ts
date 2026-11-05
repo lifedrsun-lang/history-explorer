@@ -1,3 +1,4 @@
+import { getPublishedGanghwaNotesForEvent } from "@/lib/historyTimelineGanghwaHeritagePilot";
 import { verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { getTimelineExamReferences } from "@/lib/historyTimelineExam";
@@ -27,6 +28,11 @@ const privateJson = (body: object, init?: ResponseInit) => {
   return Response.json(body, { ...init, headers });
 };
 
+const heritageForEvents = (events: Array<{ id: string }>) => Object.fromEntries(
+  events.map(event => [event.id, getPublishedGanghwaNotesForEvent(event.id)])
+    .filter(([, notes]) => (notes as unknown[]).length > 0)
+);
+
 const teacherResponse = async (request: Request) => {
   const authorization = request.headers.get("authorization") || "";
   if (!authorization.toLowerCase().startsWith("bearer ")) return null;
@@ -36,6 +42,7 @@ const teacherResponse = async (request: Request) => {
     const examLinks = await getTimelineExamReferences(new Set(HISTORY_TIMELINE_EVENTS.map(event => event.id)));
     return privateJson({
       examLinks,
+      heritageNotes: heritageForEvents(HISTORY_TIMELINE_EVENTS),
       studyTopics: getHistoryTimelineTopicsForIssues(Array.from({length: HISTORY_TIMELINE_MAX_ISSUE}, (_, i) => i + 1)),
       viewer: { role: "teacher", name: "교사", completedIssues: [] },
       events: HISTORY_TIMELINE_EVENTS,
@@ -77,6 +84,7 @@ export async function GET(request: Request) {
         return privateJson({
           viewer: { role: "student", name: String(member.name || "SUN LAB 회원"), completedIssueCount: completedIssues.length },
           examLinks, events,
+          heritageNotes: heritageForEvents(events),
           studyTopics: getHistoryTimelineTopicsForIssues(completedIssues),
           maxIssue: HISTORY_TIMELINE_MAX_ISSUE,
         });
@@ -127,6 +135,7 @@ export async function GET(request: Request) {
   const examLinks = await getTimelineExamReferences(new Set(events.map(event => event.id)));
   return privateJson({
     examLinks,
+    heritageNotes: heritageForEvents(events),
     studyTopics: getHistoryTimelineTopicsForIssues(completedIssues),
     viewer: {
       role: "student",
