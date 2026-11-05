@@ -47,6 +47,15 @@ export const DISPLAYABLE_HISTORY_MATERIALS: ReadonlySet<string> = new Set([
   "서울 한양도성·숭례문",
   "『농사직설』",
   "『훈민정음』 해례본",
+  // 16~23호: 실제 이름이 있는 책·선언서·유적만 표시한다. 구체적인 이미지 없는 지도명은 제외.
+  "수원 화성(경기도 수원시)",
+  "『열하일기』",
+  "『목민심서』",
+  "독립문(1897년 완공·서울 서대문구)",
+  "강화 정족산성(인천 강화군)",
+  "강화 광성보(인천 강화군)",
+  "기미독립선언서(1919년)",
+  "『한국독립운동지혈사』",
 ]);
 
 export function shouldShowTimelineMaterial(value?: string): boolean {

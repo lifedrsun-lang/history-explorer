@@ -56,6 +56,9 @@ const FILTERS = [
   ["후삼국", "후삼국"],
   ["고려", "고려"],
   ["조선", "조선"],
+  ["대한제국", "대한제국"],
+  ["일제강점기", "일제강점기"],
+  ["대한민국", "대한민국"],
 ] as const;
 
 // 새 국가가 등장하면 열을 추가하고, 국호를 바꾸면 같은 위치의 명칭을 갱신한다.
@@ -445,7 +448,32 @@ export default function TimelineClient() {
                     {period.key === "joseon" && (
                       <TimelineGoryeoTopics
                         era="조선"
-                        topics={(payload?.studyTopics ?? []).filter((topic) => topic.issue >= 14 && topic.issue <= 15)}
+                        topics={(payload?.studyTopics ?? []).filter((topic) =>
+                          (topic.issue >= 14 && topic.issue <= 15) || topic.period === "joseon")}
+                      />
+                    )}
+                    {period.key === "empire" && (
+                      <TimelineGoryeoTopics
+                        era="대한제국"
+                        topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "empire")}
+                      />
+                    )}
+                    {period.key === "colonial" && (
+                      <TimelineGoryeoTopics
+                        era="일제강점기"
+                        topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "colonial")}
+                      />
+                    )}
+                    {period.key === "liberation" && (
+                      <TimelineGoryeoTopics
+                        era="광복과 분단"
+                        topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "liberation")}
+                      />
+                    )}
+                    {period.key === "republic" && (
+                      <TimelineGoryeoTopics
+                        era="대한민국"
+                        topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "republic")}
                       />
                     )}
                     {overviewEvent && (
@@ -519,7 +547,7 @@ export default function TimelineClient() {
                                         <b>{event.eraFilter === "선사" || event.eraFilter === "여러나라" ? "생활 모습" : "핵심 설명"}</b><p>{event.life}</p>
                                         {shouldShowTimelineMaterial(event.artifact) && (
                                           <>
-                                            <b>{event.eraFilter === "여러나라" ? "유물·특산물" : event.eraFilter === "선사" ? "대표 유물" : "관련 유물·유적"}</b>
+                                            <b>{event.eraFilter === "여러나라" ? "유물·특산물" : event.eraFilter === "선사" ? "대표 유물" : "관련 유물·유적·문헌"}</b>
                                             <p>{event.artifact}</p>
                                           </>
                                         )}

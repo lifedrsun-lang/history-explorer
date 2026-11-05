@@ -2,7 +2,8 @@ import type { HistoryTimelineEvent } from "./historyTimeline";
 
 export type TimelinePeriodKey =
   | "prehistoric" | "gojoseon" | "gojoseon-falls"
-  | "early-states" | "three" | "northsouth" | "later-three" | "goryeo" | "joseon";
+  | "early-states" | "three" | "northsouth" | "later-three" | "goryeo" | "joseon"
+  | "empire" | "colonial" | "liberation" | "republic";
 
 /**
  * 각 시대는 큰 단위로 한 번만 구분한다.
@@ -12,7 +13,9 @@ export type TimelinePeriodKey =
  * - 918년 고려 건국은 후삼국 표에서, 936년 통일은 후삼국 표의 마지막에 표시한다.
  * - 937~1392년 고려 사건은 고려 시대 표에 연결한다.
  * - 1392년 고려 멸망(고려 열)과 조선 건국(조선 열)은 같은 해 다른 시대 사건으로 구분한다.
- * - 1392년부터 조선 시대 표를 이어 보여 준다.
+ * - 1392~1896년은 조선, 1897~1909년 대한제국, 1910~1944년 일제강점기.
+ * - 1945~1947년은 광복과 분단·정부 수립 준비, 1948년부터 대한민국.
+ * - 1945년 광복과 1948년 대한민국 정부 수립을 같은 해·같은 사건으로 합치지 않는다.
  */
 export const HISTORY_TIMELINE_PERIODS = [
   {
@@ -54,7 +57,23 @@ export const HISTORY_TIMELINE_PERIODS = [
   },
   {
     key: "joseon", title: "조선 시대",
-    columns: ["조선"], milestone: false, includes: (year: number) => year >= 1392,
+    columns: ["조선"], milestone: false, includes: (year: number) => year >= 1392 && year < 1897,
+  },
+  {
+    key: "empire", title: "대한제국과 국권 수호",
+    columns: ["대한제국"], milestone: false, includes: (year: number) => year >= 1897 && year < 1910,
+  },
+  {
+    key: "colonial", title: "일제강점기와 독립운동",
+    columns: ["우리 민족"], milestone: false, includes: (year: number) => year >= 1910 && year < 1945,
+  },
+  {
+    key: "liberation", title: "광복과 분단의 시작",
+    columns: ["한반도"], milestone: false, includes: (year: number) => year >= 1945 && year < 1948,
+  },
+  {
+    key: "republic", title: "대한민국",
+    columns: ["대한민국"], milestone: false, includes: (year: number) => year >= 1948,
   },
 ] as const;
 
@@ -73,6 +92,8 @@ export function getTimelineNationColumn(event: PositionEvent, period: TimelinePe
   if ((period === "prehistoric" || period === "gojoseon") && event.eraFilter === "선사") {
     return "주요 사건";
   }
+  if (period === "colonial") return "우리 민족";
+  if (period === "liberation") return "한반도";
   if (event.stateOrEra === "신라") {
     return period === "northsouth" ? "통일 신라" : "신라";
   }
@@ -116,5 +137,25 @@ export const HISTORY_TIMELINE_EPOCH_MARKERS = [
     eventId: "later-baekje-falls-936", key: "goryeo",
     title: "고려 시대", subtitle: "918년 왕건의 고려 건국 → 936년 후삼국 통일 · 고려의 시대가 이어져요.",
     className: "epochGoryeo",
+  },
+  {
+    eventId: "empire-proclaimed-1897", key: "empire",
+    title: "대한제국", subtitle: "1897년 고종이 황제에 올라 자주독립을 선언한 나라 · 1910년까지 이어져요.",
+    className: "epochEmpire",
+  },
+  {
+    eventId: "colonial-annexation-1910", key: "colonial",
+    title: "일제강점기", subtitle: "1910년 국권을 빼앗긴 뒤 1945년 광복까지 독립운동이 이어졌어요.",
+    className: "epochColonial",
+  },
+  {
+    eventId: "liberation-1945", key: "liberation",
+    title: "광복과 분단", subtitle: "1945년 광복을 맞았지만 남북에 서로 다른 정치 체제가 세워지기 시작했어요.",
+    className: "epochLiberation",
+  },
+  {
+    eventId: "republic-government-1948", key: "republic",
+    title: "대한민국", subtitle: "1948년 8월 15일 대한민국 정부가 수립되었어요. 1945년 광복과는 구분해요.",
+    className: "epochRepublic",
   },
 ] as const;

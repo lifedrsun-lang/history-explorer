@@ -271,3 +271,40 @@
   }
   .periodBlock[data-period="joseon"] .periodTop h3{font-size:22px}
 }
+
+
+/* 교재 20~23호의 큰 시대별 구간: 세부 사건 표를 쪼개지 않고 시대 전환만 강조. */
+.periodBlock[data-period="empire"] .periodTop,
+.periodBlock[data-period="colonial"] .periodTop,
+.periodBlock[data-period="liberation"] .periodTop,
+.periodBlock[data-period="republic"] .periodTop {
+  margin:-14px -14px 14px;padding:15px 20px;border-radius:17px 17px 0 0;border-bottom:2px solid #9eacb9;
+}
+.periodBlock[data-period="empire"] .periodTop{background:#f9ebd8;border-bottom-color:#b99262}
+.periodBlock[data-period="colonial"] .periodTop{background:#edf0f4;border-bottom-color:#8c9caa}
+.periodBlock[data-period="liberation"] .periodTop{background:#eaf4ee;border-bottom-color:#7da78c}
+.periodBlock[data-period="republic"] .periodTop{background:#e5effb;border-bottom-color:#7d9fca}
+.periodBlock[data-period="empire"] .periodTop h3,
+.periodBlock[data-period="colonial"] .periodTop h3,
+.periodBlock[data-period="liberation"] .periodTop h3,
+.periodBlock[data-period="republic"] .periodTop h3 {
+  font-size:clamp(22px,3vw,30px);font-weight:950;letter-spacing:-.03em;color:#334b57;
+}
+.countryHeader[data-country="대한제국"]{background:#f7e9d6;border-bottom:3px solid #bf975f}
+.countryHeader[data-country="우리 민족"]{background:#e6ebf0;border-bottom:3px solid #879aaa}
+.countryHeader[data-country="한반도"]{background:#e8f2e8;border-bottom:3px solid #86ae89}
+.countryHeader[data-country="대한민국"]{background:#e4edf9;border-bottom:3px solid #718eb7}
+.epochEmpire{background:linear-gradient(110deg,#f9ead3,#fefaf0);border-color:#bd9866}
+.epochColonial{background:linear-gradient(110deg,#e5e9ee,#f5f7f9);border-color:#98a5b1}
+.epochLiberation{background:linear-gradient(110deg,#e2f0e5,#f7faf7);border-color:#84b08e}
+.epochRepublic{background:linear-gradient(110deg,#e4eefa,#f5f9ff);border-color:#799bcb}
+@media(max-width:600px){
+  .periodBlock[data-period="empire"] .periodTop,
+  .periodBlock[data-period="colonial"] .periodTop,
+  .periodBlock[data-period="liberation"] .periodTop,
+  .periodBlock[data-period="republic"] .periodTop{margin:-9px -9px 10px;padding:13px 12px}
+  .periodBlock[data-period="empire"] .periodTop h3,
+  .periodBlock[data-period="colonial"] .periodTop h3,
+  .periodBlock[data-period="liberation"] .periodTop h3,
+  .periodBlock[data-period="republic"] .periodTop h3{font-size:22px}
+}

@@ -6,6 +6,7 @@
 export type HistoryTimelineStudyTopic = {
   id: string;
   issue: number;
+  period?: "joseon" | "empire" | "colonial" | "liberation" | "republic";
   title: string;
   pages: string;
   points: string[];
