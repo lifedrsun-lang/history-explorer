@@ -68,8 +68,15 @@ function textHasName(text: string, person: PersonSeed) {
   return [person.name, ...(person.aliases || [])].some(alias => text.includes(alias));
 }
 
+// 서로 다른 나라가 대결한 교재 사건에 다른 나라의 인물이 명시된 경우.
+const VERIFIED_CROSS_POLITY_EVENTS: Record<string, readonly string[]> = {
+  "신라:김유신": ["baekje-hwangsanbeol"],
+};
+
 function eventMentions(event: PersonTimelineEvent, person: PersonSeed) {
-  if (person.polity && !EVENT_POLITY[person.polity]?.includes(event.eraFilter)) return false;
+  const sameEra = !!person.polity && !!EVENT_POLITY[person.polity]?.includes(event.eraFilter);
+  const explicitCrossReference = VERIFIED_CROSS_POLITY_EVENTS[person.id]?.includes(event.id) === true;
+  if (!sameEra && !explicitCrossReference) return false;
   // studyNotes는 서버에서 이미 학생별 허용 호수만 남겨 전달된다.
   const notes = (event.studyNotes || []).flatMap(note => [note.heading, ...note.points]);
   return textHasName([event.title, event.summary, event.life, ...notes].join(" "), person);
