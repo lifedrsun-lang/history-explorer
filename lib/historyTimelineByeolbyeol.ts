@@ -1,4 +1,5 @@
 import "server-only";
+import { HISTORY_TIMELINE_BYEOLBYEOL_MORE_NOTES } from "./historyTimelineByeolbyeolMoreNotes";
 
 /**
  * 별별한국사 참고서·시대별 기출 자료를 대조하여 기존 연표의 요점에서 빠진 사실만 정리한다.
@@ -148,7 +149,10 @@ export const HISTORY_TIMELINE_BYEOLBYEOL_NOTES: Readonly<Record<string, Verified
 export function getByeolbyeolPublicNotes(eventIds: Iterable<string>): Record<string, ByeolbyeolNote[]> {
   const result: Record<string, ByeolbyeolNote[]> = {};
   for (const id of eventIds) {
-    const notes = HISTORY_TIMELINE_BYEOLBYEOL_NOTES[id];
+    const notes = [
+      ...(HISTORY_TIMELINE_BYEOLBYEOL_NOTES[id] ?? []),
+      ...(HISTORY_TIMELINE_BYEOLBYEOL_MORE_NOTES[id] ?? []),
+    ];
     if (!notes?.length) continue;
     result[id] = notes.map(({ level, heading, points }) => ({
       level,
