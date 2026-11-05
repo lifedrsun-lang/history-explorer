@@ -2,6 +2,8 @@ import { verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { getByeolbyeolPublicNotes } from "@/lib/historyTimelineByeolbyeol";
 import { HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS } from "@/lib/historyTimelineByeolbyeolFlow";
+import {YONG_TIMELINE_EVENTS} from "@/lib/historyTimelineYongEvents";
+import {getYongNotesForEvents} from "@/lib/historyTimelineYongNotes";
 import {
   getTimelineEventsForIssues,
   HISTORY_TIMELINE_MAX_ISSUE,
@@ -29,7 +31,16 @@ const respond = (body: object, status = 200) => Response.json(body, {
 
 // 보충 카드 또한 원본 별별한국사 열람 권한이 있는 경우에만 전달한다.
 // 일반 연표 / 기출 연결 API에는 새 카드를 넣지 않는다.
+// 용선생 자료 역시 현재 보충 자료 열람 허용 계정으로만 제공한다.
 const buildAllowedMaterials = (allowedIssues: number[]) => ({
+  yongNotes: getYongNotesForEvents(getTimelineEventsForIssues(allowedIssues).map(event=>event.id)),
+  yongFlowEvents: YONG_TIMELINE_EVENTS
+    .filter(event=>event.sourceIssueNumbers.some(issue=>allowedIssues.includes(issue)))
+    .map(event=>({
+      ...toStudentTimelineEvent(event,allowedIssues),
+      yongseonsaeng: true as const,
+      yongSource: event.yongSource,
+    })),
   notes: getByeolbyeolPublicNotes(
     getTimelineEventsForIssues(allowedIssues).map(event => event.id)
   ),
