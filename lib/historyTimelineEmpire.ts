@@ -37,7 +37,7 @@ export const HISTORY_TIMELINE_EMPIRE_EVENTS: HistoryTimelineEvent[] = [
     "title": "병인양요가 일어남",
     "summary": "프랑스 군대가 강화도를 침략해 병인양요가 일어났어요.",
     "life": "조선 군사들이 강화도에서 외국 군대의 공격에 맞서 싸웠어요.",
-    "artifact": "자료명 미등록",
+    "artifact": "강화 정족산성(인천 강화군)",
     "image": {
       "kind": "emoji",
       "value": "⚔️",
@@ -59,7 +59,7 @@ export const HISTORY_TIMELINE_EMPIRE_EVENTS: HistoryTimelineEvent[] = [
     "title": "신미양요가 일어남",
     "summary": "미국 군대가 강화도를 공격해 신미양요가 일어났어요.",
     "life": "광성보에서 어재연과 조선 군사들이 저항했어요.",
-    "artifact": "자료명 미등록",
+    "artifact": "강화 광성보(인천 강화군)",
     "image": {
       "kind": "emoji",
       "value": "⚔️",
@@ -213,7 +213,7 @@ export const HISTORY_TIMELINE_EMPIRE_EVENTS: HistoryTimelineEvent[] = [
     "title": "서재필 등이 독립협회를 만듦",
     "summary": "서재필 등은 독립협회를 만들고 자주독립과 개혁을 주장했어요.",
     "life": "독립문 건립과 토론회 등을 통해 나라의 자주성을 강조했어요.",
-    "artifact": "자료명 미등록",
+    "artifact": "독립문(1897년 완공·서울 서대문구)",
     "image": {
       "kind": "emoji",
       "value": "📜",
@@ -374,7 +374,7 @@ export const HISTORY_TIMELINE_EMPIRE_EVENTS: HistoryTimelineEvent[] = [
     "title": "3·1 운동이 일어남",
     "summary": "많은 사람이 태극기를 들고 독립 만세를 외쳤어요.",
     "life": "3·1 운동은 전국 각지로 퍼졌으며 해외에서도 이어졌어요.",
-    "artifact": "자료명 미등록",
+    "artifact": "기미독립선언서(1919년)",
     "image": {
       "kind": "emoji",
       "value": "🇰🇷",
