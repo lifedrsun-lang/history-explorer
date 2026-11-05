@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { HISTORY_TIMELINE_BYEOLKKUM_ADDITIONS } from "../lib/historyTimelineByeolkkumAdditions.ts";
+import { HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS } from "../lib/historyTimelineByeolbyeolFlow.ts";
 import { shouldShowTimelineMaterial } from "../lib/historyTimelinePresentation.ts";
 import { GORYEO_STUDY_TOPICS, getTimelineTopicsForIssues } from "../lib/historyTimelineGoryeoTopics.ts";
 import { HISTORY_TIMELINE_LATE_TOPICS, getTimelineLateTopicsForIssues } from "../lib/historyTimelineLateTopics.ts";
@@ -21,7 +23,7 @@ import {
   toStudentTimelineEvent,
 } from "../lib/historyTimeline.ts";
 
-assert.equal(HISTORY_TIMELINE_EVENTS.length, 221, "1~15호 140개 + 16~23호 81개 = 221개, 중복 사건 없이.");
+assert.equal(HISTORY_TIMELINE_EVENTS.length, 234, "기본 연표 221개 + 별꼼역사 교재 보완 13개 = 234개.");
 assert.equal(
   new Set(HISTORY_TIMELINE_EVENTS.map((event) => event.id)).size,
   HISTORY_TIMELINE_EVENTS.length,
@@ -356,8 +358,8 @@ assert.equal(shouldShowTimelineMaterial(""), false);
 const displayedMaterials = HISTORY_TIMELINE_EVENTS.filter(event =>
   shouldShowTimelineMaterial(event.artifact));
 assert.equal(displayedMaterials.length, 46, "1~15호 38건과 16~23호 8건: 구체 자료명 46건만 표시.");
-assert.equal(HISTORY_TIMELINE_EVENTS.length - displayedMaterials.length, 175,
-  "이름을 특정할 수 없는 175건은 유물·유적 영역을 만들지 않아야 합니다.");
+assert.equal(HISTORY_TIMELINE_EVENTS.length - displayedMaterials.length, 188,
+  "이름을 특정할 수 없는 188건은 유물·유적 영역을 만들지 않아야 합니다.");
 assert.ok(displayedMaterials.every(event => !/지도|관련 기록|관련 자료|재위 연표/.test(event.artifact)),
   "지도 이미지가 없는 지도명이나 불분명한 기록은 표시하지 않아야 합니다.");
 for (const value of [
@@ -394,16 +396,36 @@ assert.equal(shouldShowTimelineMaterial(
   HISTORY_TIMELINE_EVENTS.find(event => event.id === "baekje-revival-movement")?.artifact), true);
 
 
+// 출처 분리: 별꼼역사 교재 사건은 일반 연표, 참고문헌 사건만 보충 항목.
+assert.equal(HISTORY_TIMELINE_BYEOLKKUM_ADDITIONS.length, 13);
+assert.equal(HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS.length, 33);
+for (const event of HISTORY_TIMELINE_BYEOLKKUM_ADDITIONS) {
+  assert.equal(HISTORY_TIMELINE_EVENTS.filter(core => core.id === event.id).length, 1);
+  assert.equal(HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS.some(extra => extra.id === event.id), false);
+  assert.ok(event.sourceIssueNumbers.every(issue => [20, 21, 22, 23].includes(issue)));
+  assert.ok(event.textbookPages.some(page => page.includes("별꼼역사")));
+  assert.equal("byeolbyeolLevel" in toStudentTimelineEvent(event, event.sourceIssueNumbers), false);
+  for (const issue of event.sourceIssueNumbers) {
+    assert.equal(getTimelineEventsForIssues([issue]).some(core => core.id === event.id), true);
+  }
+  for (const issue of [1, 2, 19, 20, 21, 22, 23].filter(
+    issue => !event.sourceIssueNumbers.includes(issue))) {
+    assert.equal(getTimelineEventsForIssues([issue]).some(core => core.id === event.id), false);
+  }
+}
+assert.ok(HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS.every(
+  event => !HISTORY_TIMELINE_EVENTS.some(core => core.id === event.id)));
+
 // 16~23호에 관한 새 연표 및 학생 접근 권한 검사.
 // 해당 시대의 공개된 사건만 학생에게 전달되며, 같은 사건은 한 번만 존재한다.
 const newIssues = [16, 17, 18, 19, 20, 21, 22, 23];
-const expectedPerIssue = [13, 16, 8, 18, 18, 9, 8, 8];
+const expectedPerIssue = [13, 16, 8, 18, 22, 10, 13, 11];
 for (let i = 0; i < newIssues.length; i += 1) {
   assert.equal(getTimelineEventsForIssues([newIssues[i]]).length, expectedPerIssue[i],
     `${newIssues[i]}호 연표 사건 수`);
 }
-assert.equal(getTimelineEventsForIssues(newIssues).length, 81);
-assert.equal(getTimelineEventsForIssues(Array.from({length:23}, (_,i)=>i+1)).length, 221);
+assert.equal(getTimelineEventsForIssues(newIssues).length, 94);
+assert.equal(getTimelineEventsForIssues(Array.from({length:23}, (_,i)=>i+1)).length, 234);
 assert.equal(getTimelineEventsForIssues(Array.from({length:15}, (_,i)=>i+1)).length, 140);
 assert.equal(HISTORY_TIMELINE_ALL_TOPICS.length, 69);
 assert.deepEqual(getHistoryTimelineTopicsForIssues([1,2,3,4,5,6,7,8,9]), []);
