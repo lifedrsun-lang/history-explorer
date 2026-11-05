@@ -793,7 +793,7 @@ export const HISTORY_TIMELINE_JOSEON_LATE_EVENTS: HistoryTimelineEvent[] = [
     "title": "박지원이 『열하일기』를 씀",
     "summary": "박지원이 청나라 여행에서 보고 들은 내용을 『열하일기』로 남겼어요.",
     "life": "청나라의 발전된 문물과 기술을 살펴 조선의 변화를 생각했어요.",
-    "artifact": "자료명 미등록",
+    "artifact": "『열하일기』",
     "image": {
       "kind": "emoji",
       "value": "📚",
@@ -837,7 +837,7 @@ export const HISTORY_TIMELINE_JOSEON_LATE_EVENTS: HistoryTimelineEvent[] = [
     "title": "수원 화성이 완공됨",
     "summary": "정조 때 수원 화성을 완공했어요.",
     "life": "성곽 건설 과정에서는 거중기 등 새로운 기술이 활용되었어요.",
-    "artifact": "자료명 미등록",
+    "artifact": "수원 화성(경기도 수원시)",
     "image": {
       "kind": "emoji",
       "value": "🏯",
@@ -925,7 +925,7 @@ export const HISTORY_TIMELINE_JOSEON_LATE_EVENTS: HistoryTimelineEvent[] = [
     "title": "정약용이 『목민심서』를 완성함",
     "summary": "정약용이 백성을 위한 지방 관리의 자세를 다룬 『목민심서』를 완성했어요.",
     "life": "관리들이 백성을 어떻게 돌보아야 하는지 고민한 책이에요.",
-    "artifact": "자료명 미등록",
+    "artifact": "『목민심서』",
     "image": {
       "kind": "emoji",
       "value": "📜",
