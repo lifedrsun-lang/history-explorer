@@ -6,6 +6,9 @@ import { HISTORY_TIMELINE_SILLA_BALHAE_EVENTS } from "./historyTimelineSillaBalh
 import { HISTORY_TIMELINE_GORYEO_EVENTS } from "./historyTimelineGoryeo";
 import { HISTORY_TIMELINE_GORYEO_LATE_EVENTS } from "./historyTimelineGoryeoLate";
 import { HISTORY_TIMELINE_JOSEON_EVENTS } from "./historyTimelineJoseon";
+import { HISTORY_TIMELINE_JOSEON_LATE_EVENTS } from "./historyTimelineJoseonLate";
+import { HISTORY_TIMELINE_EMPIRE_EVENTS } from "./historyTimelineEmpire";
+import { HISTORY_TIMELINE_MODERN_EVENTS } from "./historyTimelineModern";
 import {
   HISTORY_TIMELINE_FOURTH_EVENTS,
   HISTORY_TIMELINE_FOURTH_SHARED_IDS,
@@ -25,7 +28,7 @@ export type HistoryTimelineEvent = {
   sortYear: number;
   dateLabel: string;
   stateOrEra: string;
-  eraFilter: "선사" | "고조선" | "여러나라" | "고구려" | "백제" | "신라" | "가야" | "발해" | "후삼국" | "고려" | "조선";
+  eraFilter: "선사" | "고조선" | "여러나라" | "고구려" | "백제" | "신라" | "가야" | "발해" | "후삼국" | "고려" | "조선" | "대한제국" | "일제강점기" | "대한민국";
   title: string;
   summary: string;
   life: string;
@@ -192,6 +195,9 @@ export const HISTORY_TIMELINE_EVENTS = [
   ...HISTORY_TIMELINE_GORYEO_EVENTS,
   ...HISTORY_TIMELINE_GORYEO_LATE_EVENTS,
   ...HISTORY_TIMELINE_JOSEON_EVENTS,
+  ...HISTORY_TIMELINE_JOSEON_LATE_EVENTS,
+  ...HISTORY_TIMELINE_EMPIRE_EVENTS,
+  ...HISTORY_TIMELINE_MODERN_EVENTS,
 ]
   .map((event) => {
     // 같은 역사적 사건을 재수록한 교재는 한 사건 카드에 호수만 연결한다.
