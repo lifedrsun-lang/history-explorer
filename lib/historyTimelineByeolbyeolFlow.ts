@@ -195,7 +195,7 @@ export const HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS: readonly ByeolbyeolFlowEve
       13
     ],
     "textbookPages": [
-      "별별한국사 기본 · 11-2 불교와 풍수지리설 (교사 내부 검증용)"
+      "별별한국사 기본 · 12-2 인쇄술과 건축·과학 기술 (교사 내부 검증용)"
     ],
     "byeolbyeolLevel": "basic"
   },
@@ -241,7 +241,7 @@ export const HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS: readonly ByeolbyeolFlowEve
       13
     ],
     "textbookPages": [
-      "별별한국사 기본 · 11-1 유학의 발달과 역사서의 편찬 (교사 내부 검증용)"
+      "별별한국사 기본 · 12-2 인쇄술과 건축·과학 기술 (교사 내부 검증용)"
     ],
     "byeolbyeolLevel": "basic"
   },
@@ -334,7 +334,7 @@ export const HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS: readonly ByeolbyeolFlowEve
       19
     ],
     "textbookPages": [
-      "별별한국사 기본 · 15-1 토지 제도와 세금 제도의 변화 (교사 내부 검증용)"
+      "별별한국사 기본 · 15-2 농업·상업·수공업·광업 (교사 내부 검증용)"
     ],
     "byeolbyeolLevel": "basic"
   },
@@ -357,7 +357,7 @@ export const HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS: readonly ByeolbyeolFlowEve
       20
     ],
     "textbookPages": [
-      "별별한국사 기본 · 19-1 흥선 대원군의 대내 정책 (교사 내부 검증용)"
+      "별별한국사 기본 · 20-1 조·일 수호 조규(강화도 조약) (교사 내부 검증용)"
     ],
     "byeolbyeolLevel": "basic"
   },
@@ -380,7 +380,7 @@ export const HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS: readonly ByeolbyeolFlowEve
       20
     ],
     "textbookPages": [
-      "별별한국사 기본 · 20-2 임오군란과 갑신정변 (교사 내부 검증용)"
+      "별별한국사 기본 · 21-2 갑오개혁과 을미개혁 (교사 내부 검증용)"
     ],
     "byeolbyeolLevel": "basic"
   },
@@ -403,7 +403,7 @@ export const HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS: readonly ByeolbyeolFlowEve
       20
     ],
     "textbookPages": [
-      "별별한국사 기본 · 21-3 독립 협회와 대한 제국 (교사 내부 검증용)"
+      "별별한국사 기본 · 21-2 갑오개혁과 을미개혁 (교사 내부 검증용)"
     ],
     "byeolbyeolLevel": "basic"
   },
