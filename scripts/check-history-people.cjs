@@ -42,6 +42,7 @@ const events = [
   event("goryeo-hwangsan-1380", "고려", "황산 전투", "이성계가 왜구를 물리쳤어요.", [], 13),
   event("goryeo-wihwado-1388", "고려", "위화도 회군", "이성계가 위화도에서 돌아왔어요.", [], 13),
   event("joseon-founded-1392", "조선", "조선 건국", "이성계가 조선을 세웠어요.", [], 14),
+  event("silla-falls", "신라", "신라의 멸망", "경순왕이 왕건에게 나라를 넘겼어요.", [], 9),
   event("joseon-taejong-1400", "조선", "태종 즉위", "이방원이 태종이 되었어요.", [], 14),
   event("joseon-sejo-1455", "조선", "세조 즉위", "수양대군이 세조가 되었어요.", [], 16),
   event("joseon-gojong-1863", "조선", "고종 즉위", "고종이 왕위에 올랐어요.", [], 20),
@@ -55,6 +56,8 @@ const events = [
 const topics = [
   { id: "topic-13-new-rulers", issue: 13, title: "고려 말 새로운 정치 세력",
     points: ["이성계는 왜구를 물리치며 성장했어요."], pages: "13호 22~25쪽" },
+  { id: "goryeo-10-buddhist-festivals", issue: 10, title: "훈요 10조와 불교 행사",
+    points: ["태조는 뒤를 이을 왕들에게 당부했어요."], pages: "10호 교재 28쪽" },
   { id: "topic-15-science", issue: 15, period: "joseon", title: "장영실과 과학 기구",
     points: ["장영실은 과학 기구 제작에 참여했어요."], pages: "15호 8~11쪽" },
 ];
@@ -75,6 +78,8 @@ for (const id of ["joseon-gojong-1863", "empire-proclaimed-1897", "empire-gojong
 requirePerson(directory.byEvent["joseon-taejong-1400"], "조선:태종", "Taejong alias");
 requirePerson(directory.byEvent["joseon-sejo-1455"], "조선:세조", "Sejo alias");
 requirePerson(directory.byTopic["topic-13-new-rulers"], "조선:이성계", "Yi Seong-gye in issue 13");
+requirePerson(directory.byTopic["goryeo-10-buddhist-festivals"], "고려:왕건", "Taejo Wang Geon in issue 10");
+requirePerson(directory.byEvent["silla-falls"], "고려:왕건", "Wang Geon during Silla's surrender");
 requirePerson(directory.byTopic["topic-15-science"], "조선:장영실", "Jang Yeong-sil in issue 15");
 assert.deepEqual(ids(directory.byEvent["goryeo-seongjong-981"]), ["고려:성종"]);
 assert.deepEqual(ids(directory.byEvent["joseon-seongjong-1469"]), ["조선:성종"]);
