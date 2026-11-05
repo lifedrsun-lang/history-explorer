@@ -599,18 +599,28 @@ export default function TimelineClient() {
                                       {event.id === "goryeo-founded-918" && <span className={styles.changeBadge}>918년 · 고려 건국(왕조 교체)</span>}
                                       {/멸망|귀부/.test(event.title) && <span className={styles.fallBadge}>멸망·통합</span>}
                                       <span className={styles.gridEmoji} role="img" aria-label={event.image.alt}>{event.image.value}</span>
+                                      {event.byeolbyeolLevel && <span className={supplementStyles.flowBadge}>🧭 새 역사 흐름 카드</span>}
                                       <h4>{event.title}</h4>
                                       <p className={styles.gridSummary}>{event.summary}</p>
-                                      <TimelineWarSummary id={event.id} />
-                                      <div className={styles.gridDetails}>
-                                        <b>{event.eraFilter === "선사" || event.eraFilter === "여러나라" ? "생활 모습" : "핵심 설명"}</b><p>{event.life}</p>
-                                        {shouldShowTimelineMaterial(event.artifact) && (
-                                          <>
-                                            <b>{event.eraFilter === "여러나라" ? "유물·특산물" : event.eraFilter === "선사" ? "대표 유물" : "관련 유물·유적·문헌"}</b>
-                                            <p>{event.artifact}</p>
-                                          </>
-                                        )}
-                                      </div>
+                                      {event.byeolbyeolLevel ? (
+                                        <details className={supplementStyles.disclosure}>
+                                          <summary>📖 시대 흐름 더 보기</summary>
+                                          <div className={supplementStyles.flowText}>{event.life}</div>
+                                        </details>
+                                      ) : (
+                                        <>
+                                          <TimelineWarSummary id={event.id} />
+                                          <div className={styles.gridDetails}>
+                                            <b>{event.eraFilter === "선사" || event.eraFilter === "여러나라" ? "생활 모습" : "핵심 설명"}</b><p>{event.life}</p>
+                                            {shouldShowTimelineMaterial(event.artifact) && (
+                                              <>
+                                                <b>{event.eraFilter === "여러나라" ? "유물·특산물" : event.eraFilter === "선사" ? "대표 유물" : "관련 유물·유적·문헌"}</b>
+                                                <p>{event.artifact}</p>
+                                              </>
+                                            )}
+                                          </div>
+                                        </>
+                                      )}
                                       <TimelineStudyDetails notes={event.studyNotes ?? []} />
                                       <TimelineByeolbyeolDetails notes={byeolbyeolNotes[event.id]}
                                         enabledLevels={enabledByeolbyeolLevels} />
