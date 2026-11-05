@@ -44,6 +44,7 @@ const PERSON_SEEDS: PersonSeed[] = [
   aliases: person.name === "광개토 대왕" ? ["광개토대왕"]
     : person.name === "흥선대원군" ? ["흥선 대원군"]
     : person.name === "태종" ? ["이방원"]
+    : person.id === "고려:왕건" ? ["태조"]
     : person.name === "세조" ? ["수양대군"]
     : [],
 }));
@@ -73,6 +74,7 @@ const VERIFIED_CROSS_POLITY_EVENTS: Record<string, readonly string[]> = {
   "신라:김유신": ["baekje-hwangsanbeol"],
   "백제:개로왕": ["goguryeo-hanseong"],
   "조선:이성계": ["goryeo-hwangsan-1380", "goryeo-wihwado-1388"],
+  "고려:왕건": ["silla-falls"],
   "조선:고종": ["empire-proclaimed-1897", "empire-gojong-abdication-1907"],
 };
 
