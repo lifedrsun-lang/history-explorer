@@ -38,23 +38,42 @@ export default function TimelinePersonCards({ cards }: { cards: TimelinePersonCa
             <button type="button" className={styles.close} onClick={() => setOpened(null)} aria-label={`${person.name} 인물카드 닫기`}>×</button>
           </div>
           <p className={styles.intro}>{person.introduction}</p>
-          <h6>연표에 기록된 주요 활동</h6>
-          <ul className={styles.events}>
-            {person.related.map((related) => (
-              <li key={related.eventId}>
-                <a href={`#timeline-event-${related.eventId}`} title="해당 연표 사건으로 이동">
-                  <b>{related.dateLabel}</b> · {related.title} ↗
-                </a>
-              </li>
-            ))}
-          </ul>
+          {person.related.length > 0 && (
+            <>
+              <h6>연표에 기록된 주요 활동</h6>
+              <ul className={styles.events}>
+                {person.related.map((related) => (
+                  <li key={related.eventId}>
+                    <a href={`#timeline-event-${related.eventId}`} title="현재 표시된 연표 사건으로 이동">
+                      <b>{related.dateLabel}</b> · {related.title} ↗
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {person.topics.length > 0 && (
+            <>
+              <h6>교재에서 더 알아보기</h6>
+              <ul className={styles.events}>
+                {person.topics.map((topic) => (
+                  <li key={topic.id}>
+                    <a href={`#timeline-topic-${topic.id}`}>
+                      <b>{topic.issue}호</b> · {topic.title} ↗
+                    </a>
+                    <span className={styles.sources}> ({topic.pages})</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           {person.issues.length > 0 && (
             <p className={styles.sources}>📚 관련 별꼼역사 교재: {person.issues.map((issue) => `${issue}호`).join(" · ")}</p>
           )}
           {person.pages.length > 0 && (
-            <p className={styles.sources}>교사 확인용 교재 위치: {person.pages.join(" · ")}</p>
+            <p className={styles.sources}>연표 및 교재에 등록된 출처 위치: {person.pages.join(" · ")}</p>
           )}
-          <p className={styles.note}>설명과 관련 사건은 현재 열람 가능한 연표에 등록된 내용을 바탕으로 표시됩니다.</p>
+          <p className={styles.note}>현재 열람 가능한 연표 사건과 교재 학습 주제에 연결된 내용입니다. 교재 원문 전체 인물 대조는 별도 검수 중입니다.</p>
         </article>
       ))}
     </section>
