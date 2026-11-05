@@ -17,6 +17,8 @@ import {
 import TimelineExamReferences, { type ExamReference } from "./TimelineExamReferences";
 import TimelineWarSummary from "./TimelineWarSummary";
 import TimelineStudyDetails from "./TimelineStudyDetails";
+import TimelineHeritageDetails from "./TimelineHeritageDetails";
+import type { HeritagePilotNote } from "@/lib/historyTimelineGanghwaHeritagePilot";
 import TimelineGoryeoTopics from "./TimelineGoryeoTopics";
 import type { HistoryTimelineStudyTopic } from "@/lib/historyTimelineGoryeoTopics";
 
@@ -39,6 +41,7 @@ type TimelinePayload = {
   viewer: Viewer;
   events: StudentEvent[];
   examLinks?: Record<string, ExamReference[]>;
+  heritageNotes?: Record<string, HeritagePilotNote[]>;
   studyTopics?: HistoryTimelineStudyTopic[];
   maxIssue: number;
 };
@@ -394,7 +397,8 @@ export default function TimelineClient() {
                                 <b>대표 유물·유적</b><span>{event.artifact}</span>
                               </div>
                             )}
-                            <TimelineExamReferences eventId={event.id} refs={payload?.examLinks?.[event.id] || []} />
+                            <TimelineHeritageDetails notes={payload?.heritageNotes?.[event.id] || []} />
+                             <TimelineExamReferences eventId={event.id} refs={payload?.examLinks?.[event.id] || []} />
                             <small className={styles.gridSource}>
                               {textbookSourceLabel(event)}
                             </small>
@@ -487,7 +491,8 @@ export default function TimelineClient() {
                             fallback={{ heading: overviewEvent.title, text: overviewEvent.life }}
                           />
                           <small className={styles.gridSource}>{textbookSourceLabel(overviewEvent)}</small>
-                          <TimelineExamReferences eventId={overviewEvent.id} refs={payload?.examLinks?.[overviewEvent.id] || []} />
+                          <TimelineHeritageDetails notes={payload?.heritageNotes?.[overviewEvent.id] || []} />
+                           <TimelineExamReferences eventId={overviewEvent.id} refs={payload?.examLinks?.[overviewEvent.id] || []} />
                         </div>
                       </article>
                     )}
@@ -556,7 +561,8 @@ export default function TimelineClient() {
                                       <small className={styles.gridSource}>
                                         {textbookSourceLabel(event)}
                                       </small>
-                                      <TimelineExamReferences eventId={event.id} refs={payload?.examLinks?.[event.id] || []} />
+                                      <TimelineHeritageDetails notes={payload?.heritageNotes?.[event.id] || []} />
+                             <TimelineExamReferences eventId={event.id} refs={payload?.examLinks?.[event.id] || []} />
                                     </article>
                                   ))}
                               </div>
