@@ -128,6 +128,8 @@ export default function TimelineClient() {
   const [showYongseonsaeng, setShowYongseonsaeng] = useState(false);
   const [showByeolbyeolBasic, setShowByeolbyeolBasic] = useState(false);
   const [showByeolbyeolAdvanced, setShowByeolbyeolAdvanced] = useState(false);
+  const [showExamReferences, setShowExamReferences] = useState(true);
+  const [showHeritageDetails, setShowHeritageDetails] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [needsLogin, setNeedsLogin] = useState(false);
@@ -222,6 +224,17 @@ export default function TimelineClient() {
     return () => window.clearTimeout(timer);
   }, [authReady, teacher]);
 
+  // 교사는 기존과 동일하게 보충 자료 기본 숨김, 학생은 허용된 자료 기본 표시.
+  // 이 체크들은 표시 설정만 바꾸며 서버의 학생별 자료 접근 권한은 그대로 유지한다.
+  const viewerRole = payload?.viewer.role;
+  useEffect(() => {
+    if (!viewerRole) return;
+    const defaultVisible = viewerRole === "student";
+    setShowByeolbyeolBasic(defaultVisible);
+    setShowByeolbyeolAdvanced(defaultVisible);
+    setShowYongseonsaeng(defaultVisible);
+  }, [viewerRole]);
+
   // 이미 열어 둔 학생 페이지도 탭 복귀 또는 주기적인 재조회 시 공개 중단을 반영한다.
   useEffect(() => {
     if (!authReady || teacher || !payload || payload.viewer.role !== "student") return;
@@ -236,25 +249,25 @@ export default function TimelineClient() {
     };
   }, [authReady, teacher, payload]);
 
-  const enabledByeolbyeolLevels: ByeolbyeolLevel[] = payload?.viewer.role === "teacher"
-    ? [...(showByeolbyeolBasic ? ["basic" as const] : []),
-       ...(showByeolbyeolAdvanced ? ["advanced" as const] : [])]
-    : ["basic", "advanced"];
+  const enabledByeolbyeolLevels: ByeolbyeolLevel[] = [
+    ...(showByeolbyeolBasic ? ["basic" as const] : []),
+    ...(showByeolbyeolAdvanced ? ["advanced" as const] : []),
+  ];
 
-  const yongEnabled = payload?.viewer.role === "teacher" ? showYongseonsaeng : true;
+  const yongEnabled = showYongseonsaeng;
 
   const allDisplayEvents = useMemo(() => {
     if (!payload) return [];
-    const levels: ByeolbyeolLevel[] = payload.viewer.role === "teacher"
-      ? [...(showByeolbyeolBasic ? ["basic" as const] : []),
-         ...(showByeolbyeolAdvanced ? ["advanced" as const] : [])]
-      : ["basic", "advanced"];
+    const levels: ByeolbyeolLevel[] = [
+      ...(showByeolbyeolBasic ? ["basic" as const] : []),
+      ...(showByeolbyeolAdvanced ? ["advanced" as const] : []),
+    ];
     const allowed = new Set(levels);
     return [
       ...payload.events,
       ...byeolbyeolFlowEvents.filter(event =>
         event.byeolbyeolLevel !== undefined && allowed.has(event.byeolbyeolLevel)),
-      ...(payload.viewer.role !== "teacher" || showYongseonsaeng ? yongFlowEvents : []),
+      ...(showYongseonsaeng ? yongFlowEvents : []),
     ].sort((a, b) =>
       a.sortYear - b.sortYear ||
       (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
@@ -272,6 +285,15 @@ export default function TimelineClient() {
   const navigationPeriods = PERIODS.filter((period) =>
     !period.milestone && allDisplayEvents.some((event) => getTimelinePeriodForEvent(event) === period.key)
   );
+
+  // PC와 모바일 공통 보기 옵션. '교재 핵심 설명'은 항상 표시한다.
+  const materialToggles = [
+    { key: "basic", label: "별별한국사 · 기본", checked: showByeolbyeolBasic, update: setShowByeolbyeolBasic },
+    { key: "advanced", label: "별별한국사 · 심화", checked: showByeolbyeolAdvanced, update: setShowByeolbyeolAdvanced },
+    { key: "yong", label: "용선생 교과서 한국사", checked: showYongseonsaeng, update: setShowYongseonsaeng },
+    { key: "exam", label: "♣ 한능검 기출문제", checked: showExamReferences, update: setShowExamReferences },
+    { key: "heritage", label: "문화유산 현장 해설", checked: showHeritageDetails, update: setShowHeritageDetails },
+  ];
 
   const jumpToPeriod = (periodKey: string) => {
     setActivePeriod(periodKey);
@@ -459,6 +481,16 @@ export default function TimelineClient() {
                 {ERA_NAV_LABELS[period.key] ?? period.title}
               </button>
             ))}
+            <fieldset className={styles.materialChecks} aria-label="자료별 표시 설정">
+              <legend>자료 표시 / 숨김</legend>
+              {materialToggles.map((option) => (
+                <label key={option.key} className={styles.materialCheck}>
+                  <input type="checkbox" checked={option.checked}
+                    onChange={(event) => option.update(event.target.checked)} />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </fieldset>
           </nav>
           <div className={styles.mobileEraJump}>
             <label htmlFor="timeline-era-jump">시대 바로가기</label>
@@ -474,6 +506,19 @@ export default function TimelineClient() {
                 </option>
               ))}
             </select>
+            <details className={styles.mobileMaterials}>
+              <summary>☑ 자료</summary>
+              <fieldset className={styles.mobileMaterialPanel} aria-label="자료별 표시 설정">
+                <legend>자료 표시 / 숨김</legend>
+                {materialToggles.map((option) => (
+                  <label key={option.key} className={styles.materialCheck}>
+                    <input type="checkbox" checked={option.checked}
+                      onChange={(event) => option.update(event.target.checked)} />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </fieldset>
+            </details>
           </div>
         </>
       )}
@@ -521,14 +566,8 @@ export default function TimelineClient() {
           </nav>
 
           {payload?.viewer.role === "teacher" && (
-            <div className={supplementStyles.teacherControls} aria-label="보충 설명 자료 표시 선택">
-              <label><input type="checkbox" checked={showByeolbyeolBasic}
-                onChange={e => setShowByeolbyeolBasic(e.target.checked)} />별별한국사 (기본)</label>
-              <label><input type="checkbox" checked={showByeolbyeolAdvanced}
-                onChange={e => setShowByeolbyeolAdvanced(e.target.checked)} />별별한국사 (심화)</label>
-              <label><input type="checkbox" checked={showYongseonsaeng}
-                onChange={e => setShowYongseonsaeng(e.target.checked)} />용선생 교과서 한국사 1·2</label>
-              <span>선택한 참고자료의 내용과 새 사건 카드만 표시합니다.</span>
+            <div className={supplementStyles.teacherControls}>
+              <span>보충 자료의 표시 여부는 오른쪽 ‘자료 표시 / 숨김’ 메뉴에서 설정합니다.</span>
               <Link href="/teacher/history-timeline/byeolbyeol-access">민서·민채 열람 권한 확인 →</Link>
             </div>
           )}
@@ -568,8 +607,8 @@ export default function TimelineClient() {
                                 <b>대표 유물·유적</b><span>{event.artifact}</span>
                               </div>
                             )}
-                            <TimelineHeritageDetails notes={payload?.heritageNotes?.[event.id] || []} />
-                             <TimelineExamReferences eventId={event.id} refs={payload?.examLinks?.[event.id] || []} />
+                            {showHeritageDetails && (<TimelineHeritageDetails notes={payload?.heritageNotes?.[event.id] || []} />)}
+                             {showExamReferences && (<TimelineExamReferences eventId={event.id} refs={payload?.examLinks?.[event.id] || []} />)}
                             <small className={styles.gridSource}>
                               {textbookSourceLabel(event)}
                             </small>
@@ -665,8 +704,8 @@ export default function TimelineClient() {
                             enabledLevels={enabledByeolbyeolLevels} />
                           <TimelineYongDetails notes={yongNotes[overviewEvent.id]} enabled={yongEnabled} />
                           <small className={styles.gridSource}>{textbookSourceLabel(overviewEvent)}</small>
-                          <TimelineHeritageDetails notes={payload?.heritageNotes?.[overviewEvent.id] || []} />
-                           <TimelineExamReferences eventId={overviewEvent.id} refs={payload?.examLinks?.[overviewEvent.id] || []} />
+                          {showHeritageDetails && (<TimelineHeritageDetails notes={payload?.heritageNotes?.[overviewEvent.id] || []} />)}
+                           {showExamReferences && (<TimelineExamReferences eventId={overviewEvent.id} refs={payload?.examLinks?.[overviewEvent.id] || []} />)}
                         </div>
                       </article>
                     )}
@@ -757,8 +796,8 @@ export default function TimelineClient() {
                                           {textbookSourceLabel(event)}
                                         </small>
                                       )}
-                                      <TimelineHeritageDetails notes={payload?.heritageNotes?.[event.id] || []} />
-                             <TimelineExamReferences eventId={event.id} refs={payload?.examLinks?.[event.id] || []} />
+                                      {showHeritageDetails && (<TimelineHeritageDetails notes={payload?.heritageNotes?.[event.id] || []} />)}
+                             {showExamReferences && (<TimelineExamReferences eventId={event.id} refs={payload?.examLinks?.[event.id] || []} />)}
                                     </article>
                                   ))}
                               </div>
