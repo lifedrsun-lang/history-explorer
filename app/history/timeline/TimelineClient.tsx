@@ -6,6 +6,8 @@ import { Fragment, FormEvent, useEffect, useMemo, useState } from "react";
 
 import { auth } from "@/lib/firebase";
 import type { HistoryTimelineEvent } from "@/lib/historyTimeline";
+import { buildTimelinePersonCards } from "@/lib/historyTimelinePeople";
+import TimelinePersonCards from "./TimelinePersonCards";
 import { shouldShowTimelineMaterial } from "@/lib/historyTimelinePresentation";
 import {
   HISTORY_TIMELINE_PERIODS as PERIODS,
@@ -260,6 +262,8 @@ export default function TimelineClient() {
       (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
       a.id.localeCompare(b.id));
   }, [payload, byeolbyeolFlowEvents, showByeolbyeolBasic, showByeolbyeolAdvanced, yongFlowEvents, showYongseonsaeng]);
+
+  const personCardsByEvent = useMemo(() => buildTimelinePersonCards(allDisplayEvents), [allDisplayEvents]);
 
   const visibleEvents = useMemo(() => allDisplayEvents.filter((event) =>
       filter === "전체" ||
@@ -551,11 +555,12 @@ export default function TimelineClient() {
                   return (
                     <section id={`timeline-${period.key}`} className={styles.transitionBlock} data-period={period.key} key={period.key} aria-label={period.title}>
                       {periodEvents.map((event) => (
-                        <article className={styles.transitionCard} key={event.id}>
+                        <article id={`timeline-event-${event.id}`} className={styles.transitionCard} key={event.id}>
                           <div className={styles.transitionDate}>{event.dateLabel}</div>
                           <div className={styles.transitionBody}>
                             <h3>{event.title}</h3>
                             <p>{event.summary}</p>
+                            <TimelinePersonCards cards={personCardsByEvent[event.id] || []} />
                             <TimelineStudyDetails
                               notes={event.studyNotes ?? []}
                               fallback={{ heading: event.title, text: event.life }}
@@ -652,11 +657,12 @@ export default function TimelineClient() {
                       />
                     )}
                     {overviewEvent && (
-                      <article className={styles.earlyStatesOverview} aria-label="여러 나라의 등장">
+                      <article id={`timeline-event-${overviewEvent.id}`} className={styles.earlyStatesOverview} aria-label="여러 나라의 등장">
                         <div className={styles.earlyStatesOverviewDate}>{overviewEvent.dateLabel}</div>
                         <div className={styles.earlyStatesOverviewBody}>
                           <h4>{overviewEvent.title}</h4>
                           <p>{overviewEvent.summary}</p>
+                          <TimelinePersonCards cards={personCardsByEvent[overviewEvent.id] || []} />
                           <TimelineStudyDetails
                             notes={overviewEvent.studyNotes ?? []}
                             fallback={{ heading: overviewEvent.title, text: overviewEvent.life }}
@@ -703,7 +709,7 @@ export default function TimelineClient() {
                                 {date.events
                                   .filter((event) => eventColumn(event) === column)
                                   .map((event) => (
-                                    <article className={`${styles.gridCard} ${renameEvents.has(event.id) ? styles.renameCard : ""} ${capitalEvents.has(event.id) ? styles.capitalCard : ""} ${event.id === "goryeo-founded-918" ? styles.dynastyCard : ""} ${/멸망|귀부/.test(event.title) ? styles.fallCard : ""}`} key={event.id}>
+                                    <article className={`${styles.gridCard} ${renameEvents.has(event.id) ? styles.renameCard : ""} ${capitalEvents.has(event.id) ? styles.capitalCard : ""} ${event.id === "goryeo-founded-918" ? styles.dynastyCard : ""} ${/멸망|귀부/.test(event.title) ? styles.fallCard : ""}`} id={`timeline-event-${event.id}`} key={event.id}>
                                       {getHistoricNameBadge(event) && (
                                         <span className={styles.historicNameBadge} data-nation={event.stateOrEra}>
                                           {getHistoricNameBadge(event)}
@@ -723,6 +729,7 @@ export default function TimelineClient() {
                                       {event.yongseonsaeng && <span className={yongStyles.flowBadge}>📗 용선생 시대 흐름 카드</span>}
                                       <h4>{event.title}</h4>
                                       <p className={styles.gridSummary}>{event.summary}</p>
+                                      <TimelinePersonCards cards={personCardsByEvent[event.id] || []} />
                                       {event.yongseonsaeng ? (
                                         <details className={yongStyles.details}>
                                           <summary>📖 용선생 시대 흐름 더 보기</summary>
