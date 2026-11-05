@@ -23,9 +23,9 @@ export const GANGHWA_HERITAGE_PILOT: HeritagePilotNote[] = [
     source: "강화 고려궁지 현장 안내판(사용자 촬영, 2026-10-31)",
     explanation: "고려는 몽골의 침입에 맞서 고종 19년(1232) 도읍을 개경에서 강화도로 옮겼습니다. 강화에 궁궐을 건립해 39년 동안 사용했으나, 1270년 개경으로 환도할 때 몽골의 요구로 궁궐과 성곽 등이 파괴되었습니다. 조선 시대에는 이곳에 강화유수부 동헌과 외규장각 등 여러 건물이 들어섰습니다.",
     relatedEventKeywords: ["강화 천도", "몽골 침입", "개경 환도"],
-    status: "draft",
+    status: "published",
     publicImageUrls: [],
-    linkedEventIds: [],
+    linkedEventIds: ["goryeo-ganghwa-capital-1232"],
   },
   {
     id: "ganghwa-yusubu-dongheon-20261031",
@@ -36,9 +36,9 @@ export const GANGHWA_HERITAGE_PILOT: HeritagePilotNote[] = [
     source: "강화유수부 동헌 현장 안내판(사용자 촬영, 2026-10-31)",
     explanation: "강화유수가 행정 업무를 보던 중심 건물입니다. 안내판에 따르면 인조 16년(1638) 유수 김신국이 수리했으며, 영조 45년(1769) 유수 황경원이 '현윤관'이라 이름 붙였습니다. 1977년 보수 정비되었습니다.",
     relatedEventKeywords: ["조선 지방 행정", "강화유수부"],
-    status: "draft",
+    status: "published",
     publicImageUrls: [],
-    linkedEventIds: [],
+    linkedEventIds: ["joseon-eight-provinces-1413"],
   },
   {
     id: "ganghwa-oegyujanggak-20261031",
@@ -62,9 +62,9 @@ export const GANGHWA_HERITAGE_PILOT: HeritagePilotNote[] = [
     source: "강화유수부 형방청 현장 안내판(사용자 촬영, 2026-10-31)",
     explanation: "강화유수부에 속해 형벌 등 사법 행정의 실무를 담당하던 건물입니다. 건립 시기는 확실하지 않으며, 여러 차례 개축과 용도 변경을 거쳤습니다. 2020년 본래 위치에서 약 100m 떨어진 현재 자리로 이전 개축했습니다.",
     relatedEventKeywords: ["조선 지방 행정", "강화유수부", "형방청"],
-    status: "draft",
+    status: "published",
     publicImageUrls: [],
-    linkedEventIds: [],
+    linkedEventIds: ["joseon-eight-provinces-1413"],
   },
 ];
 
