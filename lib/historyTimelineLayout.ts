@@ -19,7 +19,7 @@ export type TimelinePeriodKey =
  */
 export const HISTORY_TIMELINE_PERIODS = [
   {
-    key: "prehistoric", title: "도구와 생활 모습이 바뀌던 시기",
+    key: "prehistoric", title: "선사 시대",
     columns: ["주요 사건"], milestone: false, includes: (year: number) => year < -2333,
   },
   {
