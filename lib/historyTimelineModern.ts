@@ -9,7 +9,7 @@ export const HISTORY_TIMELINE_MODERN_EVENTS: HistoryTimelineEvent[] = [
   {
     "id": "colonial-cheongsanri-1920",
     "sortYear": 1920,
-    "dateLabel": "1920년",
+    "dateLabel": "1920년 10월",
     "stateOrEra": "일제강점기",
     "eraFilter": "일제강점기",
     "title": "김좌진 등이 청산리 전투에서 승리함",
@@ -26,12 +26,13 @@ export const HISTORY_TIMELINE_MODERN_EVENTS: HistoryTimelineEvent[] = [
     ],
     "sourceIssueNumbers": [
       22
-    ]
+    ],
+    "sortOrder": 10
   },
   {
     "id": "colonial-bakeunshik-1920",
     "sortYear": 1920,
-    "dateLabel": "1920년",
+    "dateLabel": "1920년 12월",
     "stateOrEra": "일제강점기",
     "eraFilter": "일제강점기",
     "title": "박은식이 『한국독립운동지혈사』를 펴냄",
@@ -48,12 +49,13 @@ export const HISTORY_TIMELINE_MODERN_EVENTS: HistoryTimelineEvent[] = [
     ],
     "sourceIssueNumbers": [
       22
-    ]
+    ],
+    "sortOrder": 12
   },
   {
     "id": "colonial-june10-1926",
     "sortYear": 1926,
-    "dateLabel": "1926년",
+    "dateLabel": "1926년 6월 10일",
     "stateOrEra": "일제강점기",
     "eraFilter": "일제강점기",
     "title": "6·10 만세 운동이 일어남",
@@ -70,7 +72,8 @@ export const HISTORY_TIMELINE_MODERN_EVENTS: HistoryTimelineEvent[] = [
     ],
     "sourceIssueNumbers": [
       22
-    ]
+    ],
+    "sortOrder": 6
   },
   {
     "id": "colonial-singanhae-1927",
@@ -141,7 +144,7 @@ export const HISTORY_TIMELINE_MODERN_EVENTS: HistoryTimelineEvent[] = [
   {
     "id": "colonial-namechange-1940",
     "sortYear": 1940,
-    "dateLabel": "1940년",
+    "dateLabel": "1940년 2월",
     "stateOrEra": "일제강점기",
     "eraFilter": "일제강점기",
     "title": "일제가 창씨개명을 강요함",
@@ -158,12 +161,13 @@ export const HISTORY_TIMELINE_MODERN_EVENTS: HistoryTimelineEvent[] = [
     ],
     "sourceIssueNumbers": [
       22
-    ]
+    ],
+    "sortOrder": 2
   },
   {
     "id": "colonial-korean-liberation-army-1940",
     "sortYear": 1940,
-    "dateLabel": "1940년",
+    "dateLabel": "1940년 9월",
     "stateOrEra": "일제강점기",
     "eraFilter": "일제강점기",
     "title": "한국광복군이 창설됨",
@@ -180,7 +184,8 @@ export const HISTORY_TIMELINE_MODERN_EVENTS: HistoryTimelineEvent[] = [
     ],
     "sourceIssueNumbers": [
       22
-    ]
+    ],
+    "sortOrder": 9
   },
   {
     "id": "liberation-1945",
@@ -202,12 +207,13 @@ export const HISTORY_TIMELINE_MODERN_EVENTS: HistoryTimelineEvent[] = [
     ],
     "sourceIssueNumbers": [
       23
-    ]
+    ],
+    "sortOrder": 8
   },
   {
     "id": "liberation-trusteeship-1945",
     "sortYear": 1945,
-    "dateLabel": "1945년",
+    "dateLabel": "1945년 12월",
     "stateOrEra": "한반도",
     "eraFilter": "대한민국",
     "title": "신탁 통치에 반대하는 운동이 일어남",
@@ -224,7 +230,8 @@ export const HISTORY_TIMELINE_MODERN_EVENTS: HistoryTimelineEvent[] = [
     ],
     "sourceIssueNumbers": [
       23
-    ]
+    ],
+    "sortOrder": 12
   },
   {
     "id": "republic-government-1948",
@@ -246,7 +253,8 @@ export const HISTORY_TIMELINE_MODERN_EVENTS: HistoryTimelineEvent[] = [
     ],
     "sourceIssueNumbers": [
       23
-    ]
+    ],
+    "sortOrder": 8
   },
   {
     "id": "republic-koreanwar-1950",
@@ -268,7 +276,8 @@ export const HISTORY_TIMELINE_MODERN_EVENTS: HistoryTimelineEvent[] = [
     ],
     "sourceIssueNumbers": [
       23
-    ]
+    ],
+    "sortOrder": 6
   },
   {
     "id": "republic-april19-1960",
