@@ -2,6 +2,7 @@ import { verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { getByeolbyeolPublicNotes } from "@/lib/historyTimelineByeolbyeol";
 import { HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS } from "@/lib/historyTimelineByeolbyeolFlow";
+import { AUDITED_ADVANCED_TIMELINE_EVENTS } from "@/lib/historyTimelineAuditedSupplements";
 import {YONG_TIMELINE_EVENTS} from "@/lib/historyTimelineYongEvents";
 import {getYongNotesForEvents} from "@/lib/historyTimelineYongNotes";
 import {
@@ -44,7 +45,7 @@ const buildAllowedMaterials = (allowedIssues: number[]) => ({
   notes: getByeolbyeolPublicNotes(
     getTimelineEventsForIssues(allowedIssues).map(event => event.id)
   ),
-  flowEvents: HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS
+  flowEvents: [...HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS, ...AUDITED_ADVANCED_TIMELINE_EVENTS]
     .filter(event => event.sourceIssueNumbers.some(issue => allowedIssues.includes(issue)))
     .map(event => ({
       ...toStudentTimelineEvent(event, allowedIssues),
