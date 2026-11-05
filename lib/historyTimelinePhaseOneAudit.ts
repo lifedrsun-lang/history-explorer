@@ -114,8 +114,9 @@ export const HISTORY_TIMELINE_PHASE_ONE_EVENTS: readonly PhaseOneChronologyEvent
   {
     "id": "phase1-liberation-geonjun-1945",
     "sortYear": 1945,
+    "sortOrder": 1,
     "dateLabel": "1945년 8월 15일",
-    "stateOrEra": "대한민국",
+    "stateOrEra": "한반도",
     "eraFilter": "대한민국",
     "title": "조선 건국 준비 위원회가 발족함",
     "summary": "광복을 맞아 여운형 등이 조선 건국 준비 위원회를 조직해 해방 뒤의 사회 질서를 마련하고자 했어요.",
@@ -139,8 +140,9 @@ export const HISTORY_TIMELINE_PHASE_ONE_EVENTS: readonly PhaseOneChronologyEvent
   {
     "id": "phase1-republic-jeju43-1948",
     "sortYear": 1948,
+    "sortOrder": 0,
     "dateLabel": "1948년 4월 3일",
-    "stateOrEra": "대한민국",
+    "stateOrEra": "한반도",
     "eraFilter": "대한민국",
     "title": "제주4·3사건이 일어남",
     "summary": "제주에서는 1947년부터 갈등이 커졌고, 1948년 4월 3일 무장봉기가 발생했어요.",
@@ -164,6 +166,7 @@ export const HISTORY_TIMELINE_PHASE_ONE_EVENTS: readonly PhaseOneChronologyEvent
   {
     "id": "phase1-republic-yeosun-1948",
     "sortYear": 1948,
+    "sortOrder": 8,
     "dateLabel": "1948년 10월 19일",
     "stateOrEra": "대한민국",
     "eraFilter": "대한민국",
@@ -264,6 +267,7 @@ export const HISTORY_TIMELINE_PHASE_ONE_EVENTS: readonly PhaseOneChronologyEvent
   {
     "id": "phase1-republic-october26-1979",
     "sortYear": 1979,
+    "sortOrder": 3,
     "dateLabel": "1979년 10월 26일",
     "stateOrEra": "대한민국",
     "eraFilter": "대한민국",
@@ -289,6 +293,7 @@ export const HISTORY_TIMELINE_PHASE_ONE_EVENTS: readonly PhaseOneChronologyEvent
   {
     "id": "phase1-republic-december12-1979",
     "sortYear": 1979,
+    "sortOrder": 5,
     "dateLabel": "1979년 12월 12일",
     "stateOrEra": "대한민국",
     "eraFilter": "대한민국",
@@ -314,6 +319,7 @@ export const HISTORY_TIMELINE_PHASE_ONE_EVENTS: readonly PhaseOneChronologyEvent
   {
     "id": "phase1-republic-unjoint-1991",
     "sortYear": 1991,
+    "sortOrder": 1,
     "dateLabel": "1991년 9월 17일",
     "stateOrEra": "대한민국",
     "eraFilter": "대한민국",
@@ -339,6 +345,7 @@ export const HISTORY_TIMELINE_PHASE_ONE_EVENTS: readonly PhaseOneChronologyEvent
   {
     "id": "phase1-republic-basic-agreement-1991",
     "sortYear": 1991,
+    "sortOrder": 2,
     "dateLabel": "1991년 12월 13일",
     "stateOrEra": "대한민국",
     "eraFilter": "대한민국",
