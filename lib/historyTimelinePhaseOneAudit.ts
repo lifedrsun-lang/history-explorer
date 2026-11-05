@@ -9,6 +9,32 @@ export type PhaseOneChronologyEvent = HistoryTimelineEvent & {
   phaseOneEvidence: { book: string; pdfPage: number; official: string };
 };
 export const HISTORY_TIMELINE_PHASE_ONE_EVENTS: readonly PhaseOneChronologyEvent[] = [
+{
+  "id": "phase1-goguryeo-nakrang-313",
+  "sortYear": 313,
+  "dateLabel": "313년",
+  "stateOrEra": "고구려",
+  "eraFilter": "고구려",
+  "title": "미천왕이 낙랑군을 몰아냄",
+  "summary": "고구려 미천왕은 313년 낙랑군을 공격해 그 지배 세력을 몰아냈어요.",
+  "life": "낙랑군은 기원전 108년 고조선이 멸망한 뒤 설치된 한의 군현 가운데 하나였어요. 미천왕은 313년 낙랑군을, 이듬해 대방군을 공략하며 고구려의 영역을 넓혔어요.",
+  "artifact": "낙랑군·대방군",
+  "image": {
+    "kind": "emoji",
+    "value": "🏯",
+    "alt": "313년 미천왕 낙랑군 축출"
+  },
+  "sourceIssueNumbers": [
+    4,
+    5
+  ],
+  "textbookPages": [],
+  "phaseOneEvidence": {
+    "book": "한 권으로 끝내는 로빈의 한국사",
+    "pdfPage": 46,
+    "official": "https://contents.history.go.kr/front/kc/printViewPopup.do?levelId=kc_n101115"
+  }
+},
   {
     "id": "phase1-joseon-eulsa-purge-1545",
     "sortYear": 1545,
