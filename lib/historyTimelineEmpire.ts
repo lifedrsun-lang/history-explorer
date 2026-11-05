@@ -345,7 +345,7 @@ export const HISTORY_TIMELINE_EMPIRE_EVENTS: HistoryTimelineEvent[] = [
   {
     "id": "colonial-feb8-1919",
     "sortYear": 1919,
-    "dateLabel": "1919년",
+    "dateLabel": "1919년 2월 8일",
     "stateOrEra": "일제강점기",
     "eraFilter": "일제강점기",
     "title": "2·8 독립 선언이 발표됨",
@@ -363,12 +363,13 @@ export const HISTORY_TIMELINE_EMPIRE_EVENTS: HistoryTimelineEvent[] = [
     "sourceIssueNumbers": [
       20,
       21
-    ]
+    ],
+    "sortOrder": 2
   },
   {
     "id": "colonial-march1-1919",
     "sortYear": 1919,
-    "dateLabel": "1919년",
+    "dateLabel": "1919년 3월 1일",
     "stateOrEra": "일제강점기",
     "eraFilter": "일제강점기",
     "title": "3·1 운동이 일어남",
@@ -386,12 +387,13 @@ export const HISTORY_TIMELINE_EMPIRE_EVENTS: HistoryTimelineEvent[] = [
     "sourceIssueNumbers": [
       20,
       21
-    ]
+    ],
+    "sortOrder": 3
   },
   {
     "id": "colonial-provisionalgov-1919",
     "sortYear": 1919,
-    "dateLabel": "1919년",
+    "dateLabel": "1919년 4월",
     "stateOrEra": "일제강점기",
     "eraFilter": "일제강점기",
     "title": "대한민국 임시정부가 세워짐",
@@ -409,7 +411,8 @@ export const HISTORY_TIMELINE_EMPIRE_EVENTS: HistoryTimelineEvent[] = [
     "sourceIssueNumbers": [
       20,
       21
-    ]
+    ],
+    "sortOrder": 4
   }
 ];
 
