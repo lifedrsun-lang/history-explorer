@@ -77,7 +77,7 @@ export const GANGHWA_HERITAGE_PILOT: HeritagePilotNote[] = [
     relatedEventKeywords: ["몽골 사신 저고여 피살과 고려·몽골 관계 악화","몽골 침입","처인성"],
     status: "published",
     publicImageUrls: [],
-    linkedEventIds: ["goryeo-cheoin-envoy-1225"],
+    linkedEventIds: ["goryeo-cheoin-battle-1232"],
   },
   {
     id: "cheoin-bugok-20261031",
@@ -129,7 +129,7 @@ export const GANGHWA_HERITAGE_PILOT: HeritagePilotNote[] = [
     relatedEventKeywords: ["김윤후와 충주성 방어","몽골 침입","처인성"],
     status: "published",
     publicImageUrls: [],
-    linkedEventIds: ["goryeo-cheoin-battle-1232","goryeo-chungju-defense-1253"],
+    linkedEventIds: ["goryeo-cheoin-battle-1232"],
   },
 ];
 
