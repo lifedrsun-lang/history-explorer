@@ -902,5 +902,103 @@ export const HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS: readonly ByeolbyeolFlowEve
       "별꼼역사 21호 2차시 교수·학습 지도안(문화 읽기) · 원본 교재 쪽수 미확인"
     ],
     "byeolbyeolLevel": "basic"
+  },
+
+  // 3차 누락 검증: 별꼼역사 22호 3차시·23호 3차시 수업지도안.
+  // 국사편찬위원회: ta_h52_0050_0020_0030, tg_004_2160, kc_i500150, kc_i500400.
+  {
+    "id": "supplement-flow-colonial-gando-1920",
+    "sortYear": 1920,
+    "sortOrder": 11,
+    "dateLabel": "1920년 10월 이후",
+    "stateOrEra": "일제강점기",
+    "eraFilter": "일제강점기",
+    "title": "일제가 간도 참변을 일으킴",
+    "summary": "청산리 전투 이후 일본군이 간도 지역에 살던 한인들을 탄압하는 간도 참변이 일어났어요.",
+    "life": "독립군의 항일 활동에 대한 일제의 보복 과정에서 벌어진 사건이에요. 봉오동 전투·청산리 전투 이후 독립운동이 겪은 어려움도 살펴봐요.",
+    "artifact": "간도 참변 관련 기록",
+    "image": {
+      "kind": "emoji",
+      "value": "🗂️",
+      "alt": "1920년 간도 참변"
+    },
+    "sourceIssueNumbers": [
+      22
+    ],
+    "textbookPages": [
+      "별꼼역사 22호 3차시 교수·학습 지도안(차근차근 역사 알기) · 원본 교재 쪽수 미확인"
+    ],
+    "byeolbyeolLevel": "basic"
+  },
+  {
+    "id": "supplement-flow-colonial-svobodny-1921",
+    "sortYear": 1921,
+    "dateLabel": "1921년 6월",
+    "stateOrEra": "일제강점기",
+    "eraFilter": "일제강점기",
+    "title": "자유시 참변이 일어남",
+    "summary": "러시아 자유시에 모인 한국 독립군 부대들이 지휘권과 통합 방식을 둘러싼 갈등 속에 큰 피해를 입었어요.",
+    "life": "이 사건으로 독립군의 활동이 위축되었어요. 독립운동을 이어가기 위해 여러 단체가 다시 조직을 정비하는 과정을 함께 알아봐요.",
+    "artifact": "자유시 참변 관련 역사 기록",
+    "image": {
+      "kind": "emoji",
+      "value": "📜",
+      "alt": "1921년 자유시 참변"
+    },
+    "sourceIssueNumbers": [
+      22
+    ],
+    "textbookPages": [
+      "별꼼역사 22호 3차시 교수·학습 지도안(차근차근 역사 알기) · 원본 교재 쪽수 미확인"
+    ],
+    "byeolbyeolLevel": "basic"
+  },
+  {
+    "id": "supplement-flow-republic-oct26-1979",
+    "sortYear": 1979,
+    "sortOrder": 10,
+    "dateLabel": "1979년 10월 26일",
+    "stateOrEra": "대한민국",
+    "eraFilter": "대한민국",
+    "title": "10·26 사건이 발생함",
+    "summary": "10·26 사건으로 박정희 대통령이 사망하면서 유신 체제가 끝나는 중요한 전환점이 만들어졌어요.",
+    "life": "이후 정치적 혼란 속에서 민주주의 회복을 요구하는 움직임과 새로운 군부 세력의 움직임이 함께 나타났어요.",
+    "artifact": "10·26 사건 관련 역사 기록",
+    "image": {
+      "kind": "emoji",
+      "value": "📅",
+      "alt": "1979년 10·26 사건"
+    },
+    "sourceIssueNumbers": [
+      23
+    ],
+    "textbookPages": [
+      "별꼼역사 23호 3차시 교수·학습 지도안(차근차근 역사 알기) · 원본 교재 쪽수 미확인"
+    ],
+    "byeolbyeolLevel": "basic"
+  },
+  {
+    "id": "supplement-flow-republic-dec12-1979",
+    "sortYear": 1979,
+    "sortOrder": 12,
+    "dateLabel": "1979년 12월 12일",
+    "stateOrEra": "대한민국",
+    "eraFilter": "대한민국",
+    "title": "12·12 군사반란이 일어남",
+    "summary": "전두환을 중심으로 한 신군부 세력이 군 지휘권을 장악하는 군사반란을 일으켰어요.",
+    "life": "12·12 군사반란은 민주주의 회복을 어렵게 만들었고, 이후 1980년 5·18 민주화 운동에 이르는 역사적 배경 가운데 하나예요.",
+    "artifact": "12·12 군사반란 관련 역사 기록",
+    "image": {
+      "kind": "emoji",
+      "value": "📜",
+      "alt": "1979년 12·12 군사반란"
+    },
+    "sourceIssueNumbers": [
+      23
+    ],
+    "textbookPages": [
+      "별꼼역사 23호 3차시 교수·학습 지도안(차근차근 역사 알기) · 원본 교재 쪽수 미확인"
+    ],
+    "byeolbyeolLevel": "basic"
   }
 ];
