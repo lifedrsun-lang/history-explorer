@@ -263,14 +263,15 @@ export default function TimelineClient() {
       a.id.localeCompare(b.id));
   }, [payload, byeolbyeolFlowEvents, showByeolbyeolBasic, showByeolbyeolAdvanced, yongFlowEvents, showYongseonsaeng]);
 
-  const personCardsByEvent = useMemo(() => buildTimelinePersonCards(allDisplayEvents), [allDisplayEvents]);
-
   const visibleEvents = useMemo(() => allDisplayEvents.filter((event) =>
       filter === "전체" ||
       event.eraFilter === filter ||
       (filter === "고려" &&
         (event.id === "goryeo-founded-918" || event.id === "later-baekje-falls-936"))
     ), [filter, allDisplayEvents]);
+
+  // 다른 시대 필터에서 보이지 않는 사건으로 연결되지 않도록 현재 표시 사건만 사용한다.
+  const personCardsByEvent = useMemo(() => buildTimelinePersonCards(visibleEvents), [visibleEvents]);
 
   // 공개된 사건이 있는 시대만 빠른 이동 목록에 노출한다.
   const navigationPeriods = PERIODS.filter((period) =>
