@@ -1,11 +1,11 @@
 import type { TimelineExamLink } from "./historyTimelineExam";
 
-// 검증 자료: 제75회 기본(2026-10-22 검증), 제79회 기본(2026-10-23 검증).
+// 검증 자료: 제63·64회, 제75회 기본(2026-10-22 검증), 제79회 기본(2026-10-23 검증).
 // 두 회차는 운영 문제은행에 등록됐다는 재조회 기록이 있음.
 // "answer"는 해당 연표 사건이 정답을 판정하는 핵심 역사 사실일 때만 사용.
 // "context"는 동일 역사 사건/유적이 자료나 지문에 나오지만 직접 정답은 아닐 때 사용.
 // 숫자 ID는 시험 회차·급수·문항 번호이며, Firestore 원본 문서 ID를 추정하지 않음.
-// 고려 이후 등 현재 연표에 없는 사건은 연결하지 않음.
+// 모든 연결은 현행 연표에 존재하는 특정 사건 ID로만 연결하며, 없는 사건은 대기로 둠.
 const VERIFIED: Record<string, TimelineExamLink[]> = {
   "basic:75:1": [{ eventId: "prehistoric-paleolithic-begins", relation: "context" }],
   "basic:75:2": [{ eventId: "goguryeo-pyeongyang-move", relation: "answer" }],
@@ -48,6 +48,39 @@ const VERIFIED: Record<string, TimelineExamLink[]> = {
   "basic:75:17": [{ eventId: "goryeo-yun-gwan-1107", relation: "answer" }],
   "basic:79:12": [{ eventId: "goryeo-gwiju-1019", relation: "answer" }],
   "basic:79:13": [{ eventId: "goryeo-military-coup-1170", relation: "answer" }],
+  // 2026-11-05 재대조: 1~23호 전체 연표 확장에 따라 연결 가능해진 문항.
+  // 출처: 제63·64·75·79회 기본 운영 등록 검증표의 문항별 정답 핵심 주제.
+  // 사건의 직접 정답이 아닌 배경·자료 및 역사 순서 문항은 context로 구분한다.
+  "basic:63:17": [{ eventId: "goryeo-gwajeon-1391", relation: "answer" }],
+  "basic:63:28": [{ eventId: "joseon-hwaseong-1796", relation: "answer" }],
+  "basic:64:17": [{ eventId: "goryeo-hwangsan-1380", relation: "answer" }],
+  "basic:64:22": [{ eventId: "joseon-byeongja-1636", relation: "context" }],
+  "basic:64:27": [{ eventId: "joseon-honggyeongrae-1811", relation: "answer" }],
+  "basic:64:28": [{ eventId: "joseon-unyo-1875", relation: "answer" }],
+  "basic:64:29": [{ eventId: "joseon-imogunran-1882", relation: "answer" }],
+  "basic:64:35": [{ eventId: "colonial-cheongsanri-1920", relation: "answer" }],
+  "basic:64:36": [{ eventId: "colonial-korean-liberation-army-1940", relation: "answer" }],
+  "basic:64:41": [{ eventId: "republic-june1987-1987", relation: "context" }],
+  "basic:75:21": [{ eventId: "joseon-byeongja-1636", relation: "context" }],
+  "basic:75:23": [{ eventId: "joseon-gimyo-1519", relation: "answer" }],
+  "basic:75:25": [{ eventId: "joseon-tangpyeong-1725", relation: "context" }],
+  "basic:75:26": [{ eventId: "joseon-bakjiwon-1780", relation: "answer" }],
+  "basic:75:37": [{ eventId: "colonial-singanhae-1927", relation: "context" }, { eventId: "colonial-gwangju-students-1929", relation: "context" }],
+  "basic:75:46": [{ eventId: "republic-april19-1960", relation: "answer" }],
+  "basic:75:47": [{ eventId: "republic-koreanwar-1950", relation: "context" }],
+  "basic:75:50": [{ eventId: "empire-eulsa-1905", relation: "answer" }],
+  "basic:79:19": [{ eventId: "goryeo-gwajeon-1391", relation: "answer" }],
+  "basic:79:21": [{ eventId: "joseon-hunminjeongeum-1443", relation: "answer" }],
+  "basic:79:26": [{ eventId: "joseon-honggyeongrae-1811", relation: "answer" }],
+  "basic:79:27": [{ eventId: "joseon-mokminsimseo-1818", relation: "answer" }],
+  "basic:79:29": [{ eventId: "joseon-byeonginyangyo-1866", relation: "context" }],
+  "basic:79:31": [{ eventId: "joseon-tangpyeong-1725", relation: "context" }],
+  "basic:79:32": [{ eventId: "joseon-independence-club-1896", relation: "context" }],
+  "basic:79:35": [{ eventId: "empire-eulsa-1905", relation: "context" }],
+  "basic:79:37": [{ eventId: "colonial-june10-1926", relation: "answer" }, { eventId: "colonial-singanhae-1927", relation: "context" }],
+  "basic:79:43": [{ eventId: "colonial-yunbonggil-1932", relation: "answer" }],
+  "basic:79:47": [{ eventId: "republic-april19-1960", relation: "answer" }],
+  "basic:79:50": [{ eventId: "goryeo-mangi-mangsoi-1176", relation: "context" }],
 };
 
 export function knownTimelineExamLinks(examLevel: unknown, examRound: unknown,
