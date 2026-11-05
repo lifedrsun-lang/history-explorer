@@ -6,7 +6,7 @@ import { Fragment, FormEvent, useEffect, useMemo, useState } from "react";
 
 import { auth } from "@/lib/firebase";
 import type { HistoryTimelineEvent } from "@/lib/historyTimeline";
-import { buildTimelinePersonCards } from "@/lib/historyTimelinePeople";
+import { buildTimelinePersonDirectory } from "@/lib/historyTimelinePeople";
 import TimelinePersonCards from "./TimelinePersonCards";
 import { shouldShowTimelineMaterial } from "@/lib/historyTimelinePresentation";
 import {
@@ -300,7 +300,11 @@ export default function TimelineClient() {
     ), [filter, allDisplayEvents]);
 
   // 다른 시대 필터에서 보이지 않는 사건으로 연결되지 않도록 현재 표시 사건만 사용한다.
-  const personCardsByEvent = useMemo(() => buildTimelinePersonCards(visibleEvents), [visibleEvents]);
+  const personDirectory = useMemo(
+    () => buildTimelinePersonDirectory(visibleEvents, payload?.studyTopics ?? []),
+    [visibleEvents, payload?.studyTopics]
+  );
+  const personCardsByEvent = personDirectory.byEvent;
 
   // 공개된 사건이 있는 시대만 빠른 이동 목록에 노출한다.
   const navigationPeriods = PERIODS.filter((period) =>
@@ -677,38 +681,38 @@ export default function TimelineClient() {
                       {period.key === "early-states" && <p className={styles.nationEndNote}>여러 나라는 같은 해에 함께 세워진 것이 아니에요. 연도가 확실하지 않은 풍습은 ‘여러 나라의 성장기 · 정확한 연도 미상’으로 표시합니다.</p>}
                     </div>
                     {period.key === "goryeo" && (
-                      <TimelineGoryeoTopics
+                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic}
                         era="고려"
                         topics={(payload?.studyTopics ?? []).filter((topic) => topic.issue >= 10 && topic.issue <= 13)}
                       />
                     )}
                     {period.key === "joseon" && (
-                      <TimelineGoryeoTopics
+                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic}
                         era="조선"
                         topics={(payload?.studyTopics ?? []).filter((topic) =>
                           (topic.issue >= 14 && topic.issue <= 15) || topic.period === "joseon")}
                       />
                     )}
                     {period.key === "empire" && (
-                      <TimelineGoryeoTopics
+                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic}
                         era="대한제국"
                         topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "empire")}
                       />
                     )}
                     {period.key === "colonial" && (
-                      <TimelineGoryeoTopics
+                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic}
                         era="일제강점기"
                         topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "colonial")}
                       />
                     )}
                     {period.key === "liberation" && (
-                      <TimelineGoryeoTopics
+                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic}
                         era="광복과 분단"
                         topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "liberation")}
                       />
                     )}
                     {period.key === "republic" && (
-                      <TimelineGoryeoTopics
+                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic}
                         era="대한민국"
                         topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "republic")}
                       />
