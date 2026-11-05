@@ -342,3 +342,34 @@
   .eraJumpNav{top:8px;transform:none;gap:1px;padding-block:7px}
   .eraJumpButton{padding-block:4px;font-size:11px}
 }
+
+/* 시대 바로가기 아래에 선택형 참고자료 필터를 함께 배치한다.
+   교재 핵심 설명은 항상 표시하므로 체크 항목에 넣지 않는다. */
+.materialChecks{min-width:0;margin:8px 0 0;padding:10px 0 0;border:0;border-top:1px solid #d7e3d8}
+.materialChecks legend{font-size:12px;color:#365742;font-weight:950;padding:0 0 5px}
+.materialCheck{display:flex;align-items:center;gap:6px;cursor:pointer;color:#2a4d39;font-size:11px;font-weight:800;line-height:1.35;padding:5px 2px}
+.materialCheck input{width:15px;height:15px;flex-shrink:0;accent-color:#276c52;cursor:pointer}
+.materialCheck span{overflow-wrap:anywhere}
+.mobileMaterials{position:relative}
+.mobileMaterials>summary{border:1px solid #9bbba7;border-radius:10px;padding:9px 6px;
+  background:#fff;color:#214d37;font-size:12px;font-weight:850;cursor:pointer;white-space:nowrap}
+.mobileMaterialPanel{position:absolute;right:0;bottom:calc(100% + 11px);
+  min-width:235px;margin:0;padding:13px 14px;border:1px solid #9bbba7;border-radius:13px;
+  background:#fffdf6;box-shadow:0 8px 28px #253e3033}
+.mobileMaterialPanel legend{color:#365742;font-size:12px;font-weight:950;padding-bottom:4px}
+@media(min-width:1100px){
+  .eraJumpNav{width:166px}
+  .wrap{width:calc(100% - 212px);margin-right:182px}
+}
+@media(min-width:1100px) and (max-height:780px){
+  .eraJumpNav{top:5px;transform:none;gap:1px;padding-top:6px;padding-bottom:6px}
+  .eraJumpButton{padding-top:4px;padding-bottom:4px;font-size:11px}
+  .materialChecks{margin-top:3px;padding-top:4px}
+  .materialCheck{padding-top:2px;padding-bottom:2px;font-size:10px}
+}
+@media(max-width:420px){
+  .mobileEraJump{right:6px;bottom:8px;gap:5px;padding:6px}
+  .mobileEraJump label{font-size:11px}
+  .mobileEraJump select{max-width:105px;font-size:11px}
+  .mobileMaterials>summary{font-size:11px}
+}
