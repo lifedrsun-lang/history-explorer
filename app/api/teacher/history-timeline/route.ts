@@ -44,6 +44,7 @@ export async function GET(request: Request) {
           timelineCompletedIssues: timelineAccess.issues,
           timelineAccessSource: timelineAccess.source,
           timelineVisibleWhileHidden: data.timelineVisibleWhileHidden === true,
+          timelineExamAccess: data.timelineExamAccess === true,
         };
       })
       .sort((a, b) =>
@@ -158,6 +159,37 @@ export async function PATCH(request: Request) {
     const teacher = await verifyTeacherRequest(request);
     const body = await request.json();
     const studentId = normalize(body?.studentId);
+    const requestedIds: string[] = Array.isArray(body?.studentIds)
+      ? body.studentIds.map((value: unknown) => normalize(value)).filter(Boolean)
+      : studentId ? [studentId] : [];
+    if (typeof body?.timelineExamAccess === "boolean") {
+      const studentIds = [...new Set(requestedIds)].slice(0, 450);
+      if (studentIds.length === 0) {
+        return jsonError("학생을 확인해 주세요.", 400, "missing_student_id");
+      }
+      const { db } = getFirebaseAdmin();
+      const refs = studentIds.map((id) => db.collection("students").doc(id));
+      const snapshots = await Promise.all(refs.map((ref) => ref.get()));
+      const invalid = snapshots.find((snapshot) =>
+        !snapshot.exists || normalize(snapshot.data()?.program) !== "byeolkkum_history"
+      );
+      if (invalid) {
+        return jsonError("별꼼역사 수강생만 설정할 수 있습니다.", 409, "timeline_forbidden");
+      }
+      const batch = db.batch();
+      refs.forEach((ref) => batch.update(ref, {
+        timelineExamAccess: body.timelineExamAccess,
+        timelineExamAccessUpdatedBy: teacher.uid,
+        timelineExamAccessUpdatedAt: FieldValue.serverTimestamp(),
+      }));
+      await batch.commit();
+      return Response.json({
+        ok: true,
+        studentIds,
+        timelineExamAccess: body.timelineExamAccess,
+      });
+    }
+
     if (!studentId) {
       return jsonError("학생을 확인해 주세요.", 400, "missing_student_id");
     }

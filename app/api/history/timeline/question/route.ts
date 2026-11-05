@@ -66,6 +66,10 @@ export async function GET(request: Request) {
     examQuestionNumber: String(data.examQuestionNumber || "").replace(/\D/g, ""),
     prompt,
     options,
+    correctIndex: Number.isInteger(Number(data.correctIndex))
+      ? Math.max(0, Math.min(optionLimit - 1, Number(data.correctIndex)))
+      : 0,
+    explanation: String(data.explanation || "").trim(),
     imageUrl,
     hasStoredImage: Boolean(imageStoragePath),
   }, { headers: { "Cache-Control": "private, no-store, max-age=0", "Vary": "Authorization, Cookie" } });

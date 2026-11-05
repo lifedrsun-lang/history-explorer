@@ -21,6 +21,9 @@ export async function GET(request: Request) {
         studentId: d.id, name: String(d.data().name || ""), school: String(d.data().school || ""),
         profileLinked: profiles[i].exists,
         timelineFullAccess: profiles[i].data()?.timelineFullAccess === true,
+        timelineStudyBasicAccess: profiles[i].data()?.timelineStudyBasicAccess === true,
+        timelineStudyAdvancedAccess: profiles[i].data()?.timelineStudyAdvancedAccess === true,
+        timelineExamAccess: profiles[i].data()?.timelineExamAccess === true,
       })),
     }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
@@ -35,7 +38,16 @@ export async function PATCH(request: Request) {
     const teacher = await verifyTeacherRequest(request);
     const body = await request.json().catch(() => ({}));
     const studentId = String(body.studentId || "").trim();
-    if (!studentId || typeof body.timelineFullAccess !== "boolean")
+    const fields = [
+      "timelineFullAccess",
+      "timelineStudyBasicAccess",
+      "timelineStudyAdvancedAccess",
+      "timelineExamAccess",
+    ] as const;
+    const updates = Object.fromEntries(fields
+      .filter((field) => typeof body[field] === "boolean")
+      .map((field) => [field, body[field]]));
+    if (!studentId || Object.keys(updates).length === 0)
       return jsonError("회원과 권한을 확인해 주세요.", 400, "invalid_request");
     const { db } = getFirebaseAdmin();
     const [studentSnap, profileSnap] = await Promise.all([
@@ -50,11 +62,11 @@ export async function PATCH(request: Request) {
     if (!profileSnap.exists)
       return jsonError("SUN LAB 회원정보 연결이 먼저 필요합니다. 회원관리에서 기존 계정 정보를 저장해 주세요.", 409, "profile_not_linked");
     await profileSnap.ref.update({
-      timelineFullAccess: body.timelineFullAccess,
+      ...updates,
       timelineUpdatedBy: teacher.uid,
       timelineUpdatedAt: FieldValue.serverTimestamp(),
     });
-    return Response.json({ ok: true, timelineFullAccess: body.timelineFullAccess, studentId });
+    return Response.json({ ok: true, ...updates, studentId });
   } catch (error) {
     if (error instanceof Error && error.message === "teacher_auth_required")
       return jsonError("교사 로그인이 필요합니다.", 401, "teacher_auth_required");

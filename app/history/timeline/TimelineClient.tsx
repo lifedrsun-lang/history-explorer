@@ -19,6 +19,9 @@ import TimelineWarSummary from "./TimelineWarSummary";
 import TimelineStudyDetails from "./TimelineStudyDetails";
 import TimelineGoryeoTopics from "./TimelineGoryeoTopics";
 import type { HistoryTimelineStudyTopic } from "@/lib/historyTimelineGoryeoTopics";
+import type { HistoryTimelineMaterialAccess } from "@/lib/historyTimelineAccess";
+import type { TimelineLearningMaterial } from "@/lib/historyTimelineLearning";
+import TimelineLearningMaterials from "./TimelineLearningMaterials";
 
 import styles from "./timeline.module.css";
 
@@ -40,6 +43,11 @@ type TimelinePayload = {
   events: StudentEvent[];
   examLinks?: Record<string, ExamReference[]>;
   studyTopics?: HistoryTimelineStudyTopic[];
+  materialAccess?: HistoryTimelineMaterialAccess;
+  learningMaterials?: {
+    basic?: Record<string, TimelineLearningMaterial[]>;
+    advanced?: Record<string, TimelineLearningMaterial[]>;
+  };
   maxIssue: number;
 };
 
@@ -99,6 +107,8 @@ export default function TimelineClient() {
   const [school, setSchool] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showBasicMaterials, setShowBasicMaterials] = useState(false);
+  const [showAdvancedMaterials, setShowAdvancedMaterials] = useState(false);
 
   useEffect(
     () =>
@@ -158,6 +168,25 @@ export default function TimelineClient() {
     return () => window.clearTimeout(timer);
   }, [authReady, teacher]);
 
+  useEffect(() => {
+    if (!teacher) return;
+    const timer = window.setTimeout(() => {
+      setShowBasicMaterials(window.localStorage.getItem("history-timeline-show-basic") === "true");
+      setShowAdvancedMaterials(window.localStorage.getItem("history-timeline-show-advanced") === "true");
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [teacher]);
+
+  const updateBasicMaterials = (checked: boolean) => {
+    setShowBasicMaterials(checked);
+    window.localStorage.setItem("history-timeline-show-basic", String(checked));
+  };
+
+  const updateAdvancedMaterials = (checked: boolean) => {
+    setShowAdvancedMaterials(checked);
+    window.localStorage.setItem("history-timeline-show-advanced", String(checked));
+  };
+
   // 이미 열어 둔 학생 페이지도 탭 복귀 또는 주기적인 재조회 시 공개 중단을 반영한다.
   useEffect(() => {
     if (!authReady || teacher || !payload || payload.viewer.role !== "student") return;
@@ -181,6 +210,13 @@ export default function TimelineClient() {
         (event.id === "goryeo-founded-918" || event.id === "later-baekje-falls-936"))
     );
   }, [filter, payload]);
+
+  const displayBasicMaterials = payload?.viewer.role === "teacher"
+    ? showBasicMaterials
+    : payload?.materialAccess?.studyBasic === true;
+  const displayAdvancedMaterials = payload?.viewer.role === "teacher"
+    ? showAdvancedMaterials
+    : payload?.materialAccess?.studyAdvanced === true;
 
   const login = async (event: FormEvent) => {
     event.preventDefault();
@@ -358,6 +394,31 @@ export default function TimelineClient() {
             ))}
           </nav>
 
+          {payload?.viewer.role === "teacher" && (
+            <section className={styles.materialControls} aria-label="한능검 학습자료 표시 설정">
+              <strong>한능검 학습자료 표시</strong>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showBasicMaterials}
+                  onChange={(event) => updateBasicMaterials(event.target.checked)}
+                />
+                별별한국사 (기본)
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showAdvancedMaterials}
+                  onChange={(event) => updateAdvancedMaterials(event.target.checked)}
+                />
+                별별한국사 (심화)
+              </label>
+              {showBasicMaterials && (
+                <small>기본 교재 파일이 아직 등록되지 않아 기본 학습자료는 표시되지 않습니다.</small>
+              )}
+            </section>
+          )}
+
           {error && <div className={styles.error}>{error}</div>}
           {visibleEvents.length === 0 ? (
             <div className={styles.empty}>
@@ -392,6 +453,12 @@ export default function TimelineClient() {
                               </div>
                             )}
                             <TimelineExamReferences eventId={event.id} refs={payload?.examLinks?.[event.id] || []} />
+                            <TimelineLearningMaterials
+                              basic={payload?.learningMaterials?.basic?.[event.id] || []}
+                              advanced={payload?.learningMaterials?.advanced?.[event.id] || []}
+                              showBasic={displayBasicMaterials}
+                              showAdvanced={displayAdvancedMaterials}
+                            />
                             <small className={styles.gridSource}>
                               {textbookSourceLabel(event)}
                             </small>
@@ -460,6 +527,12 @@ export default function TimelineClient() {
                           />
                           <small className={styles.gridSource}>{textbookSourceLabel(overviewEvent)}</small>
                           <TimelineExamReferences eventId={overviewEvent.id} refs={payload?.examLinks?.[overviewEvent.id] || []} />
+                          <TimelineLearningMaterials
+                            basic={payload?.learningMaterials?.basic?.[overviewEvent.id] || []}
+                            advanced={payload?.learningMaterials?.advanced?.[overviewEvent.id] || []}
+                            showBasic={displayBasicMaterials}
+                            showAdvanced={displayAdvancedMaterials}
+                          />
                         </div>
                       </article>
                     )}
@@ -529,6 +602,12 @@ export default function TimelineClient() {
                                         {textbookSourceLabel(event)}
                                       </small>
                                       <TimelineExamReferences eventId={event.id} refs={payload?.examLinks?.[event.id] || []} />
+                                      <TimelineLearningMaterials
+                                        basic={payload?.learningMaterials?.basic?.[event.id] || []}
+                                        advanced={payload?.learningMaterials?.advanced?.[event.id] || []}
+                                        showBasic={displayBasicMaterials}
+                                        showAdvanced={displayAdvancedMaterials}
+                                      />
                                     </article>
                                   ))}
                               </div>
