@@ -1,0 +1,12 @@
+.details {margin-top:10px;border:1px solid #accfd0;border-radius:12px;background:#eef9f7;color:#245255;overflow:hidden;}
+.details>summary {cursor:pointer;padding:11px 12px;font-size:12px;font-weight:900;line-height:1.5;word-break:keep-all;}
+.details>summary small {display:block;font-size:10px;font-weight:600;margin-top:4px;color:#487676;}
+.details[open]>summary {background:#def1ed;border-bottom:1px solid #b4d6d1;}
+.body {padding:10px;display:grid;gap:10px;}
+.topic {padding:10px;background:#fff;border:1px solid #c6e1db;border-radius:10px;}
+.topic h5 {font-size:13px;margin:2px 0 8px;}
+.topic ul {padding-left:18px;margin:0;}
+.topic li {font-size:12px;line-height:1.65;margin-bottom:5px;}
+.source {display:block;margin-top:8px;color:#57767a;font-size:10px;}
+.flowBadge {display:inline-block;font-size:10px;font-weight:900;color:#11615c;background:#d6f0e8;padding:4px 8px;margin:4px 0;border-radius:30px;}
+.flowExplanation {display:block;padding:10px 12px;font-size:12px;line-height:1.7;}

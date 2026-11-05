@@ -20,6 +20,10 @@ import TimelineStudyDetails from "./TimelineStudyDetails";
 import TimelineHeritageDetails from "./TimelineHeritageDetails";
 import type { HeritagePilotNote } from "@/lib/historyTimelineGanghwaHeritagePilot";
 import TimelineByeolbyeolDetails from "./TimelineByeolbyeolDetails";
+import TimelineYongDetails from "./TimelineYongDetails";
+import type { YongNote } from "@/lib/historyTimelineYongNotes";
+import type { YongSource } from "@/lib/historyTimelineYongEvents";
+import yongStyles from "./timelineYong.module.css";
 import type { ByeolbyeolLevel, ByeolbyeolNote } from "@/lib/historyTimelineByeolbyeolTypes";
 import supplementStyles from "./timelineByeolbyeol.module.css";
 import TimelineGoryeoTopics from "./TimelineGoryeoTopics";
@@ -29,6 +33,8 @@ import styles from "./timeline.module.css";
 
 type StudentEvent = Omit<HistoryTimelineEvent, "sourceIssueNumbers" | "textbookPages"> & {
   byeolbyeolLevel?: ByeolbyeolLevel;
+  yongseonsaeng?: boolean;
+  yongSource?: YongSource;
   sourceIssueNumbers?: number[];
   textbookPages?: string[];
   textbookIssues?: number[];
@@ -102,6 +108,9 @@ export default function TimelineClient() {
   const [payload, setPayload] = useState<TimelinePayload | null>(null);
   const [byeolbyeolNotes, setByeolbyeolNotes] = useState<Record<string, ByeolbyeolNote[]>>({});
   const [byeolbyeolFlowEvents, setByeolbyeolFlowEvents] = useState<StudentEvent[]>([]);
+  const [yongNotes, setYongNotes] = useState<Record<string, YongNote[]>>({});
+  const [yongFlowEvents, setYongFlowEvents] = useState<StudentEvent[]>([]);
+  const [showYongseonsaeng, setShowYongseonsaeng] = useState(false);
   const [showByeolbyeolBasic, setShowByeolbyeolBasic] = useState(false);
   const [showByeolbyeolAdvanced, setShowByeolbyeolAdvanced] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -128,6 +137,8 @@ export default function TimelineClient() {
     setError("");
     setByeolbyeolNotes({});
     setByeolbyeolFlowEvents([]);
+    setYongNotes({});
+    setYongFlowEvents([]);
     try {
       const token = currentTeacher ? await currentTeacher.getIdToken() : "";
       const response = await fetch("/api/history/timeline/events", {
@@ -164,9 +175,13 @@ export default function TimelineClient() {
           const extra = (await extraResponse.json().catch(() => ({}))) as {
             notes?: Record<string, ByeolbyeolNote[]>;
             flowEvents?: StudentEvent[];
+            yongNotes?: Record<string,YongNote[]>;
+            yongFlowEvents?: StudentEvent[];
           };
           setByeolbyeolNotes(extra.notes ?? {});
           setByeolbyeolFlowEvents(Array.isArray(extra.flowEvents) ? extra.flowEvents : []);
+          setYongNotes(extra.yongNotes ?? {});
+          setYongFlowEvents(Array.isArray(extra.yongFlowEvents) ? extra.yongFlowEvents : []);
         }
       } catch {
         // 별별한국사 자료 조회 실패와 관계없이 기존 연표는 정상 이용할 수 있어야 한다.
@@ -209,6 +224,8 @@ export default function TimelineClient() {
        ...(showByeolbyeolAdvanced ? ["advanced" as const] : [])]
     : ["basic", "advanced"];
 
+  const yongEnabled = payload?.viewer.role === "teacher" ? showYongseonsaeng : true;
+
   const allDisplayEvents = useMemo(() => {
     if (!payload) return [];
     const levels: ByeolbyeolLevel[] = payload.viewer.role === "teacher"
@@ -220,11 +237,12 @@ export default function TimelineClient() {
       ...payload.events,
       ...byeolbyeolFlowEvents.filter(event =>
         event.byeolbyeolLevel !== undefined && allowed.has(event.byeolbyeolLevel)),
+      ...(payload.viewer.role !== "teacher" || showYongseonsaeng ? yongFlowEvents : []),
     ].sort((a, b) =>
       a.sortYear - b.sortYear ||
       (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
       a.id.localeCompare(b.id));
-  }, [payload, byeolbyeolFlowEvents, showByeolbyeolBasic, showByeolbyeolAdvanced]);
+  }, [payload, byeolbyeolFlowEvents, showByeolbyeolBasic, showByeolbyeolAdvanced, yongFlowEvents, showYongseonsaeng]);
 
   const visibleEvents = useMemo(() => allDisplayEvents.filter((event) =>
       filter === "전체" ||
@@ -410,12 +428,14 @@ export default function TimelineClient() {
           </nav>
 
           {payload?.viewer.role === "teacher" && (
-            <div className={supplementStyles.teacherControls} aria-label="별별한국사 보충 설명 표시 선택">
+            <div className={supplementStyles.teacherControls} aria-label="보충 설명 자료 표시 선택">
               <label><input type="checkbox" checked={showByeolbyeolBasic}
                 onChange={e => setShowByeolbyeolBasic(e.target.checked)} />별별한국사 (기본)</label>
               <label><input type="checkbox" checked={showByeolbyeolAdvanced}
                 onChange={e => setShowByeolbyeolAdvanced(e.target.checked)} />별별한국사 (심화)</label>
-              <span>체크한 자료만 아래 연표에 표시합니다.</span>
+              <label><input type="checkbox" checked={showYongseonsaeng}
+                onChange={e => setShowYongseonsaeng(e.target.checked)} />용선생 교과서 한국사 1·2</label>
+              <span>선택한 참고자료의 내용과 새 사건 카드만 표시합니다.</span>
               <Link href="/teacher/history-timeline/byeolbyeol-access">민서·민채 열람 권한 확인 →</Link>
             </div>
           )}
@@ -449,6 +469,7 @@ export default function TimelineClient() {
                             />
                             <TimelineByeolbyeolDetails notes={byeolbyeolNotes[event.id]}
                               enabledLevels={enabledByeolbyeolLevels} />
+                            <TimelineYongDetails notes={yongNotes[event.id]} enabled={yongEnabled} />
                             {shouldShowTimelineMaterial(event.artifact) && (
                               <div className={styles.transitionDetail}>
                                 <b>대표 유물·유적</b><span>{event.artifact}</span>
@@ -549,6 +570,7 @@ export default function TimelineClient() {
                           />
                           <TimelineByeolbyeolDetails notes={byeolbyeolNotes[overviewEvent.id]}
                             enabledLevels={enabledByeolbyeolLevels} />
+                          <TimelineYongDetails notes={yongNotes[overviewEvent.id]} enabled={yongEnabled} />
                           <small className={styles.gridSource}>{textbookSourceLabel(overviewEvent)}</small>
                           <TimelineHeritageDetails notes={payload?.heritageNotes?.[overviewEvent.id] || []} />
                            <TimelineExamReferences eventId={overviewEvent.id} refs={payload?.examLinks?.[overviewEvent.id] || []} />
@@ -605,9 +627,16 @@ export default function TimelineClient() {
                                       {/멸망|귀부/.test(event.title) && <span className={styles.fallBadge}>멸망·통합</span>}
                                       <span className={styles.gridEmoji} role="img" aria-label={event.image.alt}>{event.image.value}</span>
                                       {event.byeolbyeolLevel && <span className={supplementStyles.flowBadge}>🧭 새 역사 흐름 카드</span>}
+                                      {event.yongseonsaeng && <span className={yongStyles.flowBadge}>📗 용선생 시대 흐름 카드</span>}
                                       <h4>{event.title}</h4>
                                       <p className={styles.gridSummary}>{event.summary}</p>
-                                      {event.byeolbyeolLevel ? (
+                                      {event.yongseonsaeng ? (
+                                        <details className={yongStyles.details}>
+                                          <summary>📖 용선생 시대 흐름 더 보기</summary>
+                                          <p className={yongStyles.flowExplanation}>{event.life}</p>
+                                          {event.yongSource && <small className={yongStyles.source}>출처: 용선생 교과서 한국사 {event.yongSource.volume}권 {event.yongSource.printedPage}쪽</small>}
+                                        </details>
+                                      ) : event.byeolbyeolLevel ? (
                                         <details className={supplementStyles.disclosure}>
                                           <summary>📖 시대 흐름 더 보기</summary>
                                           <div className={supplementStyles.flowText}>{event.life}</div>
@@ -629,7 +658,8 @@ export default function TimelineClient() {
                                       <TimelineStudyDetails notes={event.studyNotes ?? []} />
                                       <TimelineByeolbyeolDetails notes={byeolbyeolNotes[event.id]}
                                         enabledLevels={enabledByeolbyeolLevels} />
-                                      {!event.byeolbyeolLevel && (
+                                      <TimelineYongDetails notes={yongNotes[event.id]} enabled={yongEnabled} />
+                                      {!event.byeolbyeolLevel && !event.yongseonsaeng && (
                                         <small className={styles.gridSource}>
                                           {textbookSourceLabel(event)}
                                         </small>
