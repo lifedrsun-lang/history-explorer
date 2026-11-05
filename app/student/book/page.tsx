@@ -36,7 +36,7 @@ type Member = {
 };
 
 type ResourceCard = {
-  permission: SunLabPermission | "minecraft_education";
+  permission: SunLabPermission | "minecraft_education" | "history_timeline";
   emoji: string;
   title: string;
   description: string;
@@ -46,6 +46,13 @@ type ResourceCard = {
 };
 
 const RESOURCE_CARDS: ResourceCard[] = [
+  {
+    permission: "history_timeline",
+    emoji: "📜",
+    title: "한국사여행",
+    description: "배운 역사를 연표로 살펴봐요.",
+    href: "/history/timeline",
+  },
   {
     permission: "library",
     emoji: "📖",
@@ -359,6 +366,10 @@ function SunLabStudentPage() {
   }
 
   const visibleCards = RESOURCE_CARDS.filter((card) => {
+    if (card.permission === "history_timeline") {
+      return true;
+    }
+
     if (card.permission === "minecraft_education") {
       return member.minecraftEducationAvailable === true;
     }
