@@ -1,11 +1,12 @@
 import { verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { getByeolbyeolPublicNotes } from "@/lib/historyTimelineByeolbyeol";
+import { HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS } from "@/lib/historyTimelineByeolbyeolFlow";
 import {
   getTimelineEventsForIssues,
-  HISTORY_TIMELINE_EVENTS,
   HISTORY_TIMELINE_MAX_ISSUE,
   resolveTimelineCompletedIssues,
+  toStudentTimelineEvent,
 } from "@/lib/historyTimeline";
 import {
   getHistoryTimelineSession,
@@ -26,13 +27,28 @@ const respond = (body: object, status = 200) => Response.json(body, {
   },
 });
 
+// 보충 카드 또한 원본 별별한국사 열람 권한이 있는 경우에만 전달한다.
+// 일반 연표 / 기출 연결 API에는 새 카드를 넣지 않는다.
+const buildAllowedMaterials = (allowedIssues: number[]) => ({
+  notes: getByeolbyeolPublicNotes(
+    getTimelineEventsForIssues(allowedIssues).map(event => event.id)
+  ),
+  flowEvents: HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS
+    .filter(event => event.sourceIssueNumbers.some(issue => allowedIssues.includes(issue)))
+    .map(event => ({
+      ...toStudentTimelineEvent(event, allowedIssues),
+      byeolbyeolLevel: event.byeolbyeolLevel,
+    })),
+});
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization") || "";
   if (authHeader) {
     // Authorization을 받은 요청은 반드시 실제 교사 계정을 검증한다.
     try {
       await verifyTeacherRequest(request);
-      return respond({ notes: getByeolbyeolPublicNotes(HISTORY_TIMELINE_EVENTS.map(event => event.id)) });
+      const allIssues = Array.from({ length: HISTORY_TIMELINE_MAX_ISSUE }, (_, i) => i + 1);
+      return respond(buildAllowedMaterials(allIssues));
     } catch {
       return respond({ error: "교사 인증이 필요합니다." }, 401);
     }
@@ -57,9 +73,7 @@ export async function GET(request: Request) {
       return respond({ notes: {} }, 200);
     }
     const allowedIssues = resolveTimelineCompletedIssues(student).issues;
-    return respond({ notes: getByeolbyeolPublicNotes(
-      getTimelineEventsForIssues(allowedIssues).map(event => event.id)
-    ) });
+    return respond(buildAllowedMaterials(allowedIssues));
   }
 
   // SUN LAB 계정: 기존 연표 전체 권한과 보충설명 전용 권한을 모두 요구한다.
@@ -85,7 +99,5 @@ export async function GET(request: Request) {
   }
 
   const allIssues = Array.from({ length: HISTORY_TIMELINE_MAX_ISSUE }, (_, i) => i + 1);
-  return respond({ notes: getByeolbyeolPublicNotes(
-    getTimelineEventsForIssues(allIssues).map(event => event.id)
-  ) });
+  return respond(buildAllowedMaterials(allIssues));
 }
