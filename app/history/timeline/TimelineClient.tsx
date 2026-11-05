@@ -58,7 +58,7 @@ type TimelinePayload = {
 
 const FILTERS = [
   ["전체", "전체"],
-  ["선사", "도구와 생활"],
+  ["선사", "선사 시대"],
   ["고조선", "고조선"],
   ["여러나라", "여러 나라"],
   ["고구려", "고구려"],
@@ -73,6 +73,21 @@ const FILTERS = [
   ["일제강점기", "일제강점기"],
   ["대한민국", "대한민국"],
 ] as const;
+
+const ERA_NAV_LABELS: Record<string, string> = {
+  prehistoric: "선사 시대",
+  gojoseon: "고조선",
+  "early-states": "여러 나라",
+  three: "삼국 시대",
+  northsouth: "남북국 시대",
+  "later-three": "후삼국 시대",
+  goryeo: "고려",
+  joseon: "조선",
+  empire: "대한제국",
+  colonial: "일제강점기",
+  liberation: "광복·분단",
+  republic: "대한민국",
+};
 
 // 새 국가가 등장하면 열을 추가하고, 국호를 바꾸면 같은 위치의 명칭을 갱신한다.
 const renameEvents = new Set(["silla-jijeung-reform", "balhae-name-713",
@@ -118,6 +133,8 @@ export default function TimelineClient() {
   const [needsLogin, setNeedsLogin] = useState(false);
   const [unpublished, setUnpublished] = useState(false);
   const [filter, setFilter] = useState<(typeof FILTERS)[number][0]>("전체");
+  const [activePeriod, setActivePeriod] = useState<string>("");
+  const [targetPeriod, setTargetPeriod] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [school, setSchool] = useState("");
   const [password, setPassword] = useState("");
@@ -250,6 +267,48 @@ export default function TimelineClient() {
       (filter === "고려" &&
         (event.id === "goryeo-founded-918" || event.id === "later-baekje-falls-936"))
     ), [filter, allDisplayEvents]);
+
+  // 공개된 사건이 있는 시대만 빠른 이동 목록에 노출한다.
+  const navigationPeriods = PERIODS.filter((period) =>
+    !period.milestone && allDisplayEvents.some((event) => getTimelinePeriodForEvent(event) === period.key)
+  );
+
+  const jumpToPeriod = (periodKey: string) => {
+    setActivePeriod(periodKey);
+    setTargetPeriod(periodKey);
+    // 다른 시대 필터가 선택되어 있어도 해당 시대로 정상 이동하도록 전체 보기로 전환한다.
+    if (filter !== "전체") setFilter("전체");
+  };
+
+  useEffect(() => {
+    if (!targetPeriod || filter !== "전체") return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(`timeline-${targetPeriod}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      setTargetPeriod(null);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [targetPeriod, filter, visibleEvents]);
+
+  // 본문을 직접 스크롤할 때도 현재 읽는 시대를 강조한다.
+  useEffect(() => {
+    if (filter !== "전체") return;
+    const sections = Array.from(document.querySelectorAll<HTMLElement>("[data-period]"));
+    if (sections.length === 0) return;
+
+    const updateCurrentPeriod = () => {
+      const current = sections.filter((section) =>
+        section.getBoundingClientRect().top <= window.innerHeight * 0.35
+      ).at(-1) ?? sections[0];
+      setActivePeriod(current.dataset.period ?? "");
+    };
+
+    updateCurrentPeriod();
+    window.addEventListener("scroll", updateCurrentPeriod, { passive: true });
+    return () => window.removeEventListener("scroll", updateCurrentPeriod);
+  }, [filter, visibleEvents]);
 
   const login = async (event: FormEvent) => {
     event.preventDefault();
@@ -385,6 +444,40 @@ export default function TimelineClient() {
         <p>같은 시대에 여러 나라에서 일어난 일을 함께 살펴봐요.</p>
       </header>
 
+      {navigationPeriods.length > 0 && (
+        <>
+          <nav className={styles.eraJumpNav} aria-label="시대별 빠른 이동">
+            <strong>시대 바로가기</strong>
+            {navigationPeriods.map((period) => (
+              <button
+                key={period.key}
+                type="button"
+                className={`${styles.eraJumpButton} ${activePeriod === period.key ? styles.currentEra : ""}`}
+                aria-current={activePeriod === period.key ? "location" : undefined}
+                onClick={() => jumpToPeriod(period.key)}
+              >
+                {ERA_NAV_LABELS[period.key] ?? period.title}
+              </button>
+            ))}
+          </nav>
+          <div className={styles.mobileEraJump}>
+            <label htmlFor="timeline-era-jump">시대 바로가기</label>
+            <select
+              id="timeline-era-jump"
+              value=""
+              onChange={(event) => jumpToPeriod(event.target.value)}
+            >
+              <option value="" disabled>시대 선택</option>
+              {navigationPeriods.map((period) => (
+                <option key={period.key} value={period.key}>
+                  {ERA_NAV_LABELS[period.key] ?? period.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        </>
+      )}
+
       <div className={styles.wrap}>
         <section className={styles.introSection}>
           <h2>역사는 언제부터 시작되었을까?</h2>
@@ -456,7 +549,7 @@ export default function TimelineClient() {
                 // 여러 나라의 등장은 별도 시대 표가 아니라 성장 비교표 안의 도입 카드로 표시한다.
                 if (period.milestone) {
                   return (
-                    <section className={styles.transitionBlock} key={period.key} aria-label={period.title}>
+                    <section id={`timeline-${period.key}`} className={styles.transitionBlock} data-period={period.key} key={period.key} aria-label={period.title}>
                       {periodEvents.map((event) => (
                         <article className={styles.transitionCard} key={event.id}>
                           <div className={styles.transitionDate}>{event.dateLabel}</div>
@@ -515,7 +608,7 @@ export default function TimelineClient() {
                 const dates = groupSameDates(comparisonEvents);
 
                 return (
-                  <section className={styles.periodBlock} data-period={period.key} key={period.key}>
+                  <section id={`timeline-${period.key}`} className={styles.periodBlock} data-period={period.key} key={period.key}>
                     <div className={styles.periodTop}>
                       <h3>{period.title}</h3>
                       {comparisonEvents.length > 0 && <span>↔ 좌우로 밀어 다른 나라 보기</span>}
