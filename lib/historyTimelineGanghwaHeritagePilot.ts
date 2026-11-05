@@ -8,8 +8,9 @@ export type HeritagePilotNote = {
   source: string;
   explanation: string;
   relatedEventKeywords: string[];
-  status: "draft";
+  status: "draft" | "published";
   publicImageUrls: string[];
+  linkedEventIds: string[];
 };
 
 export const GANGHWA_HERITAGE_PILOT: HeritagePilotNote[] = [
@@ -24,6 +25,7 @@ export const GANGHWA_HERITAGE_PILOT: HeritagePilotNote[] = [
     relatedEventKeywords: ["강화 천도", "몽골 침입", "개경 환도"],
     status: "draft",
     publicImageUrls: [],
+    linkedEventIds: [],
   },
   {
     id: "ganghwa-yusubu-dongheon-20261031",
@@ -36,6 +38,7 @@ export const GANGHWA_HERITAGE_PILOT: HeritagePilotNote[] = [
     relatedEventKeywords: ["조선 지방 행정", "강화유수부"],
     status: "draft",
     publicImageUrls: [],
+    linkedEventIds: [],
   },
   {
     id: "ganghwa-oegyujanggak-20261031",
@@ -48,6 +51,7 @@ export const GANGHWA_HERITAGE_PILOT: HeritagePilotNote[] = [
     relatedEventKeywords: ["정조", "외규장각", "병인양요"],
     status: "draft",
     publicImageUrls: [],
+    linkedEventIds: ["joseon-jeongjo-1776", "joseon-byeonginyangyo-1866"],
   },
   {
     id: "ganghwa-yusubu-hyeongbangcheong-20261031",
@@ -60,5 +64,10 @@ export const GANGHWA_HERITAGE_PILOT: HeritagePilotNote[] = [
     relatedEventKeywords: ["조선 지방 행정", "강화유수부", "형방청"],
     status: "draft",
     publicImageUrls: [],
+    linkedEventIds: [],
   },
 ];
+
+/** Only teacher-reviewed links are shown; draft records remain private. */
+export const getPublishedGanghwaNotesForEvent = (eventId: string) =>
+  GANGHWA_HERITAGE_PILOT.filter((note) => note.status === "published" && note.linkedEventIds.includes(eventId));
