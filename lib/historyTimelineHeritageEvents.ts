@@ -14,7 +14,7 @@ export const HISTORY_TIMELINE_HERITAGE_EVENTS: HistoryTimelineEvent[] = [
     artifact: "강화 고려궁지(인천 강화군)",
     image: { kind: "emoji", value: "🏯", alt: "강화 고려궁지" },
     textbookPages: [],
-    sourceIssueNumbers: [13],
+    sourceIssueNumbers: [],
   },
   {
     id: "goryeo-cheoin-envoy-1225",
@@ -28,7 +28,7 @@ export const HISTORY_TIMELINE_HERITAGE_EVENTS: HistoryTimelineEvent[] = [
     artifact: "처인성역사교육관 현장 전시 해설",
     image: { kind: "emoji", value: "🏰", alt: "몽골 사신 저고여 피살" },
     textbookPages: [],
-    sourceIssueNumbers: [13],
+    sourceIssueNumbers: [],
   },
   {
     id: "goryeo-cheoin-battle-1232",
@@ -42,7 +42,7 @@ export const HISTORY_TIMELINE_HERITAGE_EVENTS: HistoryTimelineEvent[] = [
     artifact: "처인성 전투 · 김윤후 · 처인부곡민",
     image: { kind: "emoji", value: "🏰", alt: "처인성 전투" },
     textbookPages: [],
-    sourceIssueNumbers: [13],
+    sourceIssueNumbers: [],
   },
   {
     id: "goryeo-chungju-defense-1253",
@@ -56,6 +56,6 @@ export const HISTORY_TIMELINE_HERITAGE_EVENTS: HistoryTimelineEvent[] = [
     artifact: "충주성 방어 · 김윤후",
     image: { kind: "emoji", value: "🏰", alt: "김윤후와 충주성 방어" },
     textbookPages: [],
-    sourceIssueNumbers: [13],
+    sourceIssueNumbers: [],
   },
 ];
