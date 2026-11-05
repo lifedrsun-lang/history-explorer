@@ -26,6 +26,8 @@ export type HistoryTimelineImage = {
 export type HistoryTimelineEvent = {
   id: string;
   sortYear: number;
+  /** 사건이 같은 해에 여러 번 있을 때 교재의 월 순서 (기본 0). */
+  sortOrder?: number;
   dateLabel: string;
   stateOrEra: string;
   eraFilter: "선사" | "고조선" | "여러나라" | "고구려" | "백제" | "신라" | "가야" | "발해" | "후삼국" | "고려" | "조선" | "대한제국" | "일제강점기" | "대한민국";
@@ -234,7 +236,7 @@ export const HISTORY_TIMELINE_EVENTS = [
         : event.textbookPages,
     };
   })
-  .sort((a, b) => a.sortYear - b.sortYear || a.id.localeCompare(b.id));
+  .sort((a, b) => a.sortYear - b.sortYear || (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.id.localeCompare(b.id));
 
 export const normalizeTimelineIssues = (value: unknown): number[] => {
   if (!Array.isArray(value)) return [];
@@ -300,6 +302,7 @@ export const toStudentTimelineEvent = (
 } => ({
   id: event.id,
   sortYear: event.sortYear,
+  sortOrder: event.sortOrder,
   dateLabel: event.dateLabel,
   stateOrEra: event.stateOrEra,
   eraFilter: event.eraFilter,
