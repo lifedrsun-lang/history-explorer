@@ -26,14 +26,14 @@ const names = (list: string, polity?: string): PersonSeed[] =>
 // 사건과 기존 교재 요점·학습 주제에 실제로 등장하는 인물 이름만 추가한다.
 // 조선/고려 성종, 발해/백제 무왕처럼 동명이인은 국가별로 분리한다.
 const PERSON_SEEDS: PersonSeed[] = [
-  ...names("단군,위만", "고조선"),
+  ...names("단군,위만,준왕", "고조선"),
   ...names("주몽,고국천왕,소수림왕,광개토 대왕,장수왕,을지문덕,연개소문,보장왕", "고구려"),
-  ...names("온조,고이왕,근초고왕,침류왕,무령왕,성왕,무왕,의자왕,계백,복신,도침,흑치상지", "백제"),
+  ...names("온조,고이왕,근초고왕,침류왕,개로왕,무령왕,성왕,무왕,의자왕,계백,복신,도침,흑치상지", "백제"),
   ...names("박혁거세,유리왕,내물왕,지증왕,법흥왕,진흥왕,선덕여왕,김춘추,김유신,신문왕,원효,의상,장보고,선덕왕,신무왕,진성여왕,최치원,원종,애노,경순왕", "신라"),
   ...names("수로왕", "가야"),
   ...names("대조영,무왕,문왕", "발해"),
   ...names("견훤,궁예", "후삼국"),
-  ...names("왕건,혜종,광종,성종,최승로,서희,강조,강감찬,윤관,이자겸,인종,묘청,김부식,망이,망소이,김사미,효심,최충헌,최우,정중부,만적,의천,일연,공민왕,문익점,신돈,최무선,김윤후", "고려"),
+  ...names("왕건,혜종,광종,성종,목종,현종,최승로,서희,강조,강감찬,윤관,이자겸,인종,묘청,김부식,망이,망소이,김사미,효심,최충헌,최우,정중부,만적,의천,일연,공민왕,문익점,신돈,최무선,김윤후", "고려"),
   ...names("이성계,정몽주,정도전,태종,세종,정초,변효문,문종,단종,세조,성종,연산군,중종,조광조,임꺽정,선조,성삼문,장영실,김종서,최윤덕,이종무,이순신,김시민,권율,광해군,인조,벨테브레,하멜,효종,숙종,영조,사도세자,정조,박지원,순조,정약용,홍경래,김대건,최제우,흥선대원군,고종", "조선"),
   ...names("전봉준,서재필,안중근,이토 히로부미", "대한제국"),
   ...names("김좌진,박은식,윤봉길,김구,이범석,여운형,김규식", "일제강점기"),
@@ -71,6 +71,9 @@ function textHasName(text: string, person: PersonSeed) {
 // 서로 다른 나라가 대결한 교재 사건에 다른 나라의 인물이 명시된 경우.
 const VERIFIED_CROSS_POLITY_EVENTS: Record<string, readonly string[]> = {
   "신라:김유신": ["baekje-hwangsanbeol"],
+  "백제:개로왕": ["goguryeo-hanseong"],
+  "조선:이성계": ["goryeo-hwangsan-1380", "goryeo-wihwado-1388"],
+  "조선:고종": ["empire-proclaimed-1897", "empire-gojong-abdication-1907"],
 };
 
 function eventMentions(event: PersonTimelineEvent, person: PersonSeed) {
@@ -92,7 +95,9 @@ function topicMentions(topic: HistoryTimelineStudyTopic, person: PersonSeed) {
     일제강점기: ["colonial", "liberation"],
     대한민국: ["republic", "liberation"],
   };
-  if (!person.polity || !accepted[person.polity]?.includes(period)) return false;
+  // 조선 건국 이전 이성계의 활동은 13호 고려 말 교재 주제에 기록되어 있다.
+  const namedCrossEraTopic = person.id === "조선:이성계" && topic.issue === 13;
+  if (!person.polity || (!accepted[person.polity]?.includes(period) && !namedCrossEraTopic)) return false;
   return textHasName([topic.title, ...topic.points].join(" "), person);
 }
 
