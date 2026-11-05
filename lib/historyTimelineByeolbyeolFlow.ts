@@ -1000,5 +1000,103 @@ export const HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS: readonly ByeolbyeolFlowEve
       "별꼼역사 23호 3차시 교수·학습 지도안(차근차근 역사 알기) · 원본 교재 쪽수 미확인"
     ],
     "byeolbyeolLevel": "basic"
+  },
+
+  // 4차 누락 검증: 별꼼역사 22호 2차시·23호 3차시 수업지도안.
+  // 국사편찬위원회: tg_004_1940(산미 증식 계획), kc_o402400(김상옥과 미확정 투탄 관련),
+  // hm_142_0020(영화 아리랑), hm_155_0040(경제 개발 계획).
+  {
+    "id": "supplement-flow-colonial-rice-increase-plan-1920",
+    "sortYear": 1920,
+    "sortOrder": 1,
+    "dateLabel": "1920년",
+    "stateOrEra": "일제강점기",
+    "eraFilter": "일제강점기",
+    "title": "일제가 산미 증식 계획을 추진함",
+    "summary": "일제는 일본에 필요한 쌀을 확보하려고 조선에서 쌀 생산을 늘리는 산미 증식 계획을 추진했어요.",
+    "life": "수리시설 개선 등으로 쌀 생산량은 증가했지만 일본으로 가져가는 쌀도 늘었고, 많은 농민이 비용 부담과 생활의 어려움을 겪었어요.",
+    "artifact": "산미 증식 계획 관련 자료",
+    "image": {
+      "kind": "emoji",
+      "value": "🌾",
+      "alt": "산미 증식 계획"
+    },
+    "sourceIssueNumbers": [
+      22
+    ],
+    "textbookPages": [
+      "별꼼역사 22호 2차시 수업지도안 · 도란도란 문화 읽기(교재 본문 쪽수 미확인)"
+    ],
+    "byeolbyeolLevel": "basic"
+  },
+  {
+    "id": "supplement-flow-colonial-kim-sangok-1923",
+    "sortYear": 1923,
+    "dateLabel": "1923년 1월",
+    "stateOrEra": "일제강점기",
+    "eraFilter": "일제강점기",
+    "title": "김상옥이 서울에서 항일 활동을 전개함",
+    "summary": "독립운동가 김상옥은 1923년 서울에서 일제에 맞서는 항일 활동을 전개했어요.",
+    "life": "1923년 종로경찰서 투탄 사건과 관련하여 김상옥이 거론되지만, 실제로 누가 실행했는지는 확정되지 않았어요. 역사 자료에서 확인된 사실과 불확실한 내용을 구분해요.",
+    "artifact": "김상옥 관련 독립운동 기록",
+    "image": {
+      "kind": "emoji",
+      "value": "📚",
+      "alt": "김상옥의 항일 활동"
+    },
+    "sourceIssueNumbers": [
+      22
+    ],
+    "textbookPages": [
+      "별꼼역사 22호 2차시 수업지도안 · 종알종알 인물 읽기(교재 본문 쪽수 미확인)"
+    ],
+    "byeolbyeolLevel": "basic"
+  },
+  {
+    "id": "supplement-flow-colonial-arirang-1926",
+    "sortYear": 1926,
+    "sortOrder": 5,
+    "dateLabel": "1926년 10월 1일",
+    "stateOrEra": "일제강점기",
+    "eraFilter": "일제강점기",
+    "title": "나운규의 영화 『아리랑』이 개봉함",
+    "summary": "나운규가 각본·감독·주연을 맡은 무성영화 『아리랑』이 단성사에서 개봉했어요.",
+    "life": "『아리랑』은 식민지 시대 한국인의 현실과 마음을 담아낸 작품으로, 우리나라 영화와 대중문화의 발전에 중요한 의미가 있어요.",
+    "artifact": "영화 『아리랑』 포스터·관련 기록",
+    "image": {
+      "kind": "emoji",
+      "value": "🎬",
+      "alt": "나운규의 영화 아리랑"
+    },
+    "sourceIssueNumbers": [
+      22
+    ],
+    "textbookPages": [
+      "별꼼역사 22호 2차시 수업지도안 · 도란도란 문화 읽기(교재 본문 쪽수 미확인)"
+    ],
+    "byeolbyeolLevel": "basic"
+  },
+  {
+    "id": "supplement-flow-republic-economic-plan-1962",
+    "sortYear": 1962,
+    "dateLabel": "1962년",
+    "stateOrEra": "대한민국",
+    "eraFilter": "대한민국",
+    "title": "제1차 경제 개발 5개년 계획이 시작됨",
+    "summary": "정부는 1962년부터 제1차 경제 개발 5개년 계획을 추진했어요.",
+    "life": "전력과 공장·도로 등 산업 기반을 확충하고 경제 성장을 이루려 했어요. 경제 규모가 커지는 한편 노동·지역 격차 등 해결해야 할 문제도 나타났어요.",
+    "artifact": "제1차 경제 개발 5개년 계획 관련 자료",
+    "image": {
+      "kind": "emoji",
+      "value": "🏭",
+      "alt": "제1차 경제 개발 5개년 계획"
+    },
+    "sourceIssueNumbers": [
+      23
+    ],
+    "textbookPages": [
+      "별꼼역사 23호 3차시 수업지도안 · 차근차근 역사 알기(교재 본문 쪽수 미확인)"
+    ],
+    "byeolbyeolLevel": "basic"
   }
 ];
