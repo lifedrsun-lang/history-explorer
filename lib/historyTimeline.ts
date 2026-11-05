@@ -5,6 +5,7 @@ import { HISTORY_TIMELINE_BAEKJE_EVENTS } from "./historyTimelineBaekje";
 import { HISTORY_TIMELINE_SILLA_BALHAE_EVENTS } from "./historyTimelineSillaBalhae";
 import { HISTORY_TIMELINE_GORYEO_EVENTS } from "./historyTimelineGoryeo";
 import { HISTORY_TIMELINE_GORYEO_LATE_EVENTS } from "./historyTimelineGoryeoLate";
+import { HISTORY_TIMELINE_HERITAGE_EVENTS } from "./historyTimelineHeritageEvents";
 import { HISTORY_TIMELINE_JOSEON_EVENTS } from "./historyTimelineJoseon";
 import { HISTORY_TIMELINE_JOSEON_LATE_EVENTS } from "./historyTimelineJoseonLate";
 import { HISTORY_TIMELINE_EMPIRE_EVENTS } from "./historyTimelineEmpire";
@@ -196,6 +197,7 @@ export const HISTORY_TIMELINE_EVENTS = [
   ...HISTORY_TIMELINE_TRANSITION_EVENTS,
   ...HISTORY_TIMELINE_GORYEO_EVENTS,
   ...HISTORY_TIMELINE_GORYEO_LATE_EVENTS,
+  ...HISTORY_TIMELINE_HERITAGE_EVENTS,
   ...HISTORY_TIMELINE_JOSEON_EVENTS,
   ...HISTORY_TIMELINE_JOSEON_LATE_EVENTS,
   ...HISTORY_TIMELINE_EMPIRE_EVENTS,
