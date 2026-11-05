@@ -295,7 +295,7 @@ export const HISTORY_TIMELINE_JOSEON_LATE_EVENTS: HistoryTimelineEvent[] = [
   {
     "id": "joseon-imjinwar-1592",
     "sortYear": 1592,
-    "dateLabel": "1592년",
+    "dateLabel": "1592년 4월",
     "stateOrEra": "조선",
     "eraFilter": "조선",
     "title": "임진왜란이 일어남",
@@ -312,12 +312,13 @@ export const HISTORY_TIMELINE_JOSEON_LATE_EVENTS: HistoryTimelineEvent[] = [
     ],
     "sourceIssueNumbers": [
       17
-    ]
+    ],
+    "sortOrder": 4
   },
   {
     "id": "joseon-hansando-1592",
     "sortYear": 1592,
-    "dateLabel": "1592년",
+    "dateLabel": "1592년 7월",
     "stateOrEra": "조선",
     "eraFilter": "조선",
     "title": "이순신의 한산도 대첩",
@@ -334,12 +335,13 @@ export const HISTORY_TIMELINE_JOSEON_LATE_EVENTS: HistoryTimelineEvent[] = [
     ],
     "sourceIssueNumbers": [
       17
-    ]
+    ],
+    "sortOrder": 7
   },
   {
     "id": "joseon-jinju-1592",
     "sortYear": 1592,
-    "dateLabel": "1592년",
+    "dateLabel": "1592년 10월",
     "stateOrEra": "조선",
     "eraFilter": "조선",
     "title": "김시민의 진주 대첩",
@@ -356,12 +358,13 @@ export const HISTORY_TIMELINE_JOSEON_LATE_EVENTS: HistoryTimelineEvent[] = [
     ],
     "sourceIssueNumbers": [
       17
-    ]
+    ],
+    "sortOrder": 10
   },
   {
     "id": "joseon-ming-aid-1592",
     "sortYear": 1592,
-    "dateLabel": "1592년",
+    "dateLabel": "1592년 12월",
     "stateOrEra": "조선",
     "eraFilter": "조선",
     "title": "명나라 군대가 조선을 지원함",
@@ -378,7 +381,8 @@ export const HISTORY_TIMELINE_JOSEON_LATE_EVENTS: HistoryTimelineEvent[] = [
     ],
     "sourceIssueNumbers": [
       17
-    ]
+    ],
+    "sortOrder": 12
   },
   {
     "id": "joseon-haengju-1593",
