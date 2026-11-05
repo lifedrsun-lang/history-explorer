@@ -37,7 +37,7 @@ export const HISTORY_TIMELINE_MODERN_EVENTS: HistoryTimelineEvent[] = [
     "title": "박은식이 『한국독립운동지혈사』를 펴냄",
     "summary": "박은식이 독립운동의 과정을 기록한 책을 펴냈어요.",
     "life": "우리 민족이 나라를 되찾으려 싸운 역사를 후대에 남기려 했어요.",
-    "artifact": "자료명 미등록",
+    "artifact": "『한국독립운동지혈사』",
     "image": {
       "kind": "emoji",
       "value": "📚",
