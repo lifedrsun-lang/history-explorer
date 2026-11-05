@@ -49,7 +49,7 @@ export const GANGHWA_HERITAGE_PILOT: HeritagePilotNote[] = [
     source: "외규장각 현장 안내판(사용자 촬영, 2026-10-31)",
     explanation: "외규장각은 왕실 관련 도서를 보관하기 위해 1782년 정조의 명으로 강화에 설치되었습니다. 왕실과 국가 주요 행사의 내용을 정리한 의궤 등의 서적과 왕실 물품을 보관했습니다. 1866년 병인양요 때 프랑스군이 강화도를 공격하면서 건물이 파괴되고 서적이 약탈되었습니다. 1995~2001년 발굴 조사 후 2003년 건물을 복원했습니다.",
     relatedEventKeywords: ["정조", "외규장각", "병인양요"],
-    status: "draft",
+    status: "published",
     publicImageUrls: [],
     linkedEventIds: ["joseon-jeongjo-1776", "joseon-byeonginyangyo-1866"],
   },
