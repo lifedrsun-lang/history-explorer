@@ -89,4 +89,4 @@ const yi = limited.byEvent["goryeo-wihwado-1388"].find(c => c.id === "조선:이
 assert(yi);
 assert.equal(yi.related.length, 1);
 assert.deepEqual(yi.issues, [13]);
-console.log("History person-card regression: 18 coverage/permissions assertions passed.");
+console.log("History person-card regression: coverage and permission assertions passed.");
