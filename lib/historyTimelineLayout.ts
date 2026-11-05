@@ -84,7 +84,10 @@ export const getTimelinePeriodForYear = (year: number): TimelinePeriodKey | null
 export const getTimelinePeriodForEvent = (event: Pick<HistoryTimelineEvent, "sortYear" | "stateOrEra">): TimelinePeriodKey | null =>
   event.sortYear === 1392 && event.stateOrEra === "고려"
     ? "goryeo"
-    : getTimelinePeriodForYear(event.sortYear);
+    : event.sortYear === 1948 && event.stateOrEra === "한반도"
+      // 대한민국 정부 수립(1948.8.15) 이전의 제주4·3은 광복·분단의 흐름에 배치한다.
+      ? "liberation"
+      : getTimelinePeriodForYear(event.sortYear);
 
 type PositionEvent = Pick<HistoryTimelineEvent, "sortYear" | "stateOrEra" | "eraFilter">;
 
