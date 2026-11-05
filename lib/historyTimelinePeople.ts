@@ -67,9 +67,10 @@ export type TimelinePersonCard = {
 
 export function buildTimelinePersonCards(events: PersonTimelineEvent[]): Record<string, TimelinePersonCard[]> {
   const uniqueEvents = [...new Map(events.map((event) => [event.id, event])).values()];
-  const people = PERSON_SEEDS.map((seed) => {
+  const result: Record<string, TimelinePersonCard[]> = {};
+  for (const seed of PERSON_SEEDS) {
     const related = uniqueEvents.filter((event) => matchesPerson(event, seed));
-    if (related.length === 0) return null;
+    if (related.length === 0) continue;
     const best = related.find((event) => event.title.includes(seed.name) && event.summary.includes(seed.name))
       || related.find((event) => event.summary.includes(seed.name))
       || related[0];
@@ -89,14 +90,9 @@ export function buildTimelinePersonCards(events: PersonTimelineEvent[]): Record<
       issues,
       pages,
     };
-    return card;
-  }).filter((card): card is TimelinePersonCard => card !== null);
-
-  const result: Record<string, TimelinePersonCard[]> = {};
-  for (const event of uniqueEvents) {
-    const related = people.filter((person) =>
-      PERSON_SEEDS.some((seed) => seed.id === person.id && matchesPerson(event, seed)));
-    if (related.length) result[event.id] = related;
+    for (const event of related) {
+      (result[event.id] ??= []).push(card);
+    }
   }
   return result;
 }
