@@ -300,9 +300,18 @@ export default function TimelineClient() {
     ), [filter, allDisplayEvents]);
 
   // 다른 시대 필터에서 보이지 않는 사건으로 연결되지 않도록 현재 표시 사건만 사용한다.
+  // 다른 시대 필터로 숨겨진 학습 주제의 앵커를 표시하지 않는다.
+  // 교재 주제도 사건과 동일하게 현재 화면에 렌더링되는 시대만 연결한다.
+  const visibleStudyTopics = useMemo(() => {
+    const visiblePeriods = new Set(visibleEvents.map(getTimelinePeriodForEvent));
+    return (payload?.studyTopics ?? []).filter(topic => {
+      const period = topic.period || (topic.issue <= 13 ? "goryeo" : "joseon");
+      return visiblePeriods.has(period);
+    });
+  }, [visibleEvents, payload?.studyTopics]);
   const personDirectory = useMemo(
-    () => buildTimelinePersonDirectory(visibleEvents, payload?.studyTopics ?? []),
-    [visibleEvents, payload?.studyTopics]
+    () => buildTimelinePersonDirectory(visibleEvents, visibleStudyTopics),
+    [visibleEvents, visibleStudyTopics]
   );
   const personCardsByEvent = personDirectory.byEvent;
 
