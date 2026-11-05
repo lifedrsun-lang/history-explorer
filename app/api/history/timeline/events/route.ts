@@ -1,8 +1,15 @@
 import { verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
-import { getTimelineExamReferences } from "@/lib/historyTimelineExam";
+import {
+  getByeolkkumTimelineMaterialAccess,
+  getSunLabTimelineMaterialAccess,
+  TEACHER_TIMELINE_MATERIAL_ACCESS,
+  type HistoryTimelineMaterialAccess,
+} from "@/lib/historyTimelineAccess";
+import { getTimelineExamReferences, type TimelineExamReference } from "@/lib/historyTimelineExam";
 import { getTimelineTopicsForIssues } from "@/lib/historyTimelineGoryeoTopics";
 import { getTimelineLateTopicsForIssues } from "@/lib/historyTimelineLateTopics";
+import { buildAdvancedTimelineLearningMaterials } from "@/lib/historyTimelineLearning";
 import { getSunLabStudentSession, SUNLAB_STUDENT_SESSION_COOKIE } from "@/lib/sunLabStudentSession";
 import { isHistoryTimelineVisibleForStudent } from "@/lib/historyTimelineVisibility";
 import {
@@ -11,6 +18,7 @@ import {
   HISTORY_TIMELINE_MAX_ISSUE,
   resolveTimelineCompletedIssues,
   toStudentTimelineEvent,
+  type HistoryTimelineEvent,
 } from "@/lib/historyTimeline";
 import {
   getHistoryTimelineSession,
@@ -28,15 +36,36 @@ const privateJson = (body: object, init?: ResponseInit) => {
   return Response.json(body, { ...init, headers });
 };
 
+async function buildMaterialPayload(
+  sourceEvents: readonly HistoryTimelineEvent[],
+  access: HistoryTimelineMaterialAccess
+) {
+  const allExamLinks = (access.exam || access.studyAdvanced)
+    ? await getTimelineExamReferences(new Set(sourceEvents.map((event) => event.id)))
+    : {} as Record<string, TimelineExamReference[]>;
+
+  return {
+    materialAccess: access,
+    examLinks: access.exam ? allExamLinks : {},
+    learningMaterials: {
+      // 기본 교재 파일이 실제로 업로드되기 전에는 내용을 임의 생성하지 않는다.
+      basic: {},
+      advanced: access.studyAdvanced
+        ? buildAdvancedTimelineLearningMaterials(sourceEvents, allExamLinks)
+        : {},
+    },
+  };
+}
+
 const teacherResponse = async (request: Request) => {
   const authorization = request.headers.get("authorization") || "";
   if (!authorization.toLowerCase().startsWith("bearer ")) return null;
 
   try {
     await verifyTeacherRequest(request);
-    const examLinks = await getTimelineExamReferences(new Set(HISTORY_TIMELINE_EVENTS.map(event => event.id)));
+    const materials = await buildMaterialPayload(HISTORY_TIMELINE_EVENTS, TEACHER_TIMELINE_MATERIAL_ACCESS);
     return privateJson({
-      examLinks,
+      ...materials,
       studyTopics: [...getTimelineTopicsForIssues([10, 11, 12]), ...getTimelineLateTopicsForIssues([13, 14, 15])],
       viewer: { role: "teacher", name: "교사", completedIssues: [] },
       events: HISTORY_TIMELINE_EVENTS,
@@ -66,18 +95,20 @@ export async function GET(request: Request) {
         db.collection("sun_lab_members").doc(memberSession.studentId).get(),
       ]);
       const member = studentDoc.data() || {};
+      const memberProfile = memberProfileDoc.data() || {};
       if (studentDoc.exists &&
           (member.sunLabMember === true || member.program === "sun_lab") &&
           member.isActive !== false &&
           String(member.enrollmentStatus || "active") === "active" &&
-          memberProfileDoc.data()?.timelineFullAccess === true) {
+          memberProfile.timelineFullAccess === true) {
         const completedIssues = Array.from({ length: HISTORY_TIMELINE_MAX_ISSUE }, (_, i) => i + 1);
-        const events = getTimelineEventsForIssues(completedIssues).map(event =>
-          toStudentTimelineEvent(event, completedIssues));
-        const examLinks = await getTimelineExamReferences(new Set(events.map(event => event.id)));
+        const sourceEvents = getTimelineEventsForIssues(completedIssues);
+        const events = sourceEvents.map((event) => toStudentTimelineEvent(event, completedIssues));
+        const materials = await buildMaterialPayload(sourceEvents, getSunLabTimelineMaterialAccess(memberProfile));
         return privateJson({
+          ...materials,
           viewer: { role: "student", name: String(member.name || "SUN LAB 회원"), completedIssueCount: completedIssues.length },
-          examLinks, events,
+          events,
           studyTopics: [...getTimelineTopicsForIssues(completedIssues), ...getTimelineLateTopicsForIssues(completedIssues)],
           maxIssue: HISTORY_TIMELINE_MAX_ISSUE,
         });
@@ -90,10 +121,7 @@ export async function GET(request: Request) {
   }
 
   const { db } = getFirebaseAdmin();
-  const snapshot = await db
-    .collection(session.studentCollection)
-    .doc(session.studentId)
-    .get();
+  const snapshot = await db.collection(session.studentCollection).doc(session.studentId).get();
   if (!snapshot.exists) {
     return privateJson(
       { error: "학생 정보를 찾지 못했습니다.", code: "student_not_found" },
@@ -121,13 +149,12 @@ export async function GET(request: Request) {
   }
 
   const completedIssues = resolveTimelineCompletedIssues(student).issues;
-  const events = getTimelineEventsForIssues(completedIssues).map((event) =>
-    toStudentTimelineEvent(event, completedIssues)
-  );
+  const sourceEvents = getTimelineEventsForIssues(completedIssues);
+  const events = sourceEvents.map((event) => toStudentTimelineEvent(event, completedIssues));
+  const materials = await buildMaterialPayload(sourceEvents, getByeolkkumTimelineMaterialAccess(student));
 
-  const examLinks = await getTimelineExamReferences(new Set(events.map(event => event.id)));
   return privateJson({
-    examLinks,
+    ...materials,
     studyTopics: [...getTimelineTopicsForIssues(completedIssues), ...getTimelineLateTopicsForIssues(completedIssues)],
     viewer: {
       role: "student",

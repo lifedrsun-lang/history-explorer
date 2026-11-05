@@ -16,6 +16,7 @@ type StudentAccess = {
   timelineCompletedIssues: number[];
   timelineAccessSource: "explicit" | "current_stage";
   timelineVisibleWhileHidden: boolean;
+  timelineExamAccess: boolean;
 };
 
 export default function HistoryTimelineAdminPage() {
@@ -34,6 +35,10 @@ export default function HistoryTimelineAdminPage() {
   const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"active" | "all">("active");
+  const [schoolFilter, setSchoolFilter] = useState("");
+  const [classFilter, setClassFilter] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [savingExamAccess, setSavingExamAccess] = useState(false);
 
   useEffect(
     () =>
@@ -92,13 +97,20 @@ export default function HistoryTimelineAdminPage() {
     const keyword = search.trim().toLowerCase();
     return students.filter((student) => {
       if (status === "active" && student.enrollmentStatus !== "active") return false;
+      if (schoolFilter && student.school !== schoolFilter) return false;
+      if (classFilter && student.className !== classFilter) return false;
       return (
         !keyword ||
         student.name.toLowerCase().includes(keyword) ||
         student.school.toLowerCase().includes(keyword)
       );
     });
-  }, [search, status, students]);
+  }, [classFilter, schoolFilter, search, status, students]);
+
+  const schools = useMemo(() => [...new Set(students.map((student) => student.school).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko-KR")), [students]);
+  const classes = useMemo(() => [...new Set(students
+    .filter((student) => !schoolFilter || student.school === schoolFilter)
+    .map((student) => student.className).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko-KR")), [schoolFilter, students]);
 
   const toggleAllStudentVisibility = async () => {
     if (!visibilityLoaded || savingVisibility) return;
@@ -231,6 +243,34 @@ export default function HistoryTimelineAdminPage() {
     void save(student, next);
   };
 
+  const saveExamAccess = async (studentIds: string[], timelineExamAccess: boolean) => {
+    if (studentIds.length === 0 || savingExamAccess) return;
+    setSavingExamAccess(true);
+    setError("");
+    setNotice("");
+    try {
+      const data = await request({
+        method: "PATCH",
+        body: JSON.stringify({ studentIds, timelineExamAccess }),
+      });
+      const updatedIds = new Set(Array.isArray(data.studentIds) ? data.studentIds : studentIds);
+      setStudents((current) => current.map((student) => updatedIds.has(student.studentId)
+        ? { ...student, timelineExamAccess: data.timelineExamAccess === true }
+        : student));
+      setNotice(`${updatedIds.size}명의 한능검 기출 열람 권한을 ${timelineExamAccess ? "허용" : "회수"}했습니다.`);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "기출 열람 권한을 저장하지 못했습니다.");
+    } finally {
+      setSavingExamAccess(false);
+    }
+  };
+
+  const toggleSelected = (studentId: string) => {
+    setSelectedIds((current) => current.includes(studentId)
+      ? current.filter((id) => id !== studentId)
+      : [...current, studentId]);
+  };
+
   if (!authReady) {
     return <main className="min-h-[100dvh] bg-slate-50 p-8 text-center font-black text-slate-500">교사 로그인을 확인하고 있습니다.</main>;
   }
@@ -260,6 +300,7 @@ export default function HistoryTimelineAdminPage() {
               <Link href="/history/timeline" className="rounded-2xl bg-amber-300 px-4 py-2 text-sm font-black text-slate-900">전체 연표 보기</Link>
               <Link href="/teacher/history-timeline/exam-links" className="rounded-2xl bg-emerald-200 px-4 py-2 text-sm font-black text-emerald-950">♣ 한능검 연결</Link>
               <Link href="/teacher/history-timeline/sun-lab-access" className="rounded-2xl bg-sky-200 px-4 py-2 text-sm font-black text-sky-950">🌞 SUN LAB 열람 권한</Link>
+              <Link href="/teacher/history-timeline/material-sources" className="rounded-2xl bg-violet-200 px-4 py-2 text-sm font-black text-violet-950">📚 내부 자료 대장</Link>
               <Link href="/teacher" className="rounded-2xl bg-white/10 px-4 py-2 text-sm font-black text-white">교사용 홈</Link>
             </div>
           </div>
@@ -317,11 +358,26 @@ export default function HistoryTimelineAdminPage() {
         <section className="mt-4 rounded-3xl bg-white p-4 shadow-sm">
           <div className="flex flex-col gap-2 sm:flex-row">
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="학생 또는 학교 검색" className="min-w-0 flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold" />
+            <select value={schoolFilter} onChange={(event) => { setSchoolFilter(event.target.value); setClassFilter(""); }} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold">
+              <option value="">전체 학교</option>
+              {schools.map((school) => <option key={school} value={school}>{school}</option>)}
+            </select>
+            <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold">
+              <option value="">전체 반</option>
+              {classes.map((className) => <option key={className} value={className}>{className}반</option>)}
+            </select>
             <select value={status} onChange={(event) => setStatus(event.target.value as "active" | "all")} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold">
               <option value="active">수강중 학생</option>
               <option value="all">전체 학생</option>
             </select>
             <button type="button" disabled={loading} onClick={() => void load()} className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700 disabled:opacity-50">{loading ? "불러오는 중" : "↻ 새로고침"}</button>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl bg-violet-50 p-3">
+            <strong className="mr-auto text-sm text-violet-950">♣ 한능검 기출 열람 권한 · {selectedIds.length}명 선택</strong>
+            <button type="button" onClick={() => setSelectedIds(visibleStudents.map((student) => student.studentId))} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-violet-800">현재 목록 전체 선택</button>
+            <button type="button" onClick={() => setSelectedIds([])} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-700">선택 해제</button>
+            <button type="button" disabled={selectedIds.length === 0 || savingExamAccess} onClick={() => void saveExamAccess(selectedIds, true)} className="rounded-xl bg-violet-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50">일괄 허용</button>
+            <button type="button" disabled={selectedIds.length === 0 || savingExamAccess} onClick={() => void saveExamAccess(selectedIds, false)} className="rounded-xl bg-slate-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50">일괄 회수</button>
           </div>
           {error && <div className="mt-3 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{error}</div>}
           {notice && <div className="mt-3 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{notice}</div>}
@@ -331,9 +387,18 @@ export default function HistoryTimelineAdminPage() {
           {visibleStudents.map((student) => (
             <article key={student.studentId} className="rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm">
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="flex min-w-0 items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(student.studentId)}
+                    onChange={() => toggleSelected(student.studentId)}
+                    aria-label={`${student.name} 학생 선택`}
+                    className="mt-1 h-5 w-5 shrink-0 accent-violet-700"
+                  />
+                  <div>
                   <h2 className="text-xl font-black text-slate-900">{student.name || "이름없음"}</h2>
                   <p className="mt-1 text-xs font-bold text-slate-500">{student.school || "학교 미지정"}{student.grade ? ` · ${student.grade}학년` : ""}{student.className ? ` ${student.className}반` : ""}</p>
+                  </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{studentVisible || student.timelineVisibleWhileHidden ? "공개" : "공개 예정"} {student.timelineCompletedIssues.length}호</span>
@@ -347,6 +412,14 @@ export default function HistoryTimelineAdminPage() {
                 className={`mt-3 rounded-xl px-4 py-2 text-xs font-black disabled:opacity-50 ${student.timelineVisibleWhileHidden ? "bg-slate-200 text-slate-700" : "bg-blue-100 text-blue-700"}`}
               >
                 {student.timelineVisibleWhileHidden ? "예외 열람 해제" : "이 학생만 예외 열람 허용"}
+              </button>
+              <button
+                type="button"
+                disabled={savingExamAccess}
+                onClick={() => void saveExamAccess([student.studentId], !student.timelineExamAccess)}
+                className={`ml-2 mt-3 rounded-xl px-4 py-2 text-xs font-black disabled:opacity-50 ${student.timelineExamAccess ? "bg-violet-700 text-white" : "bg-violet-100 text-violet-800"}`}
+              >
+                {student.timelineExamAccess ? "♣ 기출 열람 허용됨 · 회수" : "♣ 기출 열람 허용"}
               </button>
               <div className="mt-4 grid grid-cols-6 gap-1.5 sm:grid-cols-8">
                 {Array.from({ length: maxIssue }, (_, index) => index + 1).map((issue) => {

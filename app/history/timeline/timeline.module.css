@@ -191,6 +191,12 @@
   .periodBlock[data-period="goryeo"] .periodTop h3 {font-size:22px}
 }
 
+.materialControls{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;margin:12px 0 18px;padding:13px 15px;border:1px solid #c9d5cb;border-radius:15px;background:#fffdf8;color:#2f4638}
+.materialControls strong{font-size:13px}
+.materialControls label{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:900;cursor:pointer}
+.materialControls input{width:17px;height:17px;accent-color:#386e56}
+.materialControls small{width:100%;color:#8a5b16;font-size:11px;font-weight:750}
+
 
 /* 연표의 간결함은 유지하면서 선택 시에만 교재 상세 학습을 펼친다. */
 .lessonDisclosure{margin-top:12px;border:1px solid #bed7c5;background:#f4faf5;border-radius:12px;overflow:hidden;color:#2d4737}

@@ -20,10 +20,12 @@ type QuestionPreview = {
   hasStoredImage: boolean;
   prompt: string;
   options: string[];
+  correctIndex: number;
+  explanation: string;
 };
 
 const label = (ref: ExamReference) =>
-  `${ref.examLevel === "advanced" ? "심화" : "기본"} ${ref.examRound}회 ${ref.examQuestionNumber}번`;
+  `제${ref.examRound}회 ${ref.examLevel === "advanced" ? "심화" : "기본"} ${ref.examQuestionNumber}번`;
 
 export default function TimelineExamReferences({ refs, eventId }: {
   refs: ExamReference[];
@@ -33,6 +35,7 @@ export default function TimelineExamReferences({ refs, eventId }: {
   const [question, setQuestion] = useState<QuestionPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showAnswer, setShowAnswer] = useState(false);
 
   useEffect(() => {
     if (!selected) return;
@@ -44,13 +47,12 @@ export default function TimelineExamReferences({ refs, eventId }: {
   }, [selected]);
 
   if (!refs.length) return null;
-  const answer = refs.filter(ref => ref.relation === "answer");
-  const context = refs.filter(ref => ref.relation === "context");
 
   const openQuestion = async (ref: ExamReference) => {
     setSelected(ref);
     setQuestion(null);
     setError("");
+    setShowAnswer(false);
     setLoading(true);
     try {
       const token = auth.currentUser ? await auth.currentUser.getIdToken() : "";
@@ -73,7 +75,7 @@ export default function TimelineExamReferences({ refs, eventId }: {
     <>
       <details className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-slate-800">
         <summary className="cursor-pointer text-xs font-black leading-6 text-emerald-900">
-          ♣ 한능검 정답 {answer.length}문항 · 관련 {context.length}문항 ▾
+          ♣ 한능검 {refs.length}회 출제 ▾
         </summary>
         <div className="mt-2 space-y-2 border-t border-emerald-200 pt-2">
           {refs.map(ref => (
@@ -90,7 +92,7 @@ export default function TimelineExamReferences({ refs, eventId }: {
             </div>
           ))}
           <p className="pt-1 text-[11px] text-slate-600">
-            회차·문항을 누르면 문제은행에 보관된 원본 문제가 팝업으로 열립니다.
+            같은 시험 문항이 정답과 지문에 함께 연결되어도 한 번만 계산합니다.
           </p>
         </div>
       </details>
@@ -147,6 +149,18 @@ export default function TimelineExamReferences({ refs, eventId }: {
                   <p className="text-xs text-slate-500">
                     문제는 원본 문제은행에서 불러오며, 여기서 학생의 풀이·정답 기록은 변경되지 않습니다.
                   </p>
+                  <button type="button" onClick={() => setShowAnswer((current) => !current)}
+                    className="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-black text-white">
+                    {showAnswer ? "정답·해설 닫기" : "정답·해설 보기"}
+                  </button>
+                  {showAnswer && (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-slate-800">
+                      <p className="font-black">정답: {question.correctIndex + 1}번</p>
+                      <p className="mt-2 whitespace-pre-wrap leading-6">
+                        {question.explanation || "문제은행에 등록된 해설이 없습니다."}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
