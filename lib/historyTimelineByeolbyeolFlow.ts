@@ -781,5 +781,126 @@ export const HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS: readonly ByeolbyeolFlowEve
       "별별 한국사 능력검정시험 기본 202~203쪽 · 22-1 국권 피탈 과정 (교사 내부 검증용)"
     ],
     "byeolbyeolLevel": "basic"
+  },
+
+  // 2차 누락 검증: 별꼼역사 20호 1·2·4차시, 21호 2차시 수업지도안과 국사편찬위원회 자료를 대조함.
+  // 우리역사넷: hm_114_0050, kc_i302000, hm_114_0030, tg_004_0680, hm_139_0020.
+  {
+    "id": "supplement-flow-joseon-sherman-1866",
+    "sortYear": 1866,
+    "dateLabel": "1866년",
+    "stateOrEra": "조선",
+    "eraFilter": "조선",
+    "title": "제너럴 셔먼호 사건이 일어남",
+    "summary": "미국 상선 제너럴 셔먼호가 평양의 대동강을 거슬러 올라와 통상을 요구하다 조선 측과 충돌했어요.",
+    "life": "선박이 불타는 사건으로 끝났고, 이후 조선과 미국 사이의 갈등을 이해하는 중요한 배경이 되었어요. 신미양요(1871년)와 연결해 살펴봐요.",
+    "artifact": "제너럴 셔먼호 사건 관련 사료",
+    "image": {
+      "kind": "emoji",
+      "value": "🚢",
+      "alt": "제너럴 셔먼호 사건"
+    },
+    "sourceIssueNumbers": [
+      20
+    ],
+    "textbookPages": [
+      "별꼼역사 20호 2차시 교수·학습 지도안(문화 읽기) · 원본 교재 쪽수 미확인"
+    ],
+    "byeolbyeolLevel": "basic"
+  },
+  {
+    "id": "supplement-flow-joseon-oppert-1868",
+    "sortYear": 1868,
+    "dateLabel": "1868년",
+    "stateOrEra": "조선",
+    "eraFilter": "조선",
+    "title": "오페르트의 남연군 묘 도굴 미수 사건",
+    "summary": "독일 상인 오페르트가 흥선 대원군의 아버지 남연군의 묘를 파헤치려다가 실패했어요.",
+    "life": "외국 상인의 무리한 행동은 당시 조선에서 서양 세력에 대한 경계가 더욱 커지는 계기가 되었어요.",
+    "artifact": "남연군 묘 관련 역사 자료",
+    "image": {
+      "kind": "emoji",
+      "value": "📜",
+      "alt": "오페르트 도굴 미수 사건"
+    },
+    "sourceIssueNumbers": [
+      20
+    ],
+    "textbookPages": [
+      "별꼼역사 20호 2차시 교수·학습 지도안(문화 읽기) · 원본 교재 쪽수 미확인"
+    ],
+    "byeolbyeolLevel": "basic"
+  },
+  {
+    "id": "supplement-flow-joseon-cheokhwabi-1871",
+    "sortYear": 1871,
+    "sortOrder": 7,
+    "dateLabel": "1871년",
+    "stateOrEra": "조선",
+    "eraFilter": "조선",
+    "title": "흥선 대원군이 척화비를 세움",
+    "summary": "신미양요 이후 흥선 대원군은 서양과의 통상과 수교를 거부한다는 뜻을 담은 척화비를 여러 곳에 세웠어요.",
+    "life": "비석에 새긴 문구를 통해 당시 조선 정부의 대외 정책을 알아볼 수 있어요. 이후 조선이 문호를 열게 된 변화와 비교해 보아요.",
+    "artifact": "척화비",
+    "image": {
+      "kind": "emoji",
+      "value": "🪨",
+      "alt": "척화비 건립"
+    },
+    "sourceIssueNumbers": [
+      20
+    ],
+    "textbookPages": [
+      "별꼼역사 20호 1차시 교수·학습 지도안(차근차근 역사 알기) · 원본 교재 쪽수 미확인"
+    ],
+    "byeolbyeolLevel": "basic"
+  },
+  {
+    "id": "supplement-flow-joseon-ugeumchi-1894",
+    "sortYear": 1894,
+    "sortOrder": 11,
+    "dateLabel": "1894년 11월",
+    "stateOrEra": "조선",
+    "eraFilter": "조선",
+    "title": "우금치 전투가 일어남",
+    "summary": "동학 농민군이 공주 우금치에서 일본군과 조선 관군에 맞서 싸웠으나 패했어요.",
+    "life": "1894년 동학 농민 운동의 후반부를 이해하는 중요한 전투예요. 농민군의 개혁 요구와 외세의 침략에 맞선 움직임을 함께 살펴봐요.",
+    "artifact": "공주 우금치 전적지",
+    "image": {
+      "kind": "emoji",
+      "value": "🗺️",
+      "alt": "우금치 전투"
+    },
+    "sourceIssueNumbers": [
+      20
+    ],
+    "textbookPages": [
+      "별꼼역사 20호 4차시 교수·학습 지도안(문화 읽기) · 원본 교재 쪽수 미확인"
+    ],
+    "byeolbyeolLevel": "basic"
+  },
+  {
+    "id": "supplement-flow-joseon-dongnipsinmun-1896",
+    "sortYear": 1896,
+    "sortOrder": 4,
+    "dateLabel": "1896년 4월 7일",
+    "stateOrEra": "조선",
+    "eraFilter": "조선",
+    "title": "서재필이 『독립신문』을 창간함",
+    "summary": "서재필은 우리나라 최초의 근대적 민간신문인 『독립신문』의 창간을 주도했어요.",
+    "life": "신문은 한글과 영어를 사용해 국내외 독자에게 새로운 소식과 개혁의 필요성을 알렸어요. 이후 독립협회 활동과 함께 자주독립과 국민 계몽의 흐름을 살펴봐요.",
+    "artifact": "『독립신문』 창간호",
+    "image": {
+      "kind": "emoji",
+      "value": "📰",
+      "alt": "1896년 독립신문 창간"
+    },
+    "sourceIssueNumbers": [
+      21
+    ],
+    "textbookPages": [
+      "별꼼역사 21호 2차시 교수·학습 지도안(문화 읽기) · 원본 교재 쪽수 미확인"
+    ],
+    "byeolbyeolLevel": "basic"
   }
 ];
