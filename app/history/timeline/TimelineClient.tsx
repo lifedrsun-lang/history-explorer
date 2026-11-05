@@ -26,6 +26,7 @@ import type { HistoryTimelineStudyTopic } from "@/lib/historyTimelineGoryeoTopic
 import styles from "./timeline.module.css";
 
 type StudentEvent = Omit<HistoryTimelineEvent, "sourceIssueNumbers" | "textbookPages"> & {
+  byeolbyeolLevel?: ByeolbyeolLevel;
   sourceIssueNumbers?: number[];
   textbookPages?: string[];
   textbookIssues?: number[];
@@ -97,6 +98,7 @@ export default function TimelineClient() {
   const [authReady, setAuthReady] = useState(false);
   const [payload, setPayload] = useState<TimelinePayload | null>(null);
   const [byeolbyeolNotes, setByeolbyeolNotes] = useState<Record<string, ByeolbyeolNote[]>>({});
+  const [byeolbyeolFlowEvents, setByeolbyeolFlowEvents] = useState<StudentEvent[]>([]);
   const [showByeolbyeolBasic, setShowByeolbyeolBasic] = useState(false);
   const [showByeolbyeolAdvanced, setShowByeolbyeolAdvanced] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -122,6 +124,7 @@ export default function TimelineClient() {
     setLoading(true);
     setError("");
     setByeolbyeolNotes({});
+    setByeolbyeolFlowEvents([]);
     try {
       const token = currentTeacher ? await currentTeacher.getIdToken() : "";
       const response = await fetch("/api/history/timeline/events", {
@@ -157,8 +160,10 @@ export default function TimelineClient() {
         if (extraResponse.ok) {
           const extra = (await extraResponse.json().catch(() => ({}))) as {
             notes?: Record<string, ByeolbyeolNote[]>;
+            flowEvents?: StudentEvent[];
           };
           setByeolbyeolNotes(extra.notes ?? {});
+          setByeolbyeolFlowEvents(Array.isArray(extra.flowEvents) ? extra.flowEvents : []);
         }
       } catch {
         // 별별한국사 자료 조회 실패와 관계없이 기존 연표는 정상 이용할 수 있어야 한다.
@@ -201,15 +206,29 @@ export default function TimelineClient() {
        ...(showByeolbyeolAdvanced ? ["advanced" as const] : [])]
     : ["basic", "advanced"];
 
-  const visibleEvents = useMemo(() => {
+  const allDisplayEvents = useMemo(() => {
     if (!payload) return [];
-    return payload.events.filter((event) =>
+    const levels: ByeolbyeolLevel[] = payload.viewer.role === "teacher"
+      ? [...(showByeolbyeolBasic ? ["basic" as const] : []),
+         ...(showByeolbyeolAdvanced ? ["advanced" as const] : [])]
+      : ["basic", "advanced"];
+    const allowed = new Set(levels);
+    return [
+      ...payload.events,
+      ...byeolbyeolFlowEvents.filter(event =>
+        event.byeolbyeolLevel !== undefined && allowed.has(event.byeolbyeolLevel)),
+    ].sort((a, b) =>
+      a.sortYear - b.sortYear ||
+      (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+      a.id.localeCompare(b.id));
+  }, [payload, byeolbyeolFlowEvents, showByeolbyeolBasic, showByeolbyeolAdvanced]);
+
+  const visibleEvents = useMemo(() => allDisplayEvents.filter((event) =>
       filter === "전체" ||
       event.eraFilter === filter ||
       (filter === "고려" &&
         (event.id === "goryeo-founded-918" || event.id === "later-baekje-falls-936"))
-    );
-  }, [filter, payload]);
+    ), [filter, allDisplayEvents]);
 
   const login = async (event: FormEvent) => {
     event.preventDefault();
@@ -371,7 +390,7 @@ export default function TimelineClient() {
               <h2>시간을 따라가는 한국사 연표</h2>
               <p>연도는 고정하고, 국가별 열을 좌우로 밀어 비교해요. 배운 사건만 표시돼요.</p>
             </div>
-            <span>{payload?.events.length || 0}개 사건</span>
+            <span>{allDisplayEvents.length}개 사건</span>
           </div>
 
           <nav className={styles.filters} aria-label="시대별 사건 필터">
@@ -595,9 +614,11 @@ export default function TimelineClient() {
                                       <TimelineStudyDetails notes={event.studyNotes ?? []} />
                                       <TimelineByeolbyeolDetails notes={byeolbyeolNotes[event.id]}
                                         enabledLevels={enabledByeolbyeolLevels} />
-                                      <small className={styles.gridSource}>
-                                        {textbookSourceLabel(event)}
-                                      </small>
+                                      {!event.byeolbyeolLevel && (
+                                        <small className={styles.gridSource}>
+                                          {textbookSourceLabel(event)}
+                                        </small>
+                                      )}
                                       <TimelineExamReferences eventId={event.id} refs={payload?.examLinks?.[event.id] || []} />
                                     </article>
                                   ))}
