@@ -308,3 +308,9 @@
   .periodBlock[data-period="liberation"] .periodTop h3,
   .periodBlock[data-period="republic"] .periodTop h3{font-size:22px}
 }
+
+/* PC: 넓은 화면에서는 연표 좌우의 과도한 빈 공간을 줄이고 국가별 비교 열을 더 넓게 사용한다. */
+@media (min-width: 1360px) {
+  .wrap { max-width: min(2200px, 96%); padding-inline: 24px; }
+  .heroTop { max-width: min(2200px, 96%); }
+}
