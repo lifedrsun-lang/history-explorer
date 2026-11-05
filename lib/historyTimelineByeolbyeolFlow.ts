@@ -707,5 +707,79 @@ export const HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS: readonly ByeolbyeolFlowEve
       "별별한국사 기본 · 30-2 통일을 위한 노력 (교사 내부 검증용)"
     ],
     "byeolbyeolLevel": "basic"
+  },
+
+  // 1차 누락 검증: 『별별 한국사 능력검정시험 기본』 인쇄 202~203쪽(PDF 204~205쪽).
+  // 교차 검증: 국사편찬위원회 우리역사넷 hm_121_0010, tg_004_1380, tg_004_0170.
+  {
+    "id": "supplement-flow-empire-korea-japan-protocol-1904",
+    "sortYear": 1904,
+    "dateLabel": "1904년 2월 23일",
+    "stateOrEra": "대한제국",
+    "eraFilter": "대한제국",
+    "title": "한일의정서가 강제로 체결됨",
+    "summary": "러일 전쟁 중 일본은 대한제국에 한일의정서 체결을 강요했어요.",
+    "life": "이 의정서로 일본은 대한제국에서 군사상 필요한 조치를 취할 근거를 내세우며 침략과 간섭을 확대했어요. 1905년 을사늑약 이전부터 국권 침탈이 진행되었다는 점을 살펴봐요.",
+    "artifact": "한일의정서",
+    "image": {
+      "kind": "emoji",
+      "value": "📜",
+      "alt": "1904년 한일의정서"
+    },
+    "sourceIssueNumbers": [
+      21
+    ],
+    "textbookPages": [
+      "별별 한국사 능력검정시험 기본 202~203쪽 · 22-1 국권 피탈 과정 (교사 내부 검증용)"
+    ],
+    "byeolbyeolLevel": "basic"
+  },
+  {
+    "id": "supplement-flow-empire-new-korea-japan-agreement-1907",
+    "sortYear": 1907,
+    "sortOrder": 6,
+    "dateLabel": "1907년 7월 24일",
+    "stateOrEra": "대한제국",
+    "eraFilter": "대한제국",
+    "title": "한일 신협약(정미7조약)이 강제로 체결됨",
+    "summary": "일본은 고종의 강제 퇴위 직후 대한제국에 한일 신협약을 강요했어요.",
+    "life": "이 협약으로 일본 통감의 내정 간섭이 강화되었어요. 고종의 강제 퇴위, 한일 신협약, 군대 해산이 어떤 순서로 이어졌는지 확인해요.",
+    "artifact": "한일 신협약(정미7조약)",
+    "image": {
+      "kind": "emoji",
+      "value": "📑",
+      "alt": "1907년 한일 신협약"
+    },
+    "sourceIssueNumbers": [
+      21
+    ],
+    "textbookPages": [
+      "별별 한국사 능력검정시험 기본 202~203쪽 · 22-1 국권 피탈 과정 (교사 내부 검증용)"
+    ],
+    "byeolbyeolLevel": "basic"
+  },
+  {
+    "id": "supplement-flow-empire-army-disbanded-1907",
+    "sortYear": 1907,
+    "sortOrder": 7,
+    "dateLabel": "1907년 8월 1일",
+    "stateOrEra": "대한제국",
+    "eraFilter": "대한제국",
+    "title": "대한제국 군대가 강제로 해산됨",
+    "summary": "일본의 압력으로 대한제국 군대가 강제로 해산되었어요.",
+    "life": "일부 군인은 군대 해산에 저항했고, 해산된 군인들이 의병에 합류하면서 항일 의병 활동이 확산되었어요. 1907년 정미의병의 배경과 연결해 봐요.",
+    "artifact": "대한제국 군대 해산 기록",
+    "image": {
+      "kind": "emoji",
+      "value": "🛡️",
+      "alt": "1907년 대한제국 군대 해산"
+    },
+    "sourceIssueNumbers": [
+      21
+    ],
+    "textbookPages": [
+      "별별 한국사 능력검정시험 기본 202~203쪽 · 22-1 국권 피탈 과정 (교사 내부 검증용)"
+    ],
+    "byeolbyeolLevel": "basic"
   }
 ];
