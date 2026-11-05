@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { shouldShowTimelineMaterial } from "../lib/historyTimelinePresentation.ts";
 import { GORYEO_STUDY_TOPICS, getTimelineTopicsForIssues } from "../lib/historyTimelineGoryeoTopics.ts";
 import { HISTORY_TIMELINE_LATE_TOPICS, getTimelineLateTopicsForIssues } from "../lib/historyTimelineLateTopics.ts";
+import { HISTORY_TIMELINE_ALL_TOPICS, getHistoryTimelineTopicsForIssues } from "../lib/historyTimelineAllTopics.ts";
 import { HISTORY_TIMELINE_STUDY_INDEX } from "../lib/historyTimelineStudy.ts";
 import {
   HISTORY_TIMELINE_PERIODS,
@@ -20,7 +21,7 @@ import {
   toStudentTimelineEvent,
 } from "../lib/historyTimeline.ts";
 
-assert.equal(HISTORY_TIMELINE_EVENTS.length, 140, "기존 116개 + 13~14호의 새로운 역사 사건 24개 = 140개여야 합니다. (15호 공유 사건 중복 제외)");
+assert.equal(HISTORY_TIMELINE_EVENTS.length, 221, "1~15호 140개 + 16~23호 81개 = 221개, 중복 사건 없이.");
 assert.equal(
   new Set(HISTORY_TIMELINE_EVENTS.map((event) => event.id)).size,
   HISTORY_TIMELINE_EVENTS.length,
@@ -41,7 +42,7 @@ for (const event of HISTORY_TIMELINE_EVENTS) {
   assert.ok(event.image.value && event.image.alt);
   assert.ok(event.textbookPages.length > 0);
   assert.ok(event.sourceIssueNumbers.length > 0);
-  assert.ok(event.sourceIssueNumbers.every((issue) => issue >= 1 && issue <= 15));
+  assert.ok(event.sourceIssueNumbers.every((issue) => issue >= 1 && issue <= 23));
 }
 
 assert.equal(getTimelineEventsForIssues([]).length, 0);
@@ -204,6 +205,7 @@ const keys = HISTORY_TIMELINE_PERIODS.filter((period) => !period.milestone)
   .map((period) => period.key);
 assert.deepEqual(keys, [
   "prehistoric", "gojoseon", "early-states", "three", "northsouth", "later-three", "goryeo", "joseon",
+  "empire", "colonial", "liberation", "republic",
 ], "시대별 표를 초기·국호 변화별로 잘게 분리하지 않아야 합니다.");
 assert.deepEqual(
   HISTORY_TIMELINE_PERIODS.find((period) => period.key === "early-states")?.columns,
@@ -292,6 +294,10 @@ assert.deepEqual(HISTORY_TIMELINE_EPOCH_MARKERS.map((marker) => marker.eventId),
   "balhae-founded",
   "later-goguryeo-founded",
   "later-baekje-falls-936",
+  "empire-proclaimed-1897",
+  "colonial-annexation-1910",
+  "liberation-1945",
+  "republic-government-1948",
 ]);
 const earlyLife = HISTORY_TIMELINE_EVENTS.filter((event) => event.eraFilter === "여러나라" && event.sortYear === -99);
 assert.ok(earlyLife.length > 0);
@@ -349,9 +355,9 @@ assert.equal(shouldShowTimelineMaterial(""), false);
 // 이미지가 없는 가상의 지도와 '○○ 관련 기록'은 실제로 제공하는 자료로 오해할 수 있다.
 const displayedMaterials = HISTORY_TIMELINE_EVENTS.filter(event =>
   shouldShowTimelineMaterial(event.artifact));
-assert.equal(displayedMaterials.length, 38, "기존 33건과 13~15호의 실물 자료 5건만 표시해야 합니다.");
-assert.equal(HISTORY_TIMELINE_EVENTS.length - displayedMaterials.length, 102,
-  "고유한 자료명이 없는 사건 102건은 유물·유적 영역을 만들지 않아야 합니다.");
+assert.equal(displayedMaterials.length, 46, "1~15호 38건과 16~23호 8건: 구체 자료명 46건만 표시.");
+assert.equal(HISTORY_TIMELINE_EVENTS.length - displayedMaterials.length, 175,
+  "이름을 특정할 수 없는 175건은 유물·유적 영역을 만들지 않아야 합니다.");
 assert.ok(displayedMaterials.every(event => !/지도|관련 기록|관련 자료|재위 연표/.test(event.artifact)),
   "지도 이미지가 없는 지도명이나 불분명한 기록은 표시하지 않아야 합니다.");
 for (const value of [
@@ -386,5 +392,79 @@ assert.equal(shouldShowTimelineMaterial(
   HISTORY_TIMELINE_EVENTS.find(event => event.id === "balhae-sanggyeong")?.artifact), true);
 assert.equal(shouldShowTimelineMaterial(
   HISTORY_TIMELINE_EVENTS.find(event => event.id === "baekje-revival-movement")?.artifact), true);
+
+
+// 16~23호에 관한 새 연표 및 학생 접근 권한 검사.
+// 해당 시대의 공개된 사건만 학생에게 전달되며, 같은 사건은 한 번만 존재한다.
+const newIssues = [16, 17, 18, 19, 20, 21, 22, 23];
+const expectedPerIssue = [13, 16, 8, 18, 18, 9, 8, 8];
+for (let i = 0; i < newIssues.length; i += 1) {
+  assert.equal(getTimelineEventsForIssues([newIssues[i]]).length, expectedPerIssue[i],
+    `${newIssues[i]}호 연표 사건 수`);
+}
+assert.equal(getTimelineEventsForIssues(newIssues).length, 81);
+assert.equal(getTimelineEventsForIssues(Array.from({length:23}, (_,i)=>i+1)).length, 221);
+assert.equal(getTimelineEventsForIssues(Array.from({length:15}, (_,i)=>i+1)).length, 140);
+assert.equal(HISTORY_TIMELINE_ALL_TOPICS.length, 69);
+assert.deepEqual(getHistoryTimelineTopicsForIssues([1,2,3,4,5,6,7,8,9]), []);
+const expectedTopics = [4,4,4,4,5,5,5,6];
+for (let i = 0; i < newIssues.length; i += 1) {
+  const visible = getHistoryTimelineTopicsForIssues([newIssues[i]]);
+  assert.equal(visible.length, expectedTopics[i], `${newIssues[i]}호 학습 주제 수`);
+  assert.ok(visible.every(topic => topic.issue === newIssues[i]));
+}
+assert.equal(getHistoryTimelineTopicsForIssues(newIssues).length, 37);
+assert.equal(new Set(HISTORY_TIMELINE_ALL_TOPICS.map(topic => topic.id)).size, 69,
+  "학습 주제 ID 중복 금지");
+assert.ok(getHistoryTimelineTopicsForIssues([17]).every(topic => topic.period === "joseon"));
+assert.ok(getHistoryTimelineTopicsForIssues([23]).every(topic => ["liberation","republic"].includes(topic.period)));
+for (const [year, period] of [
+  [1896,"joseon"],[1897,"empire"],[1909,"empire"],[1910,"colonial"],
+  [1944,"colonial"],[1945,"liberation"],[1947,"liberation"],[1948,"republic"],
+  [1950,"republic"],[1987,"republic"],
+]) assert.equal(getTimelinePeriodForYear(year), period);
+assert.deepEqual(HISTORY_TIMELINE_PERIODS.find(p=>p.key==="empire")?.columns, ["대한제국"]);
+assert.deepEqual(HISTORY_TIMELINE_PERIODS.find(p=>p.key==="colonial")?.columns, ["우리 민족"]);
+assert.deepEqual(HISTORY_TIMELINE_PERIODS.find(p=>p.key==="liberation")?.columns, ["한반도"]);
+assert.deepEqual(HISTORY_TIMELINE_PERIODS.find(p=>p.key==="republic")?.columns, ["대한민국"]);
+assert.equal(getTimelineNationColumn(
+  HISTORY_TIMELINE_EVENTS.find(e=>e.id==="colonial-march1-1919"),"colonial"),"우리 민족");
+assert.equal(getTimelineNationColumn(
+  HISTORY_TIMELINE_EVENTS.find(e=>e.id==="liberation-1945"),"liberation"),"한반도");
+for (const [id, issues] of [
+  ["joseon-gwanghae-1608",[17,18]],["empire-proclaimed-1897",[20,21]],
+  ["colonial-march1-1919",[20,21]],
+]) {
+  const record=HISTORY_TIMELINE_EVENTS.find(e=>e.id===id);
+  assert.ok(record);
+  assert.deepEqual(record.sourceIssueNumbers,issues);
+  for(const issue of issues){
+    const student=toStudentTimelineEvent(record,[issue]);
+    assert.deepEqual(student.studyNotes.map(n=>n.issue),[issue]);
+    assert.deepEqual(student.textbookIssues,[issue]);
+  }
+}
+assert.ok(getTimelineEventsForIssues([16]).every(event=>event.sortYear<1592));
+assert.equal(getTimelineEventsForIssues([16]).some(event=>event.id==="joseon-imjinwar-1592"),false);
+assert.equal(getTimelineEventsForIssues([17]).some(event=>event.id==="joseon-gyunyeok-1750"),false);
+assert.equal(getTimelineEventsForIssues([21]).some(event=>event.id==="colonial-cheongsanri-1920"),false);
+assert.equal(getTimelineEventsForIssues([22]).some(event=>event.id==="republic-koreanwar-1950"),false);
+assert.equal(getTimelineEventsForIssues([23]).some(event=>event.id==="colonial-cheongsanri-1920"),false);
+for(const event of HISTORY_TIMELINE_EVENTS){
+  assert.ok(getTimelinePeriodForEvent(event), `${event.id} 시대 배치 누락`);
+}
+assert.equal(HISTORY_TIMELINE_EVENTS.filter(e=>e.id==="liberation-1945").length,1);
+assert.equal(HISTORY_TIMELINE_EVENTS.filter(e=>e.id==="republic-government-1948").length,1);
+assert.equal(getTimelinePeriodForYear(1945),"liberation");
+assert.equal(getTimelinePeriodForYear(1948),"republic");
+for(const artifact of [
+  "수원 화성(경기도 수원시)", "『열하일기』", "『목민심서』",
+  "독립문(1897년 완공·서울 서대문구)", "강화 정족산성(인천 강화군)",
+  "강화 광성보(인천 강화군)", "기미독립선언서(1919년)",
+  "『한국독립운동지혈사』",
+]) assert.equal(shouldShowTimelineMaterial(artifact),true);
+for(const phrase of ["전쟁 경로 지도","관련 역사 기록","영역 변화 지도","자료명 미등록"]){
+  assert.equal(shouldShowTimelineMaterial(phrase),false);
+}
 
 console.log("history timeline verification passed");
