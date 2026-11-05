@@ -263,11 +263,19 @@ export default function TimelineClient() {
       ...(showByeolbyeolAdvanced ? ["advanced" as const] : []),
     ];
     const allowed = new Set(levels);
+    // 기존 연표에 이미 표시되는 동일 연도·제목 사건은 별도 보충 카드로 중복 출력하지 않는다.
+    const existingEventKeys = new Set(
+      payload.events.map(event => `${event.sortYear}:${event.title.trim()}`)
+    );
+    const notDuplicated = (event: StudentEvent) =>
+      !existingEventKeys.has(`${event.sortYear}:${event.title.trim()}`);
     return [
       ...payload.events,
       ...byeolbyeolFlowEvents.filter(event =>
-        event.byeolbyeolLevel !== undefined && allowed.has(event.byeolbyeolLevel)),
-      ...(showYongseonsaeng ? yongFlowEvents : []),
+        event.byeolbyeolLevel !== undefined &&
+        allowed.has(event.byeolbyeolLevel) &&
+        notDuplicated(event)),
+      ...(showYongseonsaeng ? yongFlowEvents.filter(notDuplicated) : []),
     ].sort((a, b) =>
       a.sortYear - b.sortYear ||
       (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
