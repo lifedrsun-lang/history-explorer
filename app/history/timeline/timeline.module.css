@@ -9,7 +9,7 @@
 .periodTop{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px}
 .periodTop h3{margin:0;font-size:clamp(17px,2.5vw,23px);color:#e9f8f2}
 .periodTop span{font-size:12px;font-weight:800;color:#a8e2d1}
-.periodViewport{max-height:min(76vh,780px);overflow:auto;overscroll-behavior:contain;border:1px solid #4c6860;border-radius:14px;scrollbar-width:thin;scrollbar-color:#729d90 #17221f}
+.periodViewport{max-height:none;overflow-x:auto;overflow-y:visible;overscroll-behavior:auto;border:1px solid #4c6860;border-radius:14px;scrollbar-width:thin;scrollbar-color:#729d90 #17221f}
 .periodViewport:focus-visible{outline:3px solid #f4c86d;outline-offset:3px}
 .periodGrid{display:flex;flex-direction:column}
 .tableHeader,.tableRow{display:grid;align-items:stretch}
@@ -30,7 +30,7 @@
 .gridDetails b{display:block;color:#b4f0d8;margin-top:8px}
 .gridDetails p{margin:3px 0 8px;line-height:1.5;color:#d5e4db}
 .gridSource{display:block;margin-top:10px;font-size:10px;line-height:1.5;color:#a9bfb4}
-@media(max-width:600px){.periodBlock{padding:9px;border-radius:14px}.periodTop{padding:4px}.periodTop span{font-size:11px}.periodViewport{max-height:74vh}.yearCell{font-size:12px}.gridCard{padding:10px}}
+@media(max-width:600px){.periodBlock{padding:9px;border-radius:14px}.periodTop{padding:4px}.periodTop span{font-size:11px}.periodViewport{max-height:none}.yearCell{font-size:12px}.gridCard{padding:10px}}
 
 
 /* 건국 이전에는 미래 국가 열을 표시하지 않으며, 역사적 전환점은 구분 카드로 보여 준다. */
@@ -313,4 +313,32 @@
 @media (min-width: 1360px) {
   .wrap { max-width: min(2200px, 96%); padding-inline: 24px; }
   .heroTop { max-width: min(2200px, 96%); }
+}
+
+/* 전체 연표는 페이지 세로 스크롤 하나로 읽고, 국가 비교표는 가로 이동만 사용한다. */
+.periodBlock,.transitionBlock{scroll-margin-top:18px}
+.eraJumpNav{display:none}
+.mobileEraJump{position:fixed;right:12px;bottom:14px;z-index:40;display:flex;align-items:center;gap:8px;
+  padding:8px 10px;background:#f9f6ed;border:1px solid #a7bdac;border-radius:16px;
+  box-shadow:0 8px 28px #253e302e;color:#365742}
+.mobileEraJump label{font-size:12px;font-weight:950;white-space:nowrap}
+.mobileEraJump select{max-width:132px;border:1px solid #9bbba7;border-radius:10px;
+  background:#fff;color:#214d37;padding:9px 6px;font:inherit;font-size:13px;font-weight:800}
+.page{padding-bottom:85px}
+@media(min-width:1100px){
+  .wrap{width:calc(100% - 184px);max-width:1950px;margin-left:auto;margin-right:154px}
+  .eraJumpNav{position:fixed;right:10px;top:50%;transform:translateY(-50%);z-index:40;
+    width:138px;display:flex;flex-direction:column;gap:3px;
+    padding:12px 9px;background:#fbf8ef;border:1px solid #b5c8b8;
+    border-radius:16px;box-shadow:0 9px 27px #354c3a26}
+  .eraJumpNav strong{font-size:12px;color:#365742;text-align:center;margin-bottom:6px}
+  .eraJumpButton{width:100%;padding:7px 5px;border-radius:8px;border:1px solid transparent;
+    background:transparent;color:#334f3d;font-size:12px;font-weight:850;cursor:pointer;text-align:center}
+  .eraJumpButton:hover,.eraJumpButton:focus-visible{background:#e4f1e7;border-color:#81b398;outline:none}
+  .eraJumpButton.currentEra{background:#276c52;color:#fff}
+  .mobileEraJump{display:none}
+}
+@media(min-width:1100px) and (max-height:650px){
+  .eraJumpNav{top:8px;transform:none;gap:1px;padding-block:7px}
+  .eraJumpButton{padding-block:4px;font-size:11px}
 }
