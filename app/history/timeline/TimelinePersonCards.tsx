@@ -58,7 +58,20 @@ export default function TimelinePersonCards({ cards }: { cards: TimelinePersonCa
               <ul className={styles.events}>
                 {person.topics.map((topic) => (
                   <li key={topic.id}>
-                    <a href={`#timeline-topic-${topic.id}`}>
+                    <a
+                      href={`#timeline-topic-${topic.id}`}
+                      onClick={() => {
+                        const target = document.getElementById(`timeline-topic-${topic.id}`);
+                        if (!target) return;
+                        // 주제 카드와 상위 시대 패널이 접혀 있어도 이동 시 내용을 보여 준다.
+                        let node: HTMLElement | null = target;
+                        while (node) {
+                          if (node instanceof HTMLDetailsElement) node.open = true;
+                          node = node.parentElement;
+                        }
+                        window.setTimeout(() => target.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+                      }}
+                    >
                       <b>{topic.issue}호</b> · {topic.title} ↗
                     </a>
                     <span className={styles.sources}> ({topic.pages})</span>
