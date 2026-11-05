@@ -708,4 +708,4 @@ export const HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS: readonly ByeolbyeolFlowEve
     ],
     "byeolbyeolLevel": "basic"
   }
-] as const;
+];
