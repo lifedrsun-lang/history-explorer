@@ -3,6 +3,7 @@ import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { getByeolbyeolPublicNotes } from "@/lib/historyTimelineByeolbyeol";
 import { HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS } from "@/lib/historyTimelineByeolbyeolFlow";
 import { AUDITED_ADVANCED_TIMELINE_EVENTS } from "@/lib/historyTimelineAuditedSupplements";
+import { HISTORY_TIMELINE_PHASE_ONE_EVENTS } from "@/lib/historyTimelinePhaseOneAudit";
 import {YONG_TIMELINE_EVENTS} from "@/lib/historyTimelineYongEvents";
 import {getYongNotesForEvents} from "@/lib/historyTimelineYongNotes";
 import {
@@ -34,6 +35,16 @@ const respond = (body: object, status = 200) => Response.json(body, {
 // 일반 연표 / 기출 연결 API에는 새 카드를 넣지 않는다.
 // 용선생 자료 역시 현재 보충 자료 열람 허용 계정으로만 제공한다.
 const buildAllowedMaterials = (allowedIssues: number[]) => ({
+  phaseOneEvents: HISTORY_TIMELINE_PHASE_ONE_EVENTS
+    .filter(event => event.sourceIssueNumbers.some(issue => allowedIssues.includes(issue)))
+    .map(event => ({
+      ...toStudentTimelineEvent(event, allowedIssues),
+      phaseOneAudited: true as const,
+      phaseOneSource: {
+        book: event.phaseOneEvidence.book,
+        pdfPage: event.phaseOneEvidence.pdfPage,
+      },
+    })),
   yongNotes: getYongNotesForEvents(getTimelineEventsForIssues(allowedIssues).map(event=>event.id)),
   yongFlowEvents: YONG_TIMELINE_EVENTS
     .filter(event=>event.sourceIssueNumbers.some(issue=>allowedIssues.includes(issue)))
