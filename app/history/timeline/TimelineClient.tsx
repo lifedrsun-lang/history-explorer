@@ -325,7 +325,7 @@ export default function TimelineClient() {
     { key: "basic", label: "별별한국사 · 기본", checked: showByeolbyeolBasic, update: setShowByeolbyeolBasic },
     { key: "advanced", label: "별별한국사 · 심화", checked: showByeolbyeolAdvanced, update: setShowByeolbyeolAdvanced },
     { key: "yong", label: "용선생 교과서 한국사", checked: showYongseonsaeng, update: setShowYongseonsaeng },
-    { key: "phase1", label: "✅ 누락 검증 추가 사건", checked: showPhaseOne, update: setShowPhaseOne },
+    { key: "phase1", label: "참고문헌 · 역사 흐름 보충", checked: showPhaseOne, update: setShowPhaseOne },
     { key: "exam", label: "♣ 한능검 기출문제", checked: showExamReferences, update: setShowExamReferences },
     { key: "heritage", label: "문화유산 현장 해설", checked: showHeritageDetails, update: setShowHeritageDetails },
   ];
@@ -795,15 +795,15 @@ export default function TimelineClient() {
                                       {event.id === "goryeo-founded-918" && <span className={styles.changeBadge}>918년 · 고려 건국(왕조 교체)</span>}
                                       {/멸망|귀부/.test(event.title) && <span className={styles.fallBadge}>멸망·통합</span>}
                                       <span className={styles.gridEmoji} role="img" aria-label={event.image.alt}>{event.image.value}</span>
-                                      {event.byeolbyeolLevel && <span className={supplementStyles.flowBadge}>🧭 새 역사 흐름 카드</span>}
-                                      {event.yongseonsaeng && <span className={yongStyles.flowBadge}>📗 용선생 시대 흐름 카드</span>}
-                                      {event.phaseOneAudited && <span className={supplementStyles.flowBadge}>✅ 참고문헌 대조로 추가한 사건</span>}
+                                      {event.byeolbyeolLevel && <span className={supplementStyles.flowBadge}>🧭 역사 흐름 보충</span>}
+                                      {event.yongseonsaeng && <span className={yongStyles.flowBadge}>🧭 역사 흐름 보충</span>}
+                                      {event.phaseOneAudited && <span className={supplementStyles.flowBadge}>🧭 역사 흐름 보충</span>}
                                       <h4>{event.title}</h4>
                                       <p className={styles.gridSummary}>{event.summary}</p>
                                       <TimelinePersonCards cards={personCardsByEvent[event.id] || []} />
                                       {event.phaseOneAudited ? (
                                         <details className={supplementStyles.disclosure}>
-                                          <summary>📖 누락 검증으로 보완한 시대 흐름</summary>
+                                          <summary>📖 역사 흐름 보충 설명</summary>
                                           <div className={supplementStyles.flowText}>{event.life}</div>
                                           {event.phaseOneSource && <small className={yongStyles.source}>출처: 『{event.phaseOneSource.book}』 PDF {event.phaseOneSource.pdfPage}쪽</small>}
                                         </details>
