@@ -8,6 +8,7 @@ import { HISTORY_TIMELINE_PHASE_TWO_CULTURE_EVENTS } from "@/lib/historyTimeline
 import { getHistoryReferenceGroup } from "@/lib/historyTimelineReferenceGroups";
 import {YONG_TIMELINE_EVENTS} from "@/lib/historyTimelineYongEvents";
 import {getYongNotesForEvents} from "@/lib/historyTimelineYongNotes";
+import {getHistoryReferenceNotes} from "@/lib/historyTimelinePhaseTwoReadingNotes";
 import {
   getTimelineEventsForIssues,
   HISTORY_TIMELINE_MAX_ISSUE,
@@ -50,6 +51,7 @@ const buildAllowedMaterials = (allowedIssues: number[]) => ({
       },
     })),
   yongNotes: getYongNotesForEvents(getTimelineEventsForIssues(allowedIssues).map(event=>event.id)),
+  referenceNotes: getHistoryReferenceNotes(getTimelineEventsForIssues(allowedIssues).map(event=>event.id)),
   yongFlowEvents: YONG_TIMELINE_EVENTS
     .filter(event=>event.sourceIssueNumbers.some(issue=>allowedIssues.includes(issue)))
     .map(event=>({
