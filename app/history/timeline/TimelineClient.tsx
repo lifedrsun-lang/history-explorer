@@ -23,6 +23,8 @@ import TimelineHeritageDetails from "./TimelineHeritageDetails";
 import type { HeritagePilotNote } from "@/lib/historyTimelineGanghwaHeritagePilot";
 import TimelineByeolbyeolDetails from "./TimelineByeolbyeolDetails";
 import TimelineYongDetails from "./TimelineYongDetails";
+import TimelineReferenceNotes from "./TimelineReferenceNotes";
+import type { HistoryReferenceNote } from "@/lib/historyTimelinePhaseTwoReadingNotes";
 import type { YongNote } from "@/lib/historyTimelineYongNotes";
 import type { YongSource } from "@/lib/historyTimelineYongEvents";
 import type { HistoryReferenceGroup } from "@/lib/historyTimelineReferenceGroups";
@@ -129,6 +131,7 @@ export default function TimelineClient() {
   const [byeolbyeolNotes, setByeolbyeolNotes] = useState<Record<string, ByeolbyeolNote[]>>({});
   const [byeolbyeolFlowEvents, setByeolbyeolFlowEvents] = useState<StudentEvent[]>([]);
   const [yongNotes, setYongNotes] = useState<Record<string, YongNote[]>>({});
+  const [referenceNotes, setReferenceNotes] = useState<Record<string, HistoryReferenceNote[]>>({});
   const [yongFlowEvents, setYongFlowEvents] = useState<StudentEvent[]>([]);
   const [referenceEvents, setReferenceEvents] = useState<StudentEvent[]>([]);
   const [showRobin, setShowRobin] = useState(false);
@@ -165,6 +168,7 @@ export default function TimelineClient() {
     setByeolbyeolNotes({});
     setByeolbyeolFlowEvents([]);
     setYongNotes({});
+    setReferenceNotes({});
     setYongFlowEvents([]);
     setReferenceEvents([]);
     try {
@@ -204,12 +208,14 @@ export default function TimelineClient() {
             notes?: Record<string, ByeolbyeolNote[]>;
             flowEvents?: StudentEvent[];
             yongNotes?: Record<string,YongNote[]>;
+            referenceNotes?: Record<string,HistoryReferenceNote[]>;
             yongFlowEvents?: StudentEvent[];
             referenceEvents?: StudentEvent[];
           };
           setByeolbyeolNotes(extra.notes ?? {});
           setByeolbyeolFlowEvents(Array.isArray(extra.flowEvents) ? extra.flowEvents : []);
           setYongNotes(extra.yongNotes ?? {});
+          setReferenceNotes(extra.referenceNotes ?? {});
           setYongFlowEvents(Array.isArray(extra.yongFlowEvents) ? extra.yongFlowEvents : []);
           setReferenceEvents(Array.isArray(extra.referenceEvents) ? extra.referenceEvents : []);
         }
@@ -647,6 +653,7 @@ export default function TimelineClient() {
                             <TimelineByeolbyeolDetails notes={byeolbyeolNotes[event.id]}
                               enabledLevels={enabledByeolbyeolLevels} />
                             <TimelineYongDetails notes={yongNotes[event.id]} enabled={yongEnabled} />
+                                      <TimelineReferenceNotes notes={referenceNotes[event.id]} showRobin={showRobin} showReading={showReadingBook} />
                             {shouldShowTimelineMaterial(event.artifact) && (
                               <div className={styles.transitionDetail}>
                                 <b>대표 유물·유적</b><span>{event.artifact}</span>
@@ -756,6 +763,7 @@ export default function TimelineClient() {
                           <TimelineByeolbyeolDetails notes={byeolbyeolNotes[overviewEvent.id]}
                             enabledLevels={enabledByeolbyeolLevels} />
                           <TimelineYongDetails notes={yongNotes[overviewEvent.id]} enabled={yongEnabled} />
+                          <TimelineReferenceNotes notes={referenceNotes[overviewEvent.id]} showRobin={showRobin} showReading={showReadingBook} />
                           <small className={styles.gridSource}>{textbookSourceLabel(overviewEvent)}</small>
                           {showHeritageDetails && (<TimelineHeritageDetails notes={payload?.heritageNotes?.[overviewEvent.id] || []} />)}
                            {showExamReferences && (<TimelineExamReferences eventId={overviewEvent.id} refs={payload?.examLinks?.[overviewEvent.id] || []} />)}
@@ -852,6 +860,7 @@ export default function TimelineClient() {
                                       <TimelineByeolbyeolDetails notes={byeolbyeolNotes[event.id]}
                                         enabledLevels={enabledByeolbyeolLevels} />
                                       <TimelineYongDetails notes={yongNotes[event.id]} enabled={yongEnabled} />
+                                      <TimelineReferenceNotes notes={referenceNotes[event.id]} showRobin={showRobin} showReading={showReadingBook} />
                                       {!event.byeolbyeolLevel && !event.yongseonsaeng && !event.referenceGroup && (
                                         <small className={styles.gridSource}>
                                           {textbookSourceLabel(event)}
