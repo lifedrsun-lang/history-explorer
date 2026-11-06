@@ -314,7 +314,7 @@ export default function TimelineClient() {
     const visiblePeriods = new Set(visibleEvents.map(getTimelinePeriodForEvent));
     return (payload?.studyTopics ?? []).filter(topic => {
       const period = topic.period || (topic.issue <= 13 ? "goryeo" : "joseon");
-      return visiblePeriods.has(period);
+      return visiblePeriods.has(period) && (!topic.nation || filter === "전체" || topic.nation === filter);
     });
   }, [visibleEvents, payload?.studyTopics]);
   const personDirectory = useMemo(
@@ -698,6 +698,13 @@ export default function TimelineClient() {
                       {comparisonEvents.length > 0 && <span>↔ 좌우로 밀어 다른 나라 보기</span>}
                       {period.key === "early-states" && <p className={styles.nationEndNote}>여러 나라는 같은 해에 함께 세워진 것이 아니에요. 연도가 확실하지 않은 풍습은 ‘여러 나라의 성장기 · 정확한 연도 미상’으로 표시합니다.</p>}
                     </div>
+                    {period.key === "three" && (
+                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic}
+                        era="삼국 시대"
+                        topics={(payload?.studyTopics ?? []).filter((topic) =>
+                          topic.period === "three" && (filter === "전체" || topic.nation === filter))}
+                      />
+                    )}
                     {period.key === "goryeo" && (
                       <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic}
                         era="고려"
