@@ -61,6 +61,52 @@ const topics = [
   { id: "topic-15-science", issue: 15, period: "joseon", title: "장영실과 과학 기구",
     points: ["장영실은 과학 기구 제작에 참여했어요."], pages: "15호 8~11쪽" },
 ];
+// Real source-backed additional cases: 별꼼역사 4·6·13호 교재 인쇄 쪽수.
+events.push(
+  event("goguryeo-yeongaesomun-coup", "고구려", "연개소문 정변", "연개소문이 권력을 잡았어요.",
+    [{ issue: 4, heading: "4호 10~12쪽", points: ["영류왕과 연개소문 사이에 갈등이 있었어요."] }], 4),
+  event("goguryeo-ansiseong", "고구려", "안시성 전투", "고구려가 안시성을 지켰어요.",
+    [{ issue: 4, heading: "4호 12쪽", points: ["당 태종이 고구려를 공격했어요."] }], 4),
+  event("goguryeo-revival-fails", "고구려", "고구려 부흥 운동", "부흥 운동을 벌였어요.",
+    [{ issue: 4, heading: "4호 24~25쪽", points: ["검모잠과 안승이 고구려 부흥 운동에 나섰어요."] }], 4),
+  event("baekje-gwamisong-lost", "백제", "관미성 공격", "백제가 공격을 받았어요.",
+    [{ issue: 6, heading: "6호 6~7쪽", points: ["아신왕이 백제를 이끌었어요."] }], 6),
+  event("baekje-ungjin-capital", "백제", "웅진으로 수도 이전", "백제의 수도가 바뀌었어요.",
+    [{ issue: 6, heading: "6호 8~9쪽", points: ["문주왕이 웅진으로 수도를 옮겼어요."] }], 6),
+  event("baekje-muryeong-king", "백제", "무령왕 즉위", "무령왕이 왕이 되었어요.",
+    [{ issue: 6, heading: "6호 10~11쪽", points: ["동성왕 뒤에 무령왕이 즉위했어요."] }], 6),
+  event("baekje-gwansanseong", "백제", "관산성 싸움", "성왕이 전사했어요.",
+    [{ issue: 6, heading: "6호 20~21쪽", points: ["위덕왕은 성왕의 뒤를 이어 왕이 되었어요."] }], 6),
+  event("baekje-daeyaseong", "백제", "대야성 공격", "백제가 신라 성을 공격했어요.",
+    [{ issue: 6, heading: "6호 22~23쪽", points: ["윤충이 이끄는 백제군과 김품석이 있는 신라군이 맞섰어요."] }], 6),
+  event("baekje-falls", "백제", "백제 멸망", "백제가 멸망했어요.",
+    [{ issue: 6, heading: "6호 31쪽", points: ["성충과 흥수가 의자왕에게 나라를 지킬 방법을 조언했어요."] }], 6),
+  event("baekje-revival-movement", "백제", "백제 부흥 운동", "백제의 부흥을 추진했어요.",
+    [{ issue: 6, heading: "6호 28~29쪽", points: ["부여풍이 백제 부흥 세력에 합류했어요."] }], 6),
+  event("goryeo-ssangseong-1356", "고려", "쌍성총관부 회복", "공민왕이 고려의 자주성을 회복했어요.",
+    [{ issue: 13, heading: "13호 10~13쪽", points: ["기철 등 친원 세력을 정리했어요."] }], 13)
+);
+topics.push(
+  {id:"topic-13-original-royal-people",issue:13,title:"원나라 간섭기 고려 왕실",pages:"13호 6~7, 14~15쪽",
+    points:["충렬왕은 원나라 공주와 혼인했어요.","기황후는 원 황후가 된 고려 출신이에요.","노국공주는 공민왕과 혼인했어요."]},
+  {id:"topic-13-original-defenders",issue:13,title:"고려 말의 장수",pages:"13호 16~20쪽",
+    points:["최영은 고려 말 외적에 맞선 장수예요."]}
+);
+const originalNotesSource = fs.readFileSync(path.join(__dirname, "..", "lib", "historyTimelineOriginalPeopleNotes.ts"), "utf8");
+const notesModule = { exports: {} };
+new Function("module", "exports", ts.transpileModule(originalNotesSource, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+}).outputText)(notesModule, notesModule.exports);
+const requiredSourceEvents = [
+  "goguryeo-yeongaesomun-coup", "goguryeo-ansiseong",
+  "baekje-gwamisong-lost", "baekje-ungjin-capital", "baekje-muryeong-king",
+  "baekje-gwansanseong", "baekje-daeyaseong", "baekje-falls",
+  "baekje-revival-movement", "goryeo-ssangseong-1356"
+];
+for (const id of requiredSourceEvents) {
+  assert(notesModule.exports.HISTORY_STUDY_ORIGINAL_PEOPLE[id]?.length > 0, `Missing textbook source note: ${id}`);
+}
+
 const directory = buildTimelinePersonDirectory(events, topics);
 const ids = (cards = []) => cards.map(c => c.id);
 const requirePerson = (cards, id, label) => assert(ids(cards).includes(id), `${label}: expected ${id}, got ${ids(cards)}`);
@@ -81,6 +127,34 @@ requirePerson(directory.byTopic["topic-13-new-rulers"], "조선:이성계", "Yi 
 requirePerson(directory.byTopic["goryeo-10-buddhist-festivals"], "고려:왕건", "Taejo Wang Geon in issue 10");
 requirePerson(directory.byEvent["silla-falls"], "고려:왕건", "Wang Geon during Silla's surrender");
 requirePerson(directory.byTopic["topic-15-science"], "조선:장영실", "Jang Yeong-sil in issue 15");
+
+const originalCases = [
+  ["goguryeo-yeongaesomun-coup", "고구려:영류왕"],
+  ["goguryeo-ansiseong", "당:당 태종"],
+  ["goguryeo-revival-fails", "고구려:검모잠"],
+  ["goguryeo-revival-fails", "고구려:안승"],
+  ["baekje-gwamisong-lost", "백제:아신왕"],
+  ["baekje-ungjin-capital", "백제:문주왕"],
+  ["baekje-muryeong-king", "백제:동성왕"],
+  ["baekje-gwansanseong", "백제:위덕왕"],
+  ["baekje-daeyaseong", "백제:윤충"],
+  ["baekje-daeyaseong", "신라:김품석"],
+  ["baekje-falls", "백제:성충"],
+  ["baekje-falls", "백제:흥수"],
+  ["baekje-revival-movement", "백제:부여풍"],
+  ["goryeo-ssangseong-1356", "고려:기철"],
+];
+for (const [eventId, personId] of originalCases) {
+  requirePerson(directory.byEvent[eventId], personId, "original textbook coverage");
+}
+for (const name of ["충렬왕", "기황후", "노국공주"]) {
+  requirePerson(directory.byTopic["topic-13-original-royal-people"], `고려:${name}`, "original 13 royal people");
+}
+requirePerson(directory.byTopic["topic-13-original-defenders"], "고려:최영", "general Choe Yeong");
+assert(!ids(directory.byEvent["goguryeo-ansiseong"]).includes("조선:태종"), "Tang Taejong mistaken for Joseon Taejong");
+assert.deepEqual(buildTimelinePersonDirectory(
+  [events.find(e => e.id === "baekje-gwamisong-lost")], []).byEvent["baekje-falls"], undefined);
+
 assert.deepEqual(ids(directory.byEvent["goryeo-seongjong-981"]), ["고려:성종"]);
 assert.deepEqual(ids(directory.byEvent["joseon-seongjong-1469"]), ["조선:성종"]);
 assert.deepEqual(ids(directory.byEvent["baekje-mu-king"]), ["백제:무왕"]);
