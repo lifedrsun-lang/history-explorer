@@ -139,7 +139,8 @@ export default function TimelineClient() {
   const [showYongseonsaeng, setShowYongseonsaeng] = useState(false);
   const [showByeolbyeolBasic, setShowByeolbyeolBasic] = useState(false);
   const [showByeolbyeolAdvanced, setShowByeolbyeolAdvanced] = useState(false);
-  const [showExamReferences, setShowExamReferences] = useState(true);
+  const [showExamBasic, setShowExamBasic] = useState(false);
+  const [showExamAdvanced, setShowExamAdvanced] = useState(false);
   const [showHeritageDetails, setShowHeritageDetails] = useState(true);
   const [showPersonCards, setShowPersonCards] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -343,9 +344,17 @@ export default function TimelineClient() {
     { key: "yong", label: "용선생 교과서 한국사", checked: showYongseonsaeng, update: setShowYongseonsaeng },
     { key: "robin", label: "로빈의 한국사", checked: showRobin, update: setShowRobin },
     { key: "reading", label: "한국사 읽기책", checked: showReadingBook, update: setShowReadingBook },
-    { key: "exam", label: "♣ 한능검 기출문제", checked: showExamReferences, update: setShowExamReferences },
+    { key: "exam-basic", label: "♣ 한능검 · 기본", checked: showExamBasic, update: setShowExamBasic },
+    { key: "exam-advanced", label: "♣ 한능검 · 심화", checked: showExamAdvanced, update: setShowExamAdvanced },
     { key: "heritage", label: "문화유산 현장 해설", checked: showHeritageDetails, update: setShowHeritageDetails },
   ];
+
+  // 한능검은 기본·심화 각각 선택한 급수만 표시하고, 최초 진입 시에는 모두 숨긴다.
+  // 문제은행의 원본과 연결 메타데이터는 변경하지 않는다.
+  const examRefsForEvent = (eventId: string): ExamReference[] =>
+    (payload?.examLinks?.[eventId] || []).filter(ref =>
+      ref.examLevel === "basic" ? showExamBasic : showExamAdvanced
+    );
 
   const jumpToPeriod = (periodKey: string) => {
     setActivePeriod(periodKey);
@@ -662,7 +671,7 @@ export default function TimelineClient() {
                               </div>
                             )}
                             {showHeritageDetails && (<TimelineHeritageDetails notes={payload?.heritageNotes?.[event.id] || []} />)}
-                             {showExamReferences && (<TimelineExamReferences eventId={event.id} refs={payload?.examLinks?.[event.id] || []} />)}
+                             {(showExamBasic || showExamAdvanced) && (<TimelineExamReferences eventId={event.id} refs={examRefsForEvent(event.id)} />)}
                             <small className={styles.gridSource}>
                               {textbookSourceLabel(event)}
                             </small>
@@ -768,7 +777,7 @@ export default function TimelineClient() {
                           <TimelineReferenceNotes notes={referenceNotes[overviewEvent.id]} showRobin={showRobin} showReading={showReadingBook} />
                           <small className={styles.gridSource}>{textbookSourceLabel(overviewEvent)}</small>
                           {showHeritageDetails && (<TimelineHeritageDetails notes={payload?.heritageNotes?.[overviewEvent.id] || []} />)}
-                           {showExamReferences && (<TimelineExamReferences eventId={overviewEvent.id} refs={payload?.examLinks?.[overviewEvent.id] || []} />)}
+                           {(showExamBasic || showExamAdvanced) && (<TimelineExamReferences eventId={overviewEvent.id} refs={examRefsForEvent(overviewEvent.id)} />)}
                         </div>
                       </article>
                     )}
@@ -869,7 +878,7 @@ export default function TimelineClient() {
                                         </small>
                                       )}
                                       {showHeritageDetails && (<TimelineHeritageDetails notes={payload?.heritageNotes?.[event.id] || []} />)}
-                             {showExamReferences && (<TimelineExamReferences eventId={event.id} refs={payload?.examLinks?.[event.id] || []} />)}
+                             {(showExamBasic || showExamAdvanced) && (<TimelineExamReferences eventId={event.id} refs={examRefsForEvent(event.id)} />)}
                                     </article>
                                   ))}
                               </div>
