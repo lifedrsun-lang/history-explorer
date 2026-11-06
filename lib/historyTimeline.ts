@@ -10,6 +10,7 @@ import { HISTORY_TIMELINE_JOSEON_EVENTS } from "./historyTimelineJoseon";
 import { HISTORY_TIMELINE_JOSEON_LATE_EVENTS } from "./historyTimelineJoseonLate";
 import { HISTORY_TIMELINE_EMPIRE_EVENTS } from "./historyTimelineEmpire";
 import { HISTORY_TIMELINE_MODERN_EVENTS } from "./historyTimelineModern";
+import { HISTORY_TIMELINE_BYEOLKKUM_ADDITIONS } from "./historyTimelineByeolkkumAdditions";
 import {
   HISTORY_TIMELINE_FOURTH_EVENTS,
   HISTORY_TIMELINE_FOURTH_SHARED_IDS,
@@ -202,6 +203,7 @@ export const HISTORY_TIMELINE_EVENTS = [
   ...HISTORY_TIMELINE_JOSEON_LATE_EVENTS,
   ...HISTORY_TIMELINE_EMPIRE_EVENTS,
   ...HISTORY_TIMELINE_MODERN_EVENTS,
+  ...HISTORY_TIMELINE_BYEOLKKUM_ADDITIONS,
 ]
   .map((event) => {
     // 같은 역사적 사건을 재수록한 교재는 한 사건 카드에 호수만 연결한다.
