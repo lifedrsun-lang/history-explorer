@@ -27,8 +27,8 @@ const names = (list: string, polity?: string): PersonSeed[] =>
 // 조선/고려 성종, 발해/백제 무왕처럼 동명이인은 국가별로 분리한다.
 const PERSON_SEEDS: PersonSeed[] = [
   ...names("단군,위만,준왕", "고조선"),
-  ...names("주몽,고국천왕,소수림왕,광개토 대왕,장수왕,을지문덕,영류왕,연개소문,보장왕,검모잠,안승", "고구려"),
-  ...names("온조,고이왕,근초고왕,침류왕,아신왕,개로왕,문주왕,동성왕,무령왕,성왕,위덕왕,무왕,의자왕,계백,윤충,성충,흥수,부여풍,복신,도침,흑치상지", "백제"),
+  ...names("주몽,고국천왕,소수림왕,광개토 대왕,장수왕,을지문덕,영류왕,연개소문,보장왕,검모잠,안승,왕산악,온달,평강공주,남생,남건,남산", "고구려"),
+  ...names("온조,고이왕,근초고왕,침류왕,아신왕,개로왕,문주왕,동성왕,무령왕,성왕,위덕왕,무왕,의자왕,계백,윤충,성충,흥수,부여풍,복신,도침,흑치상지,도미,도미의 아내", "백제"),
   ...names("박혁거세,유리왕,내물왕,지증왕,법흥왕,진흥왕,선덕여왕,김춘추,김유신,김품석,신문왕,원효,의상,장보고,선덕왕,신무왕,진성여왕,최치원,원종,애노,경순왕", "신라"),
   ...names("수로왕", "가야"),
   ...names("대조영,무왕,문왕", "발해"),
@@ -97,6 +97,7 @@ function topicMentions(topic: HistoryTimelineStudyTopic, person: PersonSeed) {
   const period: string = topic.period || (topic.issue <= 13 ? "goryeo" : "joseon");
   const accepted: Record<string, readonly string[]> = {
     고려: ["goryeo"], 후삼국: ["goryeo"],
+    고구려: ["three"], 백제: ["three"],
     조선: ["joseon", "empire"],
     대한제국: ["joseon", "empire"],
     일제강점기: ["colonial", "liberation"],
@@ -105,6 +106,8 @@ function topicMentions(topic: HistoryTimelineStudyTopic, person: PersonSeed) {
   // 조선 건국 이전 이성계의 활동은 13호 고려 말 교재 주제에 기록되어 있다.
   const namedCrossEraTopic = person.id === "조선:이성계" && topic.issue === 13;
   if (!person.polity || (!accepted[person.polity]?.includes(period) && !namedCrossEraTopic)) return false;
+  // 삼국 시대 문화·설화 주제는 교재에 표시된 나라와 일치하는 인물만 연결한다.
+  if (topic.nation && topic.nation !== person.polity) return false;
   return textHasName([topic.title, ...topic.points].join(" "), person);
 }
 
