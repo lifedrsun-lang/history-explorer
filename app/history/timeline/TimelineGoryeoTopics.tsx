@@ -7,10 +7,11 @@ import styles from "./timeline.module.css";
  * 확정 연도를 지정할 수 없는 고려의 생활·문화·제도는 시간축의 사건처럼
  * 임의 연도에 끼워 넣지 않고, 고려 시대 상단에 따로 접어 둔다.
  */
-export default function TimelineGoryeoTopics({ era, topics, peopleByTopic = {} }: {
+export default function TimelineGoryeoTopics({ era, topics, peopleByTopic = {}, showPersonCards = true }: {
   era: "삼국 시대" | "고려" | "조선" | "대한제국" | "일제강점기" | "광복과 분단" | "대한민국";
   topics: HistoryTimelineStudyTopic[];
   peopleByTopic?: Record<string, TimelinePersonCard[]>;
+  showPersonCards?: boolean;
 }) {
   if (!topics.length) return null;
   const issueCount = new Set(topics.map(topic => topic.issue)).size;
@@ -35,7 +36,7 @@ export default function TimelineGoryeoTopics({ era, topics, peopleByTopic = {} }
               {topic.points.map((point, index) => <li key={index}>{point}</li>)}
             </ul>
             <small>교재 출처: {topic.pages}</small>
-            <TimelinePersonCards context="topic" cards={peopleByTopic[topic.id] || []} />
+            {showPersonCards && <TimelinePersonCards context="topic" cards={peopleByTopic[topic.id] || []} />}
           </details>
         ))}
       </div>
