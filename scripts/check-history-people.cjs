@@ -98,7 +98,7 @@ new Function("module", "exports", ts.transpileModule(originalNotesSource, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
 }).outputText)(notesModule, notesModule.exports);
 const requiredSourceEvents = [
-  "goguryeo-yeongaesomun-coup", "goguryeo-ansiseong",
+  "goguryeo-yeongaesomun-coup",
   "baekje-gwamisong-lost", "baekje-ungjin-capital", "baekje-muryeong-king",
   "baekje-gwansanseong", "baekje-daeyaseong", "baekje-falls",
   "baekje-revival-movement", "goryeo-ssangseong-1356"
