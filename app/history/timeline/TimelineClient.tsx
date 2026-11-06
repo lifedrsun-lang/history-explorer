@@ -141,7 +141,7 @@ export default function TimelineClient() {
   const [showByeolbyeolAdvanced, setShowByeolbyeolAdvanced] = useState(false);
   const [showExamBasic, setShowExamBasic] = useState(false);
   const [showExamAdvanced, setShowExamAdvanced] = useState(false);
-  const [showHeritageDetails, setShowHeritageDetails] = useState(true);
+  const [showHeritageDetails, setShowHeritageDetails] = useState(false);
   const [showPersonCards, setShowPersonCards] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
