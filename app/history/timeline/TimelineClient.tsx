@@ -25,6 +25,7 @@ import TimelineByeolbyeolDetails from "./TimelineByeolbyeolDetails";
 import TimelineYongDetails from "./TimelineYongDetails";
 import type { YongNote } from "@/lib/historyTimelineYongNotes";
 import type { YongSource } from "@/lib/historyTimelineYongEvents";
+import type { HistoryReferenceGroup } from "@/lib/historyTimelineReferenceGroups";
 import yongStyles from "./timelineYong.module.css";
 import type { ByeolbyeolLevel, ByeolbyeolNote } from "@/lib/historyTimelineByeolbyeolTypes";
 import supplementStyles from "./timelineByeolbyeol.module.css";
@@ -37,8 +38,8 @@ type StudentEvent = Omit<HistoryTimelineEvent, "sourceIssueNumbers" | "textbookP
   byeolbyeolLevel?: ByeolbyeolLevel;
   yongseonsaeng?: boolean;
   yongSource?: YongSource;
-  phaseOneAudited?: boolean;
-  phaseOneSource?: { book: string; pdfPage: number };
+  referenceGroup?: HistoryReferenceGroup;
+  referenceSource?: { book: string; pdfPage: number };
   sourceIssueNumbers?: number[];
   textbookPages?: string[];
   textbookIssues?: number[];
@@ -129,8 +130,9 @@ export default function TimelineClient() {
   const [byeolbyeolFlowEvents, setByeolbyeolFlowEvents] = useState<StudentEvent[]>([]);
   const [yongNotes, setYongNotes] = useState<Record<string, YongNote[]>>({});
   const [yongFlowEvents, setYongFlowEvents] = useState<StudentEvent[]>([]);
-  const [phaseOneEvents, setPhaseOneEvents] = useState<StudentEvent[]>([]);
-  const [showPhaseOne, setShowPhaseOne] = useState(false);
+  const [referenceEvents, setReferenceEvents] = useState<StudentEvent[]>([]);
+  const [showRobin, setShowRobin] = useState(false);
+  const [showReadingBook, setShowReadingBook] = useState(false);
   const [showYongseonsaeng, setShowYongseonsaeng] = useState(false);
   const [showByeolbyeolBasic, setShowByeolbyeolBasic] = useState(false);
   const [showByeolbyeolAdvanced, setShowByeolbyeolAdvanced] = useState(false);
@@ -164,7 +166,7 @@ export default function TimelineClient() {
     setByeolbyeolFlowEvents([]);
     setYongNotes({});
     setYongFlowEvents([]);
-    setPhaseOneEvents([]);
+    setReferenceEvents([]);
     try {
       const token = currentTeacher ? await currentTeacher.getIdToken() : "";
       const response = await fetch("/api/history/timeline/events", {
@@ -203,13 +205,13 @@ export default function TimelineClient() {
             flowEvents?: StudentEvent[];
             yongNotes?: Record<string,YongNote[]>;
             yongFlowEvents?: StudentEvent[];
-            phaseOneEvents?: StudentEvent[];
+            referenceEvents?: StudentEvent[];
           };
           setByeolbyeolNotes(extra.notes ?? {});
           setByeolbyeolFlowEvents(Array.isArray(extra.flowEvents) ? extra.flowEvents : []);
           setYongNotes(extra.yongNotes ?? {});
           setYongFlowEvents(Array.isArray(extra.yongFlowEvents) ? extra.yongFlowEvents : []);
-          setPhaseOneEvents(Array.isArray(extra.phaseOneEvents) ? extra.phaseOneEvents : []);
+          setReferenceEvents(Array.isArray(extra.referenceEvents) ? extra.referenceEvents : []);
         }
       } catch {
         // 별별한국사 자료 조회 실패와 관계없이 기존 연표는 정상 이용할 수 있어야 한다.
@@ -242,6 +244,8 @@ export default function TimelineClient() {
     setShowByeolbyeolBasic(defaultVisible);
     setShowByeolbyeolAdvanced(defaultVisible);
     setShowYongseonsaeng(defaultVisible);
+    setShowRobin(defaultVisible);
+    setShowReadingBook(defaultVisible);
   }, [viewerRole]);
 
   // 이미 열어 둔 학생 페이지도 탭 복귀 또는 주기적인 재조회 시 공개 중단을 반영한다.
@@ -285,12 +289,16 @@ export default function TimelineClient() {
         allowed.has(event.byeolbyeolLevel) &&
         notDuplicated(event)),
       ...(showYongseonsaeng ? yongFlowEvents.filter(notDuplicated) : []),
-      ...(showPhaseOne ? phaseOneEvents.filter(notDuplicated) : []),
+      ...referenceEvents.filter(event =>
+        (event.referenceGroup === "yong" && showYongseonsaeng ||
+         event.referenceGroup === "robin" && showRobin ||
+         event.referenceGroup === "reading" && showReadingBook) &&
+        notDuplicated(event)),
     ].sort((a, b) =>
       a.sortYear - b.sortYear ||
       (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
       a.id.localeCompare(b.id));
-  }, [payload, byeolbyeolFlowEvents, showByeolbyeolBasic, showByeolbyeolAdvanced, yongFlowEvents, showYongseonsaeng, phaseOneEvents, showPhaseOne]);
+  }, [payload, byeolbyeolFlowEvents, showByeolbyeolBasic, showByeolbyeolAdvanced, yongFlowEvents, showYongseonsaeng, referenceEvents, showRobin, showReadingBook]);
 
   const visibleEvents = useMemo(() => allDisplayEvents.filter((event) =>
       filter === "전체" ||
@@ -325,7 +333,8 @@ export default function TimelineClient() {
     { key: "basic", label: "별별한국사 · 기본", checked: showByeolbyeolBasic, update: setShowByeolbyeolBasic },
     { key: "advanced", label: "별별한국사 · 심화", checked: showByeolbyeolAdvanced, update: setShowByeolbyeolAdvanced },
     { key: "yong", label: "용선생 교과서 한국사", checked: showYongseonsaeng, update: setShowYongseonsaeng },
-    { key: "phase1", label: "✅ 누락 검증 추가 사건", checked: showPhaseOne, update: setShowPhaseOne },
+    { key: "robin", label: "로빈의 한국사", checked: showRobin, update: setShowRobin },
+    { key: "reading", label: "한국사 읽기책", checked: showReadingBook, update: setShowReadingBook },
     { key: "exam", label: "♣ 한능검 기출문제", checked: showExamReferences, update: setShowExamReferences },
     { key: "heritage", label: "문화유산 현장 해설", checked: showHeritageDetails, update: setShowHeritageDetails },
   ];
@@ -797,14 +806,14 @@ export default function TimelineClient() {
                                       <span className={styles.gridEmoji} role="img" aria-label={event.image.alt}>{event.image.value}</span>
                                       {event.byeolbyeolLevel && <span className={supplementStyles.flowBadge}>🧭 새 역사 흐름 카드</span>}
                                       {event.yongseonsaeng && <span className={yongStyles.flowBadge}>📗 용선생 시대 흐름 카드</span>}
-                                      {event.phaseOneAudited && <span className={supplementStyles.flowBadge}>✅ 참고문헌 대조로 추가한 사건</span>}
+                                      {event.referenceGroup && <span className={supplementStyles.flowBadge}>📚 {event.referenceGroup === "yong" ? "용선생 교과서 한국사" : event.referenceGroup === "robin" ? "로빈의 한국사" : "한국사 읽기책"}</span>}
                                       <h4>{event.title}</h4>
                                       <p className={styles.gridSummary}>{event.summary}</p>
-                                      {event.phaseOneAudited ? (
+                                      {event.referenceGroup ? (
                                         <details className={supplementStyles.disclosure}>
-                                          <summary>📖 누락 검증으로 보완한 시대 흐름</summary>
+                                          <summary>📖 {event.referenceSource?.book ?? "참고문헌"} 시대 흐름 더 보기</summary>
                                           <div className={supplementStyles.flowText}>{event.life}</div>
-                                          {event.phaseOneSource && <small className={yongStyles.source}>출처: 『{event.phaseOneSource.book}』 PDF {event.phaseOneSource.pdfPage}쪽</small>}
+                                          {event.referenceSource && <small className={yongStyles.source}>출처: 『{event.referenceSource.book}』 PDF {event.referenceSource.pdfPage}쪽</small>}
                                         </details>
                                       ) : event.yongseonsaeng ? (
                                         <details className={yongStyles.details}>
@@ -836,7 +845,7 @@ export default function TimelineClient() {
                                       <TimelineByeolbyeolDetails notes={byeolbyeolNotes[event.id]}
                                         enabledLevels={enabledByeolbyeolLevels} />
                                       <TimelineYongDetails notes={yongNotes[event.id]} enabled={yongEnabled} />
-                                      {!event.byeolbyeolLevel && !event.yongseonsaeng && !event.phaseOneAudited && (
+                                      {!event.byeolbyeolLevel && !event.yongseonsaeng && !event.referenceGroup && (
                                         <small className={styles.gridSource}>
                                           {textbookSourceLabel(event)}
                                         </small>
