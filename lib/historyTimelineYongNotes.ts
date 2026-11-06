@@ -5,19 +5,6 @@ import { YONG_PHASE_TWO_NOTES } from "./historyTimelinePhaseTwoYongNotes";
  */
 export type YongNote = { heading: string; points: string[]; source: YongSource };
 export const YONG_TIMELINE_NOTES: Readonly<Record<string,YongNote[]>> = {
-  "prehistoric-paleolithic-begins": [
-    {
-      "heading": "선사 시대와 역사 시대를 구분하는 방법",
-      "points": [
-        "문자 기록이 없는 선사 시대도 사람들의 역사예요. 당시의 생활은 유물과 유적을 통해 연구해요.",
-        "문헌 기록이 남은 역사 시대에는 기록과 유물을 함께 살펴봐야 해요."
-      ],
-      "source": {
-        "volume": 1,
-        "printedPage": 13
-      }
-    }
-  ],
   "gojoseon-dangun-founding": [
     {
       "heading": "고조선의 시작과 건국 전승",
