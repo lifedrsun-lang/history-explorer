@@ -1,6 +1,7 @@
 import type { YongSource } from "./historyTimelineYongEvents";
 import { YONG_PHASE_TWO_NOTES } from "./historyTimelinePhaseTwoYongNotes";
 import { YONG_PHASE_TWO_MORE_NOTES } from "./historyTimelinePhaseTwoMoreYongNotes";
+import { YONG_PHASE_TWO_BATCH_TWO_NOTES } from "./historyTimelinePhaseTwoBatchTwoYongNotes";
 /** 용선생 교과서 한국사 1·2권 인쇄쪽의 학습 흐름을 교사용으로 재서술한 내용.
  * 원문을 복제하지 않으며 기출 문제은행에는 연결하지 않는다.
  */
@@ -283,7 +284,7 @@ export const YONG_TIMELINE_NOTES: Readonly<Record<string,YongNote[]>> = {
 export function getYongNotesForEvents(eventIds: Iterable<string>): Record<string,YongNote[]> {
   const ret: Record<string,YongNote[]> = {};
   for(const eventId of eventIds) {
-    const notes=[...(YONG_TIMELINE_NOTES[eventId] ?? []),...(YONG_PHASE_TWO_NOTES[eventId] ?? []),...(YONG_PHASE_TWO_MORE_NOTES[eventId] ?? [])];
+    const notes=[...(YONG_TIMELINE_NOTES[eventId] ?? []),...(YONG_PHASE_TWO_NOTES[eventId] ?? []),...(YONG_PHASE_TWO_MORE_NOTES[eventId] ?? []),...(YONG_PHASE_TWO_BATCH_TWO_NOTES[eventId] ?? [])];
     if (notes?.length) ret[eventId]=notes.map(n=>({heading:n.heading,points:[...n.points],source:n.source}));
   }
   return ret;
