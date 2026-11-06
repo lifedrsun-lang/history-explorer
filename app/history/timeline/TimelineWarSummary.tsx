@@ -1,10 +1,18 @@
 // 전쟁 세부 정보는 기록으로 확인한 사건만 표시한다.
 // 승패가 기록만으로 명확하지 않은 전쟁은 결과를 임의로 판정하지 않는다.
-const WARS: Record<string, { opponent: string; place: string; result: string }> = {
+const WARS: Record<string, { opponent: string; place: string; progress?: string; result: string }> = {
   "goguryeo-salsu": {
     opponent: "수나라",
     place: "살수 일대",
     result: "고구려 승리 · 수나라 군대를 크게 물리침",
+  },
+  // 출처: 국사편찬위원회 우리역사넷 『삼국사기』 안시성 전투 해설
+  // https://contents.history.go.kr/front/hm/view.do?levelId=hm_014_0020
+  "goguryeo-ansiseong": {
+    opponent: "당나라(당 태종이 이끄는 군대)",
+    place: "안시성(고구려 요동 지역)",
+    progress: "645년 당군이 안시성을 포위하고 여러 차례 공격했으나, 고구려의 군사와 성 안의 사람들이 성을 지켜 냄",
+    result: "고구려의 안시성 방어 성공 · 당 태종이 군대를 철수함",
   },
   "goguryeo-hanseong": {
     opponent: "백제",
@@ -81,6 +89,7 @@ export default function TimelineWarSummary({ id }: { id: string }) {
       <strong className="text-orange-900">⚔ 전쟁 핵심 정리</strong>
       <div><b>상대:</b> {info.opponent}</div>
       <div><b>장소:</b> {info.place}</div>
+      {info.progress && <div><b>전개:</b> {info.progress}</div>}
       <div><b>결과:</b> {info.result}</div>
     </div>
   );
