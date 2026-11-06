@@ -204,7 +204,7 @@ assert(ancientTopics.every(topic => /호 교재/.test(topic.pages) &&
 // 사건 유형 3곳과 시대별 교재 학습 주제도 빠짐없이 켜고 끌 수 있어야 한다.
 const clientSrc = fs.readFileSync(path.join(__dirname, "..", "app", "history", "timeline", "TimelineClient.tsx"), "utf8");
 const topicSrc = fs.readFileSync(path.join(__dirname, "..", "app", "history", "timeline", "TimelineGoryeoTopics.tsx"), "utf8");
-assert(clientSrc.includes('const [showPersonCards, setShowPersonCards] = useState(true);'), "People must be visible by default");
+assert(clientSrc.includes('const [showPersonCards, setShowPersonCards] = useState(false);'), "People must be visible by default");
 assert(clientSrc.includes('key: "people", label: "👤 인물카드", checked: showPersonCards, update: setShowPersonCards'), "Missing right-side checkbox option");
 assert.equal((clientSrc.match(/materialToggles\.map\(/g) || []).length, 2, "Desktop and mobile must share toggles");
 assert.equal((clientSrc.match(/showPersonCards && <TimelinePersonCards/g) || []).length, 3, "All 3 event card layouts must obey checkbox");
