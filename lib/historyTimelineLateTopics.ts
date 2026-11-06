@@ -7,6 +7,39 @@ import type { HistoryTimelineStudyTopic } from "./historyTimelineGoryeoTopics";
  */
 export const HISTORY_TIMELINE_LATE_TOPICS: HistoryTimelineStudyTopic[] = [
   {
+    "id": "topic-13-original-royal-people",
+    "issue": 13,
+    "title": "원나라 간섭기 고려 왕실의 인물",
+    "pages": "13호 교재 6~7, 14~15쪽",
+    "points": [
+      "충렬왕은 원나라 공주와 혼인한 고려의 왕이에요.",
+      "기황후는 원나라 황후가 된 고려 출신 인물로 교재에서 소개돼요.",
+      "노국공주는 공민왕과 혼인해 고려 왕실의 인물이 되었어요."
+    ]
+  },
+  {
+    "id": "topic-13-original-gongmin-people",
+    "issue": 13,
+    "title": "공민왕의 개혁과 주변 인물",
+    "pages": "13호 교재 8~13쪽",
+    "points": [
+      "기철은 원나라의 힘을 배경으로 고려 정치에 영향력을 행사한 인물이에요.",
+      "공민왕은 기철 등 친원 세력을 정리하고 자주성을 되찾으려 했어요.",
+      "신돈은 공민왕의 개혁을 돕기 위해 등용된 승려였어요."
+    ]
+  },
+  {
+    "id": "topic-13-original-defenders",
+    "issue": 13,
+    "title": "홍건적과 왜구에 맞선 고려의 장수들",
+    "pages": "13호 교재 16~20쪽",
+    "points": [
+      "최영은 고려 말 홍건적과 왜구에 맞선 장수로 교재에서 소개돼요.",
+      "최무선은 화약 무기를 만들어 왜구의 침입에 대응하는 데 기여했어요."
+    ]
+  },
+
+  {
     "id": "topic-13-foreign-influence",
     "issue": 13,
     "title": "원나라의 간섭과 고려 왕실",
