@@ -373,3 +373,8 @@
   .mobileEraJump select{max-width:105px;font-size:11px}
   .mobileMaterials>summary{font-size:11px}
 }
+
+/* 연·월일 2줄 표기: 날짜 열의 불필요한 좌우 여백 축소 */
+.compactDate{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1.25;white-space:nowrap}
+.compactDate>span{display:block}
+.yearCell{padding-left:4px;padding-right:4px;text-align:center}

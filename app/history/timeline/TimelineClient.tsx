@@ -112,6 +112,13 @@ const textbookSourceLabel = (event: StudentEvent) => {
   return unique.length ? unique.map((issue) => `교재 ${issue}호`).join(" · ") : "교재 확인";
 };
 
+// 정확한 '년 월 일' 표기만 두 줄로 나누고, 연도만 있거나 불확실한 날짜는 유지한다.
+function renderCompactDate(label: string) {
+  const match = label.match(/^(.*?년)\\s+(\\d{1,2}월\\s*\\d{1,2}일)$/);
+  if (!match) return label;
+  return <span className={styles.compactDate}><span>{match[1]}</span><span>{match[2]}</span></span>;
+}
+
 function groupSameDates(events: StudentEvent[]) {
   const groups = new Map<string, { key: string; dateLabel: string; events: StudentEvent[] }>();
   for (const event of events) {
@@ -808,7 +815,7 @@ export default function TimelineClient() {
                         {dates.map((date) => (
                           <Fragment key={date.key}>
                           <div className={styles.tableRow} style={gridStyle}>
-                            <div className={styles.yearCell}>{date.dateLabel}</div>
+                            <div className={styles.yearCell}>{renderCompactDate(date.dateLabel)}</div>
                             {columns.map((column) => (
                               <div className={`${styles.countryCell} ${fallenYears[column] !== undefined && date.events[0]?.sortYear > fallenYears[column] ? styles.fallenCell : ""}`} key={column}>
                                 {date.events
