@@ -35,7 +35,7 @@ export default function TimelineGoryeoTopics({ era, topics, peopleByTopic = {} }
               {topic.points.map((point, index) => <li key={index}>{point}</li>)}
             </ul>
             <small>교재 출처: {topic.pages}</small>
-            <TimelinePersonCards cards={peopleByTopic[topic.id] || []} />
+            <TimelinePersonCards context="topic" cards={peopleByTopic[topic.id] || []} />
           </details>
         ))}
       </div>
