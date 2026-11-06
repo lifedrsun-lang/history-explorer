@@ -200,4 +200,15 @@ assert(ancientTopics.every(topic => /호 교재/.test(topic.pages) &&
   topic.points.some(point => /전해지는|설화|연도가/.test(point))),
   "All undated topics must state their textual basis or uncertainty");
 
+// 인물카드 표시 체크박스는 데스크톱/모바일의 동일 옵션 배열을 사용한다.
+// 사건 유형 3곳과 시대별 교재 학습 주제도 빠짐없이 켜고 끌 수 있어야 한다.
+const clientSrc = fs.readFileSync(path.join(__dirname, "..", "app", "history", "timeline", "TimelineClient.tsx"), "utf8");
+const topicSrc = fs.readFileSync(path.join(__dirname, "..", "app", "history", "timeline", "TimelineGoryeoTopics.tsx"), "utf8");
+assert(clientSrc.includes('const [showPersonCards, setShowPersonCards] = useState(true);'), "People must be visible by default");
+assert(clientSrc.includes('key: "people", label: "👤 인물카드", checked: showPersonCards, update: setShowPersonCards'), "Missing right-side checkbox option");
+assert.equal((clientSrc.match(/materialToggles\.map\(/g) || []).length, 2, "Desktop and mobile must share toggles");
+assert.equal((clientSrc.match(/showPersonCards && <TimelinePersonCards/g) || []).length, 3, "All 3 event card layouts must obey checkbox");
+assert.equal((clientSrc.match(/showPersonCards=\{showPersonCards\}/g) || []).length, 7, "All 7 textbook topic sections must obey checkbox");
+assert(topicSrc.includes('{showPersonCards && <TimelinePersonCards context="topic"'), "Textbook topics must obey checkbox");
+
 console.log("History person-card regression: coverage and permission assertions passed.");
