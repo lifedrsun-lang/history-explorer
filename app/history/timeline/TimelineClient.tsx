@@ -598,16 +598,17 @@ export default function TimelineClient() {
             <article>
               <div aria-hidden="true">🪨</div>
               <h3>선사 시대</h3>
-              <p>문자 기록이 남기 이전의 시대. 유물과 유적을 통해 생활을 알아봐요.</p>
+              <p>문자 기록이 남아 있지 않은 시대예요. 당시 사람들의 생활은 유물과 유적을 통해 알아봐요.</p>
             </article>
             <article>
               <div aria-hidden="true">📜</div>
               <h3>역사 시대</h3>
-              <p>문자로 기록을 남긴 시대. 문헌과 유물·유적을 함께 살펴봐요.</p>
+              <p>문헌 기록이 남은 시대예요. 문자 기록과 유물·유적을 함께 살펴봐요.</p>
             </article>
           </div>
           <div className={styles.tip}>
-            💡 선사 시대에도 사람들의 역사는 있었어요. 시대를 나누는 기준은 문자 기록이에요.
+            <div>💡 시대를 구분하는 기준은 문자 기록이지만, 선사 시대도 사람들의 역사예요.</div>
+            <small className={styles.introSource}>참고: 『용선생 교과서 한국사』 1권 13쪽(해당 단원)</small>
           </div>
         </section>
 
