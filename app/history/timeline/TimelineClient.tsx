@@ -630,11 +630,11 @@ export default function TimelineClient() {
                           <div className={styles.transitionBody}>
                             <h3>{event.title}</h3>
                             <p>{event.summary}</p>
-                            <TimelinePersonCards cards={personCardsByEvent[event.id] || []} />
                             <TimelineStudyDetails
                               notes={event.studyNotes ?? []}
                               fallback={{ heading: event.title, text: event.life }}
                             />
+                            <TimelinePersonCards cards={personCardsByEvent[event.id] || []} />
                             <TimelineByeolbyeolDetails notes={byeolbyeolNotes[event.id]}
                               enabledLevels={enabledByeolbyeolLevels} />
                             <TimelineYongDetails notes={yongNotes[event.id]} enabled={yongEnabled} />
@@ -732,11 +732,11 @@ export default function TimelineClient() {
                         <div className={styles.earlyStatesOverviewBody}>
                           <h4>{overviewEvent.title}</h4>
                           <p>{overviewEvent.summary}</p>
-                          <TimelinePersonCards cards={personCardsByEvent[overviewEvent.id] || []} />
                           <TimelineStudyDetails
                             notes={overviewEvent.studyNotes ?? []}
                             fallback={{ heading: overviewEvent.title, text: overviewEvent.life }}
                           />
+                          <TimelinePersonCards cards={personCardsByEvent[overviewEvent.id] || []} />
                           <TimelineByeolbyeolDetails notes={byeolbyeolNotes[overviewEvent.id]}
                             enabledLevels={enabledByeolbyeolLevels} />
                           <TimelineYongDetails notes={yongNotes[overviewEvent.id]} enabled={yongEnabled} />
@@ -800,7 +800,6 @@ export default function TimelineClient() {
                                       {event.phaseOneAudited && <span className={supplementStyles.flowBadge}>✅ 참고문헌 대조로 추가한 사건</span>}
                                       <h4>{event.title}</h4>
                                       <p className={styles.gridSummary}>{event.summary}</p>
-                                      <TimelinePersonCards cards={personCardsByEvent[event.id] || []} />
                                       {event.phaseOneAudited ? (
                                         <details className={supplementStyles.disclosure}>
                                           <summary>📖 누락 검증으로 보완한 시대 흐름</summary>
@@ -833,6 +832,7 @@ export default function TimelineClient() {
                                         </>
                                       )}
                                       <TimelineStudyDetails notes={event.studyNotes ?? []} />
+                                      <TimelinePersonCards cards={personCardsByEvent[event.id] || []} />
                                       <TimelineByeolbyeolDetails notes={byeolbyeolNotes[event.id]}
                                         enabledLevels={enabledByeolbyeolLevels} />
                                       <TimelineYongDetails notes={yongNotes[event.id]} enabled={yongEnabled} />
