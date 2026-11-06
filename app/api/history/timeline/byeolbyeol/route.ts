@@ -5,6 +5,7 @@ import { HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS } from "@/lib/historyTimelineBy
 import { AUDITED_ADVANCED_TIMELINE_EVENTS } from "@/lib/historyTimelineAuditedSupplements";
 import { HISTORY_TIMELINE_PHASE_ONE_EVENTS } from "@/lib/historyTimelinePhaseOneAudit";
 import { HISTORY_TIMELINE_PHASE_TWO_CULTURE_EVENTS } from "@/lib/historyTimelinePhaseTwoCultureEvents";
+import { getHistoryReferenceGroup } from "@/lib/historyTimelineReferenceGroups";
 import {YONG_TIMELINE_EVENTS} from "@/lib/historyTimelineYongEvents";
 import {getYongNotesForEvents} from "@/lib/historyTimelineYongNotes";
 import {
@@ -36,12 +37,14 @@ const respond = (body: object, status = 200) => Response.json(body, {
 // 일반 연표 / 기출 연결 API에는 새 카드를 넣지 않는다.
 // 용선생 자료 역시 현재 보충 자료 열람 허용 계정으로만 제공한다.
 const buildAllowedMaterials = (allowedIssues: number[]) => ({
-  phaseOneEvents: [...HISTORY_TIMELINE_PHASE_ONE_EVENTS, ...HISTORY_TIMELINE_PHASE_TWO_CULTURE_EVENTS]
+  referenceEvents: [...HISTORY_TIMELINE_PHASE_ONE_EVENTS, ...HISTORY_TIMELINE_PHASE_TWO_CULTURE_EVENTS]
     .filter(event => event.sourceIssueNumbers.some(issue => allowedIssues.includes(issue)))
+    .filter(event => getHistoryReferenceGroup(event.phaseOneEvidence.book) !== null)
     .map(event => ({
       ...toStudentTimelineEvent(event, allowedIssues),
-      phaseOneAudited: true as const,
-      phaseOneSource: {
+      // 내부 검증 경위가 아니라 실제 출처로 표시/숨김을 결정한다.
+      referenceGroup: getHistoryReferenceGroup(event.phaseOneEvidence.book),
+      referenceSource: {
         book: event.phaseOneEvidence.book,
         pdfPage: event.phaseOneEvidence.pdfPage,
       },
