@@ -141,6 +141,7 @@ export default function TimelineClient() {
   const [showByeolbyeolAdvanced, setShowByeolbyeolAdvanced] = useState(false);
   const [showExamReferences, setShowExamReferences] = useState(true);
   const [showHeritageDetails, setShowHeritageDetails] = useState(true);
+  const [showPersonCards, setShowPersonCards] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [needsLogin, setNeedsLogin] = useState(false);
@@ -336,6 +337,7 @@ export default function TimelineClient() {
 
   // PC와 모바일 공통 보기 옵션. '교재 핵심 설명'은 항상 표시한다.
   const materialToggles = [
+    { key: "people", label: "👤 인물카드", checked: showPersonCards, update: setShowPersonCards },
     { key: "basic", label: "별별한국사 · 기본", checked: showByeolbyeolBasic, update: setShowByeolbyeolBasic },
     { key: "advanced", label: "별별한국사 · 심화", checked: showByeolbyeolAdvanced, update: setShowByeolbyeolAdvanced },
     { key: "yong", label: "용선생 교과서 한국사", checked: showYongseonsaeng, update: setShowYongseonsaeng },
@@ -649,7 +651,7 @@ export default function TimelineClient() {
                               notes={event.studyNotes ?? []}
                               fallback={{ heading: event.title, text: event.life }}
                             />
-                            <TimelinePersonCards cards={personCardsByEvent[event.id] || []} />
+                            {showPersonCards && <TimelinePersonCards cards={personCardsByEvent[event.id] || []} />}
                             <TimelineByeolbyeolDetails notes={byeolbyeolNotes[event.id]}
                               enabledLevels={enabledByeolbyeolLevels} />
                             <TimelineYongDetails notes={yongNotes[event.id]} enabled={yongEnabled} />
@@ -706,45 +708,45 @@ export default function TimelineClient() {
                       {period.key === "early-states" && <p className={styles.nationEndNote}>여러 나라는 같은 해에 함께 세워진 것이 아니에요. 연도가 확실하지 않은 풍습은 ‘여러 나라의 성장기 · 정확한 연도 미상’으로 표시합니다.</p>}
                     </div>
                     {period.key === "three" && (
-                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic}
+                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
                         era="삼국 시대"
                         topics={(payload?.studyTopics ?? []).filter((topic) =>
                           topic.period === "three" && (filter === "전체" || topic.nation === filter))}
                       />
                     )}
                     {period.key === "goryeo" && (
-                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic}
+                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
                         era="고려"
                         topics={(payload?.studyTopics ?? []).filter((topic) => topic.issue >= 10 && topic.issue <= 13)}
                       />
                     )}
                     {period.key === "joseon" && (
-                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic}
+                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
                         era="조선"
                         topics={(payload?.studyTopics ?? []).filter((topic) =>
                           (topic.issue >= 14 && topic.issue <= 15) || topic.period === "joseon")}
                       />
                     )}
                     {period.key === "empire" && (
-                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic}
+                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
                         era="대한제국"
                         topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "empire")}
                       />
                     )}
                     {period.key === "colonial" && (
-                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic}
+                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
                         era="일제강점기"
                         topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "colonial")}
                       />
                     )}
                     {period.key === "liberation" && (
-                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic}
+                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
                         era="광복과 분단"
                         topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "liberation")}
                       />
                     )}
                     {period.key === "republic" && (
-                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic}
+                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
                         era="대한민국"
                         topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "republic")}
                       />
@@ -759,7 +761,7 @@ export default function TimelineClient() {
                             notes={overviewEvent.studyNotes ?? []}
                             fallback={{ heading: overviewEvent.title, text: overviewEvent.life }}
                           />
-                          <TimelinePersonCards cards={personCardsByEvent[overviewEvent.id] || []} />
+                          {showPersonCards && <TimelinePersonCards cards={personCardsByEvent[overviewEvent.id] || []} />}
                           <TimelineByeolbyeolDetails notes={byeolbyeolNotes[overviewEvent.id]}
                             enabledLevels={enabledByeolbyeolLevels} />
                           <TimelineYongDetails notes={yongNotes[overviewEvent.id]} enabled={yongEnabled} />
@@ -856,7 +858,7 @@ export default function TimelineClient() {
                                         </>
                                       )}
                                       <TimelineStudyDetails notes={event.studyNotes ?? []} />
-                                      <TimelinePersonCards cards={personCardsByEvent[event.id] || []} />
+                                      {showPersonCards && <TimelinePersonCards cards={personCardsByEvent[event.id] || []} />}
                                       <TimelineByeolbyeolDetails notes={byeolbyeolNotes[event.id]}
                                         enabledLevels={enabledByeolbyeolLevels} />
                                       <TimelineYongDetails notes={yongNotes[event.id]} enabled={yongEnabled} />
