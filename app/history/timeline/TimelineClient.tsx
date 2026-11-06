@@ -119,6 +119,20 @@ function renderCompactDate(label: string) {
   return <span className={styles.compactDate}><span>{match[1]}</span><span>{match[2]}</span></span>;
 }
 
+// 출처별 카드 제목이 다르더라도 동일 사건이면 하나의 역사적 사건으로 묶는다.
+// 근거가 확인된 사건 ID만 연결하며 같은 날짜의 서로 다른 사건은 합치지 않는다.
+const SAME_HISTORICAL_EVENT_KEYS: Record<string, string> = {
+  "supplement-flow-republic-oct26-1979": "1979-10-26-presidential-death",
+  "phase1-republic-october26-1979": "1979-10-26-presidential-death",
+  "supplement-flow-republic-dec12-1979": "1979-12-12-military-rebellion",
+  "phase1-republic-december12-1979": "1979-12-12-military-rebellion",
+};
+
+function historicalEventKey(event: StudentEvent): string {
+  return SAME_HISTORICAL_EVENT_KEYS[event.id] ??
+    `${event.sortYear}:${event.title.trim()}`;
+}
+
 function groupSameDates(events: StudentEvent[]) {
   const groups = new Map<string, { key: string; dateLabel: string; events: StudentEvent[] }>();
   for (const event of events) {
@@ -284,35 +298,53 @@ export default function TimelineClient() {
 
   const yongEnabled = showYongseonsaeng;
 
-  const allDisplayEvents = useMemo(() => {
-    if (!payload) return [];
+  const { allDisplayEvents, mergedExtraDetailsByEvent } = useMemo(() => {
+    if (!payload) return {
+      allDisplayEvents: [] as StudentEvent[],
+      mergedExtraDetailsByEvent: {} as Record<string, StudentEvent[]>,
+    };
     const levels: ByeolbyeolLevel[] = [
       ...(showByeolbyeolBasic ? ["basic" as const] : []),
       ...(showByeolbyeolAdvanced ? ["advanced" as const] : []),
     ];
     const allowed = new Set(levels);
-    // 기존 연표에 이미 표시되는 동일 연도·제목 사건은 별도 보충 카드로 중복 출력하지 않는다.
-    const existingEventKeys = new Set(
-      payload.events.map(event => `${event.sortYear}:${event.title.trim()}`)
-    );
-    const notDuplicated = (event: StudentEvent) =>
-      !existingEventKeys.has(`${event.sortYear}:${event.title.trim()}`);
-    return [
-      ...payload.events,
+    const result = [...payload.events];
+    // 기본 연표를 우선하고, 참고문헌끼리 중복되는 경우 먼저 등장한 자료를 남긴다.
+    const canonicalByKey = new Map<string, StudentEvent>();
+    for (const event of payload.events) {
+      const key = historicalEventKey(event);
+      if (!canonicalByKey.has(key)) canonicalByKey.set(key, event);
+    }
+    const mergedExtraDetailsByEvent: Record<string, StudentEvent[]> = {};
+    const supplements = [
       ...byeolbyeolFlowEvents.filter(event =>
-        event.byeolbyeolLevel !== undefined &&
-        allowed.has(event.byeolbyeolLevel) &&
-        notDuplicated(event)),
-      ...(showYongseonsaeng ? yongFlowEvents.filter(notDuplicated) : []),
+        event.byeolbyeolLevel !== undefined && allowed.has(event.byeolbyeolLevel)),
+      ...(showYongseonsaeng ? yongFlowEvents : []),
       ...referenceEvents.filter(event =>
         (event.referenceGroup === "yong" && showYongseonsaeng ||
          event.referenceGroup === "robin" && showRobin ||
-         event.referenceGroup === "reading" && showReadingBook) &&
-        notDuplicated(event)),
-    ].sort((a, b) =>
-      a.sortYear - b.sortYear ||
-      (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
-      a.id.localeCompare(b.id));
+         event.referenceGroup === "reading" && showReadingBook)),
+    ];
+    for (const extra of supplements) {
+      const key = historicalEventKey(extra);
+      const canonical = canonicalByKey.get(key);
+      if (canonical) {
+        // 삭제하지 않고 원본 출처 설명을 대표 카드 아래에 붙인다.
+        if (canonical.id !== extra.id) {
+          (mergedExtraDetailsByEvent[canonical.id] ??= []).push(extra);
+        }
+        continue;
+      }
+      canonicalByKey.set(key, extra);
+      result.push(extra);
+    }
+    return {
+      allDisplayEvents: result.sort((a, b) =>
+        a.sortYear - b.sortYear ||
+        (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+        a.id.localeCompare(b.id)),
+      mergedExtraDetailsByEvent,
+    };
   }, [payload, byeolbyeolFlowEvents, showByeolbyeolBasic, showByeolbyeolAdvanced, yongFlowEvents, showYongseonsaeng, referenceEvents, showRobin, showReadingBook]);
 
   const visibleEvents = useMemo(() => allDisplayEvents.filter((event) =>
@@ -672,6 +704,18 @@ export default function TimelineClient() {
                               enabledLevels={enabledByeolbyeolLevels} />
                             <TimelineYongDetails notes={yongNotes[event.id]} enabled={yongEnabled} />
                                       <TimelineReferenceNotes notes={referenceNotes[event.id]} showRobin={showRobin} showReading={showReadingBook} />
+                                      {(mergedExtraDetailsByEvent[event.id] ?? []).map(extra => (
+                                        <details className={supplementStyles.disclosure} key={extra.id}>
+                                          <summary>📖 {extra.referenceSource?.book ?? (extra.byeolbyeolLevel ? "별별한국사" : extra.yongseonsaeng ? "용선생 교과서 한국사" : "참고자료")} 시대 흐름 더 보기</summary>
+                                          <div className={supplementStyles.flowText}>{extra.life}</div>
+                                          {extra.referenceSource && (
+                                            <small className={yongStyles.source}>출처: 『{extra.referenceSource.book}』 PDF {extra.referenceSource.pdfPage}쪽</small>
+                                          )}
+                                          {extra.yongSource && (
+                                            <small className={yongStyles.source}>출처: 용선생 교과서 한국사 {extra.yongSource.volume}권 {extra.yongSource.printedPage}쪽</small>
+                                          )}
+                                        </details>
+                                      ))}
                             {shouldShowTimelineMaterial(event.artifact) && (
                               <div className={styles.transitionDetail}>
                                 <b>대표 유물·유적</b><span>{event.artifact}</span>
