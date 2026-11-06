@@ -168,4 +168,36 @@ const yi = limited.byEvent["goryeo-wihwado-1388"].find(c => c.id === "조선:이
 assert(yi);
 assert.equal(yi.related.length, 1);
 assert.deepEqual(yi.issues, [13]);
+// 별꼼역사 4·6호의 정확한 사건연도 미상 인물은 시대별 학습 주제로만 표시한다.
+const ancientSource = fs.readFileSync(path.join(__dirname, "..", "lib", "historyTimelineAncientPersonTopics.ts"), "utf8");
+const ancientModule = { exports: {} };
+new Function("module", "exports", ts.transpileModule(ancientSource, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+}).outputText)(ancientModule, ancientModule.exports);
+const ancientTopics = ancientModule.exports.HISTORY_TIMELINE_ANCIENT_PERSON_TOPICS;
+assert.equal(ancientTopics.length, 3, "Expected three source-checked undated topic cards");
+assert(ancientTopics.every(topic => topic.period === "three" && ["고구려", "백제"].includes(topic.nation)));
+const ancient = buildTimelinePersonDirectory([], ancientTopics);
+for (const name of ["왕산악", "온달", "평강공주"]) {
+  requirePerson(ancient.byTopic["topic-04-goguryeo-culture-tales"], `고구려:${name}`, "Goguryeo tales");
+}
+for (const name of ["남생", "남건", "남산"]) {
+  requirePerson(ancient.byTopic["topic-04-goguryeo-succession"], `고구려:${name}`, "Goguryeo political figures");
+}
+for (const name of ["도미", "도미의 아내"]) {
+  requirePerson(ancient.byTopic["topic-06-baekje-domi-story"], `백제:${name}`, "Baekje tale figures");
+}
+assert(!ids(ancient.byTopic["topic-04-goguryeo-culture-tales"]).some(id => id.startsWith("백제:")));
+assert(!ids(ancient.byTopic["topic-06-baekje-domi-story"]).some(id => id.startsWith("고구려:")));
+const issue4Only = buildTimelinePersonDirectory([], ancientTopics.filter(topic => topic.issue === 4));
+const issue6Only = buildTimelinePersonDirectory([], ancientTopics.filter(topic => topic.issue === 6));
+assert.deepEqual(Object.keys(issue4Only.byTopic).sort(), [
+  "topic-04-goguryeo-culture-tales", "topic-04-goguryeo-succession"
+]);
+assert.deepEqual(Object.keys(issue6Only.byTopic), ["topic-06-baekje-domi-story"]);
+assert.deepEqual(Object.keys(buildTimelinePersonDirectory([], []).byTopic), []);
+assert(ancientTopics.every(topic => /호 교재/.test(topic.pages) &&
+  topic.points.some(point => /전해지는|설화|연도가/.test(point))),
+  "All undated topics must state their textual basis or uncertainty");
+
 console.log("History person-card regression: coverage and permission assertions passed.");

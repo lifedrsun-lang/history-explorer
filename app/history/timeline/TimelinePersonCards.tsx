@@ -4,13 +4,16 @@ import { useState } from "react";
 import type { TimelinePersonCard } from "@/lib/historyTimelinePeople";
 import styles from "./timelinePeople.module.css";
 
-export default function TimelinePersonCards({ cards }: { cards: TimelinePersonCard[] }) {
+export default function TimelinePersonCards({ cards, context = "event" }: {
+  cards: TimelinePersonCard[];
+  context?: "event" | "topic";
+}) {
   const [opened, setOpened] = useState<string | null>(null);
   if (!cards.length) return null;
 
   return (
     <section className={styles.people} aria-label="관련 역사 인물">
-      <strong className={styles.heading}>👤 이 사건의 인물</strong>
+      <strong className={styles.heading}>👤 {context === "topic" ? "이 주제의 인물" : "이 사건의 인물"}</strong>
       <div className={styles.chips}>
         {cards.map((person) => {
           const active = opened === person.id;
