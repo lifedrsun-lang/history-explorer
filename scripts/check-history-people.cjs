@@ -202,7 +202,7 @@ assert.deepEqual(Object.keys(issue5Only.byTopic), ["topic-05-baekje-biryu-onjo"]
 assert.deepEqual(Object.keys(issue6Only.byTopic), ["topic-06-baekje-domi-story"]);
 assert.deepEqual(Object.keys(buildTimelinePersonDirectory([], []).byTopic), []);
 assert(ancientTopics.every(topic => /호 교재/.test(topic.pages) &&
-  topic.points.some(point => /전해지는|설화|연도가/.test(point))),
+  topic.points.some(point => /전해지는|전승|설화|연도가/.test(point))),
   "All undated topics must state their textual basis or uncertainty");
 
 // 인물카드 표시 체크박스는 데스크톱/모바일의 동일 옵션 배열을 사용한다.
