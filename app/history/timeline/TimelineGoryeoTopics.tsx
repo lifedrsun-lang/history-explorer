@@ -8,7 +8,7 @@ import styles from "./timeline.module.css";
  * 임의 연도에 끼워 넣지 않고, 고려 시대 상단에 따로 접어 둔다.
  */
 export default function TimelineGoryeoTopics({ era, topics, peopleByTopic = {}, showPersonCards = true }: {
-  era: "삼국 시대" | "고려" | "조선" | "대한제국" | "일제강점기" | "광복과 분단" | "대한민국";
+  era: "선사 시대" | "고조선" | "여러 나라" | "삼국 시대" | "고려" | "조선" | "대한제국" | "일제강점기" | "광복과 분단" | "대한민국";
   topics: HistoryTimelineStudyTopic[];
   peopleByTopic?: Record<string, TimelinePersonCard[]>;
   showPersonCards?: boolean;
@@ -35,7 +35,7 @@ export default function TimelineGoryeoTopics({ era, topics, peopleByTopic = {}, 
             <ul>
               {topic.points.map((point, index) => <li key={index}>{point}</li>)}
             </ul>
-            <small>교재 출처: {topic.pages}</small>
+            <small>{topic.pages.includes("활동지") ? "활동지 출처" : "교재 출처"}: {topic.pages}</small>
             {showPersonCards && <TimelinePersonCards context="topic" cards={peopleByTopic[topic.id] || []} />}
           </details>
         ))}
