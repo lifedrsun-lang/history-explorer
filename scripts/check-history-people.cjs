@@ -216,4 +216,34 @@ assert.equal((clientSrc.match(/showPersonCards && <TimelinePersonCards/g) || [])
 assert.equal((clientSrc.match(/showPersonCards=\{showPersonCards\}/g) || []).length, 7, "All 7 textbook topic sections must obey checkbox");
 assert(topicSrc.includes('{showPersonCards && <TimelinePersonCards context="topic"'), "Textbook topics must obey checkbox");
 
+// 교재 원본 5·7·10·12호에서 직접 확인한 누락 인물은 연도 없는 주제에 연결한다.
+const originalFigureSource = fs.readFileSync(path.join(__dirname, "..", "lib", "historyTimelineOriginalFigureTopics.ts"), "utf8");
+const originalFigureModule = { exports: {} };
+new Function("module", "exports", ts.transpileModule(originalFigureSource, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+}).outputText)(originalFigureModule, originalFigureModule.exports);
+const figureTopics = originalFigureModule.exports.HISTORY_TIMELINE_ORIGINAL_FIGURE_TOPICS;
+assert.equal(figureTopics.length, 10, "Expected 10 source-checked supplemental person topics");
+assert(figureTopics.every(topic => [5,7,10,12].includes(topic.issue) && /교재/.test(topic.pages)));
+const figureDirectory = buildTimelinePersonDirectory([], figureTopics);
+const shouldMatch = [
+  ["topic-05-baekje-early-and-culture",["백제:책계왕","백제:왕인","백제:마라난타"]],
+  ["topic-07-silla-founding-tales",["신라:알영 부인","신라:남해왕","신라:석탈해","신라:김알지"]],
+  ["topic-07-silla-buddhism",["신라:이차돈","신라:원광"]],
+  ["topic-07-silla-expansion",["신라:이사부","신라:사다함","신라:김용춘"]],
+  ["topic-10-goryeo-foundation-allies",["고려:홍유","고려:신숭겸","고려:김선평","고려:권행","고려:장길"]],
+  ["topic-10-later-baekje-succession",["후삼국:신검","후삼국:금강"]],
+  ["topic-10-balhae-refugees",["발해:대광현"]],
+  ["topic-10-goryeo-kings-and-reforms",["고려:왕규","고려:정종","고려:왕식렴","고려:쌍기"]],
+  ["topic-12-goryeo-aristocratic-struggles",["고려:척준경","고려:최사전","고려:정지상"]],
+  ["topic-12-goryeo-military-rule-figures",["고려:의종","고려:이소응","고려:이고","고려:이의방","고려:박진재","고려:이의민"]],
+];
+for(const [topicId,names] of shouldMatch){
+  for(const personId of names) requirePerson(figureDirectory.byTopic[topicId],personId,"original figure topics");
+}
+assert(!ids(figureDirectory.byTopic["topic-07-silla-founding-tales"]).some(id => id.startsWith("백제:")),
+  "Silla topics must not expose Baekje figure cards");
+const gojoseonNoteSource = fs.readFileSync(path.join(__dirname, "..", "lib", "historyTimelineStudyEarly.ts"), "utf8");
+assert(gojoseonNoteSource.includes("고조선의 마지막 왕 우거왕"), "Missing confirmed 2nd-issue Ugeo note");
+
 console.log("History person-card regression: coverage and permission assertions passed.");
