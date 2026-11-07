@@ -163,24 +163,25 @@ export default function SchoolMonsterClassPortal({ schoolSlug, schoolDisplayName
               <h1 className="mt-1 text-2xl font-black text-slate-800">반 수업방</h1>
               <p className="mt-1 text-sm font-bold text-slate-500">우리 반을 선택하고 카드 비밀번호를 눌러 들어가요.</p>
             </div>
-            <button type="button" onClick={onChangeSchool} className="shrink-0 rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-black text-amber-700">학교 변경</button>
+            <div className="flex shrink-0 flex-col items-stretch gap-2">
+              <button type="button" onClick={onChangeSchool} className="rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-black text-amber-700">학교 변경</button>
+              {!currentClassroom && (
+                <a
+                  href={TEACHER_KAKAO_INQUIRY_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="선생님께 카카오톡으로 문의하기 (새 창 열림)"
+                  className="flex min-h-10 items-center justify-center rounded-2xl bg-[#FEE500] px-3 py-2 text-xs font-black text-slate-800 transition hover:brightness-95"
+                >
+                  💬 카톡문의
+                </a>
+              )}
+            </div>
           </div>
         </header>
 
         {!currentClassroom ? (
           <section className="rounded-[30px] border border-white/80 bg-white/95 p-4 shadow-sm">
-            <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-center">
-              <p className="mb-2 text-sm font-bold text-slate-700">수업이나 반 선택에 대해 궁금한 점이 있나요?</p>
-              <a
-                href={TEACHER_KAKAO_INQUIRY_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="선생님께 카카오톡으로 문의하기 (새 창 열림)"
-                className="flex min-h-12 w-full items-center justify-center rounded-2xl bg-[#FEE500] px-4 py-3 text-base font-black text-slate-800 shadow-sm transition hover:brightness-95"
-              >
-                💬 선생님께 카톡 문의하기
-              </a>
-            </div>
             {gradeGroups.map(({ grade, rooms }) => (
               <div key={grade} className="mb-5 last:mb-0">
                 <h2 className="mb-3 text-xl font-black text-slate-800">{grade}학년</h2>
