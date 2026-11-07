@@ -114,7 +114,7 @@ const textbookSourceLabel = (event: StudentEvent) => {
 
 // 정확한 '년 월 일' 표기만 두 줄로 나누고, 연도만 있거나 불확실한 날짜는 유지한다.
 function renderCompactDate(label: string) {
-  const match = label.match(/^(.*?년)\\s+(\\d{1,2}월\\s*\\d{1,2}일)$/);
+  const match = label.match(/^(.*?년)\s+(\d{1,2}월\s*\d{1,2}일)$/);
   if (!match) return label;
   return <span className={styles.compactDate}><span>{match[1]}</span><span>{match[2]}</span></span>;
 }
@@ -713,7 +713,7 @@ export default function TimelineClient() {
                   ),
                 ];
                 const gridStyle = {
-                  gridTemplateColumns: `116px repeat(${columns.length}, minmax(245px, 1fr))`,
+                  gridTemplateColumns: `88px repeat(${columns.length}, minmax(245px, 1fr))`,
                 };
                 const dates = groupSameDates(comparisonEvents);
 
@@ -796,7 +796,7 @@ export default function TimelineClient() {
                       role="region"
                       aria-label={`${period.title} 국가별 가로 연표`}
                     >
-                      <div className={styles.periodGrid} style={{ minWidth: 116 + 245 * columns.length }}>
+                      <div className={styles.periodGrid} style={{ minWidth: 88 + 245 * columns.length }}>
                         <div className={styles.tableHeader} style={gridStyle}>
                           <div className={styles.yearHeader}>연도</div>
                           {columns.map((column) => (
