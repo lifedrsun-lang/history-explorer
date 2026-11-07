@@ -86,6 +86,7 @@ export async function POST(request: Request) {
           ...student,
           birthDate: profile.birthDate,
           sunLabAllAccess: profile.allAccess === true,
+          timelineFullAccess: profile.timelineFullAccess === true,
           sunLabPermissions: Array.isArray(profile.permissions)
             ? profile.permissions
             : [],
@@ -170,6 +171,7 @@ export async function POST(request: Request) {
       member: {
         name: memberName,
         permissions,
+        timelineFullAccess: student.timelineFullAccess === true,
         helloMaple:
           hasHelloMaple && helloMapleId && helloMaplePassword
             ? {
