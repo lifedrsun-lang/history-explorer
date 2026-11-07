@@ -7,6 +7,8 @@ export type HeritagePilotNote = {
   location: string;
   source: string;
   explanation: string;
+  /** Child-friendly first layer. Full explanation remains the verified summary, not the panel transcript. */
+  easyExplanation?: string;
   relatedEventKeywords: string[];
   status: "draft" | "published";
   publicImageUrls: string[];
@@ -86,6 +88,7 @@ export const GANGHWA_HERITAGE_PILOT: HeritagePilotNote[] = [
     visitedOn: "2026-10-31",
     location: "경기도 용인시 처인구 처인성역사교육관",
     source: "처인성역사교육관 현장 전시 안내문(사용자 촬영, 2026-10-31)",
+    easyExplanation: "몽골 사신 저고여가 고려 국경에서 죽자 고려와 몽골의 관계가 나빠졌어요. 이후 몽골군이 고려를 침입했어요.",
     explanation: "1225년 1월 몽골 사신 저고여가 고려 국경에서 피살되었습니다. 고려 조정은 관여를 부인했지만 몽골은 고려에 책임이 있다고 판단했고, 두 나라의 관계가 악화되었습니다. 이후 1231년 몽골군이 고려를 침입했습니다.",
     relatedEventKeywords: ["몽골 사신 저고여 피살과 고려·몽골 관계 악화","몽골 침입","처인성"],
     status: "published",
@@ -99,6 +102,7 @@ export const GANGHWA_HERITAGE_PILOT: HeritagePilotNote[] = [
     visitedOn: "2026-10-31",
     location: "경기도 용인시 처인구 처인성역사교육관",
     source: "처인성역사교육관 현장 전시 안내문(사용자 촬영, 2026-10-31)",
+    easyExplanation: "고려 시대 부곡민은 여러 제한을 받으며 살았어요. 처인성에서는 이런 주민들이 힘을 모아 몽골군과 싸웠어요.",
     explanation: "고려는 전쟁 포로와 범죄자의 집단 거주지 또는 반란이 일어난 지역 등을 향·부곡으로 편성했습니다. 부곡 주민은 농업에 종사하면서도 국가에 추가 노동을 제공했고, 국학 입학이나 승려가 되는 자격 등에 법적 제약을 받았습니다. 처인성 전투에서는 이러한 지역 주민들이 몽골군에 맞서 싸웠다는 점이 중요합니다.",
     relatedEventKeywords: ["천대받던 부곡민과 몽골군","몽골 침입","처인성"],
     status: "published",
@@ -112,6 +116,7 @@ export const GANGHWA_HERITAGE_PILOT: HeritagePilotNote[] = [
     visitedOn: "2026-10-31",
     location: "경기도 용인시 처인구 처인성역사교육관",
     source: "처인성역사교육관 현장 전시 안내문(사용자 촬영, 2026-10-31)",
+    easyExplanation: "고려가 수도를 강화도로 옮기자 몽골군이 다시 침입했어요. 그 군대가 처인성에도 찾아왔어요.",
     explanation: "고려가 1232년 강화도로 수도를 옮겨 장기 항전에 나서자 몽골군이 다시 침입했습니다. 전시 안내문에 따르면 몽골군은 강화도 공격 대신 여러 지역으로 진군했고, 그 과정에서 처인성에 이르렀습니다.",
     relatedEventKeywords: ["몽골의 제2차 침입","몽골 침입","처인성"],
     status: "published",
@@ -125,6 +130,7 @@ export const GANGHWA_HERITAGE_PILOT: HeritagePilotNote[] = [
     visitedOn: "2026-10-31",
     location: "경기도 용인시 처인구 처인성역사교육관",
     source: "처인성역사교육관 현장 전시 안내문(사용자 촬영, 2026-10-31)",
+    easyExplanation: "처인성 주민들이 힘을 합쳐 몽골군과 싸워 승리했어요. 이 전투에서 몽골군 지휘관 살리타가 전사했어요.",
     explanation: "1232년 몽골의 제2차 침입 때 처인성에서 지역민을 중심으로 한 고려 측 군대가 몽골군과 싸워 승리했습니다. 몽골군 지휘관 살리타가 이 전투에서 전사했습니다. 전문적인 훈련을 받은 중앙군이 아닌 지역민들이 중심이 된 항전이라는 점에서 의미가 큽니다.",
     relatedEventKeywords: ["지역민들이 지켜낸 처인성 승리","몽골 침입","처인성"],
     status: "published",
@@ -138,6 +144,7 @@ export const GANGHWA_HERITAGE_PILOT: HeritagePilotNote[] = [
     visitedOn: "2026-10-31",
     location: "경기도 용인시 처인구 처인성역사교육관",
     source: "처인성역사교육관 현장 전시 안내문(사용자 촬영, 2026-10-31)",
+    easyExplanation: "김윤후는 처인성 전투와 충주성 방어에서 활약한 인물이에요. 다만 살리타를 직접 사살했는지는 확실하지 않아요.",
     explanation: "처인성역사교육관 안내문은 『고려사』에 김윤후가 살리타를 사살한 인물로 기록되지만 실제로 직접 사살했는지는 확실하지 않다고 설명합니다. 김윤후는 1253년 충주성 방어에서도 지역민들을 독려하여 약 70일 동안 몽골군의 공격을 막아냈다고 안내합니다.",
     relatedEventKeywords: ["김윤후와 충주성 방어","몽골 침입","처인성"],
     status: "published",
