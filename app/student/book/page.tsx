@@ -48,7 +48,7 @@ const RESOURCE_CARDS: ResourceCard[] = [
     emoji: "📜",
     title: "한국사여행",
     description: "배운 역사를 연표로 살펴봐요.",
-    href: "/history/timeline",
+    href: "/history/timeline?view=sunlab",
   },
   {
     permission: "library",
