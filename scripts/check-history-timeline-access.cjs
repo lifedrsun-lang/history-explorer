@@ -91,8 +91,35 @@ assert(onlyFive.directory.byTopic["topic-05-baekje-biryu-onjo"].some(p => p.id =
 
 const scenarios = [[1],[2],[3],[4,6],[5,6],[10],[13],[10,13],[15],[23],[1,4,5,6,7],[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]];
 for (const issues of scenarios) checkScenario(issues);
+// SUN LAB full-access accounts must receive teacher-reviewed heritage events even
+// when textbook issue links are intentionally blank. Ordinary learners must not.
+const heritageLibrary = require(path.join(root, "lib/historyTimelineGanghwaHeritagePilot.ts"));
+const allIssues = Array.from({ length: 23 }, (_, i) => i + 1);
+const fullAccessEvents = HISTORY_TIMELINE_EVENTS.map(event => toStudentTimelineEvent(event, allIssues));
+const fullAccessIds = new Set(fullAccessEvents.map(event => event.id));
+const ordinaryStudentIds = new Set(getTimelineEventsForIssues(allIssues).map(event => event.id));
+assert(fullAccessIds.has("goryeo-cheoin-battle-1232"), "Full access missing Cheoinseong battle");
+assert(fullAccessIds.has("goryeo-ganghwa-capital-1232"), "Full access missing Ganghwa capital move");
+assert(!ordinaryStudentIds.has("goryeo-cheoin-battle-1232"), "Unverified heritage exposed to ordinary issue-based student");
+assert.equal(
+  heritageLibrary.getPublishedGanghwaNotesForEvent("goryeo-cheoin-battle-1232").length,
+  5,
+  "Expected five museum notes on the single Cheoinseong event"
+);
+assert(fullAccessEvents.find(event => event.id === "goryeo-cheoin-battle-1232").textbookIssues.length === 0,
+  "Unverified textbook issue should not be assigned automatically");
 const apiRouteSource = fs.readFileSync(path.join(root, "app/api/history/timeline/events/route.ts"), "utf8");
 assert(apiRouteSource.includes("toStudentTimelineEvent(event, completedIssues)"), "Student events must be filtered by completed issue list");
 assert(apiRouteSource.includes("getHistoryTimelineTopicsForIssues(completedIssues)"), "Student topics must be filtered by completed issue list");
+assert(apiRouteSource.includes("const events = HISTORY_TIMELINE_EVENTS.map(event =>"),
+  "SUN LAB full-access route must include events with no verified issue");
+assert(apiRouteSource.includes("const events = getTimelineEventsForIssues(completedIssues).map((event) =>"),
+  "Ordinary enrolled student route must retain issue authorization");
+assert(apiRouteSource.includes("memberProfileDoc.data()?.timelineFullAccess === true"),
+  "Full access must remain gated by server-side permission");
+const timelineClientSource = fs.readFileSync(path.join(root, "app/history/timeline/TimelineClient.tsx"), "utf8");
+assert(timelineClientSource.includes("const [showHeritageDetails, setShowHeritageDetails] = useState(false)"),
+  "Heritage checkbox must be unchecked initially");
+
 assert(apiRouteSource.includes('headers.set("Cache-Control", "private, no-store, max-age=0")'), "Private timeline API must not be cached publicly");
 console.log(`History timeline access regression passed: ${scenarios.length + 4} issue scenarios, ${HISTORY_TIMELINE_EVENTS.length} source events, ${HISTORY_TIMELINE_ALL_TOPICS.length} source topics.`);
