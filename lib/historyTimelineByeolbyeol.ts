@@ -3,6 +3,7 @@ import { HISTORY_TIMELINE_BYEOLBYEOL_MORE_NOTES } from "./historyTimelineByeolby
 import { HISTORY_TIMELINE_AUDITED_NOTES } from "./historyTimelineAuditedNotes";
 import { HISTORY_TIMELINE_PHASE_TWO_ADVANCED_NOTES } from "./historyTimelinePhaseTwoAdvancedNotes";
 import { HISTORY_TIMELINE_PHASE_TWO_BATCH_THREE_NOTES } from "./historyTimelinePhaseTwoBatchThreeNotes";
+import { HISTORY_TIMELINE_PHASE_TWO_BATCH_FOUR_NOTES } from "./historyTimelinePhaseTwoBatchFourNotes";
 
 /**
  * 별별한국사 참고서·시대별 기출 자료를 대조하여 기존 연표의 요점에서 빠진 사실만 정리한다.
@@ -158,6 +159,7 @@ export function getByeolbyeolPublicNotes(eventIds: Iterable<string>): Record<str
       ...(HISTORY_TIMELINE_AUDITED_NOTES[id] ?? []),
       ...(HISTORY_TIMELINE_PHASE_TWO_ADVANCED_NOTES[id] ?? []),
       ...(HISTORY_TIMELINE_PHASE_TWO_BATCH_THREE_NOTES[id] ?? []),
+      ...(HISTORY_TIMELINE_PHASE_TWO_BATCH_FOUR_NOTES[id] ?? []),
     ];
     if (!notes?.length) continue;
     result[id] = notes.map(({ level, heading, points }) => ({
