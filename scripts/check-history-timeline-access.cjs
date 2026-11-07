@@ -21,6 +21,7 @@ const root = path.join(__dirname, "..");
 const history = require(path.join(root, "lib/historyTimeline.ts"));
 const topicsLibrary = require(path.join(root, "lib/historyTimelineAllTopics.ts"));
 const peopleLibrary = require(path.join(root, "lib/historyTimelinePeople.ts"));
+const conflictLibrary = require(path.join(root, "lib/historyTimelineWarDetails.ts"));
 if (originalTs) Module._extensions[".ts"] = originalTs;
 else delete Module._extensions[".ts"];
 
@@ -31,6 +32,29 @@ const { buildTimelinePersonDirectory } = peopleLibrary;
 assert(HISTORY_TIMELINE_EVENTS.length > 0, "Missing timeline events");
 assert.equal(new Set(HISTORY_TIMELINE_EVENTS.map(e => e.id)).size, HISTORY_TIMELINE_EVENTS.length, "Duplicate event ID");
 assert.equal(new Set(HISTORY_TIMELINE_ALL_TOPICS.map(t => t.id)).size, HISTORY_TIMELINE_ALL_TOPICS.length, "Duplicate topic ID");
+
+// Build-time regression: source event IDs must match every conflict detail card.
+const warDetails = conflictLibrary.HISTORY_TIMELINE_WAR_DETAILS;
+const registeredWarIds = Object.keys(warDetails);
+assert.equal(registeredWarIds.length, 60, "60 source-matched conflict summaries are expected");
+const allTimelineIds = new Set(HISTORY_TIMELINE_EVENTS.map(event => event.id));
+for (const id of registeredWarIds) {
+  assert(allTimelineIds.has(id), `War summary references missing timeline event: ${id}`);
+  assert(warDetails[id].kind && warDetails[id].opponent && warDetails[id].place && warDetails[id].result,
+    `War summary lacks basic fields: ${id}`);
+}
+// Avoid misclassifying non-military democratic protest or peaceful dynasty transitions as wars.
+const militaryEventTitle = /전쟁|전투|대첩|침략|침입|해전|싸움|정변|군란|봉기|난이 일어남/;
+const uncoveredMilitaryEvents = HISTORY_TIMELINE_EVENTS
+  .filter(event => militaryEventTitle.test(event.title) && !warDetails[event.id])
+  .map(event => `${event.dateLabel}: ${event.title} [${event.id}]`);
+assert.deepEqual(uncoveredMilitaryEvents, [], `Missing conflict cards: ${uncoveredMilitaryEvents.join(", ")}`);
+for (const id of [
+  "goryeo-gangjo-coup-1009", "goryeo-military-coup-1170", "republic-may16-1961",
+  "later-baekje-falls-936", "republic-koreanwar-1950",
+]) assert(warDetails[id], `Essential conflict event missing: ${id}`);
+assert(warDetails["republic-koreanwar-1950"].result.includes("1953년"),
+  "Korean War summary must note the 1953 armistice rather than treating 1950 as the end");
 
 assert.deepEqual(normalizeTimelineIssues([0,1,1,4,6,24,"13","bad",-1]), [1,4,6,13]);
 assert.deepEqual(resolveTimelineCompletedIssues({timelineCompletedIssues:[]}).issues, []);
