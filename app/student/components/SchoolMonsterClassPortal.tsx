@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import ClassroomBoard from "./ClassroomBoard";
 import ClassroomLockoutReset from "./ClassroomLockoutReset";
 import { CLASSROOM_LOCKOUT_MS } from "@/lib/classroomLockout";
+import { TEACHER_KAKAO_INQUIRY_URL } from "@/lib/teacherContact";
 import SchoolQrPanel from "@/app/components/SchoolQrPanel";
 import {
   CLASSROOM_MONSTERS,
@@ -168,6 +169,18 @@ export default function SchoolMonsterClassPortal({ schoolSlug, schoolDisplayName
 
         {!currentClassroom ? (
           <section className="rounded-[30px] border border-white/80 bg-white/95 p-4 shadow-sm">
+            <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-center">
+              <p className="mb-2 text-sm font-bold text-slate-700">수업이나 반 선택에 대해 궁금한 점이 있나요?</p>
+              <a
+                href={TEACHER_KAKAO_INQUIRY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="선생님께 카카오톡으로 문의하기 (새 창 열림)"
+                className="flex min-h-12 w-full items-center justify-center rounded-2xl bg-[#FEE500] px-4 py-3 text-base font-black text-slate-800 shadow-sm transition hover:brightness-95"
+              >
+                💬 선생님께 카톡 문의하기
+              </a>
+            </div>
             {gradeGroups.map(({ grade, rooms }) => (
               <div key={grade} className="mb-5 last:mb-0">
                 <h2 className="mb-3 text-xl font-black text-slate-800">{grade}학년</h2>
