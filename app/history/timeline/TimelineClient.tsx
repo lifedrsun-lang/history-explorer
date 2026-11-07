@@ -190,16 +190,19 @@ export default function TimelineClient() {
     []
   );
 
-  const loadTimeline = async (currentTeacher: User | null) => {
-    setLoading(true);
-    setError("");
-    setSunLabAccessError("");
-    setByeolbyeolNotes({});
-    setByeolbyeolFlowEvents([]);
-    setYongNotes({});
-    setReferenceNotes({});
-    setYongFlowEvents([]);
-    setReferenceEvents([]);
+  const loadTimeline = async (currentTeacher: User | null, background = false) => {
+    // 주기적 권한 확인 때 화면을 언마운트하지 않아 읽던 위치와 펼친 카드를 유지한다.
+    if (!background) {
+      setLoading(true);
+      setError("");
+      setSunLabAccessError("");
+      setByeolbyeolNotes({});
+      setByeolbyeolFlowEvents([]);
+      setYongNotes({});
+      setReferenceNotes({});
+      setYongFlowEvents([]);
+      setReferenceEvents([]);
+    }
     try {
       const token = !sunLabMemberView && currentTeacher ? await currentTeacher.getIdToken() : "";
       const response = await fetch(`/api/history/timeline/events${sunLabMemberView ? "?view=sunlab" : ""}`, {
@@ -273,7 +276,7 @@ export default function TimelineClient() {
           : "연표를 불러오지 못했습니다."
       );
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   };
 
@@ -300,7 +303,7 @@ export default function TimelineClient() {
   useEffect(() => {
     if (!authReady || !payload || payload.viewer.role !== "student") return;
     const refresh = () => {
-      if (document.visibilityState === "visible") void loadTimeline(null);
+      if (document.visibilityState === "visible") void loadTimeline(null, true);
     };
     const timer = window.setInterval(refresh, 30000);
     document.addEventListener("visibilitychange", refresh);
