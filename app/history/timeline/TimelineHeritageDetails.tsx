@@ -6,7 +6,7 @@ const isPreciseAddress = (value: string) =>
   /(?:로|길)\s*\d|(?:로|길)\d|\d+번길\s*\d/.test(value) && !/일대|인근|부근/.test(value);
 
 const displayTitle = (note: HeritagePilotNote) => {
-  const museum = note.title.match(/(.+박물관)/)?.[1];
+  const museum = note.title.match(/(.+?(?:박물관|역사교육관))/)?.[1];
   return museum ? `박물관 해설 - ${museum}` : `문화유산 해설 - ${note.title}`;
 };
 
@@ -29,6 +29,19 @@ export default function TimelineHeritageDetails({ notes }: { notes: HeritagePilo
               <div style={{ marginBottom: 10 }}>
                 <strong>장소주소</strong>
                 <div>{note.location}</div>
+              </div>
+            )}
+            {note.publicImageUrls.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <strong>현장 사진</strong>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginTop: 8 }}>
+                  {note.publicImageUrls.map((url, index) => (
+                    <a key={url} href={url} target="_blank" rel="noopener noreferrer" aria-label={`${note.title} 현장 사진 ${index + 1} 확대 보기`}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt={`${note.title} 현장 사진 ${index + 1}`} loading="lazy" style={{ width: "100%", aspectRatio: "4 / 3", objectFit: "contain", borderRadius: 8, border: "1px solid #d9e2dc" }} />
+                    </a>
+                  ))}
+                </div>
               </div>
             )}
             <div style={{ marginBottom: 12 }}>
