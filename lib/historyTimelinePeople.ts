@@ -27,7 +27,7 @@ const names = (list: string, polity?: string): PersonSeed[] =>
 // 조선/고려 성종, 발해/백제 무왕처럼 동명이인은 국가별로 분리한다.
 const PERSON_SEEDS: PersonSeed[] = [
   ...names("단군,위만,준왕,우거왕", "고조선"),
-  ...names("주몽,고국천왕,소수림왕,광개토 대왕,장수왕,을지문덕,영류왕,연개소문,보장왕,검모잠,안승,왕산악,온달,평강공주,남생,남건,남산", "고구려"),
+  ...names("주몽,고국천왕,소수림왕,광개토 대왕,장수왕,을지문덕,영류왕,연개소문,보장왕,검모잠,안승,왕산악,온달,평강공주,남생,남건,남산,고연무,담징", "고구려"),
   ...names("온조,비류,고이왕,근초고왕,침류왕,아신왕,개로왕,문주왕,동성왕,무령왕,성왕,위덕왕,무왕,의자왕,계백,윤충,성충,흥수,부여풍,복신,도침,흑치상지,도미,도미의 아내,책계왕,왕인,마라난타", "백제"),
   ...names("박혁거세,알영 부인,남해왕,석탈해,김알지,유리왕,내물왕,지증왕,법흥왕,진흥왕,이차돈,원광,이사부,사다함,김용춘,선덕여왕,김춘추,김유신,김품석,신문왕,원효,의상,장보고,선덕왕,신무왕,진성여왕,최치원,원종,애노,경순왕", "신라"),
   ...names("수로왕", "가야"),
@@ -39,6 +39,8 @@ const PERSON_SEEDS: PersonSeed[] = [
   ...names("김좌진,박은식,윤봉길,김구,이범석,여운형,김규식", "일제강점기"),
   ...names("이승만,박정희,전두환,김대중", "대한민국"),
   ...names("저고여", "몽골"),
+  ...names("이원", "원나라"),
+  ...names("주원장", "명나라"),
   ...names("수 문제,수 양제", "수나라"),
   ...names("당 태종", "당"),
 ].filter((person) => person.name.length > 0).map(person => ({
@@ -99,6 +101,7 @@ function topicMentions(topic: HistoryTimelineStudyTopic, person: PersonSeed) {
   const accepted: Record<string, readonly string[]> = {
     고려: ["goryeo"], 후삼국: ["goryeo"],
     고구려: ["three"], 백제: ["three"], 신라: ["three"], 발해: ["goryeo"],
+    원나라: ["goryeo"], 명나라: ["goryeo"],
     조선: ["joseon", "empire"],
     대한제국: ["joseon", "empire"],
     일제강점기: ["colonial", "liberation"],
