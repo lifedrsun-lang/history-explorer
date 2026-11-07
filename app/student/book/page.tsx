@@ -1,11 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { onAuthStateChanged } from "firebase/auth";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 
-import { auth } from "@/lib/firebase";
 import type { SunLabPermission } from "@/lib/sunLabMember";
 
 const HELLO_MAPLE_URL = "https://www.hellomaple.org/ko";
@@ -103,30 +100,8 @@ const RESOURCE_CARDS: ResourceCard[] = [
 ];
 
 export default function SunLabBookPage() {
-  const router = useRouter();
-  const [authChecking, setAuthChecking] = useState(true);
-  const [isTeacher, setIsTeacher] = useState(false);
-
-  useEffect(() => {
-    return onAuthStateChanged(auth, (user) => {
-      setIsTeacher(Boolean(user));
-      setAuthChecking(false);
-
-      if (user) {
-        // Reuse the teacher dashboard and its existing session-expiry boundary.
-        router.replace("/teacher");
-      }
-    });
-  }, [router]);
-
-  if (authChecking || isTeacher) {
-    return (
-      <div role="status" className="flex min-h-[100dvh] items-center justify-center bg-sky-50 px-6 text-center text-sm font-bold text-slate-500">
-        {isTeacher ? "SUN LAB 교사모드로 이동하고 있어요." : "로그인 상태를 확인하고 있어요."}
-      </div>
-    );
-  }
-
+  // SUN LAB member entry is independent of the teacher login session.
+  // Teacher access remains available through the explicit "교사모드" link below.
   return <SunLabStudentPage />;
 }
 
