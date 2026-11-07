@@ -7,6 +7,47 @@ import type { HistoryTimelineStudyTopic } from "./historyTimelineGoryeoTopics";
  */
 export const HISTORY_TIMELINE_ORIGINAL_FIGURE_TOPICS: HistoryTimelineStudyTopic[] = [
   {
+    id: "topic-04-goguryeo-restoration-goyeonmu",
+    issue: 4, period: "three", nation: "고구려",
+    title: "고구려 부흥 운동에 참여한 고연무",
+    pages: "4호 교재 24~25쪽",
+    points: [
+      "고연무는 검모잠·안승과 함께 고구려를 다시 세우기 위해 힘쓴 인물로 교재에 등장해요.",
+      "고구려 멸망 뒤 부흥 운동을 벌인 인물과 발해 건국의 흐름을 구분하여 살펴봐요.",
+    ],
+  },
+  {
+    id: "topic-04-goguryeo-painter-damjing",
+    issue: 4, period: "three", nation: "고구려",
+    title: "고구려 문화를 일본에 전했다고 소개된 담징",
+    pages: "4호 교재 27쪽",
+    points: [
+      "담징은 교재에서 일본 호류사 금당 벽화를 그린 승려로 소개돼요.",
+      "교재 속 문화 교류 인물의 활동을 특정 연도 사건으로 임의 배치하지 않아요.",
+    ],
+  },
+  {
+    id: "topic-13-yuan-merchant-yiwon",
+    issue: 13, period: "goryeo",
+    title: "최무선과 화약 제조법을 알려 준 원나라 상인 이원",
+    pages: "13호 교재 25쪽",
+    points: [
+      "원나라 상인 이원은 최무선에게 염초 제조법을 알려 준 인물로 교재에 소개돼요.",
+      "화약 제조에 관한 인물 설명은 고려 말 왜구 격퇴 내용과 함께 살펴봐요.",
+    ],
+  },
+  {
+    id: "topic-13-ming-founder-zhu-yuanzhang",
+    issue: 13, period: "goryeo",
+    title: "홍건적에서 명나라 건국으로",
+    pages: "13호 교재 25쪽",
+    points: [
+      "주원장은 홍건적 출신으로 명나라를 세운 인물이라고 교재에 소개돼요.",
+      "고려에 침입한 홍건적과 명나라 건국을 구분해서 살펴봐요.",
+    ],
+  },
+
+  {
     id: "topic-05-baekje-early-and-culture",
     issue: 5, period: "three", nation: "백제",
     title: "책계왕과 백제 문화 교류 인물",
