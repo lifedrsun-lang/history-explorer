@@ -23,7 +23,8 @@ export default function TimelineWarSummary({ id, summary, life }: Props) {
         <div><b>사건:</b> {summary}</div>
         {info.opponent && <div><b>상대·대립:</b> {info.opponent}</div>}
         {info.place && <div><b>지역:</b> {info.place}</div>}
-        {life.trim() && <div><b>흐름:</b> {life}</div>}
+        {info.progress && <div><b>전개:</b> {info.progress}</div>}
+        {life.trim() && <div><b>관련 설명:</b> {life}</div>}
         {info.result && <div><b>결과·의의:</b> {info.result}</div>}
       </div>
     </details>
