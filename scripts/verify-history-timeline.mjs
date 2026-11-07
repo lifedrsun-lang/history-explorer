@@ -4,6 +4,7 @@ import { GORYEO_STUDY_TOPICS, getTimelineTopicsForIssues } from "../lib/historyT
 import { HISTORY_TIMELINE_LATE_TOPICS, getTimelineLateTopicsForIssues } from "../lib/historyTimelineLateTopics.ts";
 import { HISTORY_TIMELINE_ALL_TOPICS, getHistoryTimelineTopicsForIssues } from "../lib/historyTimelineAllTopics.ts";
 import { HISTORY_TIMELINE_STUDY_INDEX } from "../lib/historyTimelineStudy.ts";
+import { HISTORY_TIMELINE_WAR_DETAILS } from "../lib/historyTimelineWarDetails.ts";
 import {
   HISTORY_TIMELINE_PERIODS,
   HISTORY_TIMELINE_EPOCH_MARKERS,
@@ -43,6 +44,27 @@ for (const event of HISTORY_TIMELINE_EVENTS) {
   assert.ok(event.textbookPages.length > 0);
   assert.ok(event.sourceIssueNumbers.length > 0);
   assert.ok(event.sourceIssueNumbers.every((issue) => issue >= 1 && issue <= 23));
+}
+
+// 전쟁·전투·군사 충돌·항쟁 카드는 반드시 원본 연표 사건에 연결된다.
+const warEventIds = Object.keys(HISTORY_TIMELINE_WAR_DETAILS);
+assert.equal(warEventIds.length, 56, "전쟁 요약 56건이 모두 등록되어야 합니다.");
+const timelineEventIds = new Set(HISTORY_TIMELINE_EVENTS.map(event => event.id));
+for (const id of warEventIds) {
+  assert.ok(timelineEventIds.has(id), `전쟁 요약이 연표 사건에 존재해야 함: ${id}`);
+  const detail = HISTORY_TIMELINE_WAR_DETAILS[id];
+  assert.ok(detail.kind && detail.opponent && detail.place && detail.result, `전쟁 요약 필수 항목 누락: ${id}`);
+}
+for (const id of [
+  "gojoseon-falls", "goguryeo-sui-war-begins", "goguryeo-salsu",
+  "baekje-gwansanseong", "baekje-hwangsanbeol", "silla-unification",
+  "goryeo-cheoin-battle-1232", "goryeo-chungju-defense-1253",
+  "joseon-imjinwar-1592", "joseon-hansando-1592",
+  "joseon-jeongmyo-1627", "joseon-byeongja-1636",
+  "joseon-byeonginyangyo-1866", "joseon-sinmiyangyo-1871",
+  "colonial-cheongsanri-1920", "republic-koreanwar-1950",
+]) {
+  assert.ok(HISTORY_TIMELINE_WAR_DETAILS[id], `필수 전쟁 요약이 누락됨: ${id}`);
 }
 
 assert.equal(getTimelineEventsForIssues([]).length, 0);
