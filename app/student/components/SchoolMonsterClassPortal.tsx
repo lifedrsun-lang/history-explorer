@@ -166,15 +166,20 @@ export default function SchoolMonsterClassPortal({ schoolSlug, schoolDisplayName
             <div className="flex shrink-0 flex-col items-stretch gap-2">
               <button type="button" onClick={onChangeSchool} className="rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-black text-amber-700">학교 변경</button>
               {!currentClassroom && (
-                <a
-                  href={TEACHER_KAKAO_INQUIRY_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="선생님께 카카오톡으로 문의하기 (새 창 열림)"
-                  className="flex min-h-10 items-center justify-center rounded-2xl bg-[#FEE500] px-3 py-2 text-xs font-black text-slate-800 transition hover:brightness-95"
-                >
-                  💬 카톡문의
-                </a>
+                <div className="flex flex-col items-center gap-1">
+                  <p className="whitespace-nowrap text-[11px] font-bold text-amber-700">
+                    비번 모를 때 연락!
+                  </p>
+                  <a
+                    href={TEACHER_KAKAO_INQUIRY_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="비밀번호를 모를 때 선생님께 카카오톡으로 문의하기 (새 창 열림)"
+                    className="flex min-h-10 w-full items-center justify-center rounded-2xl bg-[#FEE500] px-3 py-2 text-xs font-black text-slate-800 transition hover:brightness-95"
+                  >
+                    비번문의
+                  </a>
+                </div>
               )}
             </div>
           </div>
