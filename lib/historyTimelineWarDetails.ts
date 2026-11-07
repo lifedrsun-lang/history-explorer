@@ -8,6 +8,7 @@ export type HistoryTimelineWarDetail = {
   kind: string;
   opponent?: string;
   place?: string;
+  progress?: string;
   result?: string;
 };
 
@@ -22,7 +23,8 @@ export const HISTORY_TIMELINE_WAR_DETAILS: Readonly<Record<string, HistoryTimeli
   "goguryeo-sui-war-begins": { kind: "전쟁", opponent: "수나라", place: "고구려와 수나라의 접경 지역", result: "고구려와 수나라의 충돌이 전쟁으로 이어짐" },
   "goguryeo-salsu": { kind: "전투", opponent: "수나라", place: "살수 일대", result: "을지문덕이 이끈 고구려군이 수나라 군대를 크게 물리침" },
   "baekje-daeyaseong": { kind: "전투", opponent: "신라", place: "대야성", result: "백제가 신라의 대야성을 차지함" },
-  "goguryeo-ansiseong": { kind: "전투", opponent: "당나라", place: "안시성(고구려 요동 지역)", result: "고구려가 당나라의 공격을 막고 안시성을 지켜 냄" },
+  // 근거: 국사편찬위원회 우리역사넷, 645년 안시성 전투 해설 (기존 화면의 전개 설명 유지)
+  "goguryeo-ansiseong": { kind: "전투", opponent: "당나라", place: "안시성(고구려 요동 지역)", progress: "645년 당군이 안시성을 포위하고 여러 차례 공격했으나 고구려의 군사와 성 안의 사람들이 성을 지켜 냄", result: "고구려가 당나라의 공격을 막고 안시성을 지켜 냄" },
   "baekje-hwangsanbeol": { kind: "전투", opponent: "신라", place: "황산벌", result: "백제군이 신라군에 맞섰으나 나당 연합군의 공격을 막지 못함" },
   "silla-natang-campaign": { kind: "전쟁", opponent: "백제", place: "백제", result: "신라·당 연합군의 공격 이후 백제가 멸망함" },
   "baekje-falls": { kind: "전쟁", opponent: "신라·당 연합군", place: "사비 등 백제 지역", result: "660년 백제가 멸망함" },
