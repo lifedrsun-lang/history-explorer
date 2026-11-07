@@ -29,6 +29,7 @@ assert.equal(HISTORY_TIMELINE_EVENTS.length, 242, "기본 연표 기존 225개 +
 const byeolkkumAddedIds = new Set(HISTORY_TIMELINE_BYEOLKKUM_ADDITIONS.map(event => event.id));
 const baselineEvents = HISTORY_TIMELINE_EVENTS.filter(event=>!byeolkkumAddedIds.has(event.id));
 assert.equal(baselineEvents.length,225);
+assert.equal(baselineEvents.filter(event=>event.sourceIssueNumbers.length===0).length,4, "별도 현장 해설 이벤트 4개는 교재 호수 미할당");
 const baselineEventsForIssues = (issues) => baselineEvents.filter(event => event.sourceIssueNumbers.some(i=>issues.includes(i)));
 
 // 별꼼역사 원본·수업지도안 사건 17개는 기본 연표에 1회만 나타난다.
@@ -77,8 +78,21 @@ for (const event of HISTORY_TIMELINE_EVENTS) {
   assert.ok(event.id && event.dateLabel && event.stateOrEra && event.title);
   assert.ok(event.summary && event.life && event.artifact);
   assert.ok(event.image.value && event.image.alt);
-  assert.ok(event.textbookPages.length > 0);
-  assert.ok(event.sourceIssueNumbers.length > 0);
+  // 문화유산 현장 관련 4개는 교재 호수 권한과 연결되지 않는 별도 해설 이벤트.
+  // 없는 교재 쪽수나 학습 완료 호수를 임의로 부여하지 않는다.
+  const heritageOnly = new Set([
+    "goryeo-ganghwa-capital-1232",
+    "goryeo-cheoin-envoy-1225",
+    "goryeo-cheoin-battle-1232",
+    "goryeo-chungju-defense-1253",
+  ]);
+  if (heritageOnly.has(event.id)) {
+    assert.deepEqual(event.sourceIssueNumbers, []);
+    assert.deepEqual(event.textbookPages, []);
+  } else {
+    assert.ok(event.textbookPages.length > 0);
+    assert.ok(event.sourceIssueNumbers.length > 0);
+  }
   assert.ok(event.sourceIssueNumbers.every((issue) => issue >= 1 && issue <= 23));
 }
 
@@ -461,7 +475,7 @@ for (let i = 0; i < newIssues.length; i += 1) {
     `${newIssues[i]}호 연표 사건 수`);
 }
 assert.equal(getTimelineEventsForIssues(newIssues).length, baselineEventsForIssues(newIssues).length + 13);
-assert.equal(getTimelineEventsForIssues(Array.from({length:23}, (_,i)=>i+1)).length, 242);
+assert.equal(getTimelineEventsForIssues(Array.from({length:23}, (_,i)=>i+1)).length, 238);
 assert.equal(getTimelineEventsForIssues(Array.from({length:15}, (_,i)=>i+1)).length, baselineEventsForIssues(Array.from({length:15},(_,i)=>i+1)).length + 4);
 assert.equal(HISTORY_TIMELINE_ALL_TOPICS.length, 69);
 assert.deepEqual(getHistoryTimelineTopicsForIssues([1,2,3,4,5,6,7,8,9]), []);
