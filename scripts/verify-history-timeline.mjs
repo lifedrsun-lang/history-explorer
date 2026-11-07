@@ -98,7 +98,7 @@ for (const event of HISTORY_TIMELINE_EVENTS) {
 
 // 전쟁·전투·군사 충돌·항쟁 카드는 반드시 원본 연표 사건에 연결된다.
 const warEventIds = Object.keys(HISTORY_TIMELINE_WAR_DETAILS);
-assert.equal(warEventIds.length, 56, "전쟁 요약 56건이 모두 등록되어야 합니다.");
+assert.equal(warEventIds.length, 63, "전쟁·전투·군사 충돌·항쟁·군사 정변 요약 63건이 등록되어야 합니다.");
 const timelineEventIds = new Set(HISTORY_TIMELINE_EVENTS.map(event => event.id));
 for (const id of warEventIds) {
   assert.ok(timelineEventIds.has(id), `전쟁 요약이 연표 사건에 존재해야 함: ${id}`);
@@ -113,9 +113,24 @@ for (const id of [
   "joseon-jeongmyo-1627", "joseon-byeongja-1636",
   "joseon-byeonginyangyo-1866", "joseon-sinmiyangyo-1871",
   "colonial-cheongsanri-1920", "republic-koreanwar-1950",
+  "goryeo-gangjo-coup-1009", "goryeo-military-coup-1170", "republic-may16-1961",
+  "later-baekje-falls-936",
+  "supplement-flow-silla-maesoseong-675", "supplement-flow-silla-gibeolpo-676",
+  "supplement-flow-joseon-ugeumchi-1894",
 ]) {
   assert.ok(HISTORY_TIMELINE_WAR_DETAILS[id], `필수 전쟁 요약이 누락됨: ${id}`);
 }
+
+// 실제 전쟁/교전/봉기/군사 정변은 사건 카드가 누락 없이 연결되어야 한다.
+// 신라·고려의 왕조 교체, 처형 사건, 비군사적 민주 항쟁은 전쟁으로 분류하지 않는다.
+const noWarSummaryNeeded = new Set(["republic-june1987-1987"]);
+const conflictTitles = /전쟁|전투|대첩|침략|침입|해전|싸움|정변|군란|봉기|난이 일어남/;
+const missingConflictSummaries = HISTORY_TIMELINE_EVENTS
+  .filter(event => conflictTitles.test(event.title)
+    && !noWarSummaryNeeded.has(event.id)
+    && !HISTORY_TIMELINE_WAR_DETAILS[event.id])
+  .map(event => `${event.dateLabel} ${event.title} (${event.id})`);
+assert.deepEqual(missingConflictSummaries, [], `전쟁/군사 정변 카드 요약 누락: ${missingConflictSummaries.join(", ")}`);
 
 assert.equal(getTimelineEventsForIssues([]).length, 0);
 assert.equal(getTimelineEventsForIssues([1]).length, 10);
