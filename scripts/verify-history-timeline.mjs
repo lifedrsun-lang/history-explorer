@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { HISTORY_TIMELINE_BYEOLKKUM_ADDITIONS } from "../lib/historyTimelineByeolkkumAdditions.ts";
+import { HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS } from "../lib/historyTimelineByeolbyeolFlow.ts";
 import { shouldShowTimelineMaterial } from "../lib/historyTimelinePresentation.ts";
 import { GORYEO_STUDY_TOPICS, getTimelineTopicsForIssues } from "../lib/historyTimelineGoryeoTopics.ts";
 import { HISTORY_TIMELINE_LATE_TOPICS, getTimelineLateTopicsForIssues } from "../lib/historyTimelineLateTopics.ts";
@@ -22,7 +24,35 @@ import {
   toStudentTimelineEvent,
 } from "../lib/historyTimeline.ts";
 
-assert.equal(HISTORY_TIMELINE_EVENTS.length, 221, "1~15호 140개 + 16~23호 81개 = 221개, 중복 사건 없이.");
+assert.equal(HISTORY_TIMELINE_EVENTS.length, 238, "기본 221개 + 별꼼역사 교재 기반 17개 = 238개.");
+// 별꼼역사 원본·수업지도안 사건 17개는 기본 연표에 1회만 나타난다.
+assert.equal(HISTORY_TIMELINE_BYEOLKKUM_ADDITIONS.length, 17);
+assert.equal(HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS.length, 29);
+const referenceIds = new Set(HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS.map(event=>event.id));
+for (const event of HISTORY_TIMELINE_BYEOLKKUM_ADDITIONS) {
+  assert.equal(HISTORY_TIMELINE_EVENTS.filter(entry=>entry.id===event.id).length, 1);
+  assert.equal(referenceIds.has(event.id), false);
+  assert.equal("byeolbyeolLevel" in event, false);
+  assert.ok(event.sourceIssueNumbers.length>0);
+  assert.ok(event.textbookPages.some(page=>page.includes("별꼼역사")));
+  for (const issue of event.sourceIssueNumbers) {
+    const permitted = getTimelineEventsForIssues([issue]).find(x=>x.id===event.id);
+    assert.ok(permitted, `Missing core event for issue ${issue}: ${event.id}`);
+    assert.deepEqual(toStudentTimelineEvent(permitted, [issue]).textbookIssues, [issue]);
+  }
+}
+for (const [eventId, allowed, hidden] of [
+  ["supplement-flow-gaya-gumgwan-532",7,8],
+  ["supplement-flow-silla-maesoseong-675",8,7],
+  ["supplement-flow-silla-gibeolpo-676",8,7],
+  ["supplement-flow-balhae-seon-king-818",9,8],
+  ["supplement-flow-republic-oct26-1979",23,22],
+  ["supplement-flow-republic-dec12-1979",23,22],
+]) {
+  assert.equal(getTimelineEventsForIssues([allowed]).some(event=>event.id===eventId), true);
+  assert.equal(getTimelineEventsForIssues([hidden]).some(event=>event.id===eventId), false);
+}
+
 assert.equal(
   new Set(HISTORY_TIMELINE_EVENTS.map((event) => event.id)).size,
   HISTORY_TIMELINE_EVENTS.length,
@@ -79,7 +109,7 @@ assert.equal(getTimelineEventsForIssues([5]).length, 16);
 assert.equal(getTimelineEventsForIssues([6]).length, 18);
 assert.equal(getTimelineEventsForIssues([5, 6]).length, 18);
 assert.equal(getTimelineEventsForIssues([1, 2, 3, 4, 5, 6]).length, 52);
-assert.equal(getTimelineEventsForIssues([1, 2, 3, 4, 5, 6, 7, 8, 9]).length, 92);
+assert.equal(getTimelineEventsForIssues([1, 2, 3, 4, 5, 6, 7, 8, 9]).length, 96);
 // 1~9호 사건 수는 변하지 않으며, 10~12호 사건은 수강 완료 호수에 따라 누적한다.
 assert.equal(getTimelineEventsForIssues([10]).length, 9);  // 신규 7 + 기존 918·936
 assert.equal(getTimelineEventsForIssues([11]).length, 14); // 신규 8 + 고려 초기 공유 6
@@ -90,7 +120,7 @@ assert.equal(getTimelineEventsForIssues([13]).length, 13, "13호 고려 후기 �
 assert.equal(getTimelineEventsForIssues([14]).length, 11, "14호 조선 초기 사건 11개");
 assert.equal(getTimelineEventsForIssues([15]).length, 5, "15호는 14호와 공유한 핵심 사건 5개");
 assert.equal(getTimelineEventsForIssues([13, 14, 15]).length, 24, "중복을 제거한 13~15호 새 사건 24개");
-assert.equal(getTimelineEventsForIssues(Array.from({ length: 15 }, (_, i) => i + 1)).length, 140);
+assert.equal(getTimelineEventsForIssues(Array.from({ length: 15 }, (_, i) => i + 1)).length, 144);
 assert.equal(HISTORY_TIMELINE_LATE_TOPICS.length, 19);
 assert.equal(getTimelineLateTopicsForIssues([13]).length, 5);
 assert.equal(getTimelineLateTopicsForIssues([14]).length, 6);
@@ -165,10 +195,10 @@ assert.ok(HISTORY_TIMELINE_EVENTS.filter(event => event.eraFilter === "고려")
 assert.ok(HISTORY_TIMELINE_EVENTS.filter(event => event.eraFilter === "고려")
   .every(event => !shouldShowTimelineMaterial(event.artifact)),
   "실물 사진이나 확인된 유물명이 없는 신규 사건에는 가상 관련 자료를 보이지 않습니다.");
-assert.equal(getTimelineEventsForIssues([7]).length, 21);
-assert.equal(getTimelineEventsForIssues([8]).length, 22);
-assert.equal(getTimelineEventsForIssues([9]).length, 24);
-assert.equal(getTimelineEventsForIssues([7, 8, 9]).length, 44);
+assert.equal(getTimelineEventsForIssues([7]).length, 22);
+assert.equal(getTimelineEventsForIssues([8]).length, 24);
+assert.equal(getTimelineEventsForIssues([9]).length, 25);
+assert.equal(getTimelineEventsForIssues([7, 8, 9]).length, 48);
 assert.ok(getTimelineEventsForIssues([7]).some((event) => event.id === "silla-unification"));
 assert.ok(getTimelineEventsForIssues([8]).some((event) => event.id === "balhae-founded"));
 assert.equal(HISTORY_TIMELINE_EVENTS.find((event) => event.id === "balhae-founded")?.eraFilter, "발해");
@@ -378,8 +408,8 @@ assert.equal(shouldShowTimelineMaterial(""), false);
 const displayedMaterials = HISTORY_TIMELINE_EVENTS.filter(event =>
   shouldShowTimelineMaterial(event.artifact));
 assert.equal(displayedMaterials.length, 46, "1~15호 38건과 16~23호 8건: 구체 자료명 46건만 표시.");
-assert.equal(HISTORY_TIMELINE_EVENTS.length - displayedMaterials.length, 175,
-  "이름을 특정할 수 없는 175건은 유물·유적 영역을 만들지 않아야 합니다.");
+assert.equal(HISTORY_TIMELINE_EVENTS.length - displayedMaterials.length, 192,
+  "이름을 특정할 수 없는 192건은 유물·유적 영역을 만들지 않아야 합니다.");
 assert.ok(displayedMaterials.every(event => !/지도|관련 기록|관련 자료|재위 연표/.test(event.artifact)),
   "지도 이미지가 없는 지도명이나 불분명한 기록은 표시하지 않아야 합니다.");
 for (const value of [
@@ -419,14 +449,14 @@ assert.equal(shouldShowTimelineMaterial(
 // 16~23호에 관한 새 연표 및 학생 접근 권한 검사.
 // 해당 시대의 공개된 사건만 학생에게 전달되며, 같은 사건은 한 번만 존재한다.
 const newIssues = [16, 17, 18, 19, 20, 21, 22, 23];
-const expectedPerIssue = [13, 16, 8, 18, 18, 9, 8, 8];
+const expectedPerIssue = [13, 16, 8, 18, 22, 10, 13, 11];
 for (let i = 0; i < newIssues.length; i += 1) {
   assert.equal(getTimelineEventsForIssues([newIssues[i]]).length, expectedPerIssue[i],
     `${newIssues[i]}호 연표 사건 수`);
 }
-assert.equal(getTimelineEventsForIssues(newIssues).length, 81);
-assert.equal(getTimelineEventsForIssues(Array.from({length:23}, (_,i)=>i+1)).length, 221);
-assert.equal(getTimelineEventsForIssues(Array.from({length:15}, (_,i)=>i+1)).length, 140);
+assert.equal(getTimelineEventsForIssues(newIssues).length, 94);
+assert.equal(getTimelineEventsForIssues(Array.from({length:23}, (_,i)=>i+1)).length, 238);
+assert.equal(getTimelineEventsForIssues(Array.from({length:15}, (_,i)=>i+1)).length, 144);
 assert.equal(HISTORY_TIMELINE_ALL_TOPICS.length, 69);
 assert.deepEqual(getHistoryTimelineTopicsForIssues([1,2,3,4,5,6,7,8,9]), []);
 const expectedTopics = [4,4,4,4,5,5,5,6];
