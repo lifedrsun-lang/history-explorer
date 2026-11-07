@@ -69,5 +69,16 @@ export const HISTORY_TIMELINE_WAR_DETAILS: Readonly<Record<string, HistoryTimeli
   "joseon-gapsinjeongbyeon-1884": { kind: "정변", opponent: "급진 개화파와 반대 세력", place: "한성", result: "갑신정변이 짧은 기간 안에 실패함" },
   "joseon-donghak-1894": { kind: "항쟁", opponent: "부패한 관리와 외세", place: "고부 등 호남 지역", result: "전봉준 등이 동학 농민 운동을 이끔" },
   "colonial-cheongsanri-1920": { kind: "전투", opponent: "일본군", place: "청산리 일대", result: "김좌진 등이 이끄는 독립군이 여러 전투에서 승리함" },
-  "republic-koreanwar-1950": { kind: "전쟁", opponent: "북한군의 남침", place: "한반도", result: "전쟁이 시작되어 많은 사람들이 어려움을 겪고 분단의 상처가 깊어짐" },
+  // 근거: 국사편찬위원회 우리역사넷, 강조의 정변(1009년)
+  // https://contents.history.go.kr/mobile/kc/view.do?levelId=kc_i200200
+  "goryeo-gangjo-coup-1009": { kind: "군사 정변", opponent: "목종과 강조 세력의 권력 갈등", place: "개경", progress: "강조가 목종을 폐위하고 현종을 왕으로 세움", result: "고려의 왕위가 바뀌었고 거란이 이를 침입의 구실로 삼음" },
+  // 근거: 국사편찬위원회 우리역사넷, 무신정변(1170년)
+  // https://contents.history.go.kr/front/hm/view.do?levelId=hm_050_0010
+  "goryeo-military-coup-1170": { kind: "군사 정변", opponent: "무신 세력과 기존 문신 중심 지배층", place: "개경", progress: "정중부·이의방 등이 정변을 일으켜 의종을 폐위함", result: "무신들이 권력을 장악해 무신 정권이 시작됨" },
+  // 근거: 국사편찬위원회 한국사연대기, 5·16 군사 정변(1961년)
+  // https://contents.history.go.kr/front/kc/printViewPopup.do?levelId=kc_i500900
+  "republic-may16-1961": { kind: "군사 정변", opponent: "군사 정변 세력과 제2공화국 정부", place: "서울", progress: "박정희를 중심으로 한 일부 군인들이 무력으로 정권을 장악함", result: "제2공화국의 장면 내각이 무너지고 군정이 시작됨" },
+  // 근거: 국사편찬위원회 국사전자교과서, 6·25 전쟁 경과·1953년 정전 협정
+  // https://contents.history.go.kr/eh_kk/teach/tong/III/25.htm
+  "republic-koreanwar-1950": { kind: "전쟁", opponent: "북한군의 남침", place: "한반도", progress: "1950년 북한군의 남침으로 전쟁이 시작되었고 국제 연합군과 중국군 등이 참전함", result: "1953년 정전 협정이 체결되었으나 평화 조약으로 전쟁이 끝난 것은 아니며, 큰 피해와 분단의 상처가 남음" },
 };
