@@ -937,9 +937,9 @@ export default function TimelineClient() {
                                       {event.id === "goryeo-founded-918" && <span className={styles.changeBadge}>918년 · 고려 건국(왕조 교체)</span>}
                                       {/멸망|귀부/.test(event.title) && <span className={styles.fallBadge}>멸망·통합</span>}
                                       <span className={styles.gridEmoji} role="img" aria-label={event.image.alt}>{event.image.value}</span>
-                                      {event.byeolbyeolLevel && <span className={supplementStyles.flowBadge}>🧭 새 역사 흐름 카드</span>}
-                                      {event.yongseonsaeng && <span className={yongStyles.flowBadge}>📗 용선생 시대 흐름 카드</span>}
-                                      {event.referenceGroup && <span className={supplementStyles.flowBadge}>📚 {event.referenceGroup === "yong" ? "용선생 교과서 한국사" : event.referenceGroup === "robin" ? "로빈의 한국사" : "한국사 읽기책"}</span>}
+                                      {event.byeolbyeolLevel && <span className={supplementStyles.flowBadge}>🧭 역사 흐름 보충</span>}
+                                      {event.yongseonsaeng && <span className={yongStyles.flowBadge}>🧭 역사 흐름 보충</span>}
+                                      {event.referenceGroup && <span className={supplementStyles.flowBadge}>🧭 역사 흐름 보충</span>}
                                       <h4>{event.title}</h4>
                                       <p className={styles.gridSummary}>{event.summary}</p>
                                       <TimelineWarSummary id={event.id} summary={event.summary} life={event.life} />
