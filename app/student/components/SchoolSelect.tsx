@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TEACHER_KAKAO_INQUIRY_URL } from "@/lib/teacherContact";
 import {
   AFTER_SCHOOL_SCHOOLS,
   matchesAfterSchoolSchool,
@@ -147,7 +148,7 @@ export default function SchoolSelect({
       </div>
       <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/80 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-4px_18px_rgba(15,23,42,0.10)] backdrop-blur">
         <div className="mx-auto grid max-w-xl grid-cols-3 gap-2 md:max-w-3xl">
-          <a href="https://open.kakao.com/o/sZ5UIoLi" target="_blank" rel="noopener noreferrer" className="flex min-h-12 items-center justify-center rounded-2xl bg-[#FEE500] px-2 text-sm font-black text-slate-800">💬 카톡문의</a>
+          <a href={TEACHER_KAKAO_INQUIRY_URL} target="_blank" rel="noopener noreferrer" className="flex min-h-12 items-center justify-center rounded-2xl bg-[#FEE500] px-2 text-sm font-black text-slate-800">💬 카톡문의</a>
           <a href="tel:01083762497" className="flex min-h-12 items-center justify-center rounded-2xl bg-sky-100 px-2 text-sm font-black text-sky-800">☎ 전화문의</a>
           <Link href="/teacher" className="flex min-h-12 items-center justify-center rounded-2xl bg-slate-800 px-2 text-sm font-black text-white">🔐 화선 IN</Link>
         </div>
