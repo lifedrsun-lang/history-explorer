@@ -36,7 +36,7 @@ assert.equal(new Set(HISTORY_TIMELINE_ALL_TOPICS.map(t => t.id)).size, HISTORY_T
 // Build-time regression: source event IDs must match every conflict detail card.
 const warDetails = conflictLibrary.HISTORY_TIMELINE_WAR_DETAILS;
 const registeredWarIds = Object.keys(warDetails);
-assert.equal(registeredWarIds.length, 60, "60 source-matched conflict summaries are expected");
+assert.equal(registeredWarIds.length, 63, "63 source-matched conflict summaries are expected");
 const allTimelineIds = new Set(HISTORY_TIMELINE_EVENTS.map(event => event.id));
 for (const id of registeredWarIds) {
   assert(allTimelineIds.has(id), `War summary references missing timeline event: ${id}`);
@@ -52,6 +52,8 @@ assert.deepEqual(uncoveredMilitaryEvents, [], `Missing conflict cards: ${uncover
 for (const id of [
   "goryeo-gangjo-coup-1009", "goryeo-military-coup-1170", "republic-may16-1961",
   "later-baekje-falls-936", "republic-koreanwar-1950",
+  "supplement-flow-silla-maesoseong-675", "supplement-flow-silla-gibeolpo-676",
+  "supplement-flow-joseon-ugeumchi-1894",
 ]) assert(warDetails[id], `Essential conflict event missing: ${id}`);
 assert(warDetails["republic-koreanwar-1950"].result.includes("1953년"),
   "Korean War summary must note the 1953 armistice rather than treating 1950 as the end");
