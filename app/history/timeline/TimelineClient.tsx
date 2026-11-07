@@ -750,6 +750,7 @@ export default function TimelineClient() {
                           <div className={styles.transitionBody}>
                             <h3>{event.title}</h3>
                             <p>{event.summary}</p>
+                            <TimelineWarSummary id={event.id} summary={event.summary} life={event.life} />
                             <TimelineStudyDetails
                               notes={event.studyNotes ?? []}
                               fallback={{ heading: event.title, text: event.life }}
@@ -941,6 +942,7 @@ export default function TimelineClient() {
                                       {event.referenceGroup && <span className={supplementStyles.flowBadge}>📚 {event.referenceGroup === "yong" ? "용선생 교과서 한국사" : event.referenceGroup === "robin" ? "로빈의 한국사" : "한국사 읽기책"}</span>}
                                       <h4>{event.title}</h4>
                                       <p className={styles.gridSummary}>{event.summary}</p>
+                                      <TimelineWarSummary id={event.id} summary={event.summary} life={event.life} />
                                       {event.referenceGroup ? (
                                         <details className={supplementStyles.disclosure}>
                                           <summary>📖 {event.referenceSource?.book ?? "참고문헌"} 시대 흐름 더 보기</summary>
@@ -960,7 +962,7 @@ export default function TimelineClient() {
                                         </details>
                                       ) : (
                                         <>
-                                          <TimelineWarSummary id={event.id} />
+                                          
                                           <div className={styles.gridDetails}>
                                             <b>{event.eraFilter === "선사" || event.eraFilter === "여러나라" ? "생활 모습" : "핵심 설명"}</b><p>{event.life}</p>
                                             {shouldShowTimelineMaterial(event.artifact) && (
