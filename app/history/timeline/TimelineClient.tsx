@@ -823,6 +823,24 @@ export default function TimelineClient() {
                       {comparisonEvents.length > 0 && <span>↔ 좌우로 밀어 다른 나라 보기</span>}
                       {period.key === "early-states" && <p className={styles.nationEndNote}>여러 나라는 같은 해에 함께 세워진 것이 아니에요. 연도가 확실하지 않은 풍습은 ‘여러 나라의 성장기 · 정확한 연도 미상’으로 표시합니다.</p>}
                     </div>
+                    {period.key === "prehistoric" && (
+                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
+                        era="선사 시대"
+                        topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "prehistoric")}
+                      />
+                    )}
+                    {period.key === "gojoseon" && (
+                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
+                        era="고조선"
+                        topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "gojoseon")}
+                      />
+                    )}
+                    {period.key === "early-states" && (
+                      <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
+                        era="여러 나라"
+                        topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "early-states")}
+                      />
+                    )}
                     {period.key === "three" && (
                       <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
                         era="삼국 시대"
