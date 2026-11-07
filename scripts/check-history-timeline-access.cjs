@@ -78,6 +78,22 @@ assert.equal(none.events.length, 0);
 assert.equal(none.studyTopics.length, 0);
 assert.equal(Object.keys(none.directory.byEvent).length, 0);
 assert.equal(Object.keys(none.directory.byTopic).length, 0);
+const onlyOne = checkScenario([1]);
+const onlyTwo = checkScenario([2]);
+const onlyThree = checkScenario([3]);
+assert(onlyOne.studyTopics.some(t => t.id === "topic-01-prehistory-daily-life-objects"));
+assert(!onlyOne.studyTopics.some(t => t.issue !== 1));
+assert(onlyTwo.studyTopics.some(t => t.id === "topic-02-gojoseon-founding-legend-people"));
+assert(onlyTwo.studyTopics.some(t => t.id === "topic-02-early-states-customs-comparison"));
+assert(!onlyTwo.studyTopics.some(t => t.issue !== 2));
+assert(onlyThree.studyTopics.some(t => t.id === "topic-03-mural-fan-activity"));
+assert(onlyThree.studyTopics.some(t => t.id === "topic-03-gwanggaeto-stele-activity"));
+assert(onlyThree.studyTopics.filter(t => t.id.startsWith("topic-03-")).every(t => t.pages.includes("활동지")),
+  "Third issue must be accurately labeled as verified worksheets, not the missing textbook");
+assert(!onlyThree.studyTopics.some(t => t.issue === 1 || t.issue === 2 || t.issue === 5));
+assert(onlyTwo.directory.byTopic["topic-02-gojoseon-king-buwang"].some(p => p.id === "고조선:부왕"));
+assert(onlyThree.directory.byTopic["topic-03-gwanggaeto-stele-activity"]
+  .some(p => p.id === "고구려:광개토 대왕"));
 const onlyFour = checkScenario([4]);
 const onlyFive = checkScenario([5]);
 const onlySix = checkScenario([6]);

@@ -209,11 +209,11 @@ assert(ancientTopics.every(topic => /호 교재/.test(topic.pages) &&
 // 사건 유형 3곳과 시대별 교재 학습 주제도 빠짐없이 켜고 끌 수 있어야 한다.
 const clientSrc = fs.readFileSync(path.join(__dirname, "..", "app", "history", "timeline", "TimelineClient.tsx"), "utf8");
 const topicSrc = fs.readFileSync(path.join(__dirname, "..", "app", "history", "timeline", "TimelineGoryeoTopics.tsx"), "utf8");
-assert(clientSrc.includes('const [showPersonCards, setShowPersonCards] = useState(false);'), "People must be visible by default");
+assert(clientSrc.includes('const [showPersonCards, setShowPersonCards] = useState(false);'), "People must initially be hidden until the user checks the box");
 assert(clientSrc.includes('key: "people", label: "👤 인물카드", checked: showPersonCards, update: setShowPersonCards'), "Missing right-side checkbox option");
 assert.equal((clientSrc.match(/materialToggles\.map\(/g) || []).length, 2, "Desktop and mobile must share toggles");
 assert.equal((clientSrc.match(/showPersonCards && <TimelinePersonCards/g) || []).length, 3, "All 3 event card layouts must obey checkbox");
-assert.equal((clientSrc.match(/showPersonCards=\{showPersonCards\}/g) || []).length, 7, "All 7 textbook topic sections must obey checkbox");
+assert.equal((clientSrc.match(/showPersonCards=\{showPersonCards\}/g) || []).length, 10, "All 10 textbook topic sections must obey checkbox");
 assert(topicSrc.includes('{showPersonCards && <TimelinePersonCards context="topic"'), "Textbook topics must obey checkbox");
 
 // 교재 원본 5·7·10·12호에서 직접 확인한 누락 인물은 연도 없는 주제에 연결한다.
@@ -261,5 +261,34 @@ assert(!Object.values(only13.byTopic).flat().some(person => person.era === "고�
   "Issue 13 must not include Goguryeo figures");
 const gojoseonNoteSource = fs.readFileSync(path.join(__dirname, "..", "lib", "historyTimelineStudyEarly.ts"), "utf8");
 assert(gojoseonNoteSource.includes("고조선의 마지막 왕 우거왕"), "Missing confirmed 2nd-issue Ugeo note");
+
+// 별꼼역사 1·2·4·5호 본권과 3호 '활동지' 2쪽을 구분하여 검증한다.
+const firstFiveSrc = fs.readFileSync(path.join(__dirname, "..", "lib/historyTimelineFirstFiveAuditTopics.ts"), "utf8");
+const firstFiveModule = { exports: {} };
+new Function("module", "exports", ts.transpileModule(firstFiveSrc, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+}).outputText)(firstFiveModule, firstFiveModule.exports);
+const firstFiveTopics = firstFiveModule.exports.HISTORY_TIMELINE_FIRST_FIVE_SOURCE_TOPICS;
+assert.equal(firstFiveTopics.length, 10, "Expected 10 first-five verified supplemental topics");
+assert(firstFiveTopics.every(topic => topic.issue >= 1 && topic.issue <= 5));
+assert(firstFiveTopics.filter(topic => topic.issue === 3).every(topic =>
+  topic.pages.includes("활동지") && topic.pages.includes("본권 아님")),
+  "Third volume worksheets must never be labeled as inspected textbook pages");
+assert(firstFiveTopics.filter(topic => topic.issue !== 3).every(topic => /본권/.test(topic.pages)),
+  "Full-volume page citations are required for 1,2,5");
+const firstFiveDir = buildTimelinePersonDirectory([], firstFiveTopics);
+for (const name of ["환인","환웅","웅녀","단군"]) {
+  requirePerson(firstFiveDir.byTopic["topic-02-gojoseon-founding-legend-people"],
+    `고조선:${name}`, "Gojoseon mythological figures");
+}
+requirePerson(firstFiveDir.byTopic["topic-02-gojoseon-king-buwang"], "고조선:부왕", "Gojoseon king Buwang");
+requirePerson(firstFiveDir.byTopic["topic-05-baekje-cross-border-culture"], "백제:아직기", "Baekje envoy Achikgi");
+requirePerson(firstFiveDir.byTopic["topic-03-gwanggaeto-stele-activity"], "고구려:광개토 대왕", "Third-issue worksheet");
+assert(!Object.values(buildTimelinePersonDirectory([], firstFiveTopics.filter(t => t.issue === 2)).byTopic)
+  .flat().some(person => person.id.startsWith("백제:")),
+  "Second-issue person cards must not expose Baekje figures");
+for(const eraKey of ["prehistoric","gojoseon","early-states"]){
+  assert(clientSrc.includes(`period.key === "${eraKey}"`), `Missing first-five timeline display section: ${eraKey}`);
+}
 
 console.log("History person-card regression: coverage and permission assertions passed.");
