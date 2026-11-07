@@ -34,6 +34,10 @@ export const HISTORY_TIMELINE_WAR_DETAILS: Readonly<Record<string, HistoryTimeli
   "silla-unification": { kind: "전쟁", opponent: "당나라", place: "한반도", result: "신라가 당나라 세력을 물리치고 삼국 통일을 완성함" },
   "balhae-deungju-attack": { kind: "전투", opponent: "당나라", place: "등주(현재 중국 산둥반도)", result: "발해 장문휴가 이끄는 수군이 당나라 등주를 공격함" },
   "balhae-falls": { kind: "전쟁", opponent: "거란", place: "발해", result: "발해가 거란의 공격으로 멸망함" },
+  // 근거: 국사편찬위원회 우리역사넷 후삼국 통일(936년), 한국민족문화대백과사전 일리천전투
+  // https://contents.history.go.kr/mobile/ta/view.do?levelId=ta_h51_0040_0020_0010
+  // https://encykorea.aks.ac.kr/Article/E0047180
+  "later-baekje-falls-936": { kind: "전투·통일", opponent: "후백제 신검 세력", place: "일리천 일대(현재 경북 구미 지역)", progress: "왕건이 이끄는 고려군이 후백제군과 싸워 승리함", result: "936년 후백제가 멸망하고 고려가 후삼국을 통일함" },
   "goryeo-khitan-first-993": { kind: "전쟁", opponent: "거란", place: "고려 북쪽 국경", result: "서희의 외교 담판 이후 고려가 강동 6주를 확보함" },
   "goryeo-khitan-second-1010": { kind: "전쟁", opponent: "거란", place: "고려 북부·개경 일대", result: "현종이 남쪽으로 피란함" },
   "goryeo-khitan-third-1018": { kind: "전쟁", opponent: "거란", place: "고려 북부", result: "이듬해 귀주 대첩으로 이어짐" },
