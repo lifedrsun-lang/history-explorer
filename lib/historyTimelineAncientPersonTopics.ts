@@ -2,7 +2,7 @@ import type { HistoryTimelineStudyTopic } from "./historyTimelineGoryeoTopics";
 
 /**
  * 원본 인쇄 페이지에서 인명이 확인되지만 정확한 사건 발생 연도를 정할 수 없는
- * 별꼼역사 4·6호 인물 자료. 설화/전승을 역사적 사실로 단정하지 않는다.
+ * 별꼼역사 4·5·6호 인물 자료. 설화/전승을 역사적 사실로 단정하지 않는다.
  * 학생별 수강 호수 검사는 getHistoryTimelineTopicsForIssues에서 적용된다.
  */
 export const HISTORY_TIMELINE_ANCIENT_PERSON_TOPICS: HistoryTimelineStudyTopic[] = [
@@ -30,6 +30,19 @@ export const HISTORY_TIMELINE_ANCIENT_PERSON_TOPICS: HistoryTimelineStudyTopic[]
       "연개소문 뒤에 그의 아들 남생·남건·남산 사이에서 권력 다툼이 벌어졌다고 교재에 나와요.",
       "이러한 갈등은 고구려 말의 정치적 불안정을 이해하는 자료예요.",
       "연도가 특정되지 않은 인물 설명을 기존 연표 사건에 임의로 끼워 넣지 않아요.",
+    ],
+  },
+  {
+    id: "topic-05-baekje-biryu-onjo",
+    issue: 5,
+    period: "three",
+    nation: "백제",
+    title: "비류와 온조의 백제 건국 이야기",
+    pages: "5호 교재 6쪽",
+    points: [
+      "5호 교재는 주몽의 아들인 비류와 온조가 남쪽으로 내려왔다는 건국 이야기를 전해요.",
+      "비류와 온조는 각기 터를 잡고 나라를 세우려 했다는 이야기로 소개돼요.",
+      "건국 전승과 역사적으로 확인된 사건·연도는 구분해서 살펴봐요.",
     ],
   },
   {
