@@ -24,6 +24,7 @@ type HelloMapleMission = {
 type Member = {
   name: string;
   permissions: SunLabPermission[];
+  timelineFullAccess?: boolean;
   helloMaple: {
     id: string;
     password: string;
@@ -182,6 +183,19 @@ function SunLabStudentPage() {
         return;
       }
 
+      // SUN LAB 회원 조회와 연표용 세션 쿠키 저장은 별개의 성공 조건이다.
+      const sessionResponse = await fetch("/api/student/sun-lab-session", {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      const session = (await sessionResponse.json().catch(() => ({}))) as {
+        authenticated?: boolean;
+        name?: string;
+      };
+      if (!sessionResponse.ok || session.authenticated !== true || session.name !== data.member.name) {
+        setError("회원은 확인됐지만 로그인 상태가 저장되지 않았습니다. 브라우저 쿠키 허용 여부를 확인해 주세요.");
+        return;
+      }
       setMember(data.member);
     } catch {
       setError("회원 정보를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.");
@@ -389,6 +403,11 @@ function SunLabStudentPage() {
                   <div className="mt-1 text-[11px] font-bold leading-5 text-slate-500 sm:text-xs">
                     {card.description}
                   </div>
+                  {card.permission === "history_timeline" && member.timelineFullAccess !== true && (
+                    <div className="mt-2 rounded-lg bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800">
+                      연표 열람 권한 미설정 · 선생님께 문의
+                    </div>
+                  )}
                   {card.preparing && (
                     <div className="mt-2 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500">
                       준비중
@@ -429,7 +448,11 @@ function SunLabStudentPage() {
                 );
               }
 
-              if (card.preparing || !card.href) {
+              if (
+                card.preparing ||
+                !card.href ||
+                (card.permission === "history_timeline" && member.timelineFullAccess !== true)
+              ) {
                 return (
                   <div
                     key={card.permission}

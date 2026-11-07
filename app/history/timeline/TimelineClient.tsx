@@ -172,6 +172,7 @@ export default function TimelineClient() {
   const [error, setError] = useState("");
   const [needsLogin, setNeedsLogin] = useState(false);
   const [unpublished, setUnpublished] = useState(false);
+  const [sunLabAccessError, setSunLabAccessError] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number][0]>("전체");
   const [activePeriod, setActivePeriod] = useState<string>("");
   const [targetPeriod, setTargetPeriod] = useState<string | null>(null);
@@ -192,6 +193,7 @@ export default function TimelineClient() {
   const loadTimeline = async (currentTeacher: User | null) => {
     setLoading(true);
     setError("");
+    setSunLabAccessError("");
     setByeolbyeolNotes({});
     setByeolbyeolFlowEvents([]);
     setYongNotes({});
@@ -216,9 +218,22 @@ export default function TimelineClient() {
           setUnpublished(true);
           return;
         }
-        if (response.status === 401 && data.code === "student_auth_required") {
+        if (
+          response.status === 401 &&
+          (data.code === "student_auth_required" || data.code === "sunlab_session_required")
+        ) {
           setNeedsLogin(true);
           setPayload(null);
+          return;
+        }
+        if (
+          sunLabMemberView &&
+          response.status === 403 &&
+          ["timeline_permission_required", "sunlab_profile_not_linked", "sunlab_member_inactive"].includes(data.code || "")
+        ) {
+          setPayload(null);
+          setNeedsLogin(false);
+          setSunLabAccessError(data.error || "한국사여행 열람 권한을 확인해 주세요.");
           return;
         }
         throw new Error(data.error || "연표를 불러오지 못했습니다.");
@@ -496,13 +511,28 @@ export default function TimelineClient() {
     );
   }
 
+  if (sunLabMemberView && sunLabAccessError) {
+    return (
+      <main className={styles.loginPage}>
+        <section className={styles.loginCard}>
+          <div className={styles.loginSymbol}>🔒</div>
+          <h1>한국사여행 열람 권한 확인</h1>
+          <p>{sunLabAccessError}</p>
+          <div className={styles.loginLinks}>
+            <Link href="/student/book">SUN LAB으로 돌아가기</Link>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   if (sunLabMemberView && needsLogin) {
     return (
       <main className={styles.loginPage}>
         <section className={styles.loginCard}>
           <div className={styles.loginSymbol}>🔒</div>
-          <h1>SUN LAB 회원 로그인이 필요합니다</h1>
-          <p>학생의 SUN LAB 계정으로 로그인한 뒤 한국사여행을 열어 주세요.</p>
+          <h1>SUN LAB 로그인 상태가 확인되지 않습니다</h1>
+          <p>로그인 후에도 같은 화면이 나타난다면 회원 로그인 정보가 브라우저에 저장되지 않은 것입니다. 브라우저 쿠키 허용 여부를 확인해 주세요.</p>
           <div className={styles.loginLinks}>
             <Link href="/student/book">SUN LAB 회원 로그인</Link>
           </div>
