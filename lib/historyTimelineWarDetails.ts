@@ -38,6 +38,15 @@ export const HISTORY_TIMELINE_WAR_DETAILS: Readonly<Record<string, HistoryTimeli
   // https://contents.history.go.kr/mobile/ta/view.do?levelId=ta_h51_0040_0020_0010
   // https://encykorea.aks.ac.kr/Article/E0047180
   "later-baekje-falls-936": { kind: "전투·통일", opponent: "후백제 신검 세력", place: "일리천 일대(현재 경북 구미 지역)", progress: "왕건이 이끄는 고려군이 후백제군과 싸워 승리함", result: "936년 후백제가 멸망하고 고려가 후삼국을 통일함" },
+  // 근거: 국사편찬위원회 우리역사넷, 매소성 전투(675년)
+  // https://contents.history.go.kr/front/tg/view.do?levelId=tg_001_0140
+  "supplement-flow-silla-maesoseong-675": { kind: "전투", opponent: "당나라", place: "매소성(정확한 위치에는 여러 견해가 있음)", progress: "신라가 매소성에서 당나라 군대와 싸움", result: "신라가 승리해 나당 전쟁에서 유리한 위치를 차지함" },
+  // 근거: 국사편찬위원회 한국사연대기, 나당 전쟁(676년 기벌포)
+  // https://contents.history.go.kr/mobile/kc/view.do?levelId=kc_i101220
+  "supplement-flow-silla-gibeolpo-676": { kind: "전투", opponent: "당나라 수군", place: "기벌포", progress: "신라가 당나라 수군과 싸움", result: "신라가 승리하여 나당 전쟁이 마무리됨" },
+  // 근거: 국사편찬위원회 우리역사넷, 우금치 전투(1894년)
+  // https://contents.history.go.kr/mobile/kc/view.do?levelId=kc_i402520
+  "supplement-flow-joseon-ugeumchi-1894": { kind: "전투", opponent: "일본군·조선 관군", place: "공주 우금치", progress: "동학 농민군이 공주 진입을 시도하며 일본군과 관군에 맞서 싸움", result: "동학 농민군이 패배했고, 이후 농민군 세력이 급속히 약화됨" },
   "goryeo-khitan-first-993": { kind: "전쟁", opponent: "거란", place: "고려 북쪽 국경", result: "서희의 외교 담판 이후 고려가 강동 6주를 확보함" },
   "goryeo-khitan-second-1010": { kind: "전쟁", opponent: "거란", place: "고려 북부·개경 일대", result: "현종이 남쪽으로 피란함" },
   "goryeo-khitan-third-1018": { kind: "전쟁", opponent: "거란", place: "고려 북부", result: "이듬해 귀주 대첩으로 이어짐" },
