@@ -76,6 +76,35 @@ export async function GET(request: Request) {
         db.collection("sun_lab_members").doc(memberSession.studentId).get(),
       ]);
       const member = studentDoc.data() || {};
+      if (
+        !studentDoc.exists ||
+        (member.sunLabMember !== true && member.program !== "sun_lab") ||
+        member.isActive === false ||
+        String(member.enrollmentStatus || "active") !== "active"
+      ) {
+        return privateJson(
+          { error: "현재 이용할 수 없는 SUN LAB 회원 계정입니다.", code: "sunlab_member_inactive" },
+          { status: 403 }
+        );
+      }
+      if (!memberProfileDoc.exists) {
+        return privateJson(
+          {
+            error: "회원 정보가 연결되지 않았습니다. 선생님께 회원정보 확인을 요청해 주세요.",
+            code: "sunlab_profile_not_linked",
+          },
+          { status: 403 }
+        );
+      }
+      if (memberProfileDoc.data()?.timelineFullAccess !== true) {
+        return privateJson(
+          {
+            error: "SUN LAB 로그인은 확인됐지만 한국사여행 열람 권한이 설정되지 않았습니다. 선생님께 연표 열람 허용을 요청해 주세요.",
+            code: "timeline_permission_required",
+          },
+          { status: 403 }
+        );
+      }
       if (studentDoc.exists &&
           (member.sunLabMember === true || member.program === "sun_lab") &&
           member.isActive !== false &&
@@ -95,7 +124,10 @@ export async function GET(request: Request) {
       }
     }
     return privateJson(
-      { error: "학생 로그인이 필요합니다.", code: "student_auth_required" },
+      {
+        error: "SUN LAB 회원 로그인 정보가 연표에서 확인되지 않았습니다.",
+        code: sunLabMemberView ? "sunlab_session_required" : "student_auth_required",
+      },
       { status: 401 }
     );
   }
