@@ -6,8 +6,8 @@
 export type HistoryTimelineStudyTopic = {
   id: string;
   issue: number;
-  period?: "three" | "joseon" | "empire" | "colonial" | "liberation" | "republic";
-  nation?: "고구려" | "백제";
+  period?: "three" | "goryeo" | "joseon" | "empire" | "colonial" | "liberation" | "republic";
+  nation?: "고구려" | "백제" | "신라";
   title: string;
   pages: string;
   points: string[];

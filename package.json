@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/check-history-people.cjs && next build",
+    "build": "node scripts/check-history-people.cjs && node scripts/check-history-timeline-access.cjs && next build",
     "start": "next start",
     "lint": "eslint",
-    "test:history-people": "node scripts/check-history-people.cjs"
+    "test:history-people": "node scripts/check-history-people.cjs",
+    "test:history-access": "node scripts/check-history-timeline-access.cjs"
   },
   "dependencies": {
     "@sparticuz/chromium": "153.0.0",
