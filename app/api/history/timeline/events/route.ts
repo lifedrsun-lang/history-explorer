@@ -111,7 +111,9 @@ export async function GET(request: Request) {
           String(member.enrollmentStatus || "active") === "active" &&
           memberProfileDoc.data()?.timelineFullAccess === true) {
         const completedIssues = Array.from({ length: HISTORY_TIMELINE_MAX_ISSUE }, (_, i) => i + 1);
-        const events = getTimelineEventsForIssues(completedIssues).map(event =>
+        // timelineFullAccess 회원은 교재 호수가 아직 확인되지 않은 현장 사건도 열람할 수 있다.
+        // 일반 수강생은 아래의 호수별 getTimelineEventsForIssues 제한을 그대로 적용한다.
+        const events = HISTORY_TIMELINE_EVENTS.map(event =>
           toStudentTimelineEvent(event, completedIssues));
         const examLinks = await getTimelineExamReferences(new Set(events.map(event => event.id)));
         return privateJson({
