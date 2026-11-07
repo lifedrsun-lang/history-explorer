@@ -71,8 +71,9 @@ const buildAllowedMaterials = (allowedIssues: number[]) => ({
 });
 
 export async function GET(request: Request) {
+  const sunLabMemberView = new URL(request.url).searchParams.get("view") === "sunlab";
   const authHeader = request.headers.get("authorization") || "";
-  if (authHeader) {
+  if (authHeader && !sunLabMemberView) {
     // Authorization을 받은 요청은 반드시 실제 교사 계정을 검증한다.
     try {
       await verifyTeacherRequest(request);
@@ -86,7 +87,7 @@ export async function GET(request: Request) {
   const { db } = getFirebaseAdmin();
 
   // 일반 별꼼역사 로그인: 교사가 특정 학생 문서에 부여한 별도 권한이 있어야 한다.
-  const timelineSession = await getHistoryTimelineSession(
+  const timelineSession = sunLabMemberView ? null : await getHistoryTimelineSession(
     readRequestCookie(request, HISTORY_TIMELINE_SESSION_COOKIE)
   );
   if (timelineSession) {

@@ -57,11 +57,15 @@ const teacherResponse = async (request: Request) => {
 };
 
 export async function GET(request: Request) {
-  const teacher = await teacherResponse(request);
-  if (teacher) return teacher;
+  // SUN LAB 카드에서 명시적으로 들어온 학생은 교사 토큰이나 이전 수업방 세션으로 대체하지 않는다.
+  const sunLabMemberView = new URL(request.url).searchParams.get("view") === "sunlab";
+  if (!sunLabMemberView) {
+    const teacher = await teacherResponse(request);
+    if (teacher) return teacher;
+  }
 
   const sessionId = readRequestCookie(request, HISTORY_TIMELINE_SESSION_COOKIE);
-  const session = await getHistoryTimelineSession(sessionId);
+  const session = sunLabMemberView ? null : await getHistoryTimelineSession(sessionId);
   if (!session) {
     const memberSessionId = readRequestCookie(request, SUNLAB_STUDENT_SESSION_COOKIE);
     const memberSession = await getSunLabStudentSession(memberSessionId);

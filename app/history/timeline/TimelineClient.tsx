@@ -146,6 +146,10 @@ function groupSameDates(events: StudentEvent[]) {
 }
 
 export default function TimelineClient() {
+  // SUN LAB 카드에서 진입한 학생은 남아 있는 교사 Firebase 로그인과 독립적으로 조회한다.
+  const sunLabMemberView =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("view") === "sunlab";
   const [teacher, setTeacher] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [payload, setPayload] = useState<TimelinePayload | null>(null);
@@ -195,8 +199,8 @@ export default function TimelineClient() {
     setYongFlowEvents([]);
     setReferenceEvents([]);
     try {
-      const token = currentTeacher ? await currentTeacher.getIdToken() : "";
-      const response = await fetch("/api/history/timeline/events", {
+      const token = !sunLabMemberView && currentTeacher ? await currentTeacher.getIdToken() : "";
+      const response = await fetch(`/api/history/timeline/events${sunLabMemberView ? "?view=sunlab" : ""}`, {
         cache: "no-store",
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
@@ -222,7 +226,7 @@ export default function TimelineClient() {
 
       setPayload(data);
       try {
-        const extraResponse = await fetch("/api/history/timeline/byeolbyeol", {
+        const extraResponse = await fetch(`/api/history/timeline/byeolbyeol${sunLabMemberView ? "?view=sunlab" : ""}`, {
           cache: "no-store",
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
@@ -279,7 +283,7 @@ export default function TimelineClient() {
 
   // 이미 열어 둔 학생 페이지도 탭 복귀 또는 주기적인 재조회 시 공개 중단을 반영한다.
   useEffect(() => {
-    if (!authReady || teacher || !payload || payload.viewer.role !== "student") return;
+    if (!authReady || !payload || payload.viewer.role !== "student") return;
     const refresh = () => {
       if (document.visibilityState === "visible") void loadTimeline(null);
     };
@@ -459,6 +463,11 @@ export default function TimelineClient() {
   };
 
   const logoutStudent = async () => {
+    if (sunLabMemberView) {
+      await fetch("/api/student/sun-lab-session", { method: "DELETE" });
+      window.location.assign("/student/book");
+      return;
+    }
     await fetch("/api/history/timeline/session", { method: "DELETE" });
     setPayload(null);
     setNeedsLogin(true);
@@ -481,6 +490,21 @@ export default function TimelineClient() {
           <p>선생님이 전체 학생 공개를 켜면 이용할 수 있어요.</p>
           <div className={styles.loginLinks}>
             <Link href="/student/history">학생 수업방으로</Link>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (sunLabMemberView && needsLogin) {
+    return (
+      <main className={styles.loginPage}>
+        <section className={styles.loginCard}>
+          <div className={styles.loginSymbol}>🔒</div>
+          <h1>SUN LAB 회원 로그인이 필요합니다</h1>
+          <p>학생의 SUN LAB 계정으로 로그인한 뒤 한국사여행을 열어 주세요.</p>
+          <div className={styles.loginLinks}>
+            <Link href="/student/book">SUN LAB 회원 로그인</Link>
           </div>
         </section>
       </main>
