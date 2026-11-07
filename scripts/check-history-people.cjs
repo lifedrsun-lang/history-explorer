@@ -223,10 +223,14 @@ new Function("module", "exports", ts.transpileModule(originalFigureSource, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
 }).outputText)(originalFigureModule, originalFigureModule.exports);
 const figureTopics = originalFigureModule.exports.HISTORY_TIMELINE_ORIGINAL_FIGURE_TOPICS;
-assert.equal(figureTopics.length, 10, "Expected 10 source-checked supplemental person topics");
-assert(figureTopics.every(topic => [5,7,10,12].includes(topic.issue) && /교재/.test(topic.pages)));
+assert.equal(figureTopics.length, 14, "Expected 14 source-checked supplemental person topics");
+assert(figureTopics.every(topic => [4,5,7,10,12,13].includes(topic.issue) && /교재/.test(topic.pages)));
 const figureDirectory = buildTimelinePersonDirectory([], figureTopics);
 const shouldMatch = [
+  ["topic-04-goguryeo-restoration-goyeonmu",["고구려:고연무"]],
+  ["topic-04-goguryeo-painter-damjing",["고구려:담징"]],
+  ["topic-13-yuan-merchant-yiwon",["원나라:이원"]],
+  ["topic-13-ming-founder-zhu-yuanzhang",["명나라:주원장"]],
   ["topic-05-baekje-early-and-culture",["백제:책계왕","백제:왕인","백제:마라난타"]],
   ["topic-07-silla-founding-tales",["신라:알영 부인","신라:남해왕","신라:석탈해","신라:김알지"]],
   ["topic-07-silla-buddhism",["신라:이차돈","신라:원광"]],
@@ -243,6 +247,18 @@ for(const [topicId,names] of shouldMatch){
 }
 assert(!ids(figureDirectory.byTopic["topic-07-silla-founding-tales"]).some(id => id.startsWith("백제:")),
   "Silla topics must not expose Baekje figure cards");
+const only4 = buildTimelinePersonDirectory([], figureTopics.filter(topic => topic.issue === 4));
+const only13 = buildTimelinePersonDirectory([], figureTopics.filter(topic => topic.issue === 13));
+assert.deepEqual(Object.keys(only4.byTopic).sort(), [
+  "topic-04-goguryeo-painter-damjing", "topic-04-goguryeo-restoration-goyeonmu"
+]);
+assert.deepEqual(Object.keys(only13.byTopic).sort(), [
+  "topic-13-ming-founder-zhu-yuanzhang", "topic-13-yuan-merchant-yiwon"
+]);
+assert(!Object.values(only4.byTopic).flat().some(person => person.era === "고려" || person.era === "명나라"),
+  "Issue 4 must not include later-era people");
+assert(!Object.values(only13.byTopic).flat().some(person => person.era === "고구려"),
+  "Issue 13 must not include Goguryeo figures");
 const gojoseonNoteSource = fs.readFileSync(path.join(__dirname, "..", "lib", "historyTimelineStudyEarly.ts"), "utf8");
 assert(gojoseonNoteSource.includes("고조선의 마지막 왕 우거왕"), "Missing confirmed 2nd-issue Ugeo note");
 
