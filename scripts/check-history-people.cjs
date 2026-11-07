@@ -175,7 +175,7 @@ new Function("module", "exports", ts.transpileModule(ancientSource, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
 }).outputText)(ancientModule, ancientModule.exports);
 const ancientTopics = ancientModule.exports.HISTORY_TIMELINE_ANCIENT_PERSON_TOPICS;
-assert.equal(ancientTopics.length, 3, "Expected three source-checked undated topic cards");
+assert.equal(ancientTopics.length, 4, "Expected four source-checked undated topic cards");
 assert(ancientTopics.every(topic => topic.period === "three" && ["고구려", "백제"].includes(topic.nation)));
 const ancient = buildTimelinePersonDirectory([], ancientTopics);
 for (const name of ["왕산악", "온달", "평강공주"]) {
@@ -184,16 +184,21 @@ for (const name of ["왕산악", "온달", "평강공주"]) {
 for (const name of ["남생", "남건", "남산"]) {
   requirePerson(ancient.byTopic["topic-04-goguryeo-succession"], `고구려:${name}`, "Goguryeo political figures");
 }
+for (const name of ["비류", "온조"]) {
+  requirePerson(ancient.byTopic["topic-05-baekje-biryu-onjo"], `백제:${name}`, "Baekje origin story");
+}
 for (const name of ["도미", "도미의 아내"]) {
   requirePerson(ancient.byTopic["topic-06-baekje-domi-story"], `백제:${name}`, "Baekje tale figures");
 }
 assert(!ids(ancient.byTopic["topic-04-goguryeo-culture-tales"]).some(id => id.startsWith("백제:")));
 assert(!ids(ancient.byTopic["topic-06-baekje-domi-story"]).some(id => id.startsWith("고구려:")));
 const issue4Only = buildTimelinePersonDirectory([], ancientTopics.filter(topic => topic.issue === 4));
+const issue5Only = buildTimelinePersonDirectory([], ancientTopics.filter(topic => topic.issue === 5));
 const issue6Only = buildTimelinePersonDirectory([], ancientTopics.filter(topic => topic.issue === 6));
 assert.deepEqual(Object.keys(issue4Only.byTopic).sort(), [
   "topic-04-goguryeo-culture-tales", "topic-04-goguryeo-succession"
 ]);
+assert.deepEqual(Object.keys(issue5Only.byTopic), ["topic-05-baekje-biryu-onjo"]);
 assert.deepEqual(Object.keys(issue6Only.byTopic), ["topic-06-baekje-domi-story"]);
 assert.deepEqual(Object.keys(buildTimelinePersonDirectory([], []).byTopic), []);
 assert(ancientTopics.every(topic => /호 교재/.test(topic.pages) &&
