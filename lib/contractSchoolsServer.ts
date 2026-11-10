@@ -30,6 +30,7 @@ import {
 import { getSchoolPassword, normalizeSchoolText } from "@/app/student/data/schoolInfo";
 import { getAfterSchoolSchool } from "@/lib/afterSchool";
 import { listOpinionLessonImages } from "@/lib/opinionLessonImagesServer";
+import { SHARED_LESSON_IMAGE_CLASSROOM_ID } from "@/lib/opinionLessonImages";
 
 type StoredContractSchool = Omit<
   ContractSchoolConfig,
@@ -918,7 +919,11 @@ export const getContractClassroomByToken = async (
   if(!resolved) return null;
   const classroom=toSchoolClassroom(resolved.school,resolved.classroom);
   try {
-    const images=await listOpinionLessonImages(resolved.school.slug,resolved.classroom.id);
+    const [classImages, sharedImages] = await Promise.all([
+      listOpinionLessonImages(resolved.school.slug, resolved.classroom.id),
+      listOpinionLessonImages(resolved.school.slug, SHARED_LESSON_IMAGE_CLASSROOM_ID),
+    ]);
+    const images = [...classImages, ...sharedImages].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     return {...classroom,lessons:classroom.lessons.map(lesson=>({...lesson,opinionImages:images.filter(image=>image.lessonNumber===lesson.lesson && resolved.school.lessons.some(l=>l.id===image.lessonId && l.lesson===lesson.lesson)).map(image=>({id:image.id,topic:image.topic,createdAt:image.createdAt,href:`/api/classroom/${encodeURIComponent(classroom.directToken)}/opinion-images/${image.id}`}))}))};
   } catch {
     // An image-store outage must never block existing lessons or student login.
