@@ -1,7 +1,7 @@
 import { verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getContractSchool } from "@/lib/contractSchoolsServer";
 import { checkOpinionOrigin } from "@/lib/opinionServer";
-import { OPINION_IMAGE_MAX_BYTES } from "@/lib/opinionLessonImages";
+import { OPINION_IMAGE_MAX_BYTES, SHARED_LESSON_IMAGE_CLASSROOM_ID } from "@/lib/opinionLessonImages";
 import { listOpinionLessonImages, storeUploadedLessonImage } from "@/lib/opinionLessonImagesServer";
 
 export const runtime = "nodejs";
@@ -11,9 +11,12 @@ const headers = { "Cache-Control": "private, no-store" };
 async function resolveTarget(schoolSlug: string, classroomId: string, lessonId: string) {
   const school = await getContractSchool(schoolSlug, { includeUnpublished: true });
   const classroom = school?.classrooms.find(item => item.id === classroomId && item.active !== false);
+  const shared = classroomId === SHARED_LESSON_IMAGE_CLASSROOM_ID;
   const lesson = school?.lessons.find(item => item.id === lessonId);
-  if (!school || !classroom || !lesson) throw new Error("invalid_lesson_target");
-  return { schoolSlug: school.slug, classroomId: classroom.id, lessonId: lesson.id, lessonNumber: lesson.lesson };
+  if (!school || !lesson || (!classroom && !(shared && school.classrooms.some(item => item.active !== false)))) {
+    throw new Error("invalid_lesson_target");
+  }
+  return { schoolSlug: school.slug, classroomId: shared ? SHARED_LESSON_IMAGE_CLASSROOM_ID : classroom!.id, lessonId: lesson.id, lessonNumber: lesson.lesson };
 }
 
 function errorResponse(error: unknown) {
