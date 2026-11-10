@@ -2,6 +2,7 @@ import { verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getContractSchool } from "@/lib/contractSchoolsServer";
 import { deleteOpinionLessonImage, downloadOpinionLessonImage, getOpinionLessonImage } from "@/lib/opinionLessonImagesServer";
 import { checkOpinionOrigin } from "@/lib/opinionServer";
+import { SHARED_LESSON_IMAGE_CLASSROOM_ID } from "@/lib/opinionLessonImages";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request, { params }: { params: Promise<{ imageId: string }> }) {
@@ -13,7 +14,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ imag
     const image = await getOpinionLessonImage(imageId);
     if (!image) return new Response(null, { status: 404, headers });
     const school = await getContractSchool(image.schoolSlug, { includeUnpublished: true });
-    if (!school?.classrooms.some(item => item.id === image.classroomId && item.active !== false) || !school.lessons.some(item => item.id === image.lessonId && item.lesson === image.lessonNumber)) return new Response(null, { status: 404, headers });
+    if (!school?.classrooms.some(item => item.active !== false && (image.classroomId === SHARED_LESSON_IMAGE_CLASSROOM_ID || item.id === image.classroomId)) || !school.lessons.some(item => item.id === image.lessonId && item.lesson === image.lessonNumber)) return new Response(null, { status: 404, headers });
     return new Response(await downloadOpinionLessonImage(image), { headers: { ...headers, "Content-Type": image.contentType || "image/png", "Content-Disposition": "inline" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
