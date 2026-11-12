@@ -1,7 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { handleRouteError, jsonError, verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
-import { emptyResume, normalizeResume } from "@/lib/resumes";
+import { emptyResume, normalizeResume, selectResumeEntries, type ResumeSection } from "@/lib/resumes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -77,7 +77,15 @@ export async function POST(request: Request) {
     const ref = db.collection(collection).doc(teacher.uid);
     const saved = await ref.get();
     if (!saved.exists) return jsonError("이력서를 먼저 저장해 주세요.", 400);
-    const resume = normalizeResume(saved.data());
+    const savedResume = normalizeResume(saved.data());
+    const requested = input.selected && typeof input.selected === "object"
+      ? input.selected as Record<string, unknown> : {};
+    const selection: Partial<Record<ResumeSection, string[]>> = {};
+    for (const key of ["education", "experience", "training", "certificates"] as ResumeSection[]) {
+      const ids = requested[key];
+      if (Array.isArray(ids)) selection[key] = ids.filter((id): id is string => typeof id === "string").slice(0, 70);
+    }
+    const resume = selectResumeEntries(savedResume, selection);
     const submittedAt = new Date().toISOString();
     await ref.collection("submissions").add({
       target,
