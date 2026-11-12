@@ -2,7 +2,7 @@
 
 import { onAuthStateChanged, type User } from "firebase/auth";
 import Link from "next/link";
-import { useCallback, useEffect, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { auth } from "@/lib/firebase";
 import { emptyResume, RESUME_SECTIONS, type ResumeData, type ResumeEntry, type ResumeSection } from "@/lib/resumes";
 
@@ -147,6 +147,21 @@ export default function TeacherResumesPage() {
   const [attachments, setAttachments] = useState<File[]>([]);
   const [manualMethod, setManualMethod] = useState("email-external");
   const [gmailConnected, setGmailConnected] = useState(false);
+  const [preview, setPreview] = useState<{ url: string; filename: string } | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
+
+  useEffect(() => () => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+  }, []);
+
+  const closePreview = () => {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+    setPreview(null);
+  };
+
 
   useEffect(() => onAuthStateChanged(auth, account => {
     setUser(account);
@@ -210,11 +225,14 @@ export default function TeacherResumesPage() {
     finally { setBusy(""); }
   };
 
-  const download = async (submissionId?: string) => {
+  // 미리보기와 다운로드에 동일한 PDF API를 사용하여 실제 제출본과
+  // 화면에서 확인하는 문서의 내용/페이지 구성이 일치하도록 합니다.
+  const createPdf = async (submissionId?: string) => {
     if (!user) throw new Error("교사 로그인이 필요합니다.");
     const token = await user.getIdToken();
     const response = await fetch("/api/teacher/resumes/pdf", {
       method: "POST",
+      cache: "no-store",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(submissionId ? { submissionId } : { resume, selected, target, date: today() }),
     });
@@ -226,11 +244,24 @@ export default function TeacherResumesPage() {
     const disposition = response.headers.get("Content-Disposition") || "";
     const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1];
     const filename = encoded ? decodeURIComponent(encoded) : "이력서.pdf";
+    return { blob, filename };
+  };
+
+  const download = async (submissionId?: string) => {
+    const { blob, filename } = await createPdf(submissionId);
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url; link.download = filename; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     setMessage(`${filename} 파일을 생성했습니다.`);
+  };
+
+  const showPreview = async (submissionId?: string) => {
+    const { blob, filename } = await createPdf(submissionId);
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    const url = URL.createObjectURL(blob);
+    previewUrlRef.current = url;
+    setPreview({ url, filename });
   };
 
   const loadHistory = async () => {
@@ -343,8 +374,11 @@ export default function TeacherResumesPage() {
           <div className="mt-4 flex flex-wrap gap-2">
             <button type="button" disabled={!!busy} onClick={() => run("save", save)}
               className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-black text-white disabled:opacity-50">{busy === "save" ? "저장 중..." : "마스터 이력서 저장"}</button>
+            <button type="button" disabled={!!busy} onClick={() => run("preview", () => showPreview())}
+              className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-black text-white disabled:opacity-50">{busy === "preview" ? "미리보기 생성 중..." : "👁️ A4 이력서 미리보기"}</button>
             <button type="button" disabled={!!busy} onClick={() => run("pdf", () => download())}
               className="rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-3 text-sm font-black text-indigo-900 disabled:opacity-50">{busy === "pdf" ? "생성 중..." : "선택 항목으로 PDF 다운로드"}</button>
+          <p className="basis-full text-xs text-slate-500">미리보기는 현재 입력한 내용과 체크한 항목을 반영하며 저장하거나 이메일을 발송하지 않습니다.</p>
           </div>
         </section>
         <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
@@ -382,6 +416,10 @@ export default function TeacherResumesPage() {
             {attachments.length > 0 && <div className="mt-2 text-xs text-indigo-700">{attachments.map(file => file.name).join(" / ")}</div>}
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
+            <button type="button" disabled={!!busy} onClick={() => run("preview", () => showPreview())}
+              className="rounded-xl border border-slate-300 bg-slate-50 px-5 py-3 text-sm font-black text-slate-900 disabled:opacity-50">
+              {busy === "preview" ? "생성 중..." : "👁️ 제출용 이력서 미리보기"}
+            </button>
             <button type="button" disabled={!!busy} onClick={() => run("send", submitEmail)}
               className="rounded-xl bg-emerald-700 px-5 py-3 text-sm font-black text-white disabled:opacity-50">
               {busy === "send" ? "발송 처리 중..." : "✉️ 확인 후 Gmail 제출"}
@@ -413,12 +451,45 @@ export default function TeacherResumesPage() {
                   {row.attachmentNames?.length > 0 ? ` · 파일 ${row.attachmentNames.join(", ")}` : ""}
                 </p>
               </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" disabled={!!busy} onClick={() => run(`preview-${row.id}`, () => showPreview(row.id))}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold disabled:opacity-50">당시 이력서 미리보기</button>
               <button type="button" disabled={!!busy} onClick={() => run(`pdf-${row.id}`, () => download(row.id))}
                 className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold disabled:opacity-50">당시 이력서 PDF</button>
+              </div>
             </div>)}
           </div>
         </section>
       </div>
+      {preview && (
+        <div role="dialog" aria-modal="true" aria-label="이력서 PDF 미리보기"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-2 sm:p-5"
+          onMouseDown={event => { if (event.target === event.currentTarget) closePreview(); }}>
+          <div className="flex h-[96dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl sm:h-[94dvh]">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-3 sm:px-5">
+              <div className="min-w-0">
+                <h2 className="text-base font-black text-slate-900">📄 이력서 A4 미리보기</h2>
+                <p className="max-w-full truncate text-xs text-slate-500">{preview.filename}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <a href={preview.url} target="_blank" rel="noopener noreferrer"
+                  className="rounded-lg border px-3 py-2 text-xs font-bold text-slate-700">새 탭에서 보기</a>
+                <a href={preview.url} download={preview.filename}
+                  className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white">PDF 저장</a>
+                <button type="button" onClick={closePreview} aria-label="미리보기 닫기"
+                  className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-800">닫기 ✕</button>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1 bg-slate-100">
+              <iframe title="이력서 A4 PDF 미리보기" src={preview.url}
+                className="h-full w-full border-0 bg-white" />
+            </div>
+            <p className="border-t border-slate-200 px-3 py-2 text-center text-xs text-slate-500">
+              화면이 표시되지 않는 모바일 브라우저에서는 ‘새 탭에서 보기’를 이용해 주세요.
+            </p>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
