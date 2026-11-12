@@ -80,7 +80,7 @@ export async function POST(request: Request) {
     const ref = db.collection("teacher_resumes").doc(teacher.uid).collection("submissions").doc(requestId);
     try {
       await ref.create({
-        target, recipient, method: "gmail", status: "pending", submittedAt: "",
+        target, recipient, method: "gmail", status: "pending", submittedAt: "", documentDate: date,
         attachmentNames: attachments.map(x => x.filename), selectedCount: (
           selectedResume.education.length + selectedResume.experience.length +
           selectedResume.training.length + selectedResume.certificates.length
