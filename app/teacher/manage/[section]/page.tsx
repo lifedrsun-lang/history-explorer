@@ -227,7 +227,13 @@ const sections: Record<string, ManagementSection> = {
     title: "일정 · 운영",
     description: "교사 일정과 자료 보관, 비용·운영 상태처럼 공통 관리 기능을 모았습니다.",
     items: [
-
+      {
+        href: "/teacher/resumes",
+        icon: "📄",
+        title: "이력서 작성 · 제출",
+        description: "마스터 이력서 · PDF · 학교별 Gmail 제출 · 제출 이력 관리",
+        className: "border-indigo-200 bg-indigo-50 text-indigo-950",
+      },
       {
         href: "/teacher/schedule",
         icon: "📅",
