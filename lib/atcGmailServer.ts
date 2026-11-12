@@ -181,3 +181,58 @@ export async function sendAtcGmail(uid: string, info: Parameters<typeof buildAtc
   if (!result.id) throw new Error("atc_gmail_send_unconfirmed");
   return result.id;
 }
+
+
+export type GmailFileAttachment = {
+  filename: string;
+  contentType: "application/pdf" | "image/jpeg" | "image/png";
+  buffer: Buffer;
+};
+
+/** Send multiple attachments without changing the existing single-attachment API. */
+export async function sendAtcGmailMany(
+  uid: string,
+  info: { to: string; subject: string; body: string },
+  attachments: GmailFileAttachment[]
+) {
+  if (!attachments.length || attachments.length > 8) throw new Error("atc_gmail_invalid_attachments");
+  const boundary = `sunlab_${randomBytes(18).toString("hex")}`;
+  const base64Lines = (data: Buffer) => data.toString("base64").match(/.{1,76}/g)?.join("\r\n") || "";
+  const lines = [
+    `From: ${ATC_GMAIL_FROM}`,
+    `To: ${info.to}`,
+    `Subject: ${encodedSubject(info.subject)}`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/mixed; boundary="${boundary}"`, "",
+    `--${boundary}`, "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: base64", "", base64Lines(Buffer.from(info.body, "utf8")),
+  ];
+  for (const attachment of attachments) {
+    const filename = encodeURIComponent(attachment.filename.replace(/[\r\n]/g, "").slice(0, 140))
+      .replace(/['()*]/g, c => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+    lines.push(
+      `--${boundary}`,
+      `Content-Type: ${attachment.contentType}; name*=UTF-8''${filename}`,
+      `Content-Disposition: attachment; filename*=UTF-8''${filename}`,
+      "Content-Transfer-Encoding: base64", "", base64Lines(attachment.buffer)
+    );
+  }
+  lines.push(`--${boundary}--`, "");
+  const accessToken = await getAccessToken(uid);
+  let response: Response;
+  try {
+    response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+      method: "POST", cache: "no-store",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ raw: Buffer.from(lines.join("\r\n"), "utf8").toString("base64url") }),
+    });
+  } catch {
+    throw new Error("atc_gmail_send_unconfirmed");
+  }
+  if (!response.ok) throw new Error("atc_gmail_send_failed");
+  let result: { id?: string };
+  try { result = await response.json() as { id?: string }; }
+  catch { throw new Error("atc_gmail_send_unconfirmed"); }
+  if (!result.id) throw new Error("atc_gmail_send_unconfirmed");
+  return result.id;
+}
