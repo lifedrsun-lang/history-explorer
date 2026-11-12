@@ -145,6 +145,7 @@ export default function TeacherResumesPage() {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [manualMethod, setManualMethod] = useState("email-external");
   const [gmailConnected, setGmailConnected] = useState(false);
 
   useEffect(() => onAuthStateChanged(auth, account => {
@@ -268,7 +269,7 @@ export default function TeacherResumesPage() {
     if (!window.confirm("이 기능은 발송하지 않고 직접 제출했다고 기록합니다. 계속할까요?")) return;
     await save();
     await request("/api/teacher/resumes", {
-      method: "POST", body: JSON.stringify({ target, recipient, method: "email-external" }),
+      method: "POST", body: JSON.stringify({ target, recipient, method: manualMethod }),
     });
     await loadHistory();
     setMessage("외부 제출 기록을 저장했습니다. 실제 발송 여부는 별도로 확인해 주세요.");
@@ -385,9 +386,17 @@ export default function TeacherResumesPage() {
               className="rounded-xl bg-emerald-700 px-5 py-3 text-sm font-black text-white disabled:opacity-50">
               {busy === "send" ? "발송 처리 중..." : "✉️ 확인 후 Gmail 제출"}
             </button>
+            <select aria-label="외부 제출 방식" value={manualMethod} onChange={e => setManualMethod(e.target.value)} className="rounded-xl border px-3 py-3 text-sm font-bold">
+              <option value="email-external">외부 이메일</option>
+              <option value="kakao">카카오톡</option>
+              <option value="visit">직접 제출</option>
+              <option value="other">기타</option>
+            </select>
             <button type="button" disabled={!!busy} onClick={() => run("manual", manualRecord)}
               className="rounded-xl border px-5 py-3 text-sm font-black disabled:opacity-50">외부 제출 기록</button>
-            <span className="text-xs text-slate-500">{gmailConnected ? "Gmail 연결 확인" : "Gmail 연결 필요 — ATC 참여확인서에서 연결"}</span>
+            {gmailConnected
+              ? <span className="text-xs text-emerald-700">Gmail 연결 확인</span>
+              : <Link href="/teacher/atc-confirmations" className="text-xs font-bold text-indigo-700 underline">Gmail 연결하기 · ATC 참여확인서</Link>}
           </div>
         </section>
         <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
