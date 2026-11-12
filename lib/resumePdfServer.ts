@@ -28,40 +28,61 @@ export async function renderResumePdf(resume: ResumeData, target: string, date: 
     ["연락처", resume.phone, "E-mail", resume.email],
   ];
   const info = details.map(row => `<tr><th>${row[0]}</th><td>${cell(row[1])}</td><th>${row[2]}</th><td>${cell(row[3])}</td></tr>`).join("");
-  const groups = RESUME_SECTIONS.map(section => {
+  const groupTable = (section: typeof RESUME_SECTIONS[number]) => {
     const rows = resume[section.key];
     if (!rows.length) return "";
     return `<table class="group"><thead><tr><th class="sectionhead" colspan="3">${escapeHtml(section.label)}</th></tr>
       <tr><th class="period">기간·취득일</th><th>${escapeHtml(section.first)}</th><th class="issuer">${escapeHtml(section.second)}</th></tr></thead>
       <tbody>${rows.map(row => `<tr><td>${cell(row.period)}</td><td>${cell(row.title)}</td><td>${cell(row.detail)}</td></tr>`).join("")}</tbody></table>`;
-  }).join("");
+  };
+
+  // 원본 이력서의 논리적 구성을 따라 인적사항·경력과
+  // 교육·연수·자격사항을 서로 다른 인쇄 페이지에서 시작합니다.
+  // 항목이 늘어나면 Chromium이 추가 페이지로 자연스럽게 분할합니다.
+  const firstGroups = RESUME_SECTIONS.filter(section =>
+    section.key === "education" || section.key === "experience"
+  ).map(groupTable).join("");
+  const secondGroups = RESUME_SECTIONS.filter(section =>
+    section.key === "training" || section.key === "certificates"
+  ).map(groupTable).join("");
+  const secondPage = firstGroups && secondGroups
+    ? `<section class="second-page"><div class="continued">
+        <span>${escapeHtml(resume.headline)}</span>
+        <span>${escapeHtml(resume.name)}</span>
+      </div>${secondGroups}</section>`
+    : secondGroups;
+  const groups = firstGroups + secondPage;
   const photo = resume.photoDataUrl
     ? `<img class="photo" alt="증명사진" src="${escapeHtml(resume.photoDataUrl)}" />`
     : `<div class="photo-placeholder">사진</div>`;
   const css = `
     ${faces}
-    @page{size:A4;margin:13mm 13mm 15mm}
+    @page{size:A4;margin:12mm 13mm 13mm}
     *{box-sizing:border-box}
-    html,body{margin:0;padding:0;color:#111;font-family:Korean,sans-serif;font-size:9pt}
-    h1{text-align:center;font-size:18pt;margin:5mm 0 7mm;font-weight:700;letter-spacing:.04em}
-    .sub{text-align:right;color:#666;font-size:8pt;margin:-5mm 0 4mm}
+    html,body{margin:0;padding:0;color:#111;font-family:Korean,sans-serif;font-size:8.5pt;line-height:1.3}
+    h1{text-align:center;font-size:17pt;margin:3mm 0 6mm;font-weight:700;letter-spacing:.025em}
+    .sub{text-align:right;color:#555;font-size:8pt;margin:-4mm 0 4mm}
     table{border-collapse:collapse;width:100%;table-layout:fixed}
-    th,td{border:1px solid #333;padding:3px 6px;vertical-align:middle;white-space:pre-wrap;overflow-wrap:anywhere}
+    th,td{border:1px solid #444;padding:2mm 2.4mm;vertical-align:middle;white-space:pre-wrap;overflow-wrap:anywhere}
     th{font-weight:700;text-align:center}
-    .identity{width:100%;margin-bottom:5mm}
-    .identity th{width:13%}
-    .identity td{width:37%}
+    .identity-wrap{display:grid;grid-template-columns:minmax(0,1fr) 29mm;gap:3mm;margin-bottom:6mm;align-items:start}
+    .identity{height:35mm;margin:0}
+    .identity tr{height:11.66mm}
+    .identity th{width:14%;white-space:nowrap;padding:1mm}
+    .identity td{width:36%;font-size:8.4pt;padding:1mm 2.2mm}
     .identity .address td{text-align:left}
-    .identity-wrap{display:grid;grid-template-columns:1fr 28mm;gap:4mm;align-items:stretch}
-    .photo,.photo-placeholder{width:28mm;height:37mm;object-fit:cover;border:1px solid #555}
-    .photo-placeholder{display:flex;align-items:center;justify-content:center;color:#aaa}
-    .group{margin:0 0 5.5mm}
-    .group th.sectionhead{background:#f4f4f4;border-bottom:1px solid #333;padding:4px 8px;font-size:10pt}
-    .group th.period{width:18%}.group th.issuer{width:25%}
-    .group th{background:#fafafa}
+    .photo,.photo-placeholder{display:block;width:29mm;height:35mm;object-fit:cover;border:1px solid #444}
+    .photo-placeholder{display:flex;align-items:center;justify-content:center;color:#999}
+    .group{margin:0 0 5mm;break-inside:avoid;page-break-inside:avoid}
+    .group th.sectionhead{background:#f1f3f5;border-bottom:1px solid #444;padding:2.5mm 2mm;font-size:9.5pt}
+    .group th.period{width:18%}.group th.issuer{width:26%}
+    .group th{background:#fafafa;padding:2mm;font-size:8.4pt}
+    .group td{line-height:1.34}
     .group tr{break-inside:avoid;page-break-inside:avoid}
     .group thead{display:table-header-group}
-    .intro{margin:4mm 0 6mm;padding:3mm;border:1px solid #444;white-space:pre-wrap;line-height:1.6}
+    .second-page{break-before:page;page-break-before:always}
+    .continued{display:flex;justify-content:space-between;gap:6mm;color:#555;font-size:8.1pt;margin:0 0 5mm;padding:0 0 2mm;border-bottom:1px solid #ddd}
+    .intro{margin:4mm 0 5mm;padding:3mm;border:1px solid #444;white-space:pre-wrap;line-height:1.5;break-inside:avoid}
     .intro strong{display:block;margin-bottom:1mm}
     .signoff{margin:6mm 0 1mm;text-align:right;break-inside:avoid}
     .signoff p{margin:2mm 0}
