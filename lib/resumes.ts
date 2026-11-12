@@ -84,7 +84,7 @@ export function normalizeResume(value: unknown): ResumeData {
     training: safeEntries(source.training),
     certificates: safeEntries(source.certificates),
   };
-  if (Buffer.byteLength(JSON.stringify(data), "utf8") > 800_000) {
+  if (new TextEncoder().encode(JSON.stringify(data)).length > 800_000) {
     throw new Error("resume_too_large");
   }
   return data;
