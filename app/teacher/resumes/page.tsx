@@ -4,7 +4,7 @@ import { onAuthStateChanged, type User } from "firebase/auth";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { auth } from "@/lib/firebase";
-import { emptyResume, normalizeResume, RESUME_SECTIONS, type ResumeData, type ResumeEntry, type ResumeSection } from "@/lib/resumes";
+import { emptyResume, RESUME_SECTIONS, type ResumeData, type ResumeEntry, type ResumeSection } from "@/lib/resumes";
 
 type History = {
   id: string; target: string; recipient: string; method: string; status: string;
@@ -225,78 +225,6 @@ export default function TeacherResumesPage() {
     finally { setBusy(""); }
   };
 
-  const importResumeFile = async (file: File) => {
-    if (!file.name.toLowerCase().endsWith(".json") || file.size > 800_000) {
-      throw new Error("이력서 가져오기용 JSON 파일(800KB 이하)을 선택해 주세요.");
-    }
-
-    let uploaded: unknown;
-    try {
-      uploaded = JSON.parse(await file.text());
-    } catch {
-      throw new Error("파일 내용을 읽을 수 없습니다. 이력서 가져오기 JSON인지 확인해 주세요.");
-    }
-    if (!uploaded || typeof uploaded !== "object" ||
-        (uploaded as { format?: unknown }).format !== "sunlab-resume-import-v1") {
-      throw new Error("Sun Lab 이력서 가져오기 파일이 아닙니다.");
-    }
-    const sample = normalizeResume((uploaded as { resume?: unknown }).resume);
-    if (!sample.name || RESUME_SECTIONS.every(section => sample[section.key].length === 0)) {
-      throw new Error("가져올 이력서 정보가 없습니다.");
-    }
-
-    const counts = RESUME_SECTIONS.map(section => `${section.label} ${sample[section.key].length}건`).join(" · ");
-    if (!window.confirm(
-      `샘플 이력서를 가져올까요?\n${counts}\n\n기존 내용은 유지하고 비어 있는 인적사항과 중복되지 않는 항목만 추가·저장합니다.\n샘플은 2026.02.23 기준이므로 제출 전에 기간과 연락처를 확인해 주세요.`
-    )) return;
-
-    const merged: ResumeData = { ...resume };
-    for (const key of ["name", "birthDate", "phone", "email", "address", "photoDataUrl", "introduction"] as const) {
-      if (!merged[key] && sample[key]) merged[key] = sample[key];
-    }
-    if (!merged.headline || merged.headline === emptyResume().headline) {
-      merged.headline = sample.headline || merged.headline;
-    }
-
-    const importedIds: Record<ResumeSection, string[]> = {
-      education: [], experience: [], training: [], certificates: [],
-    };
-    let added = 0;
-    for (const { key } of RESUME_SECTIONS) {
-      const existing = resume[key];
-      const normalized = (entry: ResumeEntry) => `${entry.period}|${entry.title}`.replace(/\s+/g, " ").trim();
-      const known = new Set(existing.map(normalized));
-      const knownIds = new Set(existing.map(entry => entry.id));
-      const additions: ResumeEntry[] = [];
-      for (const entry of sample[key]) {
-        const signature = normalized(entry);
-        if (!entry.title || known.has(signature)) continue;
-        known.add(signature);
-        const id = knownIds.has(entry.id) ? crypto.randomUUID() : entry.id;
-        knownIds.add(id);
-        additions.push({ ...entry, id });
-        importedIds[key].push(id);
-        added += 1;
-      }
-      merged[key] = [...existing, ...additions];
-    }
-
-    // 계정별 비공개 서버 API에 저장. 사용자 계정이 없으면 가져오지 않습니다.
-    await request("/api/teacher/resumes", {
-      method: "PUT",
-      body: JSON.stringify({ resume: merged }),
-    });
-    setResume(merged);
-    setSelected(current => {
-      const next = { ...current };
-      for (const { key } of RESUME_SECTIONS) {
-        next[key] = Array.from(new Set([...(current[key] || []), ...importedIds[key]]));
-      }
-      return next;
-    });
-    setMessage(`샘플 이력서를 저장했습니다. 새 항목 ${added}건을 추가했고 기존 항목은 유지했습니다. 기간·이메일·주소를 확인한 뒤 미리보기를 이용해 주세요.`);
-  };
-
   // 미리보기와 다운로드에 동일한 PDF API를 사용하여 실제 제출본과
   // 화면에서 확인하는 문서의 내용/페이지 구성이 일치하도록 합니다.
   const createPdf = async (submissionId?: string) => {
@@ -397,26 +325,6 @@ export default function TeacherResumesPage() {
           </div>
         </header>
         {(error || message) && <div role="status" className={`rounded-xl p-4 text-sm font-bold ${error ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-800"}`}>{error || message}</div>}
-        <section className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 shadow-sm sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-black text-indigo-950">📥 기존 이력서 내용 가져오기</h2>
-              <p className="mt-1 text-sm text-indigo-900">샘플 이력서의 인적사항·증명사진·학력·경력·연수·자격증을 한 번에 등록합니다.</p>
-              <p className="mt-1 text-xs text-indigo-700">기존에 작성한 정보는 덮어쓰지 않고, 누락된 항목만 추가합니다. 가져온 내용은 본인 이력서에 저장됩니다.</p>
-            </div>
-            <label className={`inline-flex shrink-0 cursor-pointer items-center justify-center rounded-xl px-4 py-3 text-sm font-black ${busy ? "cursor-not-allowed bg-slate-300 text-slate-600" : "bg-indigo-700 text-white"}`}>
-              {busy === "import" ? "가져오는 중..." : "JSON 파일 가져오기"}
-              <input type="file" accept=".json,application/json" disabled={!!busy}
-                className="sr-only" aria-label="기존 이력서 가져오기 JSON 선택"
-                onChange={event => {
-                  const file = event.currentTarget.files?.[0];
-                  event.currentTarget.value = "";
-                  if (file) void run("import", () => importResumeFile(file));
-                }} />
-            </label>
-          </div>
-          <p className="mt-3 text-xs text-amber-800">※ 샘플 작성일은 2026.02.23입니다. ‘현재’로 표기된 경력·학력 기간과 이메일 등은 제출 전에 확인해 주세요.</p>
-        </section>
         <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-xl font-black">1. 기본정보 · 증명사진</h2>
