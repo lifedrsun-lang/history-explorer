@@ -409,7 +409,7 @@ export default function TeacherResumesPage() {
                 <div className="font-bold text-slate-900">{row.target}
                   <span className="ml-2 text-xs font-medium text-slate-500">{row.status === "sent" ? "Gmail 발송 확인" : row.status === "self-reported" ? "직접 제출 기록" : row.status === "unknown" ? "발송 확인 필요" : row.status === "pending" ? "처리 중" : "발송 실패"}</span>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">{row.submittedAt || "일시 미확인"} · {row.recipient || "수신처 수동 제출"} · 선택 항목 {row.selectedCount}건
+                <p className="mt-1 text-xs text-slate-500">{row.submittedAt ? new Date(row.submittedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }) : "일시 미확인"} · {row.recipient || "수신처 수동 제출"} · 선택 항목 {row.selectedCount}건
                   {row.attachmentNames?.length > 0 ? ` · 파일 ${row.attachmentNames.join(", ")}` : ""}
                 </p>
               </div>
