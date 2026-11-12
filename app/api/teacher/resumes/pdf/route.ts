@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     let date = safeText(input.date, 10);
     if (input.submissionId) {
       const id = safeText(input.submissionId, 120);
-      if (!/^[a-zA-Z0-9]+$/.test(id)) return jsonError("제출 이력 번호가 올바르지 않습니다.", 400);
+      if (!/^[a-zA-Z0-9_-]+$/.test(id)) return jsonError("제출 이력 번호가 올바르지 않습니다.", 400);
       const { db } = getFirebaseAdmin();
       const snapshot = await db.collection("teacher_resumes").doc(teacher.uid).collection("submissions").doc(id).get();
       if (!snapshot.exists) return jsonError("제출 이력을 찾을 수 없습니다.", 404);
