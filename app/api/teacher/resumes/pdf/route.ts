@@ -33,7 +33,10 @@ export async function POST(request: Request) {
       const stored = snapshot.data() || {};
       resume = normalizeResume(stored.resumeSnapshot);
       target = safeText(stored.target);
-      date = safeText(stored.submittedAt, 10);
+      date = safeText(stored.documentDate, 10);
+      if (!date && typeof stored.submittedAt === "string" && !Number.isNaN(Date.parse(stored.submittedAt))) {
+        date = new Date(stored.submittedAt).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+      }
     } else {
       resume = selectResumeEntries(resume, selectedEntries(input.selected));
     }
