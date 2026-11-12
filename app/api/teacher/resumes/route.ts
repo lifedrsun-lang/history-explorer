@@ -93,6 +93,7 @@ export async function POST(request: Request) {
       method,
       status: "self-reported",
       submittedAt,
+      documentDate: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }),
       selectedCount: resume.education.length + resume.experience.length + resume.training.length + resume.certificates.length,
       attachmentNames: [],
       resumeSnapshot: resume,
