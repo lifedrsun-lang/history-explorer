@@ -269,7 +269,7 @@ export default function TeacherResumesPage() {
     if (!window.confirm("이 기능은 발송하지 않고 직접 제출했다고 기록합니다. 계속할까요?")) return;
     await save();
     await request("/api/teacher/resumes", {
-      method: "POST", body: JSON.stringify({ target, recipient, method: manualMethod }),
+      method: "POST", body: JSON.stringify({ target, recipient, method: manualMethod, selected }),
     });
     await loadHistory();
     setMessage("외부 제출 기록을 저장했습니다. 실제 발송 여부는 별도로 확인해 주세요.");
@@ -304,7 +304,7 @@ export default function TeacherResumesPage() {
               {([
                 ["headline", "이력서 제목", "초등 한국사·세계문화 강사 이력서"],
                 ["name", "성명", "이름"],
-                ["birthDate", "생년월일", "1989.02.19"],
+                ["birthDate", "생년월일", "YYYY.MM.DD"],
                 ["phone", "연락처", "010-0000-0000"],
                 ["email", "이메일", "메일주소"],
                 ["address", "주소", "시·구·동"],
