@@ -523,7 +523,7 @@ export default function TeacherClassAccountFinder({
                         <div className="flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1.5">
                           <span className="shrink-0 text-[8px] font-black text-slate-400">변경 전</span>
                           <code className="min-w-0 flex-1 truncate text-[10px] font-black">{account.temporaryPassword ? (passwordVisible ? account.temporaryPassword : "••••••") : "원본 미등록"}</code>
-                          {account.temporaryPassword && <button type="button" onClick={() => void copyText("변경 전 비밀번호", account.temporaryPassword)} className="text-[8px] font-black text-sky-700">복사</button>}
+                          {account.temporaryPassword && !account.changedPassword && <button type="button" onClick={() => void copyText("변경 전 비밀번호", account.temporaryPassword)} aria-label="변경 전 비밀번호 복사" className="text-[8px] font-black text-sky-700">복사</button>}
                         </div>
                         <div className={`flex items-center gap-1 rounded-lg px-2 py-1.5 ${account.changedPassword ? "bg-emerald-50" : "bg-slate-50"}`}>
                           <span className={`shrink-0 text-[8px] font-black ${account.changedPassword ? "text-emerald-600" : "text-slate-400"}`}>변경 후{account.changedPassword ? " · 현재" : ""}</span>
