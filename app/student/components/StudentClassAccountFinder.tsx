@@ -57,6 +57,7 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
   const schoolLabel = classroom.schoolDisplayName || "서울 개봉초";
   const isWonjongSchool = classroom.schoolName === WONJONG_SCHOOL_NAME;
   const passwordChangeEnabled = !isWonjongSchool || Boolean(account?.passwordResetAllowed);
+  const showPasswordHistory = passwordChangeEnabled || Boolean(account?.changedPassword);
 
   const resetPasswordForm = () => {
     setIsResettingPassword(false);
@@ -138,6 +139,19 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
       window.setTimeout(() => setAccountIdCopied(false), 1500);
     } catch {
       setErrorMessage("아이디를 복사하지 못했어요. 값을 길게 눌러 복사해 주세요.");
+    }
+  };
+
+  const copyPassword = async (value: string) => {
+    if (!value) return;
+    try {
+      if (!navigator.clipboard) throw new Error("clipboard_unavailable");
+      await navigator.clipboard.writeText(value);
+      setErrorMessage("");
+      setNotice("비밀번호 복사 완료 ✓");
+    } catch {
+      setNotice("");
+      setErrorMessage("비밀번호를 복사하지 못했어요. 값을 길게 눌러 복사해 주세요.");
     }
   };
 
@@ -294,15 +308,22 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
               </dd>
             </div>
             {account.temporaryPassword && (
-              passwordChangeEnabled ? (
+              showPasswordHistory ? (
                 <div className="rounded-2xl bg-white px-4 py-3">
                   <dt className="text-[10px] font-black text-slate-400">비밀번호</dt>
                   <dd className="mt-2 space-y-2">
                     <div className="rounded-xl bg-slate-50 px-3 py-2.5">
                       <div className="text-[9px] font-black text-slate-400">변경 전</div>
-                      <code className="mt-1 block break-all font-mono text-sm font-black tracking-wide text-slate-700">
-                        {account.temporaryPassword}
-                      </code>
+                      <div className="mt-1 flex items-center gap-2">
+                        <code className="min-w-0 flex-1 break-all font-mono text-sm font-black tracking-wide text-slate-700">{account.temporaryPassword}</code>
+                        {!account.changedPassword && (
+                          <button type="button" onClick={() => void copyPassword(account.temporaryPassword || "")}
+                            aria-label="변경 전 비밀번호 복사"
+                            className="shrink-0 rounded-xl bg-sky-50 px-3 py-2 text-xs font-black text-sky-700 transition active:scale-95">
+                            📋 복사
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className={`rounded-xl px-3 py-2.5 ${account.changedPassword ? "bg-emerald-50" : "bg-amber-50"}`}>
                       <div className={`text-[9px] font-black ${account.changedPassword ? "text-emerald-600" : "text-amber-600"}`}>
@@ -310,9 +331,14 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
                       </div>
                       {account.changedPassword ? (
                         <>
-                          <code className="mt-1 block break-all font-mono text-base font-black tracking-wide text-emerald-800">
-                            {account.changedPassword}
-                          </code>
+                          <div className="mt-1 flex items-center gap-2">
+                            <code className="min-w-0 flex-1 break-all font-mono text-base font-black tracking-wide text-emerald-800">{account.changedPassword}</code>
+                            <button type="button" onClick={() => void copyPassword(account.changedPassword || "")}
+                              aria-label="변경 후 비밀번호 복사"
+                              className="shrink-0 rounded-xl bg-white px-3 py-2 text-xs font-black text-sky-700 transition active:scale-95">
+                              📋 복사
+                            </button>
+                          </div>
                           {account.passwordChangedAt && (
                             <div className="mt-1 text-[9px] font-bold text-emerald-600/70">
                               저장 {formatChangedAt(account.passwordChangedAt)}
@@ -396,8 +422,13 @@ export default function StudentClassAccountFinder({ classroom }: Props) {
               ) : (
                 <div className="rounded-2xl bg-white px-4 py-3">
                   <dt className="text-[10px] font-black text-slate-400">비밀번호</dt>
-                  <dd className="mt-1 break-all font-mono text-sm font-black tracking-wide text-slate-800">
-                    {account.temporaryPassword}
+                  <dd className="mt-1 flex items-center gap-2">
+                    <code className="min-w-0 flex-1 break-all font-mono text-sm font-black tracking-wide text-slate-800">{account.temporaryPassword}</code>
+                    <button type="button" onClick={() => void copyPassword(account.temporaryPassword || "")}
+                      aria-label="비밀번호 복사"
+                      className="shrink-0 rounded-xl bg-sky-50 px-3 py-2 text-xs font-black text-sky-700 transition active:scale-95">
+                      📋 복사
+                    </button>
                   </dd>
                 </div>
               )
