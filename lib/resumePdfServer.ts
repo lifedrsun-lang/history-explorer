@@ -32,7 +32,7 @@ export async function renderResumeHtml(resume: ResumeData, target: string, date:
     const rows = resume[section.key];
     if (!rows.length) return "";
     return `<table class="group"><colgroup><col style="width:15%"><col style="width:59%"><col style="width:26%"></colgroup><thead><tr><th class="sectionhead" colspan="3">${escapeHtml(section.label)}</th></tr>
-      <tr><th class="period">기간·취득일</th><th>${escapeHtml(section.first)}</th><th class="issuer">${escapeHtml(section.second)}</th></tr></thead>
+      <tr><th class="period">${escapeHtml(section.periodLabel)}</th><th>${escapeHtml(section.first)}</th><th class="issuer">${escapeHtml(section.second)}</th></tr></thead>
       <tbody>${rows.map(row => `<tr><td>${cell(row.period)}</td><td>${cell(row.title)}</td><td>${cell(row.detail)}</td></tr>`).join("")}</tbody></table>`;
   };
 
