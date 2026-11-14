@@ -22,11 +22,11 @@ export type ResumeData = {
   certificates: ResumeEntry[];
 };
 
-export const RESUME_SECTIONS: { key: ResumeSection; label: string; first: string; second: string }[] = [
-  { key: "education", label: "학력사항", first: "학교·과정", second: "전공·내용" },
-  { key: "experience", label: "경력사항", first: "담당 업무·활동", second: "소속 기관" },
-  { key: "training", label: "교육 이수 및 연수", first: "교육·연수명", second: "교육 기관" },
-  { key: "certificates", label: "자격사항", first: "자격증명", second: "발급 기관" },
+export const RESUME_SECTIONS: { key: ResumeSection; label: string; periodLabel: string; first: string; second: string }[] = [
+  { key: "education", label: "학력사항", periodLabel: "기간·취득일", first: "학교·과정", second: "전공·내용" },
+  { key: "experience", label: "경력사항", periodLabel: "근무기간", first: "담당 업무·활동", second: "소속 기관" },
+  { key: "training", label: "교육 이수 및 연수", periodLabel: "교육, 연수기간", first: "교육·연수명", second: "교육 기관" },
+  { key: "certificates", label: "자격사항", periodLabel: "취득일자", first: "자격증명", second: "발급 기관" },
 ];
 
 export const emptyResume = (): ResumeData => ({
