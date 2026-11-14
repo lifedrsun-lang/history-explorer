@@ -63,9 +63,9 @@ export async function renderResumeHtml(resume: ResumeData, target: string, date:
       .identity-wrap{grid-template-columns:minmax(0,1fr) 70px;gap:7px}
       .identity{height:87px}.identity tr{height:29px}
       .photo,.photo-placeholder{width:70px;height:87px}
-      .identity th,.identity td{font-size:7.5px;padding:2px 3px}
-      .group th,.group td{font-size:8px;padding:4px 3px}
-      .group th.sectionhead{font-size:9px}
+      .identity th,.identity td{font-size:9px;padding:2px 3px}
+      .group th,.group td{font-size:10px;padding:4px 3px}
+      .group th.sectionhead{font-size:10px}
       .group td{line-height:1.45}
     }
     *{box-sizing:border-box}
