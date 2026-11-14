@@ -1,6 +1,6 @@
 import { handleRouteError, jsonError, verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
-import { renderResumePdf } from "@/lib/resumePdfServer";
+import { renderResumeHtml, renderResumePdf } from "@/lib/resumePdfServer";
 import { normalizeResume, selectResumeEntries, type ResumeSection } from "@/lib/resumes";
 
 export const runtime = "nodejs";
@@ -42,9 +42,15 @@ export async function POST(request: Request) {
     }
     if (!resume.name) return jsonError("이력서 성명을 먼저 입력해 주세요.", 400);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) date = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
-    const pdf = await renderResumePdf(resume, target, date);
     const filename = `이력서_${target || "공통"}_${resume.name}_${date}.pdf`
       .replace(/[\\/:*?"<>|]/g, "-").slice(0, 160);
+    if (input.preview === true) {
+      const html = await renderResumeHtml(resume, target, date);
+      return Response.json({ html, filename }, {
+        headers: { "Cache-Control": "no-store, max-age=0" },
+      });
+    }
+    const pdf = await renderResumePdf(resume, target, date);
     return new Response(new Uint8Array(pdf), {
       headers: {
         "Content-Type": "application/pdf",

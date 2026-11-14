@@ -2,7 +2,7 @@
 
 import { onAuthStateChanged, type User } from "firebase/auth";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { auth } from "@/lib/firebase";
 import { emptyResume, RESUME_SECTIONS, type ResumeData, type ResumeEntry, type ResumeSection } from "@/lib/resumes";
 
@@ -147,21 +147,11 @@ export default function TeacherResumesPage() {
   const [attachments, setAttachments] = useState<File[]>([]);
   const [manualMethod, setManualMethod] = useState("email-external");
   const [gmailConnected, setGmailConnected] = useState(false);
-  const [preview, setPreview] = useState<{ url: string; filename: string } | null>(null);
-  const previewUrlRef = useRef<string | null>(null);
+  const [preview, setPreview] = useState<{
+    html: string; filename: string; submissionId?: string;
+  } | null>(null);
 
-  useEffect(() => () => {
-    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-  }, []);
-
-  const closePreview = () => {
-    if (previewUrlRef.current) {
-      URL.revokeObjectURL(previewUrlRef.current);
-      previewUrlRef.current = null;
-    }
-    setPreview(null);
-  };
-
+  const closePreview = () => setPreview(null);
 
   useEffect(() => onAuthStateChanged(auth, account => {
     setUser(account);
@@ -257,11 +247,20 @@ export default function TeacherResumesPage() {
   };
 
   const showPreview = async (submissionId?: string) => {
-    const { blob, filename } = await createPdf(submissionId);
-    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-    const url = URL.createObjectURL(blob);
-    previewUrlRef.current = url;
-    setPreview({ url, filename });
+    if (!user) throw new Error("교사 로그인이 필요합니다.");
+    const token = await user.getIdToken();
+    // Android 브라우저에서 blob PDF iframe이 열리지 않는 문제를 방지하기 위해
+    // 동일한 인쇄 템플릿의 HTML을 제한된 iframe에 바로 표시합니다.
+    const response = await fetch("/api/teacher/resumes/pdf", {
+      method: "POST", cache: "no-store",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(submissionId
+        ? { submissionId, preview: true }
+        : { resume, selected, target, date: today(), preview: true }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "미리보기를 생성하지 못했습니다.");
+    setPreview({ html: data.html, filename: data.filename, submissionId });
   };
 
   const loadHistory = async () => {
@@ -472,20 +471,21 @@ export default function TeacherResumesPage() {
                 <p className="max-w-full truncate text-xs text-slate-500">{preview.filename}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <a href={preview.url} target="_blank" rel="noopener noreferrer"
-                  className="rounded-lg border px-3 py-2 text-xs font-bold text-slate-700">새 탭에서 보기</a>
-                <a href={preview.url} download={preview.filename}
-                  className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white">PDF 저장</a>
+                <button type="button" disabled={!!busy}
+                  onClick={() => run("preview-download", () => download(preview.submissionId))}
+                  className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
+                  {busy === "preview-download" ? "저장 준비 중..." : "PDF 저장"}
+                </button>
                 <button type="button" onClick={closePreview} aria-label="미리보기 닫기"
                   className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-800">닫기 ✕</button>
               </div>
             </div>
             <div className="min-h-0 flex-1 bg-slate-100">
-              <iframe title="이력서 A4 PDF 미리보기" src={preview.url}
-                className="h-full w-full border-0 bg-white" />
+              <iframe title="이력서 A4 미리보기" srcDoc={preview.html} sandbox=""
+                className="h-full w-full border-0 bg-slate-100" />
             </div>
             <p className="border-t border-slate-200 px-3 py-2 text-center text-xs text-slate-500">
-              화면이 표시되지 않는 모바일 브라우저에서는 ‘새 탭에서 보기’를 이용해 주세요.
+              모바일에서도 A4 양식을 직접 확인할 수 있습니다. PDF 저장은 별도 버튼을 이용해 주세요.
             </p>
           </div>
         </div>
