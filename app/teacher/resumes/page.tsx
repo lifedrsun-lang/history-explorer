@@ -72,7 +72,7 @@ function SectionEditor({
               }} className="text-xs font-bold text-rose-600">삭제</button>
             </div>
             <div className="grid gap-2 sm:grid-cols-[125px_1fr_1fr]">
-              <label className="text-xs font-bold text-slate-600">기간·취득일
+              <label className="text-xs font-bold text-slate-600">{definition.periodLabel}
                 <input className={fieldClass} placeholder="2025.03~현재" value={entry.period} onChange={e => edit(entry.id, "period", e.target.value)} />
               </label>
               <label className="text-xs font-bold text-slate-600">{definition.first}
