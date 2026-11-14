@@ -15,7 +15,7 @@ const escapeHtml = (value: unknown) => String(value ?? "")
 
 const cell = (value: string) => escapeHtml(value).replace(/\n/g, "<br>");
 
-export async function renderResumePdf(resume: ResumeData, target: string, date: string): Promise<Buffer> {
+export async function renderResumeHtml(resume: ResumeData, target: string, date: string): Promise<string> {
   const fontFiles = await Promise.all([
     readFile(path.join(process.cwd(), "public/fonts/noto-sans-kr-400.woff2")),
     readFile(path.join(process.cwd(), "public/fonts/noto-sans-kr-700.woff2")),
@@ -31,7 +31,7 @@ export async function renderResumePdf(resume: ResumeData, target: string, date: 
   const groupTable = (section: typeof RESUME_SECTIONS[number]) => {
     const rows = resume[section.key];
     if (!rows.length) return "";
-    return `<table class="group"><thead><tr><th class="sectionhead" colspan="3">${escapeHtml(section.label)}</th></tr>
+    return `<table class="group"><colgroup><col style="width:15%"><col style="width:59%"><col style="width:26%"></colgroup><thead><tr><th class="sectionhead" colspan="3">${escapeHtml(section.label)}</th></tr>
       <tr><th class="period">기간·취득일</th><th>${escapeHtml(section.first)}</th><th class="issuer">${escapeHtml(section.second)}</th></tr></thead>
       <tbody>${rows.map(row => `<tr><td>${cell(row.period)}</td><td>${cell(row.title)}</td><td>${cell(row.detail)}</td></tr>`).join("")}</tbody></table>`;
   };
@@ -45,19 +45,29 @@ export async function renderResumePdf(resume: ResumeData, target: string, date: 
   const secondGroups = RESUME_SECTIONS.filter(section =>
     section.key === "training" || section.key === "certificates"
   ).map(groupTable).join("");
-  const secondPage = firstGroups && secondGroups
-    ? `<section class="second-page"><div class="continued">
-        <span>${escapeHtml(resume.headline)}</span>
-        <span>${escapeHtml(resume.name)}</span>
-      </div>${secondGroups}</section>`
-    : secondGroups;
-  const groups = firstGroups + secondPage;
   const photo = resume.photoDataUrl
     ? `<img class="photo" alt="증명사진" src="${escapeHtml(resume.photoDataUrl)}" />`
     : `<div class="photo-placeholder">사진</div>`;
   const css = `
     ${faces}
-    @page{size:A4;margin:12mm 13mm 13mm}
+    @page{size:A4;margin:0}
+    .resume-page{width:210mm;min-height:297mm;padding:12mm 13mm 13mm;background:white}
+    .resume-page + .resume-page{break-before:page;page-break-before:always}
+    @media screen {
+      html,body{background:#e2e8f0}
+      .resume-page{margin:0 auto 14px;box-shadow:0 1px 8px rgba(15,23,42,.16)}
+    }
+    @media screen and (max-width:720px) {
+      .resume-page{width:100%;min-height:0;padding:12px 10px;margin-bottom:14px;box-shadow:none}
+      h1{font-size:14pt}
+      .identity-wrap{grid-template-columns:minmax(0,1fr) 70px;gap:7px}
+      .identity{height:87px}.identity tr{height:29px}
+      .photo,.photo-placeholder{width:70px;height:87px}
+      .identity th,.identity td{font-size:7.5px;padding:2px 3px}
+      .group th,.group td{font-size:8px;padding:4px 3px}
+      .group th.sectionhead{font-size:9px}
+      .group td{line-height:1.45}
+    }
     *{box-sizing:border-box}
     html,body{margin:0;padding:0;color:#111;font-family:Korean,sans-serif;font-size:8.5pt;line-height:1.3}
     h1{text-align:center;font-size:17pt;margin:3mm 0 6mm;font-weight:700;letter-spacing:.025em}
@@ -75,7 +85,7 @@ export async function renderResumePdf(resume: ResumeData, target: string, date: 
     .photo-placeholder{display:flex;align-items:center;justify-content:center;color:#999}
     .group{margin:0 0 5mm;break-inside:avoid;page-break-inside:avoid}
     .group th.sectionhead{background:#f1f3f5;border-bottom:1px solid #444;padding:2.5mm 2mm;font-size:9.5pt}
-    .group th.period{width:18%}.group th.issuer{width:26%}
+    .group th.period{text-align:center}.group th.issuer{text-align:center}
     .group th{background:#fafafa;padding:2mm;font-size:8.4pt}
     .group td{line-height:1.34}
     .group tr{break-inside:avoid;page-break-inside:avoid}
@@ -92,14 +102,31 @@ export async function renderResumePdf(resume: ResumeData, target: string, date: 
   const introduction = resume.introduction
     ? `<section class="intro"><strong>주요 활동 및 자기소개</strong>${cell(resume.introduction)}</section>`
     : "";
-  const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><style>${css}</style></head><body>
-    <h1>${escapeHtml(resume.headline)}</h1>
-    ${target ? `<p class="sub">제출처: ${escapeHtml(target)}</p>` : ""}
-    <div class="identity-wrap"><div>${address}</div>${photo}</div>
-    ${groups}${introduction}
-    <div class="signoff"><p>위 기재 내용에 허위사실이 없음을 확인합니다.</p>
-    <p>${escapeHtml(date)} &nbsp; ${escapeHtml(resume.name)} (인)</p></div>
+  const signoff = `<div class="signoff"><p>위 기재 내용에 허위사실이 없음을 확인합니다.</p>
+    <p>${escapeHtml(date)} &nbsp; ${escapeHtml(resume.name)} (인)</p></div>`;
+  const secondPage = secondGroups
+    ? `<section class="resume-page second-page"><div class="continued">
+        <span>${escapeHtml(resume.headline)}</span>
+        <span>${escapeHtml(resume.name)}</span>
+      </div>${secondGroups}${introduction}${signoff}</section>`
+    : "";
+  const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:; base-uri 'none'; form-action 'none'">
+    <style>${css}</style></head><body>
+    <section class="resume-page">
+      <h1>${escapeHtml(resume.headline)}</h1>
+      ${target ? `<p class="sub">제출처: ${escapeHtml(target)}</p>` : ""}
+      <div class="identity-wrap"><div>${address}</div>${photo}</div>
+      ${firstGroups}${secondPage ? "" : introduction}${secondPage ? "" : signoff}
+    </section>
+    ${secondPage}
     </body></html>`;
+  return html;
+}
+
+export async function renderResumePdf(resume: ResumeData, target: string, date: string): Promise<Buffer> {
+  const html = await renderResumeHtml(resume, target, date);
   const browser = await puppeteer.launch({
     args: chromium.args,
     executablePath: await chromium.executablePath(),
