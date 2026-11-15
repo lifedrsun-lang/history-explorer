@@ -109,7 +109,11 @@ const fallenYears: Record<string, number> = {
 const textbookSourceLabel = (event: StudentEvent) => {
   const issues = event.textbookIssues ?? event.sourceIssueNumbers ?? [];
   const unique = [...new Set(issues)].sort((a, b) => a - b);
-  return unique.length ? unique.map((issue) => `교재 ${issue}호`).join(" · ") : "교재 확인";
+  return unique.length
+    ? unique.map((issue) => `교재 ${issue}호`).join(" · ")
+    : event.id.startsWith("heritage-dodong-") || event.id === "heritage-nine-seowon-unesco-2019"
+      ? "현장 답사·공식 문화유산 자료 (교재 호수 미연결)"
+      : "교재 확인";
 };
 
 // 정확한 '년 월 일' 표기만 두 줄로 나누고, 연도만 있거나 불확실한 날짜는 유지한다.
