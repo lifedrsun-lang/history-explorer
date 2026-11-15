@@ -63,6 +63,8 @@ export const HISTORY_TIMELINE_HERITAGE_EVENTS: HistoryTimelineEvent[] = [
   // 1604년 사당 재건과 1605년 서원 일곽 완공, 1607년 사액과 1610년 봉안을 구분한다.
   {
     id: "heritage-dodong-ssanggye-founded-1568",
+    contentCategory: "국가유산",
+    contentSubcategory: "서원",
     sortYear: 1568,
     dateLabel: "1568년",
     stateOrEra: "조선",
@@ -77,6 +79,8 @@ export const HISTORY_TIMELINE_HERITAGE_EVENTS: HistoryTimelineEvent[] = [
   },
   {
     id: "heritage-dodong-rebuilt-1604",
+    contentCategory: "국가유산",
+    contentSubcategory: "서원",
     sortYear: 1604,
     dateLabel: "1604~1605년",
     stateOrEra: "조선",
@@ -91,6 +95,8 @@ export const HISTORY_TIMELINE_HERITAGE_EVENTS: HistoryTimelineEvent[] = [
   },
   {
     id: "heritage-dodong-royal-charter-1607",
+    contentCategory: "국가유산",
+    contentSubcategory: "서원",
     sortYear: 1607,
     dateLabel: "1607년",
     stateOrEra: "조선",
@@ -105,6 +111,8 @@ export const HISTORY_TIMELINE_HERITAGE_EVENTS: HistoryTimelineEvent[] = [
   },
   {
     id: "heritage-dodong-enshrinement-1610",
+    contentCategory: "국가유산",
+    contentSubcategory: "서원",
     sortYear: 1610,
     dateLabel: "1610년",
     stateOrEra: "조선",
@@ -119,6 +127,8 @@ export const HISTORY_TIMELINE_HERITAGE_EVENTS: HistoryTimelineEvent[] = [
   },
   {
     id: "heritage-dodong-survives-1871",
+    contentCategory: "국가유산",
+    contentSubcategory: "서원",
     sortYear: 1871,
     dateLabel: "1871년",
     stateOrEra: "조선",
@@ -133,6 +143,8 @@ export const HISTORY_TIMELINE_HERITAGE_EVENTS: HistoryTimelineEvent[] = [
   },
   {
     id: "heritage-nine-seowon-unesco-2019",
+    contentCategory: "국가유산",
+    contentSubcategory: "서원",
     sortYear: 2019,
     dateLabel: "2019년 7월 6일",
     stateOrEra: "대한민국",
