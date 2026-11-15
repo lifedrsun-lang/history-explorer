@@ -21,6 +21,7 @@ const root = path.join(__dirname, "..");
 const history = require(path.join(root, "lib/historyTimeline.ts"));
 const topicsLibrary = require(path.join(root, "lib/historyTimelineAllTopics.ts"));
 const peopleLibrary = require(path.join(root, "lib/historyTimelinePeople.ts"));
+const conflictLibrary = require(path.join(root, "lib/historyTimelineWarDetails.ts"));
 if (originalTs) Module._extensions[".ts"] = originalTs;
 else delete Module._extensions[".ts"];
 
@@ -31,6 +32,36 @@ const { buildTimelinePersonDirectory } = peopleLibrary;
 assert(HISTORY_TIMELINE_EVENTS.length > 0, "Missing timeline events");
 assert.equal(new Set(HISTORY_TIMELINE_EVENTS.map(e => e.id)).size, HISTORY_TIMELINE_EVENTS.length, "Duplicate event ID");
 assert.equal(new Set(HISTORY_TIMELINE_ALL_TOPICS.map(t => t.id)).size, HISTORY_TIMELINE_ALL_TOPICS.length, "Duplicate topic ID");
+
+// Source-backed 전쟁·전투·군사 정변 요약이 기본 사건을 빠짐없이 가리키는지 검증한다.
+const warDetails = conflictLibrary.HISTORY_TIMELINE_WAR_DETAILS;
+const warIds = Object.keys(warDetails);
+assert.equal(warIds.length, 63, "Expected 63 verified war/armed-conflict/coup summaries");
+assert.equal(new Set(warIds).size, warIds.length, "Duplicate war summary ID");
+const timelineIds = new Set(HISTORY_TIMELINE_EVENTS.map(e => e.id));
+for (const id of warIds) {
+  assert(timelineIds.has(id), `War summary is not linked to a timeline event: ${id}`);
+  assert(warDetails[id].kind && warDetails[id].opponent && warDetails[id].place && warDetails[id].result,
+    `Missing mandatory war summary field: ${id}`);
+}
+// 시위·평화적 왕위 계승을 전쟁으로 오분류하지 않도록 제목 단서를 좁혀서 검사한다.
+const militaryEventTitle = /전쟁|전투|대첩|침략|침입|해전|싸움|정변|군란|봉기|난이 일어남/;
+const missingMilitaryCards = HISTORY_TIMELINE_EVENTS
+  .filter(event => militaryEventTitle.test(event.title) && !warDetails[event.id])
+  .map(event => `${event.dateLabel}: ${event.title} [${event.id}]`);
+assert.deepEqual(missingMilitaryCards, [], `Missing linked military summary: ${missingMilitaryCards.join(", ")}`);
+for (const id of [
+  "later-baekje-falls-936",
+  "supplement-flow-silla-maesoseong-675",
+  "supplement-flow-silla-gibeolpo-676",
+  "supplement-flow-joseon-ugeumchi-1894",
+  "goryeo-gangjo-coup-1009",
+  "goryeo-military-coup-1170",
+  "republic-may16-1961",
+]) assert(warDetails[id], `New historical conflict summary missing: ${id}`);
+assert(warDetails["republic-koreanwar-1950"].result.includes("1953년 정전 협정"),
+  "Korean War must distinguish the 1953 armistice from a peace treaty");
+
 
 assert.deepEqual(normalizeTimelineIssues([0,1,1,4,6,24,"13","bad",-1]), [1,4,6,13]);
 assert.deepEqual(resolveTimelineCompletedIssues({timelineCompletedIssues:[]}).issues, []);
