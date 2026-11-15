@@ -56,6 +56,9 @@ export const DISPLAYABLE_HISTORY_MATERIALS: ReadonlySet<string> = new Set([
   "강화 광성보(인천 강화군)",
   "기미독립선언서(1919년)",
   "『한국독립운동지혈사』",
+  // 도동서원 현장 답사 안내판 및 국가유산청·UNESCO에서 실물·명칭 확인.
+  "달성 도동서원(대구 달성군)",
+  "한국의 서원(유네스코 세계유산)",
 ]);
 
 export function shouldShowTimelineMaterial(value?: string): boolean {
