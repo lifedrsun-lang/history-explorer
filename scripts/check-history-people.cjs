@@ -317,4 +317,32 @@ assert(!ids(workbookDirectory.byTopic["topic-11-workbook-khitan-commanders"]).so
 assert.deepEqual(Object.keys(buildTimelinePersonDirectory([], workbookTopics.filter(t => t.issue === 10)).byTopic), [],
   "Issue 11 workbook person cards must stay hidden without issue-11 access");
 
+// 9호 1~4차시의 별도 수업자료(본권 아님)에서 확인한 인물만 연결한다.
+const nineLessonSrc = fs.readFileSync(path.join(__dirname, "..", "lib/historyTimelineNineLessonFigureTopics.ts"), "utf8");
+const nineLessonMod = { exports: {} };
+new Function("module", "exports", ts.transpileModule(nineLessonSrc, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+}).outputText)(nineLessonMod, nineLessonMod.exports);
+const nineLessonTopics = nineLessonMod.exports.HISTORY_TIMELINE_NINE_LESSON_FIGURE_TOPICS;
+assert.equal(nineLessonTopics.length, 6, "Only six explained figures belong in the 9th-issue teaching notes");
+assert(nineLessonTopics.every(topic => topic.issue === 9 && topic.pages.includes("수업자료") && topic.pages.includes("본권 미확인")),
+  "9th-issue teaching slides must not be attributed to a fully checked textbook");
+const nineDir = buildTimelinePersonDirectory([], nineLessonTopics);
+for(const [topicId,personId] of [
+  ["topic-09-lesson-haegong","신라:혜공왕"],
+  ["topic-09-lesson-gyeongmun","신라:경문왕"],
+  ["topic-09-lesson-doseon","신라:도선"],
+  ["topic-09-lesson-balhae-geol","발해:걸걸중상"],
+  ["topic-09-lesson-balhae-jang","발해:장문휴"],
+  ["topic-09-lesson-balhae-daebongye","발해:대봉예"],
+]) requirePerson(nineDir.byTopic[topicId],personId,"9th issue teaching notes");
+assert(!Object.values(nineDir.byTopic).flat().some(person => person.name === "진덕여왕"),
+  "An unrelated quiz-choice-only name is not sufficient evidence for an independent person card");
+assert(nineDir.byTopic["topic-09-lesson-haegong"].every(person=>person.era === "신라"),
+  "Silla person card must not contain Balhae identities");
+assert(nineDir.byTopic["topic-09-lesson-balhae-jang"].every(person=>person.era === "발해"),
+  "Balhae person card must not contain Silla identities");
+assert.deepEqual(Object.keys(buildTimelinePersonDirectory([],nineLessonTopics.filter(t=>t.issue===10)).byTopic),[],
+  "9th-issue teaching person cards must not leak to issue 10");
+
 console.log("History person-card regression: coverage and permission assertions passed.");

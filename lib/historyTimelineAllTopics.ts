@@ -2,6 +2,7 @@ import { GORYEO_STUDY_TOPICS, type HistoryTimelineStudyTopic } from "./historyTi
 import { HISTORY_TIMELINE_ANCIENT_PERSON_TOPICS } from "./historyTimelineAncientPersonTopics";
 import { HISTORY_TIMELINE_ORIGINAL_FIGURE_TOPICS } from "./historyTimelineOriginalFigureTopics";
 import { HISTORY_TIMELINE_ELEVEN_WORKBOOK_TOPICS } from "./historyTimelineElevenWorkbookTopics";
+import { HISTORY_TIMELINE_NINE_LESSON_FIGURE_TOPICS } from "./historyTimelineNineLessonFigureTopics";
 import { HISTORY_TIMELINE_FIRST_FIVE_SOURCE_TOPICS } from "./historyTimelineFirstFiveAuditTopics";
 import { HISTORY_TIMELINE_LATE_TOPICS } from "./historyTimelineLateTopics";
 import { HISTORY_TIMELINE_JOSEON_LATE_TOPICS } from "./historyTimelineJoseonLateTopics";
@@ -12,6 +13,7 @@ export const HISTORY_TIMELINE_ALL_TOPICS: HistoryTimelineStudyTopic[] = [
   ...HISTORY_TIMELINE_ANCIENT_PERSON_TOPICS,
   ...HISTORY_TIMELINE_ORIGINAL_FIGURE_TOPICS,
   ...HISTORY_TIMELINE_ELEVEN_WORKBOOK_TOPICS,
+  ...HISTORY_TIMELINE_NINE_LESSON_FIGURE_TOPICS,
   ...HISTORY_TIMELINE_FIRST_FIVE_SOURCE_TOPICS,
   ...GORYEO_STUDY_TOPICS,
   ...HISTORY_TIMELINE_LATE_TOPICS,
