@@ -161,6 +161,7 @@ export default function TimelineClient() {
   const [referenceEvents, setReferenceEvents] = useState<StudentEvent[]>([]);
   const [showRobin, setShowRobin] = useState(false);
   const [showReadingBook, setShowReadingBook] = useState(false);
+  const [showElementary, setShowElementary] = useState(false);
   const [showYongseonsaeng, setShowYongseonsaeng] = useState(false);
   const [showByeolbyeolBasic, setShowByeolbyeolBasic] = useState(false);
   const [showByeolbyeolAdvanced, setShowByeolbyeolAdvanced] = useState(false);
@@ -302,6 +303,7 @@ export default function TimelineClient() {
     setShowYongseonsaeng(defaultVisible);
     setShowRobin(defaultVisible);
     setShowReadingBook(defaultVisible);
+    setShowElementary(defaultVisible);
   }, [viewerRole]);
 
   // 이미 열어 둔 학생 페이지도 탭 복귀 또는 주기적인 재조회 시 공개 중단을 반영한다.
@@ -350,7 +352,8 @@ export default function TimelineClient() {
       ...referenceEvents.filter(event =>
         (event.referenceGroup === "yong" && showYongseonsaeng ||
          event.referenceGroup === "robin" && showRobin ||
-         event.referenceGroup === "reading" && showReadingBook)),
+         event.referenceGroup === "reading" && showReadingBook ||
+         event.referenceGroup === "elementary" && showElementary)),
     ];
     for (const extra of supplements) {
       const key = historicalEventKey(extra);
@@ -372,7 +375,7 @@ export default function TimelineClient() {
         a.id.localeCompare(b.id)),
       mergedExtraDetailsByEvent,
     };
-  }, [payload, byeolbyeolFlowEvents, showByeolbyeolBasic, showByeolbyeolAdvanced, yongFlowEvents, showYongseonsaeng, referenceEvents, showRobin, showReadingBook]);
+  }, [payload, byeolbyeolFlowEvents, showByeolbyeolBasic, showByeolbyeolAdvanced, yongFlowEvents, showYongseonsaeng, referenceEvents, showRobin, showReadingBook, showElementary]);
 
   const visibleEvents = useMemo(() => allDisplayEvents.filter((event) =>
       filter === "전체" ||
@@ -405,6 +408,7 @@ export default function TimelineClient() {
   // PC와 모바일 공통 보기 옵션. '교재 핵심 설명'은 항상 표시한다.
   const materialToggles = [
     { key: "people", label: "👤 인물카드", checked: showPersonCards, update: setShowPersonCards },
+    { key: "elementary", label: "별별한국사 · 초등", checked: showElementary, update: setShowElementary },
     { key: "basic", label: "별별한국사 · 기본", checked: showByeolbyeolBasic, update: setShowByeolbyeolBasic },
     { key: "advanced", label: "별별한국사 · 심화", checked: showByeolbyeolAdvanced, update: setShowByeolbyeolAdvanced },
     { key: "yong", label: "용선생 교과서 한국사", checked: showYongseonsaeng, update: setShowYongseonsaeng },
@@ -767,7 +771,7 @@ export default function TimelineClient() {
                             <TimelineByeolbyeolDetails notes={byeolbyeolNotes[event.id]}
                               enabledLevels={enabledByeolbyeolLevels} />
                             <TimelineYongDetails notes={yongNotes[event.id]} enabled={yongEnabled} />
-                                      <TimelineReferenceNotes notes={referenceNotes[event.id]} showRobin={showRobin} showReading={showReadingBook} />
+                                      <TimelineReferenceNotes notes={referenceNotes[event.id]} showRobin={showRobin} showReading={showReadingBook} showElementary={showElementary} />
                                       {(mergedExtraDetailsByEvent[event.id] ?? []).map(extra => (
                                         <details className={supplementStyles.disclosure} key={extra.id}>
                                           <summary>📖 {extra.referenceSource?.book ?? (extra.byeolbyeolLevel ? "별별한국사" : extra.yongseonsaeng ? "용선생 교과서 한국사" : "참고자료")} 시대 흐름 더 보기</summary>
@@ -907,7 +911,7 @@ export default function TimelineClient() {
                           <TimelineByeolbyeolDetails notes={byeolbyeolNotes[overviewEvent.id]}
                             enabledLevels={enabledByeolbyeolLevels} />
                           <TimelineYongDetails notes={yongNotes[overviewEvent.id]} enabled={yongEnabled} />
-                          <TimelineReferenceNotes notes={referenceNotes[overviewEvent.id]} showRobin={showRobin} showReading={showReadingBook} />
+                          <TimelineReferenceNotes notes={referenceNotes[overviewEvent.id]} showRobin={showRobin} showReading={showReadingBook} showElementary={showElementary} />
                           <small className={styles.gridSource}>{textbookSourceLabel(overviewEvent)}</small>
                           {showHeritageDetails && (<TimelineHeritageDetails notes={payload?.heritageNotes?.[overviewEvent.id] || []} />)}
                            {(showExamBasic || showExamAdvanced) && (<TimelineExamReferences eventId={overviewEvent.id} refs={examRefsForEvent(overviewEvent.id)} />)}
@@ -1005,7 +1009,7 @@ export default function TimelineClient() {
                                       <TimelineByeolbyeolDetails notes={byeolbyeolNotes[event.id]}
                                         enabledLevels={enabledByeolbyeolLevels} />
                                       <TimelineYongDetails notes={yongNotes[event.id]} enabled={yongEnabled} />
-                                      <TimelineReferenceNotes notes={referenceNotes[event.id]} showRobin={showRobin} showReading={showReadingBook} />
+                                      <TimelineReferenceNotes notes={referenceNotes[event.id]} showRobin={showRobin} showReading={showReadingBook} showElementary={showElementary} />
                                       {!event.byeolbyeolLevel && !event.yongseonsaeng && !event.referenceGroup && (
                                         <small className={styles.gridSource}>
                                           {textbookSourceLabel(event)}
