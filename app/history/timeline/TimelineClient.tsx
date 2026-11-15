@@ -190,16 +190,20 @@ export default function TimelineClient() {
     []
   );
 
-  const loadTimeline = async (currentTeacher: User | null) => {
-    setLoading(true);
-    setError("");
-    setSunLabAccessError("");
-    setByeolbyeolNotes({});
-    setByeolbyeolFlowEvents([]);
-    setYongNotes({});
-    setReferenceNotes({});
-    setYongFlowEvents([]);
-    setReferenceEvents([]);
+  const loadTimeline = async (currentTeacher: User | null, background = false) => {
+    // 수강생 페이지의 정기 권한 확인은 전체 로딩 화면으로 전환하지 않는다.
+    // 읽던 스크롤 위치와 펼친 사건·참고자료 카드를 그대로 유지한다.
+    if (!background) {
+      setLoading(true);
+      setError("");
+      setSunLabAccessError("");
+      setByeolbyeolNotes({});
+      setByeolbyeolFlowEvents([]);
+      setYongNotes({});
+      setReferenceNotes({});
+      setYongFlowEvents([]);
+      setReferenceEvents([]);
+    }
     try {
       const token = !sunLabMemberView && currentTeacher ? await currentTeacher.getIdToken() : "";
       const response = await fetch(`/api/history/timeline/events${sunLabMemberView ? "?view=sunlab" : ""}`, {
@@ -267,13 +271,17 @@ export default function TimelineClient() {
       setNeedsLogin(false);
       setUnpublished(false);
     } catch (loadError) {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "연표를 불러오지 못했습니다."
-      );
+      // 일시적인 통신 실패는 이미 열람 중인 학생 연표 화면을 가리지 않는다.
+      // 권한 회수·세션 만료 응답은 위의 명시적 오류 분기에서 계속 즉시 반영한다.
+      if (!background) {
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "연표를 불러오지 못했습니다."
+        );
+      }
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   };
 
@@ -300,7 +308,7 @@ export default function TimelineClient() {
   useEffect(() => {
     if (!authReady || !payload || payload.viewer.role !== "student") return;
     const refresh = () => {
-      if (document.visibilityState === "visible") void loadTimeline(null);
+      if (document.visibilityState === "visible") void loadTimeline(null, true);
     };
     const timer = window.setInterval(refresh, 30000);
     document.addEventListener("visibilitychange", refresh);

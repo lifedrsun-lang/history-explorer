@@ -136,6 +136,20 @@ assert(apiRouteSource.includes("memberProfileDoc.data()?.timelineFullAccess === 
 const timelineClientSource = fs.readFileSync(path.join(root, "app/history/timeline/TimelineClient.tsx"), "utf8");
 assert(timelineClientSource.includes("const [showHeritageDetails, setShowHeritageDetails] = useState(false)"),
   "Heritage checkbox must be unchecked initially");
+// 학생의 30초 주기 열람권한 재조회가 로딩 화면으로 되돌리지 않아야 한다.
+assert(timelineClientSource.includes("const loadTimeline = async (currentTeacher: User | null, background = false) =>"),
+  "Silent student refresh must preserve the background fetch option");
+assert(timelineClientSource.includes('if (document.visibilityState === "visible") void loadTimeline(null, true);'),
+  "Periodic student refresh must be background-only");
+assert(timelineClientSource.includes("if (!background) setLoading(false);"),
+  "Background refresh must not unmount the timeline via loading state");
+assert(/if \(!background\) \{\s*setLoading\(true\)/.test(timelineClientSource),
+  "Initial page load must still display loading state");
+assert(timelineClientSource.includes('response.status === 403 && data.code === "timeline_not_published"'),
+  "Published-state revocation must remain active during background refresh");
+assert(timelineClientSource.includes('data.code === "student_auth_required" || data.code === "sunlab_session_required"'),
+  "Session revocation must remain active during background refresh");
+
 
 assert(apiRouteSource.includes('headers.set("Cache-Control", "private, no-store, max-age=0")'), "Private timeline API must not be cached publicly");
 console.log(`History timeline access regression passed: ${scenarios.length + 4} issue scenarios, ${HISTORY_TIMELINE_EVENTS.length} source events, ${HISTORY_TIMELINE_ALL_TOPICS.length} source topics.`);
