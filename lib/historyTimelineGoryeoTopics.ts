@@ -7,7 +7,7 @@ export type HistoryTimelineStudyTopic = {
   id: string;
   issue: number;
   period?: "prehistoric" | "gojoseon" | "early-states" | "three" | "goryeo" | "joseon" | "empire" | "colonial" | "liberation" | "republic";
-  nation?: "고조선" | "고구려" | "백제" | "신라" | "고려" | "거란";
+  nation?: "고조선" | "고구려" | "백제" | "신라" | "발해" | "고려" | "거란";
   title: string;
   pages: string;
   points: string[];
