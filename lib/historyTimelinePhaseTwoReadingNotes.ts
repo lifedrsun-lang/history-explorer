@@ -44,7 +44,7 @@ const VERIFIED_REFERENCE_NOTES: Readonly<Record<string,readonly HistoryReference
         "pdfPage": 45
       }
     }
-  ]
+  ],
   "goryeo-ija-gyeom-revolt-1126": [
   {
     "referenceGroup": "robin",
