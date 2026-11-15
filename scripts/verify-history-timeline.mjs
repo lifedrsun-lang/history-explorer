@@ -50,8 +50,8 @@ for (const event of HISTORY_TIMELINE_BYEOLKKUM_ADDITIONS) {
 }
 for (const [eventId, allowed, hidden] of [
   ["supplement-flow-gaya-gumgwan-532",7,8],
-  ["supplement-flow-silla-maesoseong-675",8,7],
-  ["supplement-flow-silla-gibeolpo-676",8,7],
+  ["supplement-flow-silla-maesoseong-675",8,6],
+  ["supplement-flow-silla-gibeolpo-676",8,6],
   ["supplement-flow-balhae-seon-king-818",9,8],
   ["supplement-flow-republic-oct26-1979",23,22],
   ["supplement-flow-republic-dec12-1979",23,22],
@@ -218,7 +218,18 @@ assert.ok(HISTORY_TIMELINE_EVENTS.filter(event => event.eraFilter === "고려")
 assert.ok(HISTORY_TIMELINE_EVENTS.filter(event => event.eraFilter === "고려")
   .every(event => !shouldShowTimelineMaterial(event.artifact)),
   "실물 사진이나 확인된 유물명이 없는 신규 사건에는 가상 관련 자료를 보이지 않습니다.");
-assert.equal(getTimelineEventsForIssues([7]).length, baselineEventsForIssues([7]).length + 1);
+assert.equal(getTimelineEventsForIssues([7]).length, baselineEventsForIssues([7]).length + 3);
+
+for (const eventId of ["supplement-flow-silla-maesoseong-675", "supplement-flow-silla-gibeolpo-676"]) {
+  const event = HISTORY_TIMELINE_EVENTS.find(e => e.id === eventId);
+  assert.ok(event, `본문 사건 누락: ${eventId}`);
+  assert.deepEqual(event.sourceIssueNumbers, [7, 8]);
+  assert.ok(event.textbookPages.includes("별꼼역사 07호 본문 39쪽(PDF 41쪽 · 매소성 전투와 기벌포 전투)"));
+  assert.deepEqual(toStudentTimelineEvent(event, [7]).textbookIssues, [7]);
+  assert.deepEqual(toStudentTimelineEvent(event, [8]).textbookIssues, [8]);
+  assert.equal(getTimelineEventsForIssues([6]).some(e => e.id === eventId), false);
+}
+
 assert.equal(getTimelineEventsForIssues([8]).length, baselineEventsForIssues([8]).length + 2);
 assert.equal(getTimelineEventsForIssues([9]).length, baselineEventsForIssues([9]).length + 1);
 assert.equal(getTimelineEventsForIssues([7, 8, 9]).length, baselineEventsForIssues([7,8,9]).length + 4);
