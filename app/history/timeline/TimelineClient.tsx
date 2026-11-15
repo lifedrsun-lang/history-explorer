@@ -81,6 +81,8 @@ const FILTERS = [
   ["대한민국", "대한민국"],
 ] as const;
 
+type TimelineFilter = (typeof FILTERS)[number][0] | "국가유산/서원";
+
 const ERA_NAV_LABELS: Record<string, string> = {
   prehistoric: "선사 시대",
   gojoseon: "고조선",
@@ -111,8 +113,8 @@ const textbookSourceLabel = (event: StudentEvent) => {
   const unique = [...new Set(issues)].sort((a, b) => a - b);
   return unique.length
     ? unique.map((issue) => `교재 ${issue}호`).join(" · ")
-    : event.id.startsWith("heritage-dodong-") || event.id === "heritage-nine-seowon-unesco-2019"
-      ? "현장 답사·공식 문화유산 자료 (교재 호수 미연결)"
+    : event.contentCategory === "국가유산" && event.contentSubcategory === "서원"
+      ? "국가유산 / 서원 · 현장 답사·공식 자료 (교재 호수 미연결)"
       : "교재 확인";
 };
 
@@ -177,7 +179,7 @@ export default function TimelineClient() {
   const [needsLogin, setNeedsLogin] = useState(false);
   const [unpublished, setUnpublished] = useState(false);
   const [sunLabAccessError, setSunLabAccessError] = useState("");
-  const [filter, setFilter] = useState<(typeof FILTERS)[number][0]>("전체");
+  const [filter, setFilter] = useState<TimelineFilter>("전체");
   const [activePeriod, setActivePeriod] = useState<string>("");
   const [targetPeriod, setTargetPeriod] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -370,23 +372,32 @@ export default function TimelineClient() {
     };
   }, [payload, byeolbyeolFlowEvents, showByeolbyeolBasic, showByeolbyeolAdvanced, yongFlowEvents, showYongseonsaeng, referenceEvents, showRobin, showReadingBook]);
 
-  const visibleEvents = useMemo(() => allDisplayEvents.filter((event) =>
-      filter === "전체" ||
+  // 국가유산·서원은 역사 사건의 시대 정보는 유지하되 기본 연표와 별도의 분류로 본다.
+  const visibleEvents = useMemo(() => allDisplayEvents.filter((event) => {
+    if (filter === "국가유산/서원") {
+      return event.contentCategory === "국가유산" && event.contentSubcategory === "서원";
+    }
+    if (event.contentCategory === "국가유산") return false;
+    return filter === "전체" ||
       event.eraFilter === filter ||
       (filter === "고려" &&
-        (event.id === "goryeo-founded-918" || event.id === "later-baekje-falls-936"))
-    ), [filter, allDisplayEvents]);
+        (event.id === "goryeo-founded-918" || event.id === "later-baekje-falls-936"));
+  }), [filter, allDisplayEvents]);
+  const seowonEventsAvailable = allDisplayEvents.some((event) =>
+    event.contentCategory === "국가유산" && event.contentSubcategory === "서원"
+  );
 
   // 다른 시대 필터에서 보이지 않는 사건으로 연결되지 않도록 현재 표시 사건만 사용한다.
   // 다른 시대 필터로 숨겨진 학습 주제의 앵커를 표시하지 않는다.
   // 교재 주제도 사건과 동일하게 현재 화면에 렌더링되는 시대만 연결한다.
   const visibleStudyTopics = useMemo(() => {
+    if (filter === "국가유산/서원") return [];
     const visiblePeriods = new Set(visibleEvents.map(getTimelinePeriodForEvent));
     return (payload?.studyTopics ?? []).filter(topic => {
       const period = topic.period || (topic.issue <= 13 ? "goryeo" : "joseon");
       return visiblePeriods.has(period) && (!topic.nation || filter === "전체" || topic.nation === filter);
     });
-  }, [visibleEvents, payload?.studyTopics]);
+  }, [visibleEvents, payload?.studyTopics, filter]);
   const personDirectory = useMemo(
     () => buildTimelinePersonDirectory(visibleEvents, visibleStudyTopics),
     [visibleEvents, visibleStudyTopics]
@@ -682,6 +693,7 @@ export default function TimelineClient() {
       )}
 
       <div className={styles.wrap}>
+        {filter !== "국가유산/서원" && (
         <section className={styles.introSection}>
           <h2>역사는 언제부터 시작되었을까?</h2>
           <div className={styles.introGrid}>
@@ -701,14 +713,17 @@ export default function TimelineClient() {
             <small className={styles.introSource}>참고: 『용선생 교과서 한국사』 1권 13쪽(해당 단원)</small>
           </div>
         </section>
+        )}
 
         <section className={styles.timelineSection}>
           <div className={styles.sectionHeading}>
             <div>
-              <h2>시간을 따라가는 한국사 연표</h2>
-              <p>연도는 고정하고, 국가별 열을 좌우로 밀어 비교해요. 배운 사건만 표시돼요.</p>
+              <h2>{filter === "국가유산/서원" ? "국가유산 / 서원" : "시간을 따라가는 한국사 연표"}</h2>
+              <p>{filter === "국가유산/서원"
+                ? "도동서원과 한국의 서원을 현장 답사·공식 자료를 통해 살펴봐요."
+                : "연도는 고정하고, 국가별 열을 좌우로 밀어 비교해요. 배운 사건만 표시돼요."}</p>
             </div>
-            <span>{allDisplayEvents.length}개 사건</span>
+            <span>{visibleEvents.length}개 사건</span>
           </div>
 
           <nav className={styles.filters} aria-label="시대별 사건 필터">
@@ -723,6 +738,21 @@ export default function TimelineClient() {
               </button>
             ))}
           </nav>
+
+          {seowonEventsAvailable && (
+            <nav className={styles.heritageFilters} aria-label="국가유산 주제별 분류">
+              <strong>🏛️ 국가유산</strong>
+              <button
+                type="button"
+                className={filter === "국가유산/서원" ? styles.activeHeritageFilter : ""}
+                aria-pressed={filter === "국가유산/서원"}
+                onClick={() => setFilter("국가유산/서원")}
+              >
+                서원
+              </button>
+              <span>도동서원 · 한국의 서원</span>
+            </nav>
+          )}
 
           {payload?.viewer.role === "teacher" && (
             <div className={supplementStyles.teacherControls}>
