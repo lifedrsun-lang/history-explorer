@@ -291,4 +291,30 @@ for(const eraKey of ["prehistoric","gojoseon","early-states"]){
   assert(clientSrc.includes(`period.key === "${eraKey}"`), `Missing first-five timeline display section: ${eraKey}`);
 }
 
+// 11호에서 확보한 것은 본권이 아닌 워크북: 인물/쪽수와 접근권한을 분리 검사한다.
+const workbookSource = fs.readFileSync(path.join(__dirname, "..", "lib", "historyTimelineElevenWorkbookTopics.ts"), "utf8");
+const workbookModule = { exports: {} };
+new Function("module", "exports", ts.transpileModule(workbookSource, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+}).outputText)(workbookModule, workbookModule.exports);
+const workbookTopics = workbookModule.exports.HISTORY_TIMELINE_ELEVEN_WORKBOOK_TOPICS;
+assert.equal(workbookTopics.length, 2, "Expected two verified issue-11 workbook topics");
+assert(workbookTopics.every(t => t.issue === 11 && t.pages.includes("워크북") && t.pages.includes("본권 아님")),
+  "Workbook evidence must not be labeled as full textbook evidence");
+const workbookDirectory = buildTimelinePersonDirectory([], workbookTopics);
+for (const name of ["양규", "강민첨"]) {
+  requirePerson(workbookDirectory.byTopic["topic-11-workbook-goryeo-defenders"], 
+    `고려:${name}`, "Issue 11 Goryeo workbook personnel");
+}
+for (const name of ["소손녕", "소배압"]) {
+  requirePerson(workbookDirectory.byTopic["topic-11-workbook-khitan-commanders"], 
+    `거란:${name}`, "Issue 11 Khitan workbook personnel");
+}
+assert(!ids(workbookDirectory.byTopic["topic-11-workbook-goryeo-defenders"]).some(id => id.startsWith("거란:")),
+  "Khitan names must not be misclassified as Goryeo figures");
+assert(!ids(workbookDirectory.byTopic["topic-11-workbook-khitan-commanders"]).some(id => id.startsWith("고려:")),
+  "Goryeo names must not be misclassified as Khitan figures");
+assert.deepEqual(Object.keys(buildTimelinePersonDirectory([], workbookTopics.filter(t => t.issue === 10)).byTopic), [],
+  "Issue 11 workbook person cards must stay hidden without issue-11 access");
+
 console.log("History person-card regression: coverage and permission assertions passed.");
