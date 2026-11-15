@@ -857,63 +857,63 @@ export default function TimelineClient() {
                       {comparisonEvents.length > 0 && <span>↔ 좌우로 밀어 다른 나라 보기</span>}
                       {period.key === "early-states" && <p className={styles.nationEndNote}>여러 나라는 같은 해에 함께 세워진 것이 아니에요. 연도가 확실하지 않은 풍습은 ‘여러 나라의 성장기 · 정확한 연도 미상’으로 표시합니다.</p>}
                     </div>
-                    {period.key === "prehistoric" && (
+                    {period.key === "prehistoric" && filter !== "국가유산/서원" && (
                       <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
                         era="선사 시대"
                         topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "prehistoric")}
                       />
                     )}
-                    {period.key === "gojoseon" && (
+                    {period.key === "gojoseon" && filter !== "국가유산/서원" && (
                       <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
                         era="고조선"
                         topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "gojoseon")}
                       />
                     )}
-                    {period.key === "early-states" && (
+                    {period.key === "early-states" && filter !== "국가유산/서원" && (
                       <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
                         era="여러 나라"
                         topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "early-states")}
                       />
                     )}
-                    {period.key === "three" && (
+                    {period.key === "three" && filter !== "국가유산/서원" && (
                       <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
                         era="삼국 시대"
                         topics={(payload?.studyTopics ?? []).filter((topic) =>
                           topic.period === "three" && (filter === "전체" || topic.nation === filter))}
                       />
                     )}
-                    {period.key === "goryeo" && (
+                    {period.key === "goryeo" && filter !== "국가유산/서원" && (
                       <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
                         era="고려"
                         topics={(payload?.studyTopics ?? []).filter((topic) => topic.issue >= 10 && topic.issue <= 13)}
                       />
                     )}
-                    {period.key === "joseon" && (
+                    {period.key === "joseon" && filter !== "국가유산/서원" && (
                       <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
                         era="조선"
                         topics={(payload?.studyTopics ?? []).filter((topic) =>
                           (topic.issue >= 14 && topic.issue <= 15) || topic.period === "joseon")}
                       />
                     )}
-                    {period.key === "empire" && (
+                    {period.key === "empire" && filter !== "국가유산/서원" && (
                       <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
                         era="대한제국"
                         topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "empire")}
                       />
                     )}
-                    {period.key === "colonial" && (
+                    {period.key === "colonial" && filter !== "국가유산/서원" && (
                       <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
                         era="일제강점기"
                         topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "colonial")}
                       />
                     )}
-                    {period.key === "liberation" && (
+                    {period.key === "liberation" && filter !== "국가유산/서원" && (
                       <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
                         era="광복과 분단"
                         topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "liberation")}
                       />
                     )}
-                    {period.key === "republic" && (
+                    {period.key === "republic" && filter !== "국가유산/서원" && (
                       <TimelineGoryeoTopics peopleByTopic={personDirectory.byTopic} showPersonCards={showPersonCards}
                         era="대한민국"
                         topics={(payload?.studyTopics ?? []).filter((topic) => topic.period === "republic")}
