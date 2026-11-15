@@ -136,6 +136,15 @@ assert(onlySix.studyTopics.some(t => t.id === "topic-06-baekje-domi-story"));
 assert(!onlySix.studyTopics.some(t => t.issue === 4 || t.issue === 5));
 assert(onlyFive.directory.byTopic["topic-05-baekje-biryu-onjo"].some(p => p.id === "백제:비류"));
 
+// 07호 원본 본문 39쪽에서 확인된 나당 전쟁의 두 전투는 07·08호에만 공개한다.
+for (const id of ["supplement-flow-silla-maesoseong-675","supplement-flow-silla-gibeolpo-676"]) {
+  assert(!getTimelineEventsForIssues([6]).some(e => e.id === id), `06호에 공개하면 안 되는 사건: ${id}`);
+  for (const issue of [7,8]) {
+    const event = getTimelineEventsForIssues([issue]).find(e => e.id === id);
+    assert(event, `${issue}호에서 열람해야 할 사건: ${id}`);
+    assert.deepEqual(toStudentTimelineEvent(event,[issue]).textbookIssues,[issue]);
+  }
+}
 const scenarios = [[1],[2],[3],[4,6],[5,6],[10],[13],[10,13],[15],[23],[1,4,5,6,7],[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]];
 for (const issues of scenarios) checkScenario(issues);
 // SUN LAB full-access accounts must receive teacher-reviewed heritage events even
