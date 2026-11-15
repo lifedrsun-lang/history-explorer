@@ -340,9 +340,11 @@ export const HISTORY_TIMELINE_BYEOLKKUM_ADDITIONS: readonly HistoryTimelineEvent
       "alt": "매소성 전투에서 당군을 물리침"
     },
     "sourceIssueNumbers": [
+      7,
       8
     ],
     "textbookPages": [
+      "별꼼역사 07호 본문 39쪽(PDF 41쪽 · 매소성 전투와 기벌포 전투)",
       "별꼼역사 08호 나당 전쟁 단원 · 원본 교재 쪽수 대조 필요"
     ],
     "sortOrder": 3
@@ -363,9 +365,11 @@ export const HISTORY_TIMELINE_BYEOLKKUM_ADDITIONS: readonly HistoryTimelineEvent
       "alt": "기벌포 전투로 나당 전쟁이 마무리됨"
     },
     "sourceIssueNumbers": [
+      7,
       8
     ],
     "textbookPages": [
+      "별꼼역사 07호 본문 39쪽(PDF 41쪽 · 매소성 전투와 기벌포 전투)",
       "별꼼역사 08호 나당 전쟁 단원 · 원본 교재 쪽수 대조 필요"
     ],
     "sortOrder": 3
