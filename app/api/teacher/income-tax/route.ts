@@ -7,7 +7,12 @@ import {
 } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { sanitizeFeeSettlement, type FeeSettlement } from "@/lib/feeSettlement";
-import { isSupportedIndustryCode, resolveTeachingPayerIndustryCode } from "@/lib/incomeTax";
+import {
+  COMPUTING_TEACHERS_ASSOCIATION,
+  DH_PAYER,
+  isSupportedIndustryCode,
+  resolveIncomeTaxPayer,
+} from "@/lib/incomeTax";
 import { AFTER_SCHOOL_ACADEMIC_YEAR } from "@/lib/studentRoster";
 
 export const runtime = "nodejs";
@@ -34,16 +39,13 @@ type TaxProfile = {
 const sanitizeProfile = (value: unknown): TaxProfile | null => {
   if (!value || typeof value !== "object") return null;
   const data = value as Record<string, unknown>;
-  const payerName = normalize(data.payerName);
-  const industryCode = resolveTeachingPayerIndustryCode(
-    normalize(data.industryCode), payerName, normalize(data.businessNumber)
-  );
-  if (!payerName || (industryCode && !isSupportedIndustryCode(industryCode))) return null;
-  return {
-    payerName,
-    industryCode,
+  const profile = resolveIncomeTaxPayer({
+    payerName: normalize(data.payerName),
+    industryCode: normalize(data.industryCode),
     businessNumber: normalize(data.businessNumber),
-  };
+  });
+  if (!profile.payerName || (profile.industryCode && !isSupportedIndustryCode(profile.industryCode))) return null;
+  return profile;
 };
 
 const inferProfile = (contract: Record<string, unknown>): TaxProfile => {
@@ -89,11 +91,10 @@ const inferProfile = (contract: Record<string, unknown>): TaxProfile => {
     };
   }
   if (/컴퓨팅교사협회|\bATC\b/i.test(searchable)) {
-    return {
-      payerName: "컴퓨팅교사협회(ATC)",
-      industryCode: "940903",
-      businessNumber: "105-82-22590",
-    };
+    return COMPUTING_TEACHERS_ASSOCIATION;
+  }
+  if (/디에이치\s*실업/.test(searchable)) {
+    return DH_PAYER;
   }
   if (contract.type === "afterschool") {
     return { payerName, industryCode: "940925", businessNumber: "" };
@@ -169,11 +170,14 @@ const createRecord = (
   const businessNumber = usesFixedSchoolMapping
     ? profile.businessNumber
     : normalize(entry.businessNumber) || profile.businessNumber;
-  const industryCode = resolveTeachingPayerIndustryCode(
-    usesFixedSchoolMapping ? profile.industryCode : normalize(entry.industryCode) || profile.industryCode,
+  const payer = resolveIncomeTaxPayer({
     payerName,
-    businessNumber
-  );
+    businessNumber,
+    industryCode: usesFixedSchoolMapping ? profile.industryCode : normalize(entry.industryCode) || profile.industryCode,
+  });
+  const useActualPaymentDate = Boolean(installmentId) ||
+    payer.businessNumber === COMPUTING_TEACHERS_ASSOCIATION.businessNumber ||
+    payer.businessNumber === DH_PAYER.businessNumber;
 
   return {
     id: `${contractId}:${key}${installmentId ? `:${installmentId}` : ""}`,
@@ -184,11 +188,9 @@ const createRecord = (
     contractLabel: [normalize(contract.schoolName), normalize(contract.title)]
       .filter(Boolean)
       .join(" · "),
-    payerName,
-    industryCode,
-    businessNumber,
+    ...payer,
     taxYear: inferYear(entry, key),
-    paymentMonth: inferMonth(entry, key, Boolean(installmentId)),
+    paymentMonth: inferMonth(entry, key, useActualPaymentDate),
     receivedDate: normalize(entry.receivedDate),
     grossAmount,
     incomeTax,
@@ -216,11 +218,13 @@ const sanitizeAdjustments = (value: unknown) => {
     Array.from({ length: 12 }, (_, index) =>
       amount(Array.isArray(months) ? months[index] : 0)
     );
+  const optionalAmount = (value: unknown) =>
+    value === null || value === undefined || value === "" ? null : amount(value);
   const sanitizeOverrides = (months: unknown) =>
     Array.from({ length: 12 }, (_, index) => {
       const value = Array.isArray(months) ? months[index] : null;
       if (hasOverrides) {
-        return value === null || value === undefined || value === "" ? null : amount(value);
+        return optionalAmount(value);
       }
       const legacyAmount = amount(value);
       return legacyAmount > 0 ? legacyAmount : null;
@@ -255,6 +259,13 @@ const sanitizeAdjustments = (value: unknown) => {
     otherSelfEmploymentWithheldLocalTax:
       data.otherSelfEmploymentWithheldLocalTax === null || data.otherSelfEmploymentWithheldLocalTax === undefined || data.otherSelfEmploymentWithheldLocalTax === ""
         ? null : amount(data.otherSelfEmploymentWithheldLocalTax),
+    dhWithholdingByMonth: Array.from({ length: 12 }, (_, index) => {
+      const entry = Array.isArray(data.dhWithholdingByMonth) ? data.dhWithholdingByMonth[index] : null;
+      return {
+        incomeTax: optionalAmount(entry?.incomeTax),
+        localTax: optionalAmount(entry?.localTax),
+      };
+    }),
     monthlyGrossOverrides: {
       woongjinThinkbig: sanitizeOverrides(monthlySource.woongjinThinkbig),
       globalFinancialSales: sanitizeOverrides(monthlySource.globalFinancialSales),
@@ -263,6 +274,7 @@ const sanitizeAdjustments = (value: unknown) => {
       chromaEducation: sanitizeOverrides(monthlySource.chromaEducation),
       classForEdu: sanitizeOverrides(monthlySource.classForEdu),
       computingTeachersAssociation: sanitizeOverrides(monthlySource.computingTeachersAssociation),
+      dh: sanitizeOverrides(monthlySource.dh),
       otherSelfEmployment: sanitizeOverrides(monthlySource.otherSelfEmployment),
     },
     employmentGrossAmounts: sanitizeMonths(data.employmentGrossAmounts),

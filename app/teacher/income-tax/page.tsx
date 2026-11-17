@@ -9,6 +9,9 @@ import {
   calculateEarnedIncome,
   calculateIndustryIncome,
   calculateTaxEstimate,
+  COMPUTING_TEACHERS_ASSOCIATION,
+  DH_INDUSTRY_LABEL,
+  DH_PAYER,
   estimateBusinessWithholding,
   reverseBusinessReceivedAmount,
   getSimpleExpenseEligibility,
@@ -54,7 +57,10 @@ type MonthlyIncomeSourceKey =
   | "chromaEducation"
   | "classForEdu"
   | "computingTeachersAssociation"
+  | "dh"
   | "otherSelfEmployment";
+
+type MonthlyWithholding = { incomeTax: number | null; localTax: number | null };
 
 type Adjustments = {
   previousYearRevenue: number | null;
@@ -69,6 +75,7 @@ type Adjustments = {
   otherSelfEmploymentInputMode: "gross" | "net";
   otherSelfEmploymentWithheldIncomeTax: number | null;
   otherSelfEmploymentWithheldLocalTax: number | null;
+  dhWithholdingByMonth: MonthlyWithholding[];
   monthlyGrossOverrides: Record<MonthlyIncomeSourceKey, Array<number | null>>;
   employmentGrossAmounts: number[];
   employmentWithheldIncomeTax: number;
@@ -78,7 +85,7 @@ type Adjustments = {
 
 type NumericAdjustmentKey = Exclude<
   keyof Adjustments,
-  "monthlyGrossOverrides" | "employmentGrossAmounts" | "employmentResignationDate" | "otherSelfEmploymentInputMode"
+  "monthlyGrossOverrides" | "employmentGrossAmounts" | "employmentResignationDate" | "otherSelfEmploymentInputMode" | "dhWithholdingByMonth"
 >;
 
 const EMPTY_ADJUSTMENTS: Adjustments = {
@@ -94,6 +101,7 @@ const EMPTY_ADJUSTMENTS: Adjustments = {
   otherSelfEmploymentInputMode: "gross",
   otherSelfEmploymentWithheldIncomeTax: null,
   otherSelfEmploymentWithheldLocalTax: null,
+  dhWithholdingByMonth: Array.from({ length: 12 }, () => ({ incomeTax: null, localTax: null })),
   monthlyGrossOverrides: {
     woongjinThinkbig: Array(12).fill(null),
     globalFinancialSales: Array(12).fill(null),
@@ -102,6 +110,7 @@ const EMPTY_ADJUSTMENTS: Adjustments = {
     chromaEducation: Array(12).fill(null),
     classForEdu: Array(12).fill(null),
     computingTeachersAssociation: Array(12).fill(null),
+    dh: Array(12).fill(null),
     otherSelfEmployment: Array(12).fill(null),
   },
   employmentGrossAmounts: Array(12).fill(0),
@@ -164,10 +173,13 @@ const MONTHLY_INCOME_SOURCES = [
   },
   {
     key: "computingTeachersAssociation" as const,
-    payerName: "컴퓨팅교사협회(ATC)",
-    industryCode: "940903",
-    businessNumber: "105-82-22590",
+    ...COMPUTING_TEACHERS_ASSOCIATION,
     tone: "border-indigo-200 bg-indigo-50/60",
+  },
+  {
+    key: "dh" as const,
+    ...DH_PAYER,
+    tone: "border-orange-200 bg-orange-50/60",
   },
   {
     key: "otherSelfEmployment" as const,
@@ -178,11 +190,12 @@ const MONTHLY_INCOME_SOURCES = [
   },
 ] as const;
 
-const sourceIndustryLabel = (code: string) =>
+const sourceIndustryLabel = (code: string, sourceKey?: MonthlyIncomeSourceKey) =>
+  sourceKey === "dh" ? DH_INDUSTRY_LABEL :
   code === "940909" ? "기타자영업 (940909)" :
   code === "940903" ? "학원강사 (940903)" :
   code === "940921" ? "교육교구방문강사 (940921)" :
-  code === "940925" ? "방과후교사 (940925)" :
+  code === "940925" ? "방과후강사 (940925)" :
   code === "940908" ? "방문판매원 (940908)" :
   code === "940906" ? "보험설계사 (940906)" : "사업소득 · 업종코드 미확정";
 
@@ -345,15 +358,14 @@ export default function IncomeTaxPage() {
       adjustments.monthlyGrossOverrides[source.key].forEach((override, monthIndex) => {
         const automatic = monthlyAutoTotals[source.key][monthIndex];
         const effectiveGross = override ?? automatic.grossAmount;
+        const withheld = override === null ? automatic : estimateBusinessWithholding(effectiveGross);
+        const reported = source.key === "dh" ? adjustments.dhWithholdingByMonth[monthIndex] : null;
         monthlyGross += effectiveGross;
+        sourceIncomeTax += reported?.incomeTax ?? withheld.incomeTax;
+        sourceLocalTax += reported?.localTax ?? withheld.localTax;
         if (override === null) {
-          sourceIncomeTax += automatic.incomeTax;
-          sourceLocalTax += automatic.localTax;
           if (automatic.grossAmount > 0) automaticMonthCount += 1;
         } else {
-          const withheld = estimateBusinessWithholding(effectiveGross);
-          sourceIncomeTax += withheld.incomeTax;
-          sourceLocalTax += withheld.localTax;
           overrideMonthCount += 1;
         }
       });
@@ -874,7 +886,7 @@ export default function IncomeTaxPage() {
                         <option value="">업체·업종 미확정</option>
                         {MONTHLY_INCOME_SOURCES.map((source) => (
                           <option key={source.key} value={source.key}>
-                            {source.payerName} · {sourceIndustryLabel(source.industryCode)}
+                            {source.payerName} · {sourceIndustryLabel(source.industryCode, source.key)}
                           </option>
                         ))}
                       </select>
@@ -998,7 +1010,7 @@ export default function IncomeTaxPage() {
                         <div>
                           <div className="font-black text-slate-900">{source.payerName}</div>
                           <div className="mt-1 text-xs font-bold text-slate-500">
-                            {sourceIndustryLabel(source.industryCode)}
+                            {sourceIndustryLabel(source.industryCode, source.key)}
                           </div>
                           {source.businessNumber && (
                             <div className="mt-1 text-[11px] font-bold text-slate-400">사업자번호 {source.businessNumber}</div>
@@ -1009,6 +1021,38 @@ export default function IncomeTaxPage() {
                           <div className="font-black text-slate-900">{won(sourceTotal)}</div>
                         </div>
                       </div>
+                      {source.key === "dh" && (
+                        <details className="mt-4 rounded-xl border border-orange-200 bg-white/70 p-3">
+                          <summary className="cursor-pointer text-xs font-black text-slate-700">DH 월별 실제 원천징수액 입력</summary>
+                          <div className="mt-3 grid grid-cols-3 items-center gap-2 text-xs text-slate-700">
+                            <span>지급월</span><span>소득세</span><span>지방소득세</span>
+                            {MONTH_LABELS.map((month, monthIndex) => (
+                              <div key={month} className="contents">
+                                <span>{month}</span>
+                                {([ ["incomeTax", "소득세"], ["localTax", "지방소득세"] ] as const).map(([field, label]) => (
+                                  <input
+                                    key={field}
+                                    inputMode="numeric"
+                                    value={adjustments.dhWithholdingByMonth[monthIndex]?.[field]?.toLocaleString("ko-KR") ?? ""}
+                                    placeholder="자동"
+                                    aria-label={`디에이치 실업(DH) ${month} ${label}`}
+                                    onChange={(event) => {
+                                      const amount = event.target.value === "" ? null : inputNumber(event.target.value);
+                                      setAdjustments((current) => ({
+                                        ...current,
+                                        dhWithholdingByMonth: current.dhWithholdingByMonth.map((entry, index) =>
+                                          index === monthIndex ? { ...entry, [field]: amount } : entry
+                                        ),
+                                      }));
+                                    }}
+                                    className="min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right font-bold"
+                                  />
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
                       {source.key === "otherSelfEmployment" && (
                         <fieldset className="mt-4">
                           <legend className="text-xs font-black text-slate-600">입력할 금액</legend>
@@ -1173,7 +1217,7 @@ export default function IncomeTaxPage() {
                         <optgroup label="지급업체 선택">
                           {MONTHLY_INCOME_SOURCES.map((source) => (
                             <option key={source.key} value={source.key}>
-                              {source.payerName} · {sourceIndustryLabel(source.industryCode)}
+                              {source.payerName} · {sourceIndustryLabel(source.industryCode, source.key)}
                             </option>
                           ))}
                         </optgroup>
