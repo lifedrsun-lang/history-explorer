@@ -1,5 +1,6 @@
 import "server-only";
 
+import { randomInt } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 
 import { verifyTeacherRequest } from "@/lib/assignmentServer";
@@ -10,10 +11,13 @@ import {
   type GoldenBingoQuestion,
   isGoldenBingoQuestionReady,
   makeEmptyGoldenBingoQuestions,
+  makeGoldenBingoQuestionOrder,
   normalizeGoldenBingoQuestion,
   normalizeGoldenBingoQuestionCount,
+  normalizeGoldenBingoQuestionOrder,
   normalizeGoldenBingoQuestions,
   normalizeGoldenBingoTitle,
+  shuffleGoldenBingoQuestionOrder,
 } from "@/lib/goldenBingo";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 
@@ -25,6 +29,7 @@ type StoredGame = {
   questionCount?: number;
   questions?: GoldenBingoQuestion[];
   completedNumbers?: number[];
+  questionOrder?: number[];
   createdBy?: string;
   createdAt?: unknown;
   updatedAt?: unknown;
@@ -58,6 +63,18 @@ const normalizeStoredQuestions = (data: StoredGame) => {
       }
     });
   }
+};
+
+const storedQuestionOrder = (data: StoredGame, questionCount: number) =>
+  normalizeGoldenBingoQuestionOrder(data.questionOrder, questionCount);
+
+const questionForBoardNumber = (
+  game: GoldenBingoGame,
+  data: StoredGame,
+  boardNumber: number
+) => {
+  const order = storedQuestionOrder(data, game.questionCount);
+  return game.questions[order[boardNumber - 1] - 1];
 };
 
 const serializeGame = (id: string, data: StoredGame): GoldenBingoGame => {
@@ -194,10 +211,11 @@ export async function createGoldenBingoGame(
   const { db } = getFirebaseAdmin();
   const ref = db.collection(COLLECTION).doc();
   const payload = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     title,
     questionCount,
     questions: makeEmptyGoldenBingoQuestions(questionCount),
+    questionOrder: makeGoldenBingoQuestionOrder(questionCount),
     completedNumbers: [],
     createdBy: uid,
     createdAt: FieldValue.serverTimestamp(),
@@ -221,14 +239,20 @@ export async function updateGoldenBingoGame(
   const title = normalizeGoldenBingoTitle(input.title);
   const questionCount = normalizeGoldenBingoQuestionCount(input.questionCount);
   const questions = normalizeGoldenBingoQuestions(input.questions, questionCount);
-  const completedNumbers = current.game.completedNumbers.filter(
-    (number) => number <= questionCount
-  );
+  const countChanged = questionCount !== current.game.questionCount;
+  const completedNumbers = countChanged
+    ? []
+    : current.game.completedNumbers.filter((number) => number <= questionCount);
+  const questionOrder = countChanged
+    ? makeGoldenBingoQuestionOrder(questionCount)
+    : storedQuestionOrder(current.data, questionCount);
   await current.ref.update({
+    schemaVersion: 2,
     title,
     questionCount,
     questions,
     completedNumbers,
+    questionOrder,
     updatedAt: FieldValue.serverTimestamp(),
   });
   return serializeGame(gameId, {
@@ -237,6 +261,7 @@ export async function updateGoldenBingoGame(
     questionCount,
     questions,
     completedNumbers,
+    questionOrder,
     updatedAt: new Date(),
   });
 }
@@ -247,10 +272,11 @@ export async function duplicateGoldenBingoGame(uid: string, gameId: string) {
   const ref = db.collection(COLLECTION).doc();
   const title = `${current.game.title} 복사본`.slice(0, 120);
   const payload = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     title,
     questionCount: current.game.questionCount,
     questions: current.game.questions,
+    questionOrder: makeGoldenBingoQuestionOrder(current.game.questionCount),
     completedNumbers: [],
     createdBy: uid,
     createdAt: FieldValue.serverTimestamp(),
@@ -272,7 +298,7 @@ export async function getGoldenBingoPlayView(
   gameId: string,
   number?: number
 ) {
-  const { game } = await ownedGame(uid, gameId);
+  const { data, game } = await ownedGame(uid, gameId);
   if (!game.playable) {
     throw new GoldenBingoError(
       "모든 문제와 보기, 정답을 저장한 뒤 게임을 시작할 수 있습니다.",
@@ -293,11 +319,11 @@ export async function getGoldenBingoPlayView(
   if (game.completedNumbers.includes(number)) {
     throw new GoldenBingoError("이미 출제 완료한 문제입니다.", 409, "already_completed");
   }
-  const question = game.questions[number - 1];
+  const question = questionForBoardNumber(game, data, number);
   return {
     ...base,
     question: {
-      number: question.number,
+      number,
       prompt: question.prompt,
       choices: question.choices,
       imageUrl: question.imageUrl,
@@ -306,7 +332,7 @@ export async function getGoldenBingoPlayView(
 }
 
 export async function revealGoldenBingoAnswer(uid: string, gameId: string, number: number) {
-  const { game } = await ownedGame(uid, gameId);
+  const { data, game } = await ownedGame(uid, gameId);
   if (!game.playable) {
     throw new GoldenBingoError("게임 문제를 먼저 완성해 주세요.", 409, "game_incomplete");
   }
@@ -316,7 +342,7 @@ export async function revealGoldenBingoAnswer(uid: string, gameId: string, numbe
   if (game.completedNumbers.includes(number)) {
     throw new GoldenBingoError("이미 출제 완료한 문제입니다.", 409, "already_completed");
   }
-  const question = game.questions[number - 1];
+  const question = questionForBoardNumber(game, data, number);
   return {
     number,
     correctChoice: question.correctChoice,
@@ -359,10 +385,29 @@ export async function completeGoldenBingoQuestion(
 }
 
 export async function resetGoldenBingoProgress(uid: string, gameId: string) {
-  const current = await ownedGame(uid, gameId);
-  await current.ref.update({
-    completedNumbers: [],
-    progressUpdatedAt: FieldValue.serverTimestamp(),
+  const { db } = getFirebaseAdmin();
+  const ref = db.collection(COLLECTION).doc(gameId);
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    if (!snapshot.exists) {
+      throw new GoldenBingoError("게임을 찾을 수 없습니다.", 404, "not_found");
+    }
+    const data = snapshot.data() as StoredGame;
+    if (data.createdBy !== uid) {
+      throw new GoldenBingoError(
+        "이 게임을 관리할 권한이 없습니다.",
+        403,
+        "forbidden"
+      );
+    }
+    const game = serializeGame(snapshot.id, data);
+    const previousOrder = storedQuestionOrder(data, game.questionCount);
+    transaction.update(ref, {
+      schemaVersion: 2,
+      completedNumbers: [],
+      questionOrder: shuffleGoldenBingoQuestionOrder(previousOrder, randomInt),
+      progressUpdatedAt: FieldValue.serverTimestamp(),
+    });
   });
   return [] as number[];
 }
