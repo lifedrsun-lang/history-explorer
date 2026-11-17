@@ -231,7 +231,7 @@ export default function GoldenBingoPlayPage() {
                 <span className="font-black text-amber-800"> / {board.questionCount} 출제 완료</span>
               </div>
             </div>
-            <div className="mt-6 grid grid-cols-4 gap-2 sm:grid-cols-6 sm:gap-3 lg:grid-cols-8 xl:grid-cols-10">
+            <div className="mx-auto mt-6 grid max-w-5xl grid-cols-5 gap-2 sm:gap-3">
               {Array.from({ length: board.questionCount }, (_, index) => {
                 const number = index + 1;
                 const completed = board.completedNumbers.includes(number);
