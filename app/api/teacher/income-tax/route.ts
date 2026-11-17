@@ -297,6 +297,14 @@ export async function GET(request: Request) {
     ]);
 
     const records: ReturnType<typeof createRecord>[] = [];
+    const batchCoveredUnits = new Set<string>();
+    batchDepositSnapshot.docs.forEach((docItem) => {
+      const deposit = docItem.data();
+      if (deposit.status !== "matched" || !Array.isArray(deposit.allocations)) return;
+      deposit.allocations.forEach((raw: Record<string, unknown>) => {
+        batchCoveredUnits.add(`${normalize(raw.contractId)}:${normalize(raw.unitKey)}`);
+      });
+    });
     const contracts = contractSnapshot.docs.map((docItem) => {
       const contract = docItem.data() as Record<string, unknown>;
       const inferredProfile = inferProfile(contract);
@@ -308,6 +316,12 @@ export async function GET(request: Request) {
 
       Object.entries(settlements).forEach(([key, entry]) => {
         const normalized = sanitizeFeeSettlement(entry);
+        // A historic calculation with no recorded bank payment is an estimate, not
+        // another taxable receipt once a linked bank transfer has been captured.
+        if (batchCoveredUnits.has(`${docItem.id}:${key}`) &&
+          !normalized.receivedDate && normalized.receivedAmount === undefined &&
+          (!Array.isArray(normalized.installments) || normalized.installments.every((part) =>
+            !part.receivedDate && part.receivedAmount === undefined))) return;
         if (Array.isArray(normalized.installments)) {
           normalized.installments.forEach((item, index) => {
             const record = createRecord(
