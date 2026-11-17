@@ -35,6 +35,7 @@ export default function GoldenBingoPlayPage() {
   const [board, setBoard] = useState<Board | null>(null);
   const [question, setQuestion] = useState<PlayQuestion | null>(null);
   const [answer, setAnswer] = useState<RevealedAnswer | null>(null);
+  const [selectedChoice, setSelectedChoice] = useState<GoldenBingoChoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -94,6 +95,7 @@ export default function GoldenBingoPlayPage() {
     setBusy(true);
     setError("");
     setAnswer(null);
+    setSelectedChoice(null);
     try {
       const body = await api(
         `/api/teacher/golden-bingo/${gameId}/play?number=${number}`
@@ -107,7 +109,7 @@ export default function GoldenBingoPlayPage() {
     }
   };
 
-  const revealAnswer = async () => {
+  const revealAnswer = async (choice: GoldenBingoChoice) => {
     if (!question || answer) return;
     setBusy(true);
     setError("");
@@ -117,6 +119,7 @@ export default function GoldenBingoPlayPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "reveal", number: question.number }),
       });
+      setSelectedChoice(choice);
       setAnswer(body.answer);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "정답을 불러오지 못했습니다.");
@@ -140,6 +143,7 @@ export default function GoldenBingoPlayPage() {
       );
       setQuestion(null);
       setAnswer(null);
+      setSelectedChoice(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "출제 완료 상태를 저장하지 못했습니다.");
     } finally {
@@ -166,6 +170,7 @@ export default function GoldenBingoPlayPage() {
       );
       setQuestion(null);
       setAnswer(null);
+      setSelectedChoice(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "게임을 초기화하지 못했습니다.");
     } finally {
@@ -254,7 +259,7 @@ export default function GoldenBingoPlayPage() {
           <section className="mt-5 rounded-3xl border-2 border-amber-200 bg-white p-5 shadow-xl sm:p-8">
             <div className="flex items-center justify-between gap-3">
               <span className="rounded-2xl bg-amber-400 px-5 py-3 text-2xl font-black text-amber-950 sm:text-3xl">{question.number}번</span>
-              <button type="button" disabled={busy} onClick={() => { setQuestion(null); setAnswer(null); setError(""); }} className="rounded-xl bg-slate-100 px-4 py-3 font-black text-slate-700 disabled:opacity-50">← 번호 선택판</button>
+              <button type="button" disabled={busy} onClick={() => { setQuestion(null); setAnswer(null); setSelectedChoice(null); setError(""); }} className="rounded-xl bg-slate-100 px-4 py-3 font-black text-slate-700 disabled:opacity-50">← 번호 선택판</button>
             </div>
 
             <div className={`mx-auto mt-6 grid max-w-6xl gap-6 ${question.imageUrl ? "lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)] lg:items-center" : ""}`}>
@@ -264,15 +269,37 @@ export default function GoldenBingoPlayPage() {
                   {question.choices.map((choice, index) => {
                     const choiceNumber = (index + 1) as GoldenBingoChoice;
                     const correct = answer?.correctChoice === choiceNumber;
+                    const selectedWrong = Boolean(
+                      answer && selectedChoice === choiceNumber && !correct
+                    );
                     return (
-                      <div key={choiceNumber} className={`flex items-center gap-4 rounded-2xl border-4 px-5 py-4 text-2xl font-black sm:px-7 sm:py-5 sm:text-4xl ${answer && correct ? "border-emerald-500 bg-emerald-100 text-emerald-950 shadow-lg" : "border-slate-200 bg-white text-slate-900"}`}>
-                        <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full sm:h-16 sm:w-16 ${answer && correct ? "bg-emerald-600 text-white" : "bg-slate-100"}`}>{["①", "②", "③"][index]}</span>
+                      <button
+                        key={choiceNumber}
+                        type="button"
+                        disabled={busy || Boolean(answer)}
+                        aria-pressed={selectedChoice === choiceNumber}
+                        onClick={() => void revealAnswer(choiceNumber)}
+                        className={`flex w-full items-center gap-4 rounded-2xl border-4 px-5 py-4 text-left text-2xl font-black transition sm:px-7 sm:py-5 sm:text-4xl ${
+                          answer && correct
+                            ? "border-emerald-500 bg-emerald-100 text-emerald-950 shadow-lg"
+                            : selectedWrong
+                              ? "border-rose-500 bg-rose-100 text-rose-950 shadow-lg"
+                              : "border-slate-200 bg-white text-slate-900 hover:border-amber-400 hover:bg-amber-50"
+                        } ${answer ? "cursor-default" : "cursor-pointer active:scale-[0.99]"}`}
+                      >
+                        <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full sm:h-16 sm:w-16 ${answer && correct ? "bg-emerald-600 text-white" : selectedWrong ? "bg-rose-600 text-white" : "bg-slate-100"}`}>{["①", "②", "③"][index]}</span>
                         <span className="min-w-0 break-words">{choice}</span>
                         {answer && correct && <span className="ml-auto shrink-0 text-3xl" aria-label="정답">✓</span>}
-                      </div>
+                        {selectedWrong && <span className="ml-auto shrink-0 text-3xl" aria-label="오답">✕</span>}
+                      </button>
                     );
                   })}
                 </div>
+                {!answer && (
+                  <p className="mt-4 text-center text-base font-black text-slate-500 sm:text-lg">
+                    학생들이 답을 든 뒤 보기를 눌러 정답을 공개하세요.
+                  </p>
+                )}
               </div>
               {question.imageUrl && (
                 <div className="order-first lg:order-none">
@@ -289,13 +316,11 @@ export default function GoldenBingoPlayPage() {
               </div>
             )}
 
-            <div className="mx-auto mt-7 grid max-w-4xl gap-3 sm:grid-cols-2">
-              {!answer ? (
-                <button type="button" disabled={busy} onClick={() => void revealAnswer()} className="sm:col-span-2 rounded-2xl bg-emerald-600 px-8 py-5 text-2xl font-black text-white shadow-lg disabled:opacity-50 sm:text-3xl">{busy ? "확인 중…" : "정답 확인"}</button>
-              ) : (
-                <button type="button" disabled={busy} onClick={() => void completeQuestion()} className="sm:col-span-2 rounded-2xl bg-slate-900 px-8 py-5 text-2xl font-black text-white shadow-lg disabled:opacity-50 sm:text-3xl">{busy ? "저장 중…" : "출제 완료 · 번호판으로"}</button>
-              )}
-            </div>
+            {answer && (
+              <div className="mx-auto mt-7 grid max-w-4xl gap-3">
+                <button type="button" disabled={busy} onClick={() => void completeQuestion()} className="rounded-2xl bg-slate-900 px-8 py-5 text-2xl font-black text-white shadow-lg disabled:opacity-50 sm:text-3xl">{busy ? "저장 중…" : "출제 완료 · 번호판으로"}</button>
+              </div>
+            )}
           </section>
         )}
       </div>

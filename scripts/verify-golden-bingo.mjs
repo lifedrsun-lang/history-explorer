@@ -55,7 +55,9 @@ assert.ok(hiddenQuestionPayload, "진행 화면 문제 응답을 찾을 수 없�
 assert.doesNotMatch(hiddenQuestionPayload[1], /correctChoice|explanation/);
 assert.match(server, /export async function revealGoldenBingoAnswer/);
 assert.match(playRoute, /body\.action === "reveal"/);
-assert.match(playPage, /정답 확인/);
+assert.match(playPage, /보기를 눌러 정답을 공개하세요/);
+assert.match(playPage, /selectedWrong/);
+assert.match(playPage, /onClick=\{\(\) => void revealAnswer\(choiceNumber\)\}/);
 assert.match(playPage, /출제 완료 · 번호판으로/);
 assert.match(playPage, /게임 초기화 · 문제 섞기/);
 assert.match(playPage, /진행 기록을 초기화하고 문제 번호를 다시 섞을까요/);
