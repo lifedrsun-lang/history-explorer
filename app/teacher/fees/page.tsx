@@ -1021,7 +1021,7 @@ export default function TeacherFeesPage() {
     const payerName = payer?.payerName || contract.incomeTaxProfile?.payerName || "업체 미지정";
     const businessNumber = payer?.businessNumber || "";
     const industryCode = payer?.industryCode || contract.incomeTaxProfile?.industryCode || "";
-    return getSettlementUnits(contract).flatMap((unit) => {
+    return getSettlementUnits(contract).flatMap<BatchCandidate>((unit): BatchCandidate[] => {
       if (unit.expectedAmount <= 0) return [];
       const prior = contract.settlements?.[unit.key] || {};
       const blocked = getFeePaymentEntries(prior, unit.expectedAmount).some(isPaidFeeInstallment) ||
