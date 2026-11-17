@@ -135,7 +135,7 @@ export async function POST(request: Request) {
           throw new Error("건별계약은 반 구분 없이 연결해 주세요.");
         }
         const saved = (contract.settlements || {}) as Record<string, unknown>;
-        const legacy = sanitizeFeeSettlement(saved[item.unitKey]);
+        const legacy = sanitizeFeeSettlement((saved[item.unitKey] || {}) as Record<string, unknown>);
         const alreadyPaid = getFeePaymentEntries(legacy, item.expectedAmount).some(isPaidFeeInstallment);
         if (alreadyPaid || (!Object.keys(saved).length && contract.receivedDate)) {
           throw new Error(`${item.schoolName} 수업에 기존 입금 기록이 있습니다. 중복 정산을 막기 위해 등록하지 않았습니다.`);
