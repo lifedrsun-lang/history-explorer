@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 const COLLECTION = "teacher_fee_batch_deposits";
 const FEES = "teacher_fee_contracts";
 const trim = (value: unknown, limit = 120) => String(value ?? "").trim().slice(0, limit);
-const money = (value: unknown) => Number.isSafeInteger(value) && Number(value) >= 0 && Number(value) <= 100000000000;
+const money = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 100000000000;
 const dateValid = (value: string) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(value + "T00:00:00Z");
