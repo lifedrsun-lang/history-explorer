@@ -219,7 +219,7 @@ export default function FeeBatchDepositsPanel({ candidates, deposits, requestJso
                         ["employmentInsurance", "고용보험"], ["industrialInsurance", "산재보험"],
                       ] as const).map(([field, label]) => (
                         <label key={field} className="text-xs text-slate-600">{label}
-                          <input inputMode="numeric" value={overrides[row.key]?.[field] ?? String(fields[field])}
+                          <input inputMode="numeric" value={overrides[row.key]?.[field] ?? String(field === "grossAmount" ? fields.gross : fields[field])}
                             onChange={(e) => changeOverride(row.key, field, e.target.value)}
                             className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-sm" />
                         </label>
