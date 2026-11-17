@@ -107,9 +107,12 @@ export async function POST(request: Request) {
       const contracts = new Map(contractSnapshots.filter((s) => s.exists).map((s) => [s.id, s.data() || {}]));
       if (contracts.size !== contractIds.length) throw new Error("정산 대상 수업이 변경되었습니다. 목록을 새로고침해 주세요.");
       const previous = depositSnapshot.docs.map(serialize);
+      // Equal amounts on the same day are legitimate when A and B arrive
+      // separately. Only a pending unallocated transfer is held for review.
       if (previous.some((d) => d.payerName === payerName && d.businessNumber === businessNumber &&
-        d.receivedDate === receivedDate && d.receivedAmount === receivedAmount && d.note === note)) {
-        throw new Error("같은 날짜·업체·금액·메모로 등록된 입금이 이미 있습니다. 중복 여부를 확인해 주세요.");
+        d.receivedDate === receivedDate && d.receivedAmount === receivedAmount && d.note === note &&
+        (d.status === "review" || allocations.length === 0))) {
+        throw new Error("같은 입금 정보의 기록이 이미 있습니다. 중복 여부 또는 미배분 내역을 확인해 주세요.");
       }
       const used = new Map<string, number>();
       for (const old of previous.filter((item) => item.status === "matched")) {
