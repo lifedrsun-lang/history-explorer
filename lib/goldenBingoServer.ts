@@ -6,18 +6,25 @@ import { FieldValue } from "firebase-admin/firestore";
 import { verifyTeacherRequest } from "@/lib/assignmentServer";
 import {
   GoldenBingoError,
+  type GoldenBingoBoardEntry,
   type GoldenBingoGame,
   type GoldenBingoGameSummary,
+  type GoldenBingoPlayMode,
   type GoldenBingoQuestion,
+  goldenBingoBoardCount,
   isGoldenBingoQuestionReady,
   makeEmptyGoldenBingoQuestions,
-  makeGoldenBingoQuestionOrder,
+  makeGoldenBingoBoardOrder,
+  makeGoldenBingoEraseNumberOrder,
   normalizeGoldenBingoQuestion,
   normalizeGoldenBingoQuestionCount,
-  normalizeGoldenBingoQuestionOrder,
+  normalizeGoldenBingoBoardOrder,
+  normalizeGoldenBingoEraseNumberOrder,
+  normalizeGoldenBingoPlayMode,
   normalizeGoldenBingoQuestions,
   normalizeGoldenBingoTitle,
-  shuffleGoldenBingoQuestionOrder,
+  shuffleGoldenBingoBoardOrder,
+  shuffleGoldenBingoEraseNumberOrder,
 } from "@/lib/goldenBingo";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 
@@ -27,9 +34,11 @@ type StoredGame = {
   schemaVersion?: number;
   title?: string;
   questionCount?: number;
+  playMode?: GoldenBingoPlayMode;
   questions?: GoldenBingoQuestion[];
   completedNumbers?: number[];
-  questionOrder?: number[];
+  questionOrder?: GoldenBingoBoardEntry[];
+  eraseNumberOrder?: number[];
   createdBy?: string;
   createdAt?: unknown;
   updatedAt?: unknown;
@@ -65,25 +74,53 @@ const normalizeStoredQuestions = (data: StoredGame) => {
   }
 };
 
-const storedQuestionOrder = (data: StoredGame, questionCount: number) =>
-  normalizeGoldenBingoQuestionOrder(data.questionOrder, questionCount);
+const storedPlayMode = (data: StoredGame) =>
+  normalizeGoldenBingoPlayMode(data.playMode);
+
+const storedBoardOrder = (
+  data: StoredGame,
+  questionCount: number,
+  playMode: GoldenBingoPlayMode
+) => normalizeGoldenBingoBoardOrder(data.questionOrder, questionCount, playMode);
+
+const storedEraseNumberOrder = (
+  data: StoredGame,
+  questionCount: number,
+  playMode: GoldenBingoPlayMode
+) =>
+  normalizeGoldenBingoEraseNumberOrder(
+    data.eraseNumberOrder,
+    questionCount,
+    playMode
+  );
+
+const boardEntryForNumber = (
+  game: GoldenBingoGame,
+  data: StoredGame,
+  boardNumber: number
+) => storedBoardOrder(data, game.questionCount, game.playMode)[boardNumber - 1];
 
 const questionForBoardNumber = (
   game: GoldenBingoGame,
   data: StoredGame,
   boardNumber: number
 ) => {
-  const order = storedQuestionOrder(data, game.questionCount);
-  return game.questions[order[boardNumber - 1] - 1];
+  const entry = boardEntryForNumber(game, data, boardNumber);
+  if (typeof entry !== "number") {
+    throw new GoldenBingoError("특별 칸에서는 정답을 확인할 수 없습니다.");
+  }
+  return game.questions[entry - 1];
 };
 
 const serializeGame = (id: string, data: StoredGame): GoldenBingoGame => {
   const questions = normalizeStoredQuestions(data);
+  const playMode = storedPlayMode(data);
+  const boardCount = goldenBingoBoardCount(questions.length, playMode);
   const completedNumbers = Array.isArray(data.completedNumbers)
     ? [...new Set(data.completedNumbers.map(Number))]
         .filter(
           (number) =>
-            Number.isInteger(number) && number >= 1 && number <= questions.length
+            Number.isInteger(number) && number >= 1 && number <= boardCount
         )
         .sort((a, b) => a - b)
     : [];
@@ -93,6 +130,8 @@ const serializeGame = (id: string, data: StoredGame): GoldenBingoGame => {
     id,
     title: String(data.title || "").trim(),
     questionCount: questions.length,
+    boardCount,
+    playMode,
     questions,
     completedNumbers,
     readyCount,
@@ -106,6 +145,8 @@ const summary = (game: GoldenBingoGame): GoldenBingoGameSummary => ({
   id: game.id,
   title: game.title,
   questionCount: game.questionCount,
+  boardCount: game.boardCount,
+  playMode: game.playMode,
   completedNumbers: game.completedNumbers,
   readyCount: game.readyCount,
   playable: game.playable,
@@ -208,14 +249,27 @@ export async function createGoldenBingoGame(
 ) {
   const title = normalizeGoldenBingoTitle(input.title);
   const questionCount = normalizeGoldenBingoQuestionCount(input.questionCount);
+  const playMode = normalizeGoldenBingoPlayMode(input.playMode);
+  if (playMode === "special25" && questionCount !== 20) {
+    throw new GoldenBingoError("특별 5×5 방식은 문제 20개 게임에서 사용할 수 있습니다.");
+  }
   const { db } = getFirebaseAdmin();
   const ref = db.collection(COLLECTION).doc();
+  const baseBoardOrder = makeGoldenBingoBoardOrder(questionCount, playMode);
+  const baseEraseOrder = makeGoldenBingoEraseNumberOrder(questionCount, playMode);
   const payload = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     title,
     questionCount,
+    playMode,
     questions: makeEmptyGoldenBingoQuestions(questionCount),
-    questionOrder: makeGoldenBingoQuestionOrder(questionCount),
+    questionOrder: shuffleGoldenBingoBoardOrder(baseBoardOrder, randomInt),
+    eraseNumberOrder: shuffleGoldenBingoEraseNumberOrder(
+      baseEraseOrder,
+      questionCount,
+      playMode,
+      randomInt
+    ),
     completedNumbers: [],
     createdBy: uid,
     createdAt: FieldValue.serverTimestamp(),
@@ -238,45 +292,96 @@ export async function updateGoldenBingoGame(
   const current = await ownedGame(uid, gameId);
   const title = normalizeGoldenBingoTitle(input.title);
   const questionCount = normalizeGoldenBingoQuestionCount(input.questionCount);
+  const playMode =
+    input.playMode === undefined
+      ? current.game.playMode
+      : normalizeGoldenBingoPlayMode(input.playMode);
+  if (playMode === "special25" && questionCount !== 20) {
+    throw new GoldenBingoError("특별 5×5 방식은 문제 20개 게임에서 사용할 수 있습니다.");
+  }
   const questions = normalizeGoldenBingoQuestions(input.questions, questionCount);
   const countChanged = questionCount !== current.game.questionCount;
-  const completedNumbers = countChanged
+  const modeChanged = playMode !== current.game.playMode;
+  const structureChanged = countChanged || modeChanged;
+  const completedNumbers = structureChanged
     ? []
-    : current.game.completedNumbers.filter((number) => number <= questionCount);
-  const questionOrder = countChanged
-    ? makeGoldenBingoQuestionOrder(questionCount)
-    : storedQuestionOrder(current.data, questionCount);
+    : current.game.completedNumbers.filter(
+        (number) => number <= goldenBingoBoardCount(questionCount, playMode)
+      );
+  const questionOrder = structureChanged
+    ? shuffleGoldenBingoBoardOrder(
+        makeGoldenBingoBoardOrder(questionCount, playMode),
+        randomInt
+      )
+    : storedBoardOrder(current.data, questionCount, playMode);
+  const eraseNumberOrder = structureChanged
+    ? shuffleGoldenBingoEraseNumberOrder(
+        makeGoldenBingoEraseNumberOrder(questionCount, playMode),
+        questionCount,
+        playMode,
+        randomInt
+      )
+    : storedEraseNumberOrder(current.data, questionCount, playMode);
   await current.ref.update({
-    schemaVersion: 2,
+    schemaVersion: 3,
     title,
     questionCount,
+    playMode,
     questions,
     completedNumbers,
     questionOrder,
+    eraseNumberOrder,
     updatedAt: FieldValue.serverTimestamp(),
   });
   return serializeGame(gameId, {
     ...current.data,
     title,
     questionCount,
+    playMode,
     questions,
     completedNumbers,
     questionOrder,
+    eraseNumberOrder,
     updatedAt: new Date(),
   });
 }
 
-export async function duplicateGoldenBingoGame(uid: string, gameId: string) {
+export async function duplicateGoldenBingoGame(
+  uid: string,
+  gameId: string,
+  options: { title?: unknown; playMode?: unknown } = {}
+) {
   const current = await ownedGame(uid, gameId);
   const { db } = getFirebaseAdmin();
   const ref = db.collection(COLLECTION).doc();
-  const title = `${current.game.title} 복사본`.slice(0, 120);
+  const title = options.title
+    ? normalizeGoldenBingoTitle(options.title)
+    : `${current.game.title} 복사본`.slice(0, 120);
+  const playMode =
+    options.playMode === undefined
+      ? current.game.playMode
+      : normalizeGoldenBingoPlayMode(options.playMode);
+  if (playMode === "special25" && current.game.questionCount !== 20) {
+    throw new GoldenBingoError("특별 5×5 방식은 문제 20개 게임에서 사용할 수 있습니다.");
+  }
+  const questionOrder = shuffleGoldenBingoBoardOrder(
+    makeGoldenBingoBoardOrder(current.game.questionCount, playMode),
+    randomInt
+  );
+  const eraseNumberOrder = shuffleGoldenBingoEraseNumberOrder(
+    makeGoldenBingoEraseNumberOrder(current.game.questionCount, playMode),
+    current.game.questionCount,
+    playMode,
+    randomInt
+  );
   const payload = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     title,
     questionCount: current.game.questionCount,
+    playMode,
     questions: current.game.questions,
-    questionOrder: makeGoldenBingoQuestionOrder(current.game.questionCount),
+    questionOrder,
+    eraseNumberOrder,
     completedNumbers: [],
     createdBy: uid,
     createdAt: FieldValue.serverTimestamp(),
@@ -310,14 +415,23 @@ export async function getGoldenBingoPlayView(
     id: game.id,
     title: game.title,
     questionCount: game.questionCount,
+    boardCount: game.boardCount,
+    playMode: game.playMode,
     completedNumbers: game.completedNumbers,
   };
   if (number === undefined) return base;
-  if (!Number.isInteger(number) || number < 1 || number > game.questionCount) {
+  if (!Number.isInteger(number) || number < 1 || number > game.boardCount) {
     throw new GoldenBingoError("문제 번호를 확인해 주세요.");
   }
   if (game.completedNumbers.includes(number)) {
     throw new GoldenBingoError("이미 출제 완료한 문제입니다.", 409, "already_completed");
+  }
+  const entry = boardEntryForNumber(game, data, number);
+  if (entry === "miss" || entry === "retry") {
+    return {
+      ...base,
+      special: { number, type: entry },
+    };
   }
   const question = questionForBoardNumber(game, data, number);
   return {
@@ -336,17 +450,27 @@ export async function revealGoldenBingoAnswer(uid: string, gameId: string, numbe
   if (!game.playable) {
     throw new GoldenBingoError("게임 문제를 먼저 완성해 주세요.", 409, "game_incomplete");
   }
-  if (!Number.isInteger(number) || number < 1 || number > game.questionCount) {
+  if (!Number.isInteger(number) || number < 1 || number > game.boardCount) {
     throw new GoldenBingoError("문제 번호를 확인해 주세요.");
   }
   if (game.completedNumbers.includes(number)) {
     throw new GoldenBingoError("이미 출제 완료한 문제입니다.", 409, "already_completed");
   }
+  const entry = boardEntryForNumber(game, data, number);
+  if (typeof entry !== "number") {
+    throw new GoldenBingoError("특별 칸에서는 정답을 확인할 수 없습니다.");
+  }
   const question = questionForBoardNumber(game, data, number);
+  const eraseNumberOrder = storedEraseNumberOrder(
+    data,
+    game.questionCount,
+    game.playMode
+  );
   return {
     number,
     correctChoice: question.correctChoice,
     explanation: question.explanation,
+    eraseNumber: eraseNumberOrder[entry - 1],
   };
 }
 
@@ -370,7 +494,7 @@ export async function completeGoldenBingoQuestion(
     if (!game.playable) {
       throw new GoldenBingoError("게임 문제를 먼저 완성해 주세요.", 409, "game_incomplete");
     }
-    if (!Number.isInteger(number) || number < 1 || number > game.questionCount) {
+    if (!Number.isInteger(number) || number < 1 || number > game.boardCount) {
       throw new GoldenBingoError("문제 번호를 확인해 주세요.");
     }
     const completedNumbers = [...new Set([...game.completedNumbers, number])].sort(
@@ -401,11 +525,26 @@ export async function resetGoldenBingoProgress(uid: string, gameId: string) {
       );
     }
     const game = serializeGame(snapshot.id, data);
-    const previousOrder = storedQuestionOrder(data, game.questionCount);
+    const previousOrder = storedBoardOrder(
+      data,
+      game.questionCount,
+      game.playMode
+    );
+    const previousEraseNumberOrder = storedEraseNumberOrder(
+      data,
+      game.questionCount,
+      game.playMode
+    );
     transaction.update(ref, {
-      schemaVersion: 2,
+      schemaVersion: 3,
       completedNumbers: [],
-      questionOrder: shuffleGoldenBingoQuestionOrder(previousOrder, randomInt),
+      questionOrder: shuffleGoldenBingoBoardOrder(previousOrder, randomInt),
+      eraseNumberOrder: shuffleGoldenBingoEraseNumberOrder(
+        previousEraseNumberOrder,
+        game.questionCount,
+        game.playMode,
+        randomInt
+      ),
       progressUpdatedAt: FieldValue.serverTimestamp(),
     });
   });

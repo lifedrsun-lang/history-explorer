@@ -87,16 +87,35 @@ export default function GoldenBingoManagementPage() {
     }
   };
 
-  const duplicateGame = async (game: GoldenBingoGameSummary) => {
+  const duplicateGame = async (
+    game: GoldenBingoGameSummary,
+    playMode?: "classic" | "special25"
+  ) => {
     setBusyId(game.id);
     setError("");
     setMessage("");
     try {
       const body = await api(`/api/teacher/golden-bingo/${game.id}/duplicate`, {
         method: "POST",
+        ...(playMode
+          ? {
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                playMode,
+                title:
+                  playMode === "special25"
+                    ? `${game.title.replace(/\s*[·-]?\s*난이도\s*[하상]\s*$/, "")} · 난이도 상`
+                    : undefined,
+              }),
+            }
+          : {}),
       });
       setGames((current) => [body.game, ...current]);
-      setMessage(`‘${game.title}’을 복제했습니다. 진행 기록은 복제되지 않았습니다.`);
+      setMessage(
+        playMode === "special25"
+          ? `‘${game.title}’을 난이도 상 게임으로 복제했습니다.`
+          : `‘${game.title}’을 복제했습니다. 진행 기록은 복제되지 않았습니다.`
+      );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "게임을 복제하지 못했습니다.");
     } finally {
@@ -244,9 +263,14 @@ export default function GoldenBingoManagementPage() {
                         <p className="text-xs font-black tracking-widest text-amber-600">GOLDEN BINGO</p>
                         <h3 className="mt-1 truncate text-xl font-black">{game.title}</h3>
                       </div>
-                      <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-black ${game.playable ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
-                        {game.playable ? "게임 준비 완료" : "문제 등록 중"}
-                      </span>
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <span className={`rounded-full px-3 py-1 text-xs font-black ${game.playMode === "special25" ? "bg-violet-100 text-violet-800" : "bg-sky-100 text-sky-800"}`}>
+                          {game.playMode === "special25" ? "난이도 상" : "난이도 하"}
+                        </span>
+                        <span className={`rounded-full px-3 py-1 text-xs font-black ${game.playable ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                          {game.playable ? "게임 준비 완료" : "문제 등록 중"}
+                        </span>
+                      </div>
                     </div>
                     <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                       <div className="rounded-xl bg-slate-50 p-3"><p className="text-xl font-black">{game.questionCount}</p><p className="text-xs font-bold text-slate-500">전체 문제</p></div>
@@ -258,7 +282,11 @@ export default function GoldenBingoManagementPage() {
                     </div>
                     <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
                       <Link href={`/teacher/golden-bingo/${game.id}/edit`} className="rounded-xl bg-slate-900 px-3 py-3 text-center text-sm font-black text-white">수정</Link>
-                      <button type="button" disabled={Boolean(busyId)} onClick={() => void duplicateGame(game)} className="rounded-xl bg-blue-50 px-3 py-3 text-sm font-black text-blue-800 disabled:opacity-50">복제</button>
+                      {game.playMode === "classic" && game.questionCount === 20 ? (
+                        <button type="button" disabled={Boolean(busyId)} onClick={() => void duplicateGame(game, "special25")} className="rounded-xl bg-violet-100 px-3 py-3 text-sm font-black text-violet-800 disabled:opacity-50">난이도 상 복제</button>
+                      ) : (
+                        <button type="button" disabled={Boolean(busyId)} onClick={() => void duplicateGame(game)} className="rounded-xl bg-blue-50 px-3 py-3 text-sm font-black text-blue-800 disabled:opacity-50">복제</button>
+                      )}
                       <button type="button" disabled={Boolean(busyId)} onClick={() => void deleteGame(game)} className="rounded-xl bg-rose-50 px-3 py-3 text-sm font-black text-rose-700 disabled:opacity-50">삭제</button>
                       {game.playable ? (
                         <Link href={`/teacher/golden-bingo/${game.id}/play`} className="rounded-xl bg-amber-500 px-3 py-3 text-center text-sm font-black text-slate-950">게임 시작</Link>

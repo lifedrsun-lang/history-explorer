@@ -12,6 +12,8 @@ type Board = {
   id: string;
   title: string;
   questionCount: number;
+  boardCount: number;
+  playMode: "classic" | "special25";
   completedNumbers: number[];
 };
 
@@ -26,6 +28,12 @@ type RevealedAnswer = {
   number: number;
   correctChoice: GoldenBingoChoice;
   explanation: string;
+  eraseNumber: number;
+};
+
+type SpecialCard = {
+  number: number;
+  type: "miss" | "retry";
 };
 
 export default function GoldenBingoPlayPage() {
@@ -34,6 +42,7 @@ export default function GoldenBingoPlayPage() {
   const [checking, setChecking] = useState(true);
   const [board, setBoard] = useState<Board | null>(null);
   const [question, setQuestion] = useState<PlayQuestion | null>(null);
+  const [special, setSpecial] = useState<SpecialCard | null>(null);
   const [answer, setAnswer] = useState<RevealedAnswer | null>(null);
   const [selectedChoice, setSelectedChoice] = useState<GoldenBingoChoice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,12 +105,19 @@ export default function GoldenBingoPlayPage() {
     setError("");
     setAnswer(null);
     setSelectedChoice(null);
+    setSpecial(null);
     try {
       const body = await api(
         `/api/teacher/golden-bingo/${gameId}/play?number=${number}`
       );
       setBoard((current) => (current ? { ...current, completedNumbers: body.game.completedNumbers } : current));
-      setQuestion(body.game.question);
+      if (body.game.special) {
+        setQuestion(null);
+        setSpecial(body.game.special);
+      } else {
+        setQuestion(body.game.question);
+        setSpecial(null);
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "문제를 불러오지 못했습니다.");
     } finally {
@@ -128,20 +144,22 @@ export default function GoldenBingoPlayPage() {
     }
   };
 
-  const completeQuestion = async () => {
-    if (!question || !answer) return;
+  const completeBoardEntry = async () => {
+    const number = question?.number ?? special?.number;
+    if (!number || (question && !answer)) return;
     setBusy(true);
     setError("");
     try {
       const body = await api(`/api/teacher/golden-bingo/${gameId}/play`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "complete", number: question.number }),
+        body: JSON.stringify({ action: "complete", number }),
       });
       setBoard((current) =>
         current ? { ...current, completedNumbers: body.completedNumbers } : current
       );
       setQuestion(null);
+      setSpecial(null);
       setAnswer(null);
       setSelectedChoice(null);
     } catch (cause) {
@@ -169,6 +187,7 @@ export default function GoldenBingoPlayPage() {
         current ? { ...current, completedNumbers: body.completedNumbers } : current
       );
       setQuestion(null);
+      setSpecial(null);
       setAnswer(null);
       setSelectedChoice(null);
     } catch (cause) {
@@ -224,7 +243,7 @@ export default function GoldenBingoPlayPage() {
 
         {error && <p role="alert" className="mt-4 rounded-2xl border-2 border-rose-200 bg-rose-50 p-4 text-center font-black text-rose-700">{error}</p>}
 
-        {!question ? (
+        {!question && !special ? (
           <section className="mt-5 rounded-3xl border-2 border-amber-200 bg-white/95 p-4 shadow-xl sm:p-7">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
@@ -233,11 +252,11 @@ export default function GoldenBingoPlayPage() {
               </div>
               <div className="rounded-2xl bg-amber-100 px-5 py-3 text-center">
                 <span className="text-2xl font-black text-amber-900">{board.completedNumbers.length}</span>
-                <span className="font-black text-amber-800"> / {board.questionCount} 출제 완료</span>
+                <span className="font-black text-amber-800"> / {board.boardCount} 선택 완료</span>
               </div>
             </div>
             <div className="mx-auto mt-6 grid max-w-5xl grid-cols-5 gap-2 sm:gap-3">
-              {Array.from({ length: board.questionCount }, (_, index) => {
+              {Array.from({ length: board.boardCount }, (_, index) => {
                 const number = index + 1;
                 const completed = board.completedNumbers.includes(number);
                 return (
@@ -255,11 +274,34 @@ export default function GoldenBingoPlayPage() {
               })}
             </div>
           </section>
-        ) : (
+        ) : special ? (
+          <section className="mt-5 rounded-3xl border-2 border-amber-200 bg-white p-5 text-center shadow-xl sm:p-8">
+            <div className="flex items-center justify-between gap-3">
+              <span className="rounded-2xl bg-amber-400 px-5 py-3 text-2xl font-black text-amber-950 sm:text-3xl">{special.number}번</span>
+              <button type="button" disabled={busy} onClick={() => { setSpecial(null); setError(""); }} className="rounded-xl bg-slate-100 px-4 py-3 font-black text-slate-700 disabled:opacity-50">← 번호 선택판</button>
+            </div>
+            <div className={`mx-auto mt-8 max-w-4xl rounded-[2rem] border-4 p-8 shadow-xl sm:p-12 ${special.type === "miss" ? "border-rose-400 bg-rose-50" : "border-sky-400 bg-sky-50"}`}>
+              <p className="text-7xl sm:text-9xl" aria-hidden="true">{special.type === "miss" ? "💥" : "🎉"}</p>
+              <h2 className={`mt-5 text-4xl font-black sm:text-6xl ${special.type === "miss" ? "text-rose-700" : "text-sky-700"}`}>
+                {special.type === "miss" ? "꽝!" : "한 번 더 도전!"}
+              </h2>
+              <p className="mt-5 text-xl font-black text-slate-700 sm:text-3xl">
+                {special.type === "miss"
+                  ? "이번에는 지우는 숫자가 없어요."
+                  : "같은 학생이나 모둠이 번호를 한 번 더 골라요!"}
+              </p>
+            </div>
+            <div className="mx-auto mt-7 max-w-4xl">
+              <button type="button" disabled={busy} onClick={() => void completeBoardEntry()} className="w-full rounded-2xl bg-slate-900 px-8 py-5 text-2xl font-black text-white shadow-lg disabled:opacity-50 sm:text-3xl">
+                {busy ? "저장 중…" : special.type === "miss" ? "번호판으로" : "한 번 더 번호 고르기"}
+              </button>
+            </div>
+          </section>
+        ) : question ? (
           <section className="mt-5 rounded-3xl border-2 border-amber-200 bg-white p-5 shadow-xl sm:p-8">
             <div className="flex items-center justify-between gap-3">
               <span className="rounded-2xl bg-amber-400 px-5 py-3 text-2xl font-black text-amber-950 sm:text-3xl">{question.number}번</span>
-              <button type="button" disabled={busy} onClick={() => { setQuestion(null); setAnswer(null); setSelectedChoice(null); setError(""); }} className="rounded-xl bg-slate-100 px-4 py-3 font-black text-slate-700 disabled:opacity-50">← 번호 선택판</button>
+              <button type="button" disabled={busy} onClick={() => { setQuestion(null); setSpecial(null); setAnswer(null); setSelectedChoice(null); setError(""); }} className="rounded-xl bg-slate-100 px-4 py-3 font-black text-slate-700 disabled:opacity-50">← 번호 선택판</button>
             </div>
 
             <div className={`mx-auto mt-6 grid max-w-6xl gap-6 ${question.imageUrl ? "lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)] lg:items-center" : ""}`}>
@@ -312,17 +354,21 @@ export default function GoldenBingoPlayPage() {
             {answer && (
               <div className="mx-auto mt-6 max-w-6xl rounded-3xl border-4 border-emerald-400 bg-emerald-50 p-5 text-center sm:p-7">
                 <p className="text-2xl font-black text-emerald-900 sm:text-4xl">정답은 {answer.correctChoice}번입니다!</p>
+                <p className="mt-5 rounded-2xl bg-amber-400 px-5 py-5 text-3xl font-black text-amber-950 shadow-md sm:text-5xl">
+                  정답! {answer.eraseNumber}번을 지워주세요!
+                </p>
+                <p className="mt-3 text-base font-black text-emerald-800 sm:text-xl">정답을 맞힌 학생만 지워요.</p>
                 {answer.explanation && <p className="mt-4 whitespace-pre-wrap break-words text-xl font-bold leading-relaxed text-emerald-950 sm:text-2xl">{answer.explanation}</p>}
               </div>
             )}
 
             {answer && (
               <div className="mx-auto mt-7 grid max-w-4xl gap-3">
-                <button type="button" disabled={busy} onClick={() => void completeQuestion()} className="rounded-2xl bg-slate-900 px-8 py-5 text-2xl font-black text-white shadow-lg disabled:opacity-50 sm:text-3xl">{busy ? "저장 중…" : "출제 완료 · 번호판으로"}</button>
+                <button type="button" disabled={busy} onClick={() => void completeBoardEntry()} className="rounded-2xl bg-slate-900 px-8 py-5 text-2xl font-black text-white shadow-lg disabled:opacity-50 sm:text-3xl">{busy ? "저장 중…" : "출제 완료 · 번호판으로"}</button>
               </div>
             )}
           </section>
-        )}
+        ) : null}
       </div>
     </main>
   );

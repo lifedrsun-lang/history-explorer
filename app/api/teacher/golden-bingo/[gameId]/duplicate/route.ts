@@ -3,6 +3,7 @@ import {
   deleteGoldenBingoGame,
   duplicateGoldenBingoGame,
   getGoldenBingoGame,
+  goldenBingoBody,
   goldenBingoFailure,
   goldenBingoJson,
   updateGoldenBingoGame,
@@ -22,8 +23,14 @@ export async function POST(
   try {
     const teacher = await authorizeGoldenBingo(request);
     const { gameId } = await context.params;
+    const options = request.headers.get("content-type")?.startsWith("application/json")
+      ? await goldenBingoBody(request)
+      : {};
     const source = await getGoldenBingoGame(teacher.uid, gameId);
-    const draft = await duplicateGoldenBingoGame(teacher.uid, gameId);
+    const draft = await duplicateGoldenBingoGame(teacher.uid, gameId, {
+      title: options.title,
+      playMode: options.playMode,
+    });
     let questions: GoldenBingoQuestion[] = [];
     try {
       questions = await cloneGoldenBingoQuestionImages(
@@ -34,6 +41,7 @@ export async function POST(
       const game = await updateGoldenBingoGame(teacher.uid, draft.id, {
         title: draft.title,
         questionCount: draft.questionCount,
+        playMode: draft.playMode,
         questions,
       });
       return goldenBingoJson({ game }, 201);

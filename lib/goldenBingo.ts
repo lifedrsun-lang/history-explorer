@@ -1,6 +1,9 @@
 export const GOLDEN_BINGO_MIN_QUESTIONS = 16;
 export const GOLDEN_BINGO_MAX_QUESTIONS = 100;
 export const GOLDEN_BINGO_IMAGE_MAX_BYTES = 4_000_000;
+export const GOLDEN_BINGO_SPECIAL_QUESTION_COUNT = 20;
+export const GOLDEN_BINGO_MISS_COUNT = 3;
+export const GOLDEN_BINGO_RETRY_COUNT = 2;
 export const GOLDEN_BINGO_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
@@ -8,6 +11,9 @@ export const GOLDEN_BINGO_IMAGE_TYPES = [
 ] as const;
 
 export type GoldenBingoChoice = 1 | 2 | 3;
+export type GoldenBingoSpecial = "miss" | "retry";
+export type GoldenBingoBoardEntry = number | GoldenBingoSpecial;
+export type GoldenBingoPlayMode = "classic" | "special25";
 
 export type GoldenBingoQuestion = {
   number: number;
@@ -23,6 +29,8 @@ export type GoldenBingoGame = {
   id: string;
   title: string;
   questionCount: number;
+  boardCount: number;
+  playMode: GoldenBingoPlayMode;
   questions: GoldenBingoQuestion[];
   completedNumbers: number[];
   readyCount: number;
@@ -92,28 +100,73 @@ export const makeEmptyGoldenBingoQuestions = (count: number) =>
     imagePath: "",
   }));
 
-export const makeGoldenBingoQuestionOrder = (count: number) =>
-  Array.from({ length: count }, (_, index) => index + 1);
+export const normalizeGoldenBingoPlayMode = (
+  value: unknown
+): GoldenBingoPlayMode => (value === "special25" ? "special25" : "classic");
 
-export const normalizeGoldenBingoQuestionOrder = (
+const goldenBingoSpecialEntries = (
+  questionCount: number,
+  playMode: GoldenBingoPlayMode
+): GoldenBingoSpecial[] =>
+  playMode === "special25" &&
+  questionCount === GOLDEN_BINGO_SPECIAL_QUESTION_COUNT
+    ? ["miss", "miss", "miss", "retry", "retry"]
+    : [];
+
+export const goldenBingoBoardCount = (
+  questionCount: number,
+  playMode: GoldenBingoPlayMode = "classic"
+) => questionCount + goldenBingoSpecialEntries(questionCount, playMode).length;
+
+export const makeGoldenBingoBoardOrder = (
+  questionCount: number,
+  playMode: GoldenBingoPlayMode = "classic"
+): GoldenBingoBoardEntry[] => [
+  ...Array.from({ length: questionCount }, (_, index) => index + 1),
+  ...goldenBingoSpecialEntries(questionCount, playMode),
+];
+
+export const normalizeGoldenBingoBoardOrder = (
   value: unknown,
-  questionCount: number
+  questionCount: number,
+  playMode: GoldenBingoPlayMode = "classic"
 ) => {
-  const fallback = makeGoldenBingoQuestionOrder(questionCount);
-  if (!Array.isArray(value) || value.length !== questionCount) return fallback;
+  const fallback = makeGoldenBingoBoardOrder(questionCount, playMode);
+  if (!Array.isArray(value)) return fallback;
 
-  const order = value.map(Number);
-  const valid =
-    new Set(order).size === questionCount &&
-    order.every(
+  const legacyNumbers = value.map(Number);
+  const validLegacyOrder =
+    value.length === questionCount &&
+    new Set(legacyNumbers).size === questionCount &&
+    legacyNumbers.every(
       (number) =>
         Number.isInteger(number) && number >= 1 && number <= questionCount
     );
+  if (validLegacyOrder) {
+    return [...legacyNumbers, ...goldenBingoSpecialEntries(questionCount, playMode)];
+  }
+
+  if (value.length !== fallback.length) return fallback;
+  const order = value.map((entry) =>
+    entry === "miss" || entry === "retry" ? entry : Number(entry)
+  ) as GoldenBingoBoardEntry[];
+  const numbers = order.filter((entry): entry is number => typeof entry === "number");
+  const misses = order.filter((entry) => entry === "miss").length;
+  const retries = order.filter((entry) => entry === "retry").length;
+  const valid =
+    numbers.length === questionCount &&
+    new Set(numbers).size === questionCount &&
+    numbers.every(
+      (number) =>
+        Number.isInteger(number) && number >= 1 && number <= questionCount
+    ) &&
+    misses === goldenBingoSpecialEntries(questionCount, playMode).filter((entry) => entry === "miss").length &&
+    retries === goldenBingoSpecialEntries(questionCount, playMode).filter((entry) => entry === "retry").length;
   return valid ? order : fallback;
 };
 
-export const shuffleGoldenBingoQuestionOrder = (
-  previousOrder: number[],
+export const shuffleGoldenBingoBoardOrder = (
+  previousOrder: GoldenBingoBoardEntry[],
   randomIndex: (upperExclusive: number) => number
 ) => {
   const nextOrder = [...previousOrder];
@@ -128,6 +181,68 @@ export const shuffleGoldenBingoQuestionOrder = (
     ];
   }
 
+  if (
+    nextOrder.length > 1 &&
+    nextOrder.every((number, index) => number === previousOrder[index])
+  ) {
+    [nextOrder[0], nextOrder[1]] = [nextOrder[1], nextOrder[0]];
+  }
+  return nextOrder;
+};
+
+export const makeGoldenBingoEraseNumberOrder = (
+  questionCount: number,
+  playMode: GoldenBingoPlayMode = "classic"
+) => {
+  const boardCount = goldenBingoBoardCount(questionCount, playMode);
+  if (
+    playMode === "special25" &&
+    questionCount === GOLDEN_BINGO_SPECIAL_QUESTION_COUNT
+  ) {
+    return Array.from(
+      { length: questionCount },
+      (_, index) => ((index * 7 + 3) % boardCount) + 1
+    );
+  }
+  return Array.from({ length: questionCount }, (_, index) => index + 1);
+};
+
+export const normalizeGoldenBingoEraseNumberOrder = (
+  value: unknown,
+  questionCount: number,
+  playMode: GoldenBingoPlayMode = "classic"
+) => {
+  const fallback = makeGoldenBingoEraseNumberOrder(questionCount, playMode);
+  if (!Array.isArray(value) || value.length !== questionCount) return fallback;
+  const boardCount = goldenBingoBoardCount(questionCount, playMode);
+  const order = value.map(Number);
+  const valid =
+    new Set(order).size === questionCount &&
+    order.every(
+      (number) =>
+        Number.isInteger(number) && number >= 1 && number <= boardCount
+    );
+  return valid ? order : fallback;
+};
+
+export const shuffleGoldenBingoEraseNumberOrder = (
+  previousOrder: number[],
+  questionCount: number,
+  playMode: GoldenBingoPlayMode,
+  randomIndex: (upperExclusive: number) => number
+) => {
+  const pool = Array.from(
+    { length: goldenBingoBoardCount(questionCount, playMode) },
+    (_, index) => index + 1
+  );
+  for (let index = pool.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomIndex(index + 1);
+    if (!Number.isInteger(swapIndex) || swapIndex < 0 || swapIndex > index) {
+      throw new RangeError("무작위 지우기 번호 범위를 확인해 주세요.");
+    }
+    [pool[index], pool[swapIndex]] = [pool[swapIndex], pool[index]];
+  }
+  const nextOrder = pool.slice(0, questionCount);
   if (
     nextOrder.length > 1 &&
     nextOrder.every((number, index) => number === previousOrder[index])
