@@ -150,7 +150,7 @@ export default function GoldenBingoPlayPage() {
   const resetGame = async () => {
     if (
       !window.confirm(
-        "이 게임의 출제 완료 기록만 초기화할까요? 등록한 문제·보기·정답·사진은 그대로 유지됩니다."
+        "진행 기록을 초기화하고 문제 번호를 다시 섞을까요? 등록한 문제·보기·정답·사진은 그대로 유지됩니다."
       )
     ) {
       return;
@@ -212,7 +212,7 @@ export default function GoldenBingoPlayPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => void toggleFullscreen()} className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700">{fullscreen ? "전체 화면 종료" : "⛶ 전체 화면"}</button>
-            <button type="button" disabled={busy} onClick={() => void resetGame()} className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-black text-rose-700 disabled:opacity-50">게임 초기화</button>
+            <button type="button" disabled={busy} onClick={() => void resetGame()} className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-black text-rose-700 disabled:opacity-50">게임 초기화 · 문제 섞기</button>
             <Link href="/teacher/golden-bingo" className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white">관리 화면</Link>
           </div>
         </header>

@@ -34,12 +34,17 @@ export type GoldenBingoGame = {
 export type GoldenBingoGameSummary = Omit<GoldenBingoGame, "questions">;
 
 export class GoldenBingoError extends Error {
+  public status: number;
+  public code: string;
+
   constructor(
     message: string,
-    public status = 400,
-    public code = "invalid_input"
+    status = 400,
+    code = "invalid_input"
   ) {
     super(message);
+    this.status = status;
+    this.code = code;
   }
 }
 
@@ -86,6 +91,51 @@ export const makeEmptyGoldenBingoQuestions = (count: number) =>
     imageUrl: "",
     imagePath: "",
   }));
+
+export const makeGoldenBingoQuestionOrder = (count: number) =>
+  Array.from({ length: count }, (_, index) => index + 1);
+
+export const normalizeGoldenBingoQuestionOrder = (
+  value: unknown,
+  questionCount: number
+) => {
+  const fallback = makeGoldenBingoQuestionOrder(questionCount);
+  if (!Array.isArray(value) || value.length !== questionCount) return fallback;
+
+  const order = value.map(Number);
+  const valid =
+    new Set(order).size === questionCount &&
+    order.every(
+      (number) =>
+        Number.isInteger(number) && number >= 1 && number <= questionCount
+    );
+  return valid ? order : fallback;
+};
+
+export const shuffleGoldenBingoQuestionOrder = (
+  previousOrder: number[],
+  randomIndex: (upperExclusive: number) => number
+) => {
+  const nextOrder = [...previousOrder];
+  for (let index = nextOrder.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomIndex(index + 1);
+    if (!Number.isInteger(swapIndex) || swapIndex < 0 || swapIndex > index) {
+      throw new RangeError("무작위 문제 번호 범위를 확인해 주세요.");
+    }
+    [nextOrder[index], nextOrder[swapIndex]] = [
+      nextOrder[swapIndex],
+      nextOrder[index],
+    ];
+  }
+
+  if (
+    nextOrder.length > 1 &&
+    nextOrder.every((number, index) => number === previousOrder[index])
+  ) {
+    [nextOrder[0], nextOrder[1]] = [nextOrder[1], nextOrder[0]];
+  }
+  return nextOrder;
+};
 
 export const isGoldenBingoQuestionReady = (question: GoldenBingoQuestion) =>
   Boolean(
