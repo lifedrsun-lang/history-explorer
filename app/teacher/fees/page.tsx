@@ -952,9 +952,12 @@ export default function TeacherFeesPage() {
     const linkedSum = (field: "receivedAmount" | "grossAmount" | "incomeTax" | "residentTax" | "employmentInsurance" | "industrialInsurance") =>
       linked.reduce((sum, item) => sum + Number(item[field] || 0), 0);
     const units = getSettlementUnits(contract);
-    const entries = Object.entries(contract.settlements || {}).flatMap(([key, entry]) =>
-      getFeePaymentEntries(entry, units.find((unit) => unit.key === key)?.expectedAmount ?? Number(entry.grossAmount || 0))
-    );
+    const entries = Object.entries(contract.settlements || {}).flatMap(([key, entry]) => {
+      const paymentEntries = getFeePaymentEntries(entry, units.find((unit) => unit.key === key)?.expectedAmount ?? Number(entry.grossAmount || 0));
+      // A previously calculated but unpaid estimate is not a second real receipt.
+      if (linked.some((item) => item.unitKey === key) && !paymentEntries.some(isPaidFeeInstallment)) return [];
+      return paymentEntries;
+    });
     // Even an empty split-payment list is an explicitly saved settlement:
     // do not resurrect the old single-payment totals after deleting the last row.
     const hasNewSettlements = Object.keys(contract.settlements || {}).length > 0;
