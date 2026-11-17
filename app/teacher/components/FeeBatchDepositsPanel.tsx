@@ -54,6 +54,7 @@ export default function FeeBatchDepositsPanel({ candidates, deposits, requestJso
   const [receivedDate, setReceivedDate] = useState(today());
   const [receivedAmount, setReceivedAmount] = useState("");
   const [note, setNote] = useState("");
+  const [reviewId, setReviewId] = useState("");
   const [selection, setSelection] = useState<string[]>([]);
   const [overrides, setOverrides] = useState<Record<string, Partial<Record<DeductionField, string>>>>({});
   const [busy, setBusy] = useState(false);
@@ -138,10 +139,11 @@ export default function FeeBatchDepositsPanel({ candidates, deposits, requestJso
         body: JSON.stringify({
           payerName: payer.name, businessNumber: payer.number, industryCode: payer.industryCode,
           receivedDate, receivedAmount: actual, note,
+          reviewId: reviewOnly ? "" : reviewId,
           allocations: reviewOnly ? [] : allocations,
         }),
       });
-      setSelection([]); setOverrides({}); setReceivedAmount(""); setNote("");
+      setSelection([]); setOverrides({}); setReceivedAmount(""); setNote(""); setReviewId("");
       await onSaved();
       setSuccess(reviewOnly ? "입금 거래만 기록했습니다. 배분 확인 전까지 학교별 정산에는 반영되지 않습니다." : "선택한 학교·반의 수당을 통합 입금에 연결했습니다.");
     } catch (e) { setError(e instanceof Error ? e.message : "입금내역 저장에 실패했습니다."); }
@@ -251,14 +253,21 @@ export default function FeeBatchDepositsPanel({ candidates, deposits, requestJso
           className="mt-1 w-full rounded-xl border border-slate-200 p-2" />
       </label>
       <p className="mt-3 text-xs text-slate-500">예상 공제는 소득세 3%·지방소득세 0.3%, 보험료 0원으로 시작합니다. 실제 공제액이 다를 수 있으므로 명세서와 대조해 주세요. 차액이 있으면 학교별로 임의 배분하지 않습니다.</p>
+      {reviewId && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 p-3 text-xs font-bold text-amber-800">
+          미배분 입금내역을 연결하는 중입니다. 입금액을 변경하지 않고 수업을 선택해 주세요.
+          <button type="button" onClick={() => { setReviewId(""); setSelection([]); setOverrides({}); setReceivedAmount(""); setNote(""); }}
+            className="rounded-lg border border-amber-200 bg-white px-2 py-1">연결 취소</button>
+        </div>
+      )}
       {error && <p role="alert" className="mt-3 rounded-xl bg-rose-50 p-3 text-sm font-bold text-rose-700">{error}</p>}
       {success && <p role="status" className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{success}</p>}
       <div className="mt-4 flex flex-wrap gap-2">
         <button type="button" disabled={busy || !payer || !receivedDate || actual <= 0 || !matchedAmount} onClick={() => void save(false)}
           className="rounded-xl bg-blue-700 px-4 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40">
-          선택한 수업 일괄 입금처리
+          {reviewId ? "기록된 입금에 수업 연결" : "선택한 수업 일괄 입금처리"}
         </button>
-        <button type="button" disabled={busy || !payer || !receivedDate || actual <= 0 || matchedAmount} onClick={() => void save(true)}
+        <button type="button" disabled={busy || !payer || !receivedDate || actual <= 0 || matchedAmount || Boolean(reviewId)} onClick={() => void save(true)}
           className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-black text-amber-800 disabled:cursor-not-allowed disabled:opacity-40">
           금액 불일치 · 입금만 기록
         </button>
@@ -277,8 +286,23 @@ export default function FeeBatchDepositsPanel({ candidates, deposits, requestJso
                   )}
                   {deposit.note && <p className="mt-1 text-xs text-slate-500">{deposit.note}</p>}
                 </div>
-                <button type="button" disabled={busy} onClick={() => void deleteDeposit(deposit)}
-                  className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 disabled:opacity-40">삭제</button>
+                <div className="flex gap-2">
+                  {deposit.status === "review" && (
+                    <button type="button" disabled={busy} onClick={() => {
+                      setReviewId(deposit.id);
+                      setSelectedPayer(`${deposit.payerName}|${deposit.businessNumber}`);
+                      setAllMonths(true);
+                      setReceivedDate(deposit.receivedDate);
+                      setReceivedAmount(String(deposit.receivedAmount));
+                      setNote(deposit.note || "");
+                      setSelection([]);
+                      setOverrides({});
+                      setError("");
+                    }} className="rounded-lg bg-amber-100 px-3 py-2 text-xs font-bold text-amber-800">수업 연결</button>
+                  )}
+                  <button type="button" disabled={busy} onClick={() => void deleteDeposit(deposit)}
+                    className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 disabled:opacity-40">삭제</button>
+                </div>
               </div>
             ))}
           </div>
