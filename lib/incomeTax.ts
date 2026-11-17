@@ -68,21 +68,42 @@ const RATE_TABLE: Record<2024 | 2025, Record<SupportedIndustryCode, Omit<Industr
 export const isSupportedIndustryCode = (value: unknown): value is SupportedIndustryCode =>
   value === "940925" || value === "940908" || value === "940906" || value === "940921" || value === "940903" || value === "940909";
 
-// Apply the corrected code to these payers, including their earlier saved defaults.
-export const resolveTeachingPayerIndustryCode = (
-  industryCode: string,
-  payerName: string,
-  businessNumber: string
-) => {
-  const normalizedName = payerName.replace(/\s/g, "");
-  const normalizedNumber = businessNumber.replace(/\D/g, "");
-  const isTeachingPayer =
-    normalizedNumber === "3708102906" || normalizedNumber === "1058222590" ||
-    /클래스포에듀|컴퓨팅교사협회|\bATC\b/i.test(normalizedName);
-  return isTeachingPayer && (!industryCode || industryCode === "940925" || industryCode === "940921")
-    ? "940903"
-    : industryCode;
-};
+export const COMPUTING_TEACHERS_ASSOCIATION = {
+  payerName: "사단법인 컴퓨팅교사협회",
+  industryCode: "940925",
+  businessNumber: "105-82-22590",
+} as const;
+
+export const DH_PAYER = {
+  payerName: "디에이치 실업(DH)",
+  industryCode: "940909",
+  businessNumber: "545-05-01337",
+} as const;
+
+export const DH_INDUSTRY_LABEL = "기타자영업(~2026.3.19), 기타인적용역자(2026.3.20~) (940909)";
+
+export function resolveIncomeTaxPayer(profile: {
+  payerName: string;
+  industryCode: string;
+  businessNumber: string;
+}) {
+  const { payerName, industryCode, businessNumber } = profile;
+  const number = businessNumber.replace(/\D/g, "");
+  const name = payerName.replace(/\s/g, "");
+
+  if (number === "1058222590" || (!number && /^(?:사단법인|\(사\))?컴퓨팅교사협회(?:\(ATC\))?$|^ATC$/i.test(name))) {
+    return COMPUTING_TEACHERS_ASSOCIATION;
+  }
+  if (number === "5450501337" || (!number && /^디에이치실업(?:\(DH\))?$/i.test(name))) {
+    return DH_PAYER;
+  }
+
+  const isClassForEdu = number === "3708102906" || /클래스포에듀/.test(name);
+  if (isClassForEdu && (!industryCode || industryCode === "940925" || industryCode === "940921")) {
+    return { ...profile, industryCode: "940903" };
+  }
+  return profile;
+}
 
 export const getIndustryRate = (year: number, code: SupportedIndustryCode): IndustryRate => {
   const sourceYear: 2024 | 2025 = year <= 2024 ? 2024 : 2025;
