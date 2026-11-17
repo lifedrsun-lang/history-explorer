@@ -1102,6 +1102,13 @@ export default function TeacherPage() {
           🤖 활동 결과 연구소
         </Link>
 
+        <Link
+          href="/teacher/golden-bingo"
+          className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-800 shadow-sm"
+        >
+          🏆 공용 골든빙고
+        </Link>
+
         <button
           onClick={handleLogout}
           className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 shadow-sm"

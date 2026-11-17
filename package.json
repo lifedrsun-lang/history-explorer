@@ -7,6 +7,7 @@
     "build": "node scripts/check-history-people.cjs && node scripts/check-history-timeline-access.cjs && next build",
     "start": "next start",
     "lint": "eslint",
+    "test:golden-bingo": "node scripts/verify-golden-bingo.mjs",
     "test:history-people": "node scripts/check-history-people.cjs",
     "test:history-access": "node scripts/check-history-timeline-access.cjs"
   },
