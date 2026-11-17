@@ -90,6 +90,13 @@ const sections: Record<string, ManagementSection> = {
         description: "공통 수업 기본자료 · 주차별 계획 작성 · 이전 계획안 복제",
         className: "border-indigo-200 bg-indigo-50 text-indigo-950",
       },
+      {
+        href: "/teacher/golden-bingo",
+        icon: "🏆",
+        title: "공용 골든빙고",
+        description: "공개수업·정규수업용 빙고 퀴즈 생성과 문제·진행 상태 관리",
+        className: "border-amber-300 bg-amber-50 text-amber-950",
+      },
     ],
   },
   teaching: {
