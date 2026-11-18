@@ -54,8 +54,12 @@ function parseOneDriveUrl(value: string) {
     const isOfficeEmbed =
       host === "view.officeapps.live.com" &&
       parsed.pathname.toLowerCase().includes("/op/embed.aspx");
+    const isSharePointEmbed =
+      host.endsWith(".sharepoint.com") &&
+      (parsed.searchParams.get("action")?.toLowerCase() === "embedview" ||
+        parsed.pathname.toLowerCase().includes("embed"));
 
-    if (isOneDriveEmbed || isOfficeEmbed) {
+    if (isOneDriveEmbed || isOfficeEmbed || isSharePointEmbed) {
       return { url: parsed.toString(), error: "" };
     }
 
