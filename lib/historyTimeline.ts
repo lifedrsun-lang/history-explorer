@@ -33,6 +33,9 @@ export type HistoryTimelineEvent = {
   dateLabel: string;
   stateOrEra: string;
   eraFilter: "선사" | "고조선" | "여러나라" | "고구려" | "백제" | "신라" | "가야" | "발해" | "후삼국" | "고려" | "조선" | "대한제국" | "일제강점기" | "대한민국";
+  /** 시대와 별개로 관리하는 국가유산 학습 분류. */
+  contentCategory?: "국가유산";
+  contentSubcategory?: "서원";
   title: string;
   summary: string;
   life: string;
@@ -311,6 +314,8 @@ export const toStudentTimelineEvent = (
   dateLabel: event.dateLabel,
   stateOrEra: event.stateOrEra,
   eraFilter: event.eraFilter,
+  contentCategory: event.contentCategory,
+  contentSubcategory: event.contentSubcategory,
   title: event.title,
   summary: event.summary,
   life: event.life,
