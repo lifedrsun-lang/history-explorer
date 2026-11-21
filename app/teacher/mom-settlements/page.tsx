@@ -54,6 +54,8 @@ const initialForm = (): FormState => ({
 
 const won = (amount: number) => amount.toLocaleString("ko-KR") + "원";
 const onlyDigits = (value: string) => value.replace(/[^0-9]/g, "");
+// Display comma groups while keeping form state as raw digits for calculations and API requests.
+const formatAmountInput = (value: string) => value.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 const INPUT = "mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
 const LABEL = "block text-sm font-bold text-slate-700";
 const sourceName = (source: Source) => SOURCE_OPTIONS.find(option => option.id === source)?.name || "직접입력";
@@ -423,12 +425,12 @@ export default function MomSettlementsPage() {
                         <input type="date" required value={form.receivedDate} onChange={event => setField("receivedDate", event.target.value)} className={INPUT} />
                       </label>
                       <label className={LABEL}>수당 입금금액 (원) *
-                        <input type="text" inputMode="numeric" required value={form.receivedAmount} onChange={event => setField("receivedAmount", onlyDigits(event.target.value))} placeholder="예: 800000" className={INPUT} />
+                        <input type="text" inputMode="numeric" required value={formatAmountInput(form.receivedAmount)} onChange={event => setField("receivedAmount", onlyDigits(event.target.value))} placeholder="예: 800000" className={INPUT} />
                       </label>
                       {!editingId ? (
                         <>
                           <label className={LABEL}>첫 지급금액 · 엄마에게 준 돈 (원)
-                            <input type="text" inputMode="numeric" value={form.paidAmount} onChange={event => changePaidAmount(event.target.value)} placeholder="아직 안 드렸으면 0원" className={INPUT} />
+                            <input type="text" inputMode="numeric" value={formatAmountInput(form.paidAmount)} onChange={event => changePaidAmount(event.target.value)} placeholder="아직 안 드렸으면 0원" className={INPUT} />
                           </label>
                           {Number(form.paidAmount || "0") > 0 && (
                             <label className={LABEL}>첫 지급 날짜 *
@@ -544,7 +546,7 @@ export default function MomSettlementsPage() {
                                   <input type="date" required className={INPUT} value={paymentDraft.date} onChange={event => setPaymentDraft(previous => previous ? { ...previous, date: event.target.value } : null)} />
                                 </label>
                                 <label className={LABEL}>이번에 지급한 금액 (원) *
-                                  <input type="text" inputMode="numeric" required className={INPUT} placeholder="이번 지급 금액만 입력" value={paymentDraft.amount} onChange={event => setPaymentDraft(previous => previous ? { ...previous, amount: onlyDigits(event.target.value) } : null)} />
+                                  <input type="text" inputMode="numeric" required className={INPUT} placeholder="이번 지급 금액만 입력" value={formatAmountInput(paymentDraft.amount)} onChange={event => setPaymentDraft(previous => previous ? { ...previous, amount: onlyDigits(event.target.value) } : null)} />
                                 </label>
                                 <p className="text-xs font-medium text-teal-900">입력 가능한 최대 금액: {won(pending + ((item.payments || []).find(payment => payment.id === paymentDraft.paymentId)?.paidAmount || 0))}</p>
                                 <div className="flex gap-2">
