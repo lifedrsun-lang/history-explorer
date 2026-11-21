@@ -3,6 +3,7 @@ import { handleRouteError, jsonError, verifyTeacherRequest } from "@/lib/assignm
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { sanitizeFeeSettlement, isPaidFeeInstallment, getFeePaymentEntries } from "@/lib/feeSettlement";
 import { type DepositAllocation, type FeeBatchDeposit, depositAllocationKey } from "@/lib/feeBatchDeposits";
+import { getFeeSchoolPayer, sameFeePayer } from "@/lib/feePayerRules";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -138,7 +139,16 @@ export async function POST(request: Request) {
         if (trim(contract.schoolName) !== item.schoolName) {
           throw new Error("학교 정보가 달라졌습니다. 목록을 다시 확인해 주세요.");
         }
+        const expectedPayer = getFeeSchoolPayer(contract.schoolName);
+        if (!sameFeePayer(expectedPayer, { payerName, businessNumber }) ||
+          (expectedPayer.businessNumber &&
+            expectedPayer.businessNumber.replace(/\D/g, "") !== businessNumber.replace(/\D/g, ""))) {
+          throw new Error(`${item.schoolName} 수당은 ${expectedPayer.payerName} 지급분으로만 연결할 수 있습니다.`);
+        }
         const isAfterschool = contract.type === "afterschool";
+        if (!isAfterschool && item.serviceMonth !== item.unitKey) {
+          throw new Error("건별계약은 수업월과 정산월이 일치해야 합니다.");
+        }
         if (isAfterschool ? !/^Q[1-4]-T[1-3](-[AB])?$/.test(item.unitKey) :
           !/^\d{4}-(0[1-9]|1[0-2])$/.test(item.unitKey)) {
           throw new Error("수업 정산 단위가 올바르지 않습니다.");
