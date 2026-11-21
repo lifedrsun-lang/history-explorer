@@ -290,12 +290,21 @@ export async function GET(request: Request) {
     const decoded = await verifyTeacherRequest(request);
     const { db } = getFirebaseAdmin();
     const year = validYear(new URL(request.url).searchParams.get("year"));
-    const [contractSnapshot, settingsSnapshot] = await Promise.all([
+    const [contractSnapshot, settingsSnapshot, batchDepositSnapshot] = await Promise.all([
       db.collection(FEE_COLLECTION).get(),
       db.collection(SETTINGS_COLLECTION).doc(`${decoded.uid}_${year}`).get(),
+      db.collection("teacher_fee_batch_deposits").where("ownerUid", "==", decoded.uid).get(),
     ]);
 
     const records: ReturnType<typeof createRecord>[] = [];
+    const batchCoveredUnits = new Set<string>();
+    batchDepositSnapshot.docs.forEach((docItem) => {
+      const deposit = docItem.data();
+      if (deposit.status !== "matched" || !Array.isArray(deposit.allocations)) return;
+      deposit.allocations.forEach((raw: Record<string, unknown>) => {
+        batchCoveredUnits.add(`${normalize(raw.contractId)}:${normalize(raw.unitKey)}`);
+      });
+    });
     const contracts = contractSnapshot.docs.map((docItem) => {
       const contract = docItem.data() as Record<string, unknown>;
       const inferredProfile = inferProfile(contract);
@@ -307,6 +316,12 @@ export async function GET(request: Request) {
 
       Object.entries(settlements).forEach(([key, entry]) => {
         const normalized = sanitizeFeeSettlement(entry);
+        // A historic calculation with no recorded bank payment is an estimate, not
+        // another taxable receipt once a linked bank transfer has been captured.
+        if (batchCoveredUnits.has(`${docItem.id}:${key}`) &&
+          !normalized.receivedDate && normalized.receivedAmount === undefined &&
+          (!Array.isArray(normalized.installments) || normalized.installments.every((part) =>
+            !part.receivedDate && part.receivedAmount === undefined))) return;
         if (Array.isArray(normalized.installments)) {
           normalized.installments.forEach((item, index) => {
             const record = createRecord(
@@ -362,9 +377,43 @@ export async function GET(request: Request) {
       };
     });
 
+    // Each linked allocation is one income record; the containing bank transfer must
+    // never be counted a second time. Unmatched bank transfers have no tax allocation.
+    const batchRecords = batchDepositSnapshot.docs.flatMap((docItem) => {
+      const deposit = docItem.data();
+      if (deposit.status !== "matched" || !Array.isArray(deposit.allocations)) return [];
+      const date = normalize(deposit.receivedDate);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number(date.slice(0, 4)) !== year) return [];
+      const payer = resolveIncomeTaxPayer({
+        payerName: normalize(deposit.payerName),
+        businessNumber: normalize(deposit.businessNumber),
+        industryCode: normalize(deposit.industryCode),
+      });
+      return (deposit.allocations as Array<Record<string, unknown>>).map((allocation, index) => ({
+        id: `batch:${docItem.id}:${index}`,
+        contractId: normalize(allocation.contractId),
+        settlementKey: normalize(allocation.unitKey),
+        installmentId: docItem.id,
+        installmentIndex: index + 1,
+        contractLabel: [normalize(allocation.schoolName), normalize(allocation.label)].filter(Boolean).join(" · "),
+        ...payer,
+        taxYear: Number(date.slice(0, 4)),
+        paymentMonth: Number(date.slice(5, 7)),
+        receivedDate: date,
+        grossAmount: amount(allocation.grossAmount),
+        incomeTax: amount(allocation.incomeTax),
+        localTax: amount(allocation.residentTax),
+        employmentInsurance: amount(allocation.employmentInsurance),
+        industrialInsurance: amount(allocation.industrialInsurance),
+        // Estimated withholding remains explicitly marked until verified against a payslip.
+        taxWasEstimated: true,
+        metadataConfirmed: false,
+      }));
+    });
+
     return Response.json({
       year,
-      records: records.filter((record) => record && record.taxYear === year),
+      records: [...records, ...batchRecords].filter((record) => record && record.taxYear === year),
       contracts,
       adjustments: sanitizeAdjustments(settingsSnapshot.data()),
     });

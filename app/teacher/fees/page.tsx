@@ -6,7 +6,10 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 
 import { auth } from "@/lib/firebase";
 import FeeSplitPaymentsPanel from "@/app/teacher/components/FeeSplitPaymentsPanel";
-import { isStudentEnrolledInQuarter } from "@/lib/studentRoster";
+import FeeBatchDepositsPanel, { type BatchCandidate } from "@/app/teacher/components/FeeBatchDepositsPanel";
+import { type FeeBatchDeposit, getMatchedAllocations } from "@/lib/feeBatchDeposits";
+import { resolveBatchPayer, isWonjongSchool } from "@/lib/feePayerRules";
+import { AFTER_SCHOOL_ACADEMIC_YEAR, isStudentEnrolledInQuarter } from "@/lib/studentRoster";
 import {
   calculateFeeSettlement,
   changeFeeSettlement,
@@ -48,6 +51,13 @@ type FeeContract = {
     payerName: string;
     industryCode: string;
   };
+};
+
+type TaxPayerContract = {
+  id: string;
+  payerName: string;
+  businessNumber: string;
+  industryCode: string;
 };
 
 type FeeStudent = {
@@ -169,6 +179,8 @@ export default function TeacherFeesPage() {
   const contractsRef = useRef<FeeContract[]>([]);
   const patchQueueRef = useRef<Record<string, Promise<void>>>({});
   const [students, setStudents] = useState<FeeStudent[]>([]);
+  const [batchDeposits, setBatchDeposits] = useState<FeeBatchDeposit[]>([]);
+  const [taxPayers, setTaxPayers] = useState<TaxPayerContract[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -235,11 +247,18 @@ export default function TeacherFeesPage() {
     setLoading(true);
     setError("");
     try {
-      const data = await requestJson("/api/teacher/fees");
+      const [data, bankData] = await Promise.all([
+        requestJson("/api/teacher/fees"),
+        requestJson("/api/teacher/fee-batch-deposits"),
+      ]);
+      const taxData = await requestJson(`/api/teacher/income-tax?year=${new Date().getFullYear()}`)
+        .catch(() => ({ contracts: [] }));
       const nextContracts = Array.isArray(data?.contracts) ? data.contracts : [];
       contractsRef.current = nextContracts;
       setContracts(nextContracts);
       setStudents(Array.isArray(data?.students) ? data.students : []);
+      setBatchDeposits(Array.isArray(bankData?.deposits) ? bankData.deposits : []);
+      setTaxPayers(Array.isArray(taxData?.contracts) ? taxData.contracts : []);
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -930,10 +949,16 @@ export default function TeacherFeesPage() {
     paymentScope === "afterschool" ? 0 : Math.max(0, totalGross - annualGross);
 
   const getContractSettlementTotals = (contract: FeeContract) => {
+    const linked = getMatchedAllocations(batchDeposits).filter((item) => item.contractId === contract.id);
+    const linkedSum = (field: "receivedAmount" | "grossAmount" | "incomeTax" | "residentTax" | "employmentInsurance" | "industrialInsurance") =>
+      linked.reduce((sum, item) => sum + Number(item[field] || 0), 0);
     const units = getSettlementUnits(contract);
-    const entries = Object.entries(contract.settlements || {}).flatMap(([key, entry]) =>
-      getFeePaymentEntries(entry, units.find((unit) => unit.key === key)?.expectedAmount ?? Number(entry.grossAmount || 0))
-    );
+    const entries = Object.entries(contract.settlements || {}).flatMap(([key, entry]) => {
+      const paymentEntries = getFeePaymentEntries(entry, units.find((unit) => unit.key === key)?.expectedAmount ?? Number(entry.grossAmount || 0));
+      // A previously calculated but unpaid estimate is not a second real receipt.
+      if (linked.some((item) => item.unitKey === key) && !paymentEntries.some(isPaidFeeInstallment)) return [];
+      return paymentEntries;
+    });
     // Even an empty split-payment list is an explicitly saved settlement:
     // do not resurrect the old single-payment totals after deleting the last row.
     const hasNewSettlements = Object.keys(contract.settlements || {}).length > 0;
@@ -964,20 +989,73 @@ export default function TeacherFeesPage() {
       : Number(contract.allowanceAmount || 0);
     const unpaid = units.reduce((sum, unit) => {
       const entry = contract.settlements?.[unit.key] || {};
+      const linkedGross = linked.filter((item) => item.unitKey === unit.key)
+        .reduce((sum, item) => sum + Number(item.grossAmount || 0), 0);
       const hasReceived = hasReceivedAmount(entry) || (entry.calculationVersion !== 1 && Boolean(entry.receivedDate));
       if (Array.isArray(entry.installments)) {
         const paidGross = getFeePaymentEntries(entry, unit.expectedAmount)
           .filter(isPaidFeeInstallment)
           .reduce((gross, payment) => gross + Number(payment.grossAmount || 0), 0);
-        return sum + Math.max(0, unit.expectedAmount - paidGross);
+        return sum + Math.max(0, unit.expectedAmount - paidGross - linkedGross);
       }
-      return hasReceived ? sum : sum + unit.expectedAmount;
+      return hasReceived ? sum : sum + Math.max(0, unit.expectedAmount - linkedGross);
     }, 0);
 
-    return { received, insurance, tax, incomeTax, residentTax, employmentInsurance, industrialInsurance, legacyTax, legacyInsurance, statementGross, unpaid };
+    return {
+      received: received + linkedSum("receivedAmount"),
+      insurance: insurance + linkedSum("employmentInsurance") + linkedSum("industrialInsurance"),
+      tax: tax + linkedSum("incomeTax") + linkedSum("residentTax"),
+      incomeTax: incomeTax + linkedSum("incomeTax"),
+      residentTax: residentTax + linkedSum("residentTax"),
+      employmentInsurance: employmentInsurance + linkedSum("employmentInsurance"),
+      industrialInsurance: industrialInsurance + linkedSum("industrialInsurance"),
+      legacyTax, legacyInsurance,
+      statementGross: statementGross + linkedSum("grossAmount"),
+      unpaid,
+    };
   };
 
   const paymentContracts = scopeContracts;
+  // Virtual per-class targets for previously combined schools: the original settlement keys stay unchanged.
+  const batchCandidates: BatchCandidate[] = scopeContracts.flatMap((contract) => {
+    const inferredPayer = taxPayers.find((item) => item.id === contract.id);
+    const payer = resolveBatchPayer(contract, inferredPayer);
+    const payerName = payer.payerName;
+    const businessNumber = payer.businessNumber;
+    const industryCode = payer.industryCode;
+    return getSettlementUnits(contract).flatMap<BatchCandidate>((unit): BatchCandidate[] => {
+      if (unit.expectedAmount <= 0) return [];
+      const prior = contract.settlements?.[unit.key] || {};
+      const blocked = getFeePaymentEntries(prior, unit.expectedAmount).some(isPaidFeeInstallment) ||
+        (!Object.keys(contract.settlements || {}).length && Boolean(contract.receivedDate));
+      const match = unit.key.match(/^Q([1-4])-T([1-3])(?:-([AB]))?$/);
+      const serviceMonth = match
+        ? `${AFTER_SCHOOL_ACADEMIC_YEAR}-${String(afterschoolTermMonths[`Q${match[1]}` as QuarterKey][Number(match[2]) - 1]).padStart(2, "0")}`
+        : unit.key;
+      const base = {
+        contractId: contract.id, unitKey: unit.key, schoolName: contract.schoolName,
+        serviceMonth,
+        // 부천원종초는 수령처가 명확히 등록되기 전에는 임의로 ATC로 연결하지 않는다.
+        blocked: blocked || (contract.type === "contract" && isWonjongSchool(contract.schoolName) && !payerName),
+        payerName, businessNumber, industryCode,
+      };
+      if (contract.type === "contract") return [{ ...base, classKey: "" as const, label: unit.label, expectedAmount: unit.expectedAmount }];
+      if (match?.[3]) {
+        return [{ ...base, classKey: match[3] as "A" | "B", label: unit.label, expectedAmount: unit.expectedAmount }];
+      }
+      if (!match) return [];
+      const quarterKey = `Q${match[1]}` as QuarterKey;
+      const term = Number(match[2]) - 1;
+      const aGross = Math.round(getMatchingStudents(contract, quarterKey)
+        .filter((student) => student.teachingClass === "A반")
+        .reduce((sum, student) => sum + getStudentTermAmount(contract, student, quarterKey, term), 0));
+      const bGross = Math.max(0, unit.expectedAmount - aGross);
+      return ([
+        { classKey: "A" as const, expectedAmount: aGross, label: `${unit.label} · A반` },
+        { classKey: "B" as const, expectedAmount: bGross, label: `${unit.label} · B반` },
+      ]).filter((row) => row.expectedAmount > 0).map((row) => ({ ...base, ...row }));
+    });
+  });
   // UI-only grouping; settlement records and calculation keys are unchanged.
   const paymentSchoolGroups = Array.from(
     paymentContracts.reduce((groups, contract) => {
@@ -1154,6 +1232,20 @@ export default function TeacherFeesPage() {
     const renderSettlementUnit = (unit: SettlementUnit) => {
       const stored = contract.settlements?.[unit.key] || {};
       const entry = calculateFeeSettlement(stored, unit.expectedAmount);
+      const linked = getMatchedAllocations(batchDeposits)
+        .filter((item) => item.contractId === contract.id && item.unitKey === unit.key);
+      if (linked.length > 0) {
+        const linkedGross = linked.reduce((sum, item) => sum + item.grossAmount, 0);
+        const linkedNet = linked.reduce((sum, item) => sum + item.receivedAmount, 0);
+        return (
+          <div key={unit.key} className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4">
+            <div className="font-black text-slate-800">{unit.label} · 통합 입금 연결됨</div>
+            <p className="mt-2 text-sm text-blue-800">세전 연결액 {formatWon(linkedGross)} · 실제 실수령 {formatWon(linkedNet)}</p>
+            <p className="mt-1 text-xs text-slate-500">잔여 세전 {formatWon(Math.max(0, unit.expectedAmount - linkedGross))}.
+              추가 입금은 위의 통합 입금 화면에서 처리해 주세요. 중복 정산 방지를 위해 개별 입금 입력은 잠금 처리합니다.</p>
+          </div>
+        );
+      }
       const rowKey = `${contract.id}-${unit.key}`;
       const manualEditing = editingSettlementKey === rowKey;
       const legacy = Boolean(contract.settlements?.[unit.key]) && stored.calculationVersion !== 1;
@@ -1613,6 +1705,13 @@ export default function TeacherFeesPage() {
           <span>미수령 예상액 {formatWon(settlementTotals.unpaid)}</span>
         </div>
       </section>
+
+      <FeeBatchDepositsPanel
+        candidates={batchCandidates}
+        deposits={batchDeposits}
+        requestJson={requestJson}
+        onSaved={loadData}
+      />
 
       <section className="mt-3 space-y-3">
         {allowanceMessage && (
