@@ -332,7 +332,7 @@ export default function HistoryCardClient({ initialSchool }: { initialSchool: st
           </div>
         </section>
 
-        {editorOpen && (
+        {editorOpen && !game && (
           <section className="mt-3 rounded-3xl border border-indigo-200 bg-white p-4 shadow-sm sm:p-6">
             <h2 className="text-lg font-black">{String(book).padStart(2, "0")}호 키워드 등록</h2>
             <p className="mt-1 text-sm text-slate-600">각 주차의 키워드를 한 줄에 하나씩 적으세요. 2주차는 1~2주차, 4주차는 1~4주차를 자동으로 합칩니다.</p>
@@ -349,7 +349,7 @@ export default function HistoryCardClient({ initialSchool }: { initialSchool: st
               className="mt-3 w-full rounded-xl border border-slate-200 p-3 text-base outline-none focus:border-indigo-500"/>
             <div className="mt-3 flex items-center justify-between gap-3">
               <p className="text-xs text-slate-500">주차당 최대 40개, 키워드당 최대 50자</p>
-              <button type="button" disabled={saving || loading || loadedScope !== scope} onClick={() => void saveKeywords()}
+              <button type="button" disabled={saving || loading || Boolean(game) || loadedScope !== scope} onClick={() => void saveKeywords()}
                 className="rounded-xl bg-indigo-700 px-5 py-3 text-sm font-black text-white disabled:opacity-50">
                 {saving ? "저장 중…" : editorWeek + "주차 저장"}
               </button>
@@ -463,8 +463,8 @@ export default function HistoryCardClient({ initialSchool }: { initialSchool: st
               </button>
             </section>
             <section className="rounded-3xl bg-white p-4 shadow-sm sm:p-6">
-              <h3 className="text-lg font-black">참가 학생 및 실시간 동엽전</h3>
-              <p className="mt-1 text-xs text-slate-500">학생을 누르면 현재 도전자를 바꿀 수 있습니다. 실제 지급 코인은 학생 계정에 반영됩니다.</p>
+              <h3 className="text-lg font-black">이번 반 참가 학생 · 이번 게임 획득</h3>
+              <p className="mt-1 text-xs text-slate-500">다른 학교·반의 게임 점수는 표시하지 않습니다. 실제 동엽전 잔액은 학생 계정에 적립됩니다.</p>
               <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-5">
                 {students.map((student, index) =>
                   <button type="button" key={student.id}
@@ -473,8 +473,7 @@ export default function HistoryCardClient({ initialSchool }: { initialSchool: st
                     className={"rounded-xl border-2 p-3 text-left disabled:opacity-70 " +
                       (index === game.turn ? "border-amber-500 bg-amber-50" : "border-slate-100 bg-slate-50")}>
                     <p className="truncate text-sm font-black">{student.name}</p>
-                    <p className="mt-1 text-xs text-slate-600">이번 게임 +{game.points[student.id] || 0}</p>
-                    <p className="mt-1 text-xs font-bold text-amber-800">동 {student.bronze} · 은 {student.silver}</p>
+                    <p className="mt-1 text-xs font-bold text-amber-800">이번 게임 동엽전 +{game.points[student.id] || 0}</p>
                   </button>
                 )}
               </div>
