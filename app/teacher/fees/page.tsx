@@ -8,6 +8,7 @@ import { auth } from "@/lib/firebase";
 import FeeSplitPaymentsPanel from "@/app/teacher/components/FeeSplitPaymentsPanel";
 import FeeBatchDepositsPanel, { type BatchCandidate } from "@/app/teacher/components/FeeBatchDepositsPanel";
 import { type FeeBatchDeposit, getMatchedAllocations } from "@/lib/feeBatchDeposits";
+import { resolveBatchPayer, isWonjongSchool } from "@/lib/feePayerRules";
 import { AFTER_SCHOOL_ACADEMIC_YEAR, isStudentEnrolledInQuarter } from "@/lib/studentRoster";
 import {
   calculateFeeSettlement,
@@ -1017,10 +1018,11 @@ export default function TeacherFeesPage() {
   const paymentContracts = scopeContracts;
   // Virtual per-class targets for previously combined schools: the original settlement keys stay unchanged.
   const batchCandidates: BatchCandidate[] = scopeContracts.flatMap((contract) => {
-    const payer = taxPayers.find((item) => item.id === contract.id);
-    const payerName = payer?.payerName || contract.incomeTaxProfile?.payerName || "업체 미지정";
-    const businessNumber = payer?.businessNumber || "";
-    const industryCode = payer?.industryCode || contract.incomeTaxProfile?.industryCode || "";
+    const inferredPayer = taxPayers.find((item) => item.id === contract.id);
+    const payer = resolveBatchPayer(contract, inferredPayer);
+    const payerName = payer.payerName;
+    const businessNumber = payer.businessNumber;
+    const industryCode = payer.industryCode;
     return getSettlementUnits(contract).flatMap<BatchCandidate>((unit): BatchCandidate[] => {
       if (unit.expectedAmount <= 0) return [];
       const prior = contract.settlements?.[unit.key] || {};
@@ -1032,7 +1034,10 @@ export default function TeacherFeesPage() {
         : unit.key;
       const base = {
         contractId: contract.id, unitKey: unit.key, schoolName: contract.schoolName,
-        serviceMonth, blocked, payerName, businessNumber, industryCode,
+        serviceMonth,
+        // 부천원종초는 수령처가 명확히 등록되기 전에는 임의로 ATC로 연결하지 않는다.
+        blocked: blocked || (contract.type === "contract" && isWonjongSchool(contract.schoolName) && !payerName),
+        payerName, businessNumber, industryCode,
       };
       if (contract.type === "contract") return [{ ...base, classKey: "" as const, label: unit.label, expectedAmount: unit.expectedAmount }];
       if (match?.[3]) {
