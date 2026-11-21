@@ -23,6 +23,7 @@ type Game = {
   selected: number | null;
   turn: number;
   points: Record<string, number>;
+  roundId: string | null;
 };
 const EMPTY_WEEKS: Weeks = { "1": [], "2": [], "3": [], "4": [] };
 const shuffle = <T,>(items: T[]): T[] => {
@@ -90,7 +91,8 @@ export default function HistoryCardPage() {
       const received = data.weeks as Weeks || EMPTY_WEEKS;
       setWeeks(received);
       setStudents(Array.isArray(data.students) ? data.students : []);
-      setEditorText((received[String(editorWeek) as keyof Weeks] || []).join("\n"));
+      setEditorWeek(1);
+      setEditorText((received["1"] || []).join("\n"));
     } catch (cause) {
       setWeeks(EMPTY_WEEKS);
       setStudents([]);
@@ -98,7 +100,7 @@ export default function HistoryCardPage() {
     } finally {
       setLoading(false);
     }
-  }, [api, book, school, className, user, editorWeek]);
+  }, [api, book, school, className, user]);
 
   useEffect(() => {
     if (!user) return;
@@ -147,6 +149,7 @@ export default function HistoryCardPage() {
       selected: null,
       turn: 0,
       points: {},
+      roundId: null,
     });
     setNotice("첫 번째 학생이 기본 카드 2장을 준비합니다.");
     setError("");
@@ -154,6 +157,7 @@ export default function HistoryCardPage() {
 
   const draw = (id: string) => {
     if (payingRef.current) return;
+    const nextRoundId = getRoundId();
     setGame((current) => {
       if (!current || !["prepare", "child"].includes(current.phase)) return current;
       const index = current.deck.findIndex((card) => card.id === id);
@@ -167,20 +171,20 @@ export default function HistoryCardPage() {
         }
         return { ...current, deck, base };
       }
-      return { ...current, deck, child: card, phase: "choose", selected: null };
+      return { ...current, deck, child: card, phase: "choose", selected: null, roundId: nextRoundId };
     });
   };
 
   const awardSuccess = async () => {
     if (payingRef.current || !game || game.phase !== "choose" || game.selected === null ||
-        !game.child || !game.base[game.selected] || !currentStudent) return;
+        !game.child || !game.base[game.selected] || !game.roundId || !currentStudent) return;
     payingRef.current = true;
     setPaying(true);
     setError("");
     const student = currentStudent;
     const baseKeyword = game.base[game.selected].word;
     const childKeyword = game.child.word;
-    const roundId = getRoundId();
+    const roundId = game.roundId;
     try {
       const awarded = await api("/api/teacher/history-cards/award", {
         method: "POST",
@@ -207,6 +211,7 @@ export default function HistoryCardPage() {
           child: null,
           selected: null,
           phase: "prepare",
+          roundId: null,
           points: {
             ...current.points,
             [student.id]: (current.points[student.id] || 0) + 1,
@@ -233,6 +238,7 @@ export default function HistoryCardPage() {
         child: null,
         selected: null,
         phase: "prepare",
+        roundId: null,
       };
     });
     setNotice("실패! 공개된 카드 3장을 모두 반환하고 다시 섞었습니다. 실패한 학생이 기본 카드 2장을 다시 준비하세요.");
