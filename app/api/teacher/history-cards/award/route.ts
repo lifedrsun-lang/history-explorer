@@ -81,11 +81,12 @@ export async function POST(request: Request) {
       const bronze = (beforeBronze + 1) % 10;
       const silver = beforeSilver + exchanged;
       const now = new Date();
-      const date = [
-        now.getFullYear(),
-        String(now.getMonth() + 1).padStart(2, "0"),
-        String(now.getDate()).padStart(2, "0"),
-      ].join("-");
+      const date = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Seoul",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(now);
       const history = Array.isArray(student.coinHistory) ? student.coinHistory : [];
       const items: Record<string, unknown>[] = [
         {
