@@ -7,6 +7,8 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { auth } from "@/lib/firebase";
 
 type Source = "activity-support" | "mom-part-time" | "custom";
+type Payment = { id: string; paidAmount: number; paidDate: string };
+type PaymentDraft = { itemId: string; paymentId?: string; amount: string; date: string };
 type MomItem = {
   id: string;
   source: Source;
@@ -15,6 +17,7 @@ type MomItem = {
   receivedAmount: number;
   paidAmount: number;
   paidDate: string;
+  payments: Payment[];
   memo: string;
   createdAt?: string;
 };
@@ -66,6 +69,7 @@ export default function MomSettlementsPage() {
   const [message, setMessage] = useState("");
   const [form, setForm] = useState<FormState>(initialForm);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [paymentDraft, setPaymentDraft] = useState<PaymentDraft | null>(null);
   const [yearFilter, setYearFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
@@ -117,6 +121,7 @@ export default function MomSettlementsPage() {
     setItems([]);
     setLoaded(false);
     setEditingId(null);
+    setPaymentDraft(null);
     setForm(initialForm());
     setError("");
     setMessage("");
@@ -169,6 +174,7 @@ export default function MomSettlementsPage() {
   const startEdit = (item: MomItem) => {
     if (busy) return;
     setEditingId(item.id);
+    setPaymentDraft(null);
     setForm({
       source: item.source,
       allowanceName: item.allowanceName,
@@ -227,6 +233,7 @@ export default function MomSettlementsPage() {
       });
       setMessage(editingId ? "정산 내역을 수정했습니다." : "엄마 수당 정산을 저장했습니다.");
       setEditingId(null);
+      setPaymentDraft(null);
       setForm(initialForm());
       await load();
     } catch (cause) {
@@ -251,6 +258,77 @@ export default function MomSettlementsPage() {
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "정산 기록을 삭제하지 못했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+
+  const startPayment = (item: MomItem, payment?: Payment) => {
+    if (busy) return;
+    setEditingId(null);
+    setPaymentDraft({
+      itemId: item.id,
+      ...(payment ? { paymentId: payment.id } : {}),
+      amount: payment ? String(payment.paidAmount) : "",
+      date: payment?.paidDate || todaySeoul(),
+    });
+    setError("");
+    setMessage("");
+  };
+
+  const savePayment = async (event: FormEvent<HTMLFormElement>, item: MomItem) => {
+    event.preventDefault();
+    const draft = paymentDraft;
+    if (!draft || draft.itemId !== item.id || busy || loading) return;
+    const amount = Number(draft.amount);
+    const previous = draft.paymentId
+      ? (item.payments || []).find(payment => payment.id === draft.paymentId)
+      : undefined;
+    const allowance = item.receivedAmount - item.paidAmount + (previous?.paidAmount || 0);
+    if (!Number.isSafeInteger(amount) || amount < 1 || amount > allowance) {
+      setError("지급금액은 1원 이상이고, 이번 수당의 남은 지급 가능액을 넘을 수 없습니다.");
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.date)) {
+      setError("지급 날짜를 확인해 주세요.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await request("PATCH", {
+        id: item.id,
+        action: draft.paymentId ? "update-payment" : "add-payment",
+        ...(draft.paymentId ? { paymentId: draft.paymentId } : {}),
+        paymentAmount: amount,
+        paymentDate: draft.date,
+      });
+      setPaymentDraft(null);
+      setMessage(draft.paymentId ? "지급 내역을 수정했습니다." : "추가 지급 내역을 저장했습니다.");
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "지급 기록을 저장하지 못했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deletePayment = async (item: MomItem, payment: Payment) => {
+    if (busy || loading || !window.confirm(payment.paidDate + " · " + won(payment.paidAmount) + " 지급 기록을 삭제할까요?")) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await request("PATCH", {
+        id: item.id, action: "delete-payment", paymentId: payment.id,
+      });
+      setPaymentDraft(null);
+      setMessage("지급 기록을 삭제했습니다.");
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "지급 기록을 삭제하지 못했습니다.");
     } finally {
       setBusy(false);
     }
@@ -347,13 +425,22 @@ export default function MomSettlementsPage() {
                       <label className={LABEL}>수당 입금금액 (원) *
                         <input type="text" inputMode="numeric" required value={form.receivedAmount} onChange={event => setField("receivedAmount", onlyDigits(event.target.value))} placeholder="예: 800000" className={INPUT} />
                       </label>
-                      <label className={LABEL}>수당 지급금액 · 엄마에게 준 돈 (원)
-                        <input type="text" inputMode="numeric" value={form.paidAmount} onChange={event => changePaidAmount(event.target.value)} placeholder="아직 안 드렸으면 0원" className={INPUT} />
-                      </label>
-                      {Number(form.paidAmount || "0") > 0 && (
-                        <label className={LABEL}>엄마에게 지급한 날짜 *
-                          <input type="date" required value={form.paidDate} onChange={event => setField("paidDate", event.target.value)} className={INPUT} />
-                        </label>
+                      {!editingId ? (
+                        <>
+                          <label className={LABEL}>첫 지급금액 · 엄마에게 준 돈 (원)
+                            <input type="text" inputMode="numeric" value={form.paidAmount} onChange={event => changePaidAmount(event.target.value)} placeholder="아직 안 드렸으면 0원" className={INPUT} />
+                          </label>
+                          {Number(form.paidAmount || "0") > 0 && (
+                            <label className={LABEL}>첫 지급 날짜 *
+                              <input type="date" required value={form.paidDate} onChange={event => setField("paidDate", event.target.value)} className={INPUT} />
+                            </label>
+                          )}
+                        </>
+                      ) : (
+                        <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+                          기존 누적 지급액: <strong>{won(Number(form.paidAmount || "0"))}</strong>
+                          <p className="mt-1 text-xs">지급 회차별 기록은 오른쪽 수당별 정산 내역에서 추가·수정해 주세요.</p>
+                        </div>
                       )}
                       <div className="rounded-2xl bg-indigo-50 px-4 py-3">
                         <p className="text-xs font-bold text-indigo-700">이번 수당에서 아직 전달하지 않은 금액</p>
@@ -364,7 +451,7 @@ export default function MomSettlementsPage() {
                         <textarea rows={2} maxLength={500} value={form.memo} onChange={event => setField("memo", event.target.value)} placeholder="예: 이번 달은 절반만 전달" className={INPUT} />
                       </label>
                       <p className="text-xs leading-relaxed text-slate-500">
-                        미지급액이 남았다면 나중에 해당 기록의 ‘수정’에서 지급금액을 누적해서 변경할 수 있습니다.
+                        나중에 지급한 돈은 수당별 정산 내역의 ‘+ 추가 지급’으로 회차마다 기록하세요.
                         이 카드는 기록용이며 실제 계좌이체나 희망소망저축 장부에 자동 반영되지 않습니다.
                       </p>
                       <button type="submit" disabled={busy || loading || !form.receivedAmount || !form.allowanceName.trim() || remaining < 0} className="w-full rounded-xl bg-indigo-600 px-5 py-3 text-sm font-black text-white disabled:opacity-40">
@@ -430,12 +517,42 @@ export default function MomSettlementsPage() {
                                 <dd className="font-black tabular-nums text-indigo-800">{won(pending)}</dd>
                               </div>
                             </dl>
-                            {item.paidAmount > 0 && <p className="mt-2 text-xs text-slate-500">지급일: {item.paidDate}</p>}
-                            {item.memo && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-600">{item.memo}</p>}
-                            <div className="mt-3 flex gap-2">
-                              <button type="button" onClick={() => startEdit(item)} disabled={busy} className="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-800">수정 · 추가 지급 기록</button>
-                              <button type="button" onClick={() => void remove(item)} disabled={busy} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600">삭제</button>
+                            <div className="mt-3 rounded-xl border border-slate-100 p-3">
+                              <p className="text-xs font-bold text-slate-600">지급 회차별 내역 · {(item.payments || []).length}건</p>
+                              {(item.payments || []).length === 0 && <p className="mt-2 text-xs text-slate-500">아직 지급한 내역이 없습니다.</p>}
+                              {(item.payments || []).map((payment, index) => (
+                                <div key={payment.id} className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 text-xs">
+                                  <span className="text-slate-700">{index + 1}차 · {payment.paidDate}</span>
+                                  <div className="flex items-center gap-2">
+                                    <strong className="tabular-nums text-teal-800">{won(payment.paidAmount)}</strong>
+                                    <button type="button" disabled={busy} onClick={() => startPayment(item, payment)} className="rounded-md bg-indigo-50 px-2 py-1 font-bold text-indigo-800">수정</button>
+                                    <button type="button" disabled={busy} onClick={() => void deletePayment(item, payment)} className="rounded-md bg-slate-100 px-2 py-1 font-bold text-slate-600">삭제</button>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
+                            {item.memo && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-600">{item.memo}</p>}
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <button type="button" onClick={() => startEdit(item)} disabled={busy} className="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-800">수당 수정</button>
+                              <button type="button" onClick={() => startPayment(item)} disabled={busy || pending <= 0} className="rounded-lg bg-teal-50 px-3 py-2 text-xs font-bold text-teal-800 disabled:opacity-40">+ 추가 지급</button>
+                              <button type="button" onClick={() => void remove(item)} disabled={busy} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600">수당 삭제</button>
+                            </div>
+                            {paymentDraft?.itemId === item.id && (
+                              <form onSubmit={event => void savePayment(event, item)} className="mt-3 space-y-3 rounded-xl border border-teal-200 bg-teal-50 p-3">
+                                <p className="text-sm font-black text-teal-900">{paymentDraft.paymentId ? "지급 내역 수정" : "추가 지급 기록"}</p>
+                                <label className={LABEL}>지급 날짜 *
+                                  <input type="date" required className={INPUT} value={paymentDraft.date} onChange={event => setPaymentDraft(previous => previous ? { ...previous, date: event.target.value } : null)} />
+                                </label>
+                                <label className={LABEL}>이번에 지급한 금액 (원) *
+                                  <input type="text" inputMode="numeric" required className={INPUT} placeholder="이번 지급 금액만 입력" value={paymentDraft.amount} onChange={event => setPaymentDraft(previous => previous ? { ...previous, amount: onlyDigits(event.target.value) } : null)} />
+                                </label>
+                                <p className="text-xs font-medium text-teal-900">입력 가능한 최대 금액: {won(pending + ((item.payments || []).find(payment => payment.id === paymentDraft.paymentId)?.paidAmount || 0))}</p>
+                                <div className="flex gap-2">
+                                  <button type="submit" disabled={busy || !paymentDraft.amount} className="rounded-lg bg-teal-700 px-4 py-2 text-xs font-black text-white disabled:opacity-40">지급 내역 저장</button>
+                                  <button type="button" disabled={busy} onClick={() => setPaymentDraft(null)} className="rounded-lg bg-white px-4 py-2 text-xs font-bold text-slate-600">취소</button>
+                                </div>
+                              </form>
+                            )}
                           </article>
                         );
                       })}
