@@ -1,13 +1,50 @@
 import { COMPUTING_TEACHERS_ASSOCIATION } from "@/lib/incomeTax";
 
-/** 출강료는 2026년 현재 계약 기준으로 원종초를 제외하고 ATC에서 월별 합산 지급한다. */
-export const isWonjongSchool = (schoolName: unknown): boolean => {
-  const normalized = String(schoolName || "")
-    .replace(/\s/g, "")
-    .replace(/초등학교/g, "초")
-    .replace(/초등/g, "초");
-  return /(?:부천)?원종초/.test(normalized);
+export type BatchPayer = {
+  payerName: string;
+  businessNumber: string;
+  industryCode: string;
 };
+
+const CHAMDASOM: BatchPayer = {
+  payerName: "참다솜교육 사회적협동조합",
+  businessNumber: "506-82-20645",
+  industryCode: "940925",
+};
+
+const ARA_COOPERATIVE: BatchPayer = {
+  payerName: "아라 사회적협동조합",
+  businessNumber: "345-82-00175",
+  industryCode: "940925",
+};
+
+const CLASS_FOR_EDU: BatchPayer = {
+  payerName: "클래스포에듀",
+  businessNumber: "370-81-02906",
+  industryCode: "940903",
+};
+
+// 사용자 확인 업체명. 사업자번호·업종코드는 미확인 상태이므로 비워 둔다.
+const CLOVER_EDU: BatchPayer = {
+  payerName: "크로바에듀",
+  businessNumber: "",
+  industryCode: "",
+};
+
+export const normalizeFeeSchool = (value: unknown): string =>
+  String(value || "").replace(/\s/g, "").replace(/초등학교/g, "초").replace(/초등/g, "초");
+
+export const getFeeSchoolPayer = (schoolName: unknown): BatchPayer => {
+  const school = normalizeFeeSchool(schoolName);
+  if (/원종초/.test(school)) return CLASS_FOR_EDU;
+  if (/사우초/.test(school)) return ARA_COOPERATIVE;
+  if (/새솔초|하늘빛초/.test(school)) return CHAMDASOM;
+  if (/등현초/.test(school)) return CLOVER_EDU;
+  return COMPUTING_TEACHERS_ASSOCIATION;
+};
+
+export const isWonjongSchool = (schoolName: unknown): boolean =>
+  /원종초/.test(normalizeFeeSchool(schoolName));
 
 export const isAtcPayer = (payer: { payerName?: string; businessNumber?: string }): boolean => {
   const number = String(payer.businessNumber || "").replace(/\D/g, "");
@@ -16,35 +53,27 @@ export const isAtcPayer = (payer: { payerName?: string; businessNumber?: string 
     (!number && /^(?:사단법인|\(사\))?컴퓨팅교사협회(?:\(ATC\))?$|^ATC$/i.test(name));
 };
 
-export type BatchPayer = { payerName: string; businessNumber: string; industryCode: string };
+export const sameFeePayer = (
+  left: { payerName?: string; businessNumber?: string },
+  right: { payerName?: string; businessNumber?: string },
+): boolean => {
+  const nameA = String(left.payerName || "").replace(/\s/g, "");
+  const nameB = String(right.payerName || "").replace(/\s/g, "");
+  const idA = String(left.businessNumber || "").replace(/\D/g, "");
+  const idB = String(right.businessNumber || "").replace(/\D/g, "");
+  if (idA && idB) return idA === idB && (nameA === nameB || isAtcPayer(left) && isAtcPayer(right));
+  if (idA || idB) return nameA === nameB;
+  return Boolean(nameA) && nameA === nameB;
+};
 
 /**
- * Bank receipt grouping rule only; never rewrite historical fee or tax records.
- * The payer for 원종초 is unknown unless explicitly configured.
+ * Bank receipt grouping only. Never rewrite or delete existing individual
+ * receipts or saved tax records. Matching is school-name based for new batches.
  */
 export const resolveBatchPayer = (
   contract: { type?: string; schoolName?: string; incomeTaxProfile?: { payerName?: string; businessNumber?: string; industryCode?: string } },
-  inferred: BatchPayer | undefined,
-): BatchPayer => {
-  if (contract.type !== "contract") {
-    return inferred || {
-      payerName: contract.incomeTaxProfile?.payerName || "",
-      businessNumber: contract.incomeTaxProfile?.businessNumber || "",
-      industryCode: contract.incomeTaxProfile?.industryCode || "",
-    };
-  }
-  if (!isWonjongSchool(contract.schoolName)) return COMPUTING_TEACHERS_ASSOCIATION;
-  // 원종초 is deliberately never auto-assigned to ATC.
-  const explicit = contract.incomeTaxProfile;
-  if (explicit?.payerName && !isAtcPayer(explicit)) {
-    return {
-      payerName: explicit.payerName,
-      businessNumber: explicit.businessNumber || "",
-      industryCode: explicit.industryCode || "",
-    };
-  }
-  return { payerName: "", businessNumber: "", industryCode: "" };
-};
+  _inferred?: BatchPayer,
+): BatchPayer => getFeeSchoolPayer(contract.schoolName);
 
 /** Move YYYY-MM by whole calendar months, including year boundaries. */
 export const shiftFeeMonth = (monthKey: string, offset: number): string => {
