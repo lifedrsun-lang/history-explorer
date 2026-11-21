@@ -84,6 +84,17 @@ export default async function AfterSchoolSchoolPage({
             <div className="mt-6 text-sm font-black">수업용 지급 화면 열기 →</div>
           </Link>
           <Link
+            href="/teacher/history-cards"
+            className="rounded-[28px] border border-violet-200 bg-violet-50 p-5 text-violet-950 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:p-7"
+          >
+            <div className="text-4xl">🃏</div>
+            <h2 className="mt-4 text-2xl font-black">역사 카드 문장 만들기</h2>
+            <p className="mt-2 text-sm font-bold leading-relaxed text-violet-700">
+              별꼼역사 01~23호 주차별 카드 게임을 진행하고 성공한 학생에게 동엽전을 지급합니다.
+            </p>
+            <div className="mt-6 text-sm font-black">역사 카드 게임 열기 →</div>
+          </Link>
+          <Link
             href={textbookReceiptsHref}
             className="rounded-[28px] border border-emerald-200 bg-emerald-50 p-5 text-emerald-950 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:p-7"
           >
