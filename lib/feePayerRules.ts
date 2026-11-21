@@ -24,11 +24,11 @@ const CLASS_FOR_EDU: BatchPayer = {
   industryCode: "940903",
 };
 
-// 사용자 확인 업체명. 사업자번호·업종코드는 미확인 상태이므로 비워 둔다.
-const CLOVER_EDU: BatchPayer = {
-  payerName: "크로바에듀",
-  businessNumber: "",
-  industryCode: "",
+// '크로바에듀'는 사용자가 줄여 부른 이름. 기존 업체인 크로마에듀케이션에 연결한다.
+const CHROMA_EDUCATION: BatchPayer = {
+  payerName: "주식회사 크로마에듀케이션",
+  businessNumber: "451-88-02863",
+  industryCode: "940925",
 };
 
 export const normalizeFeeSchool = (value: unknown): string =>
@@ -39,7 +39,7 @@ export const getFeeSchoolPayer = (schoolName: unknown): BatchPayer => {
   if (/원종초/.test(school)) return CLASS_FOR_EDU;
   if (/사우초/.test(school)) return ARA_COOPERATIVE;
   if (/새솔초|하늘빛초/.test(school)) return CHAMDASOM;
-  if (/등현초/.test(school)) return CLOVER_EDU;
+  if (/등현초/.test(school)) return CHROMA_EDUCATION;
   return COMPUTING_TEACHERS_ASSOCIATION;
 };
 
