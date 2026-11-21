@@ -334,6 +334,19 @@ export default async function TeacherManagementSectionPage({
         {section === "after-school" && (
           <>
             <AfterSchoolAlerts />
+            <Link
+              href="/teacher/history-cards"
+              className="mt-4 flex items-center gap-4 rounded-[26px] border border-violet-200 bg-violet-50 p-5 text-violet-950 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:p-6"
+            >
+              <span aria-hidden="true" className="text-4xl">🃏</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-lg font-black sm:text-2xl">역사 카드 문장 만들기</span>
+                <span className="mt-1 block text-xs font-bold leading-relaxed text-violet-700 sm:text-sm">
+                  별꼼역사 01~23호 · 2주차/4주차 복습 · 반별 학생 선택 및 동엽전 지급
+                </span>
+              </span>
+              <span className="shrink-0 text-sm font-black text-violet-800">열기 →</span>
+            </Link>
             <section className="mt-4">
             <div className="mb-3 px-1">
               <h2 className="text-lg font-black text-slate-900 sm:text-xl">학교 선택</h2>
