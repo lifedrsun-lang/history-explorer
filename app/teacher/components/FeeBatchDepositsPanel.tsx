@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { expectedAtcWorkMonth, isAtcPayer } from "@/lib/feePayerRules";
 import {
   type DepositAllocation, type FeeBatchDeposit, depositAllocationKey,
   feeDepositDeductions, feeDepositPredictedNet, getMatchedAllocations, amountWon,
@@ -62,6 +63,16 @@ export default function FeeBatchDepositsPanel({ candidates, deposits, requestJso
   const [success, setSuccess] = useState("");
 
   const payer = payers.find((p) => `${p.name}|${p.number}` === selectedPayer);
+  const atcSelected = Boolean(payer && isAtcPayer({ payerName: payer.name, businessNumber: payer.number }));
+  // Default to previous work month for ATC payments. Manual month edits remain possible.
+  useEffect(() => {
+    if (selectedPayer || payers.length === 0) return;
+    const atc = payers.find((p) => isAtcPayer({ payerName: p.name, businessNumber: p.number }));
+    if (!atc) return;
+    setSelectedPayer(`${atc.name}|${atc.number}`);
+    setMonth(expectedAtcWorkMonth(receivedDate));
+    setMode("company");
+  }, [selectedPayer, payers, receivedDate]);
   const matched = useMemo(() => getMatchedAllocations(deposits), [deposits]);
   const used = useMemo(() => {
     const result = new Map<string, number>();
@@ -168,15 +179,34 @@ export default function FeeBatchDepositsPanel({ candidates, deposits, requestJso
         </div>
         <span className="rounded-xl bg-blue-50 px-3 py-2 text-xs font-black text-blue-700">통합 입금 내역 {deposits.length}건</span>
       </div>
+      {atcSelected && (
+        <div className="mt-4 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          <strong>컴퓨팅교사협회(ATC) · 익월 일괄 지급</strong>
+          <p className="mt-1">부천원종초를 제외한 건별계약 학교의 근무분이 묶입니다.
+            예: 10월 근무 → 11월 지급. 실제 입금일은 통장에 찍힌 날짜로 기록합니다.</p>
+          <p className="mt-1 text-xs text-blue-700">현재 입금일 기준 기본 근무월: {expectedAtcWorkMonth(receivedDate)}.
+            여러 달 합산 지급이라면 별도로 선택할 수 있습니다.</p>
+        </div>
+      )}
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <label className="text-sm font-bold text-slate-700">입금 업체
-          <select value={selectedPayer} onChange={(e) => { setSelectedPayer(e.target.value); setSelection([]); setOverrides({}); }}
+          <select value={selectedPayer} onChange={(e) => {
+            const next = payers.find((p) => `${p.name}|${p.number}` === e.target.value);
+            setSelectedPayer(e.target.value);
+            setSelection([]);
+            setOverrides({});
+            if (next && isAtcPayer({ payerName: next.name, businessNumber: next.number })) {
+              setMonth(expectedAtcWorkMonth(receivedDate));
+              setAllMonths(false);
+              setMode("company");
+            }
+          }}
             className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-2 text-sm">
             <option value="">업체 선택</option>
             {payers.map((p) => <option key={p.name+"|"+p.number} value={p.name+"|"+p.number}>{p.name}{p.number ? ` (${p.number})` : ""}</option>)}
           </select>
         </label>
-        <label className="text-sm font-bold text-slate-700">수업 해당 월
+        <label className="text-sm font-bold text-slate-700">{atcSelected ? "근무월 (입금 전월이 기본)" : "수업 해당 월"}
           <input type="month" value={month} disabled={allMonths} onChange={(e) => { setMonth(e.target.value); setSelection([]); }}
             className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-2 text-sm" />
         </label>
@@ -237,7 +267,13 @@ export default function FeeBatchDepositsPanel({ candidates, deposits, requestJso
       )}
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <label className="text-sm font-bold text-slate-700">실제 입금일
-          <input type="date" value={receivedDate} onChange={(e) => setReceivedDate(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 p-2" />
+          <input type="date" value={receivedDate} onChange={(e) => {
+            setReceivedDate(e.target.value);
+            if (atcSelected && !allMonths) {
+              setMonth(expectedAtcWorkMonth(e.target.value));
+              setSelection([]);
+            }
+          }} className="mt-1 w-full rounded-xl border border-slate-200 p-2" />
         </label>
         <label className="text-sm font-bold text-slate-700">통장 입금액 (원)
           <input inputMode="numeric" value={receivedAmount} onChange={(e) => setReceivedAmount(e.target.value.replace(/[^0-9]/g, ""))}
