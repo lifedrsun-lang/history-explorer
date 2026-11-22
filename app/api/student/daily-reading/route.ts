@@ -302,9 +302,9 @@ export async function POST(request: Request) {
       const next = { ...progress, solvedIds, currentId: null,
         currentMistakes: 0, completed };
       const pending = currentQueueItems[word.id];
-      // 지난날의 오답을 복습하여 맞히면 복습 대기에서 제거합니다.
+      // 해당 구간의 오답연습에서 지난날의 오답을 맞혀야 복습 대기에서 제거합니다.
       // 단, 오늘 틀렸던 단어는 오늘 다시 맞혀도 내일 한 번 더 복습합니다.
-      if (pending && pending.dueDate <= today && pending.lastWrongDate !== today) {
+      if (mode === "mistakes" && pending && pending.dueDate <= today && pending.lastWrongDate !== today) {
         const entries = { ...currentQueueItems };
         delete entries[word.id];
         tx.set(queueRef, {
