@@ -16,6 +16,7 @@ export const dynamic = "force-dynamic";
 const BOOK = "folktales";
 const SESSIONS = "sunlab_daily_reading_sessions";
 const MISSED = "sunlab_daily_reading_missed";
+const AWARDS = "sunlab_daily_reading_coin_awards";
 type Mode = "day" | "roundup" | "mistakes" | "full" | "full_mistakes";
 const BOOK_DAYS = 29;
 const GROUP_ENDS = [5, 10, 15, 20, 25] as const;
@@ -31,6 +32,7 @@ type Session = {
   currentId: string | null;
   currentMistakes: number;
   completed: boolean;
+  everCompleted?: boolean;
 };
 type MissedEntry = { dueDate: string; lastWrongDate: string };
 type MissedQueue = { items: Record<string, MissedEntry>; everWrongIds?: string[] };
@@ -78,6 +80,9 @@ function queueEntries(queue: MissedQueue | undefined): Record<string, MissedEntr
   return queue?.items && typeof queue.items === "object" && !Array.isArray(queue.items)
     ? queue.items : {};
 }
+function wasCompleted(session: Session | undefined): boolean {
+  return session?.completed === true || session?.everCompleted === true;
+}
 function dueCardIds(queue: MissedQueue | undefined, today: string): string[] {
   return Object.entries(queueEntries(queue))
     .filter(([id, item]) => FOLKTALES_BY_ID.has(id) && item &&
@@ -87,10 +92,17 @@ function dueCardIds(queue: MissedQueue | undefined, today: string): string[] {
 function assignedIds(mode: Mode, day: number, queue: MissedQueue | undefined, today: string) {
   if (mode === "day") return vocabularyCardsForDay(day).map(card => card.id);
   if (mode === "roundup") return vocabularyCardsForFiveDayReview(day).map(card => card.id);
-  if (mode === "mistakes") return dueCardIds(queue, today).filter(id => {
-    const word = FOLKTALES_BY_ID.get(id);
-    return word && word.day > day - 5 && word.day <= day;
-  });
+  if (mode === "mistakes") {
+    const due = dueCardIds(queue, today).filter(id => {
+      const word = FOLKTALES_BY_ID.get(id);
+      return word && word.day > day - 5 && word.day <= day;
+    });
+    if (due.length) return due;
+    // 오답연습 완료 후에도 같은 구간의 이전 오답 카드로 재연습 가능
+    return Array.from(new Set(queue?.everWrongIds || []))
+      .filter(id => { const word = FOLKTALES_BY_ID.get(id);
+        return word && word.day > day - 5 && word.day <= day; });
+  }
   if (mode === "full") return FOLKTALES_CARDS.map(card => card.id);
   return Array.from(new Set(queue?.everWrongIds || Object.keys(queueEntries(queue))))
     .filter(id => FOLKTALES_BY_ID.has(id));
@@ -110,6 +122,7 @@ function toPublic(session: Session | null) {
     clue: current?.clue || null,
     currentMistakes: current ? Number(session.currentMistakes || 0) : 0,
     completed: session.completed === true,
+    everCompleted: wasCompleted(session),
   };
 }
 function failure(error: unknown) {
@@ -149,7 +162,7 @@ export async function GET(request: Request) {
       const data = doc.data() as Session;
       if (data.bookId === BOOK && typeof data.key === "string") saved.set(data.key, data);
     }
-    const completedDays = new Set(FOLKTALES_ACTIVE_DAYS.filter(day => saved.get(activityKey("day", day, today))?.completed));
+    const completedDays = new Set(FOLKTALES_ACTIVE_DAYS.filter(day => wasCompleted(saved.get(activityKey("day", day, today)))));
     const queue = missed.exists ? missed.data() as MissedQueue : undefined;
     const due = dueCardIds(queue, today);
     const fullUnlocked = FOLKTALES_ACTIVE_DAYS.length === BOOK_DAYS &&
@@ -167,7 +180,7 @@ export async function GET(request: Request) {
         end, from: end - 4, count: vocabularyCardsForFiveDayReview(end).length,
         unlocked: fiveDayUnlocked(end, completedDays),
         started: saved.has(activityKey("roundup", end, today)),
-        completed: saved.get(activityKey("roundup", end, today))?.completed === true,
+        completed: wasCompleted(saved.get(activityKey("roundup", end, today))),
       })),
       mistakes: GROUP_ENDS.map(end => {
         const groupDue = due.filter(id => {
@@ -175,15 +188,20 @@ export async function GET(request: Request) {
           return word && word.day >= end - 4 && word.day <= end;
         });
         const session = saved.get(activityKey("mistakes", end, today));
+        const completedEver = [...saved.values()].some(item =>
+          item.mode === "mistakes" &&
+          item.key.startsWith("mistakes_" + String(end).padStart(2, "0") + "_") &&
+          wasCompleted(item));
         return { end, from: end - 4, due: groupDue.length,
-          started: Boolean(session), completed: session?.completed === true };
+          started: Boolean(session), completed: completedEver };
+      
       }),
       fullReview: { unlocked: fullUnlocked, count: FOLKTALES_CARDS.length,
         started: saved.has(activityKey("full", 30, today)),
-        completed: saved.get(activityKey("full", 30, today))?.completed === true },
+        completed: wasCompleted(saved.get(activityKey("full", 30, today))) },
       fullMistakes: { unlocked: fullUnlocked && everWrong.length > 0, count: everWrong.length,
         started: saved.has(activityKey("full_mistakes", 30, today)),
-        completed: saved.get(activityKey("full_mistakes", 30, today))?.completed === true },
+        completed: wasCompleted(saved.get(activityKey("full_mistakes", 30, today))) },
       session: toPublic(selected.exists ? selected.data() as Session : null),
     });
   } catch (error) { return failure(error); }
@@ -225,7 +243,7 @@ export async function POST(request: Request) {
             sessionDoc(student.id, activityKey("day", num, today))
           ));
           const dailyDocs = await Promise.all(dailyRefs.map(item => tx.get(item)));
-          if (!dailyDocs.every(item => item.exists && (item.data() as Session).completed === true)) {
+          if (!dailyDocs.every(item => item.exists && wasCompleted(item.data() as Session))) {
             throw new Error("not_unlocked");
           }
         }
@@ -238,6 +256,8 @@ export async function POST(request: Request) {
           studentId: student.id, bookId: BOOK, mode, key,
           cardIds: finalIds, solvedIds: [], wrongIds: [],
           currentId: null, currentMistakes: 0, completed: false,
+          everCompleted: oldSnapshot.exists
+            ? wasCompleted(oldSnapshot.data() as Session) : false,
         };
         tx.set(ref, {
           ...fresh, startedAt: FieldValue.serverTimestamp(),
@@ -300,7 +320,21 @@ export async function POST(request: Request) {
       const solvedIds = [...progress.solvedIds, word.id];
       const completed = solvedIds.length === progress.cardIds.length;
       const next = { ...progress, solvedIds, currentId: null,
-        currentMistakes: 0, completed };
+        currentMistakes: 0, completed,
+        everCompleted: wasCompleted(progress) || completed };
+      // 완료 시 동코인 지급은 학생별·교재별·활동별 최초 1회만 허용합니다.
+      // 완료 도장 상태와 지급 기록, 잔액은 같은 트랜잭션으로 저장합니다.
+      const reward = mode === "day" ? 1 : 2;
+      const studentRef = db.collection("students").doc(student.id);
+      const awardRef = db.collection(AWARDS).doc(
+        student.id + "_" + BOOK + "_" + mode + "_" + String(day).padStart(2, "0")
+      );
+      const [awardSnapshot, studentSnapshot] = completed
+        ? await Promise.all([tx.get(awardRef), tx.get(studentRef)])
+        : [null, null];
+      const shouldAward = completed && !wasCompleted(progress) && !awardSnapshot?.exists;
+      if (shouldAward && !studentSnapshot?.exists) throw new Error("login_required");
+
       const pending = currentQueueItems[word.id];
       // 해당 구간의 오답연습에서 지난날의 오답을 맞혀야 복습 대기에서 제거합니다.
       // 단, 오늘 틀렸던 단어는 오늘 다시 맞혀도 내일 한 번 더 복습합니다.
@@ -314,12 +348,49 @@ export async function POST(request: Request) {
           updatedAt: FieldValue.serverTimestamp(),
         });
       }
+      if (shouldAward && studentSnapshot) {
+        const wallet = studentSnapshot.data() || {};
+        const bronzeBefore = Math.max(0, Number(wallet.bronze || 0));
+        const silverBefore = Math.max(0, Number(wallet.silver || 0));
+        const exchanged = Math.floor((bronzeBefore + reward) / 10);
+        const bronze = (bronzeBefore + reward) % 10;
+        const now = new Date();
+        const name = mode === "day" ? day + "일차 어휘" :
+          mode === "roundup" ? (day - 4) + "~" + day + "일 총복습" :
+          mode === "mistakes" ? (day - 4) + "~" + day + "일 오답연습" :
+          mode === "full" ? "30일 전체복습" : "30일 전체 오답복습";
+        const history = Array.isArray(wallet.coinHistory) ? wallet.coinHistory : [];
+        const entries: Record<string, unknown>[] = [{
+          id: "daily-reading-" + awardRef.id,
+          date: today, createdAt: now, type: "earn", currency: "bronze", amount: reward,
+          source: "quiz", sourceDetail: "daily_reading_folktales",
+          text: "1일 1독해 전래동화 · " + name + " 완료 · 동엽전 " + reward + "개",
+        }];
+        if (exchanged > 0) entries.push({
+          id: "daily-reading-exchange-" + awardRef.id,
+          date: today, createdAt: now, type: "exchange",
+          fromCurrency: "bronze", fromAmount: exchanged * 10,
+          toCurrency: "silver", toAmount: exchanged,
+          text: "동엽전 " + exchanged * 10 + "개를 은엽전 " + exchanged + "개로 자동 교환",
+        });
+        tx.create(awardRef, {
+          studentId: student.id, bookId: BOOK, mode, day, reward,
+          date: today, completedAt: FieldValue.serverTimestamp(),
+        });
+        tx.update(studentRef, {
+          bronze, silver: silverBefore + exchanged,
+          totalBronze: Math.max(0, Number(wallet.totalBronze || 0)) + reward,
+          totalSilver: Math.max(0, Number(wallet.totalSilver || 0)) + exchanged,
+          coinHistory: [...history, ...entries].slice(-100),
+        });
+      }
       tx.update(ref, {
         solvedIds, currentId: null, currentMistakes: 0, completed,
+        everCompleted: next.everCompleted,
         updatedAt: FieldValue.serverTimestamp(),
         ...(completed ? { completedAt: FieldValue.serverTimestamp() } : {}),
       });
-      return { correct: true, progress: toPublic(next) };
+      return { correct: true, progress: toPublic(next), awardedCoins: shouldAward ? reward : 0 };
     });
     return response({ ok: true, ...result });
   } catch (error) { return failure(error); }

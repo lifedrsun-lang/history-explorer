@@ -13,7 +13,7 @@ type RoundupInfo = {
 type Progress = {
   started: boolean; total: number; solved: number; wrong: number;
   remaining: string[]; currentId: string | null; clue: string | null;
-  currentMistakes: number; completed: boolean;
+  currentMistakes: number; completed: boolean; everCompleted?: boolean;
 };
 type Dashboard = {
   name: string; bookId: string; today: string;
@@ -129,7 +129,9 @@ export default function StudentDailyReadingPage() {
         if (data.correct === true) {
           setAnswer("");
           setNotice(data.progress?.completed
-            ? "이번 어휘 학습을 완료했어요! 🌟"
+            ? (data.awardedCoins > 0
+              ? "완료 도장이 찍혔어요! 🏅 동코인 +" + data.awardedCoins + "개 지급"
+              : "완료 도장이 유지돼요! 다시 연습해도 코인은 중복 지급되지 않아요.")
             : "정답이에요! 다음 카드를 골라 보세요.");
         } else if (data.returned === true) {
           setAnswer("");
@@ -161,7 +163,7 @@ export default function StudentDailyReadingPage() {
   const weeklyMistakes = dashboard?.mistakes.find(item => item.end === day);
   const available = isFolktales && (mode === "day" ? Boolean(chosenDay) :
     mode === "roundup" ? Boolean(chosenRoundup?.unlocked || chosenRoundup?.started) :
-      mode === "mistakes" ? Boolean(weeklyMistakes?.due || weeklyMistakes?.started) :
+      mode === "mistakes" ? Boolean(weeklyMistakes?.due || weeklyMistakes?.started || weeklyMistakes?.completed) :
       mode === "full" ? Boolean(dashboard?.fullReview.unlocked) :
       Boolean(dashboard?.fullMistakes.unlocked));
   const totalCards = mode === "day" ? chosenDay?.count :
@@ -193,13 +195,13 @@ export default function StudentDailyReadingPage() {
         </div>
       ) : progress.completed ? (
         <div className="py-8 text-center">
-          <div className="text-5xl">🏆</div>
+          <div className="mx-auto flex h-24 w-24 -rotate-12 items-center justify-center rounded-full border-4 border-rose-500 text-2xl font-black text-rose-600 shadow-sm">완료</div>
           <h3 className="mt-3 text-xl font-black">어휘 학습을 완료했어요!</h3>
           <p className="mt-2 text-sm text-slate-600">
             총 {progress.total}개 · 틀렸던 단어 {progress.wrong}개
           </p>
           <p className="mt-2 text-xs font-bold text-slate-500">
-            오늘 틀린 단어는 내일 오답 복습 목록에 나와요.
+            완료 도장은 남고, 보상 동코인은 활동별 첫 완료 시 한 번만 지급해요.
           </p>
           <button type="button" disabled={busy} onClick={() => void post("restart")}
             className="mt-5 rounded-2xl border border-teal-200 bg-teal-50 px-6 py-3 font-black text-teal-800 disabled:opacity-50">
@@ -351,7 +353,7 @@ export default function StudentDailyReadingPage() {
                                   disabled={!lesson || busy} onClick={() => choose("day", num)}
                                   aria-pressed={current}
                                   className={
-                                    "flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl border px-0.5 py-1 text-[10px] font-black transition sm:min-h-20 sm:text-xs " +
+                                    "relative flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl border px-0.5 py-1 text-[10px] font-black transition sm:min-h-20 sm:text-xs " +
                                     (!lesson ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300" :
                                       current ? "border-teal-700 bg-teal-700 text-white" :
                                         lesson.completed ? "border-emerald-300 bg-emerald-50 text-emerald-800" :
@@ -359,38 +361,41 @@ export default function StudentDailyReadingPage() {
                                   }>
                                   <span aria-hidden="true">{!lesson ? "🔒" : lesson.completed ? "✅" : "📖"}</span>
                                   <span>{num}일</span>
+                                  {lesson?.completed && <span aria-label="완료 도장" className="absolute -right-1 -top-1 -rotate-12 rounded-full border-2 border-rose-500 bg-white px-1 py-0.5 text-[9px] font-black text-rose-600 shadow-sm">완료</span>}
                                 </button>
                               );
                             })}
                             {finalGroup ? (
                               <>
                                 <div aria-label="30일은 전체 복습일입니다"
-                                  className="flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl border border-amber-100 bg-amber-50 px-0.5 py-1 text-[10px] font-black text-amber-700 sm:min-h-20 sm:text-xs">
+                                  className="relative flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl border border-amber-100 bg-amber-50 px-0.5 py-1 text-[10px] font-black text-amber-700 sm:min-h-20 sm:text-xs">
                                   <span aria-hidden="true">🎓</span><span>30일</span>
                                 </div>
                                 <button type="button" disabled={busy || !dashboard.fullReview.unlocked}
                                   aria-pressed={mode === "full"}
                                   onClick={() => choose("full", 30)}
                                   className={
-                                    "flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl border px-0.5 py-1 text-[10px] font-black sm:min-h-20 sm:text-xs " +
+                                    "relative flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl border px-0.5 py-1 text-[10px] font-black sm:min-h-20 sm:text-xs " +
                                     (mode === "full" ? "border-violet-700 bg-violet-700 text-white" :
                                       !dashboard.fullReview.unlocked ? "cursor-not-allowed border-violet-100 bg-violet-50 text-violet-300" :
                                         "border-violet-300 bg-violet-100 text-violet-800")
                                   }>
                                   <span aria-hidden="true">{dashboard.fullReview.unlocked ? "🎯" : "🔒"}</span>
                                   <span>전체</span><span>복습</span>
+                                  {dashboard.fullReview.completed && <span aria-label="완료 도장" className="absolute -right-1 -top-1 -rotate-12 rounded-full border-2 border-rose-500 bg-white px-1 py-0.5 text-[9px] font-black text-rose-600 shadow-sm">완료</span>}
                                 </button>
                                 <button type="button" disabled={busy || !dashboard.fullMistakes.unlocked}
                                   aria-pressed={mode === "full_mistakes"}
                                   onClick={() => choose("full_mistakes", 30)}
                                   className={
-                                    "flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl border px-0.5 py-1 text-[10px] font-black sm:min-h-20 sm:text-xs " +
+                                    "relative flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl border px-0.5 py-1 text-[10px] font-black sm:min-h-20 sm:text-xs " +
                                     (mode === "full_mistakes" ? "border-rose-700 bg-rose-700 text-white" :
                                       !dashboard.fullMistakes.unlocked ? "cursor-not-allowed border-rose-100 bg-rose-50 text-rose-300" :
                                         "border-rose-300 bg-rose-50 text-rose-800")
                                   }>
                                   <span aria-hidden="true">{dashboard.fullMistakes.unlocked ? "📝" : "🔒"}</span>
                                   <span>오답</span><span>복습</span>
+                                  {dashboard.fullMistakes.completed && <span aria-label="완료 도장" className="absolute -right-1 -top-1 -rotate-12 rounded-full border-2 border-rose-500 bg-white px-1 py-0.5 text-[9px] font-black text-rose-600 shadow-sm">완료</span>}
                                 </button>
                               </>
                             ) : (
@@ -399,7 +404,7 @@ export default function StudentDailyReadingPage() {
                                   aria-pressed={mode === "roundup" && day === to}
                                   onClick={() => choose("roundup", to)}
                                   className={
-                                    "flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl border px-0.5 py-1 text-[10px] font-black sm:min-h-20 sm:text-xs " +
+                                    "relative flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl border px-0.5 py-1 text-[10px] font-black sm:min-h-20 sm:text-xs " +
                                     (mode === "roundup" && day === to ? "border-violet-700 bg-violet-700 text-white" :
                                       !roundup?.unlocked ? "cursor-not-allowed border-violet-100 bg-violet-50 text-violet-300" :
                                         roundup.completed ? "border-violet-300 bg-violet-100 text-violet-800" :
@@ -407,19 +412,21 @@ export default function StudentDailyReadingPage() {
                                   }>
                                   <span aria-hidden="true">{!roundup?.unlocked ? "🔒" : roundup.completed ? "✅" : "🎯"}</span>
                                   <span>총복습</span>
+                                  {roundup?.completed && <span aria-label="완료 도장" className="absolute -right-1 -top-1 -rotate-12 rounded-full border-2 border-rose-500 bg-white px-1 py-0.5 text-[9px] font-black text-rose-600 shadow-sm">완료</span>}
                                 </button>
-                                <button type="button" disabled={busy || !mistake || (!mistake.due && !mistake.started)}
+                                <button type="button" disabled={busy || !mistake || (!mistake.due && !mistake.started && !mistake.completed)}
                                   aria-pressed={mode === "mistakes" && day === to}
                                   onClick={() => choose("mistakes", to)}
                                   className={
-                                    "flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl border px-0.5 py-1 text-[10px] font-black sm:min-h-20 sm:text-xs " +
+                                    "relative flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl border px-0.5 py-1 text-[10px] font-black sm:min-h-20 sm:text-xs " +
                                     (mode === "mistakes" && day === to ? "border-rose-700 bg-rose-700 text-white" :
-                                      !mistake || (!mistake.due && !mistake.started) ? "cursor-not-allowed border-rose-100 bg-rose-50 text-rose-300" :
+                                      !mistake || (!mistake.due && !mistake.started && !mistake.completed) ? "cursor-not-allowed border-rose-100 bg-rose-50 text-rose-300" :
                                         mistake.completed ? "border-rose-300 bg-rose-100 text-rose-800" :
                                           "border-rose-300 bg-rose-50 text-rose-800")
                                   }>
-                                  <span aria-hidden="true">{!mistake || (!mistake.due && !mistake.started) ? "🔒" : mistake.completed ? "✅" : "📝"}</span>
+                                  <span aria-hidden="true">{!mistake || (!mistake.due && !mistake.started && !mistake.completed) ? "🔒" : mistake.completed ? "✅" : "📝"}</span>
                                   <span>오답</span><span>연습</span>
+                                  {mistake?.completed && <span aria-label="완료 도장" className="absolute -right-1 -top-1 -rotate-12 rounded-full border-2 border-rose-500 bg-white px-1 py-0.5 text-[9px] font-black text-rose-600 shadow-sm">완료</span>}
                                 </button>
                               </>
                             )}
@@ -432,6 +439,7 @@ export default function StudentDailyReadingPage() {
                   <p className="mt-4 text-xs font-bold text-slate-500">
                     총복습은 해당 5일 학습을 모두 완료하면 열려요. 구간 오답연습은 틀린 단어가 다음 날부터 준비돼요.
                     30일은 1~29일 학습을 모두 완료한 뒤 전체복습·전체 오답복습을 진행합니다.
+                    완료하면 도장이 남고, 일차 학습은 동코인 1개·총복습과 오답연습은 각각 2개를 최초 1회 지급해요.
                   </p>
                 </section>
 
@@ -440,7 +448,7 @@ export default function StudentDailyReadingPage() {
           </>
         )}
         <div className="rounded-2xl border border-dashed border-teal-200 bg-white/70 p-4 text-center text-xs font-bold text-slate-500">
-          보물편과 그 밖의 시리즈는 어휘 자료가 준비될 때 차례대로 확장합니다. 동엽전 보상은 아직 적용하지 않았어요.
+          보물편과 그 밖의 시리즈는 어휘 자료가 준비될 때 차례대로 확장합니다. 완료 보상은 SUN LAB 동엽전 잔액에 반영됩니다.
         </div>
       </div>
     </main>
