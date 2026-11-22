@@ -20,7 +20,7 @@ type SavedProgress = {
   studentId: string; level: LiteracyLevel; week: number;
   cards: LiteracyCard[];
   solvedIds: string[]; wrongIds: string[]; skippedIds: string[];
-  swapsUsed: number; currentId: string | null; completed: boolean; reward: number;
+  swapsUsed: number; currentId: string | null; currentMistakes?: number; completed: boolean; reward: number;
   attemptNumber: number; firstRewardDecided: boolean; firstReward: number;
 };
 
@@ -75,6 +75,7 @@ function progressPublic(value: SavedProgress | null) {
     wrong: wrongIds.length,
     remaining: availableIds(value),
     selectedId: current?.id || null,
+    currentMistakes: current ? Math.min(3, Math.max(0, Number(value.currentMistakes || 0))) : 0,
     clue: current?.clue || null,
     kind: current?.kind || null,
     swapsUsed: Number(value.swapsUsed || 0),
@@ -104,7 +105,7 @@ function newAttempt(studentId: string, level: LiteracyLevel, week: number,
     : false;
   return {
     studentId, level, week, cards, solvedIds: [], wrongIds: [], skippedIds: [],
-    swapsUsed: 0, currentId: null, completed: false, reward: 0,
+    swapsUsed: 0, currentId: null, currentMistakes: 0, completed: false, reward: 0,
     attemptNumber: previous ? Number(previous.attemptNumber || 1) + 1 : 1,
     firstRewardDecided,
     firstReward: previous ? Number(previous.firstReward ?? previous.reward ?? 0) : 0,
@@ -195,8 +196,8 @@ export async function POST(request: Request) {
         if (p.currentId) throw new Error("in_progress");
         const cardId = String(body.cardId || "");
         if (!availableIds(p).includes(cardId)) throw new Error("invalid_card");
-        const changed = { ...p, currentId: cardId };
-        tx.update(ref, { currentId: cardId, updatedAt: FieldValue.serverTimestamp() });
+        const changed = { ...p, currentId: cardId, currentMistakes: 0 };
+        tx.update(ref, { currentId: cardId, currentMistakes: 0, updatedAt: FieldValue.serverTimestamp() });
         return { progress: progressPublic(changed) };
       }
       if (action === "swap") {
@@ -208,11 +209,12 @@ export async function POST(request: Request) {
         const next: SavedProgress = {
           ...p,
           currentId: null,
+          currentMistakes: 0,
           swapsUsed: Number(p.swapsUsed || 0) + 1,
           skippedIds: [...(p.skippedIds || []), p.currentId],
         };
         tx.update(ref, {
-          currentId: null, swapsUsed: next.swapsUsed, skippedIds: next.skippedIds,
+          currentId: null, currentMistakes: 0, swapsUsed: next.swapsUsed, skippedIds: next.skippedIds,
           updatedAt: FieldValue.serverTimestamp(),
         });
         return { swapped: true, progress: progressPublic(next) };
@@ -225,8 +227,20 @@ export async function POST(request: Request) {
       const correct = normalizeLiteracyAnswer(answer) === normalizeLiteracyAnswer(card.answer);
       if (!correct) {
         const wrongIds = (p.wrongIds || []).includes(card.id) ? p.wrongIds : [...(p.wrongIds || []), card.id];
-        tx.update(ref, { wrongIds, updatedAt: FieldValue.serverTimestamp() });
-        return { correct: false, progress: progressPublic({ ...p, wrongIds }) };
+        const nextMistakes = Math.min(3, Math.max(0, Number(p.currentMistakes || 0)) + 1);
+        // 한 카드를 3회 틀리면 자동으로 카드 선택 화면으로 돌아갑니다.
+        // 자동 복귀는 수동 바꾸기 2회를 차감하지 않으며 카드는 다시 선택할 수 있습니다.
+        const autoReturned = nextMistakes >= 3;
+        const next = {
+          ...p, wrongIds,
+          currentId: autoReturned ? null : p.currentId,
+          currentMistakes: autoReturned ? 0 : nextMistakes,
+        };
+        tx.update(ref, {
+          wrongIds, currentId: next.currentId, currentMistakes: next.currentMistakes,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        return { correct: false, autoReturned, progress: progressPublic(next) };
       }
       const solvedIds = [...(p.solvedIds || []), card.id];
       const completed = solvedIds.length >= QUESTIONS_PER_ATTEMPT;
@@ -236,12 +250,12 @@ export async function POST(request: Request) {
       // 오답은 최초 선택한 카드별로 계산합니다. 교재당 첫 번째 완료에만 코인을 지급합니다.
       const reward = completed && !previousAwardDecided ? literacyCoinReward((p.wrongIds || []).length) : 0;
       const next: SavedProgress = {
-        ...p, solvedIds, currentId: null, completed, reward,
+        ...p, solvedIds, currentId: null, currentMistakes: 0, completed, reward,
         firstRewardDecided: completed ? true : previousAwardDecided,
         firstReward: completed && !previousAwardDecided ? reward : Number(p.firstReward || 0),
       };
       if (!completed) {
-        tx.update(ref, { solvedIds, currentId: null, updatedAt: FieldValue.serverTimestamp() });
+        tx.update(ref, { solvedIds, currentId: null, currentMistakes: 0, updatedAt: FieldValue.serverTimestamp() });
         return { correct: true, progress: progressPublic(next) };
       }
 
@@ -281,7 +295,7 @@ export async function POST(request: Request) {
         });
       }
       tx.update(ref, {
-        solvedIds, currentId: null, completed: true, reward,
+        solvedIds, currentId: null, currentMistakes: 0, completed: true, reward,
         firstRewardDecided: true, firstReward: next.firstReward,
         completedAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
