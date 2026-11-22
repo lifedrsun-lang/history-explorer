@@ -159,6 +159,7 @@ function failure(error: unknown) {
   const msg = error instanceof Error ? error.message : "";
   if (msg === "login_required") return response({ error: "SUN LAB에 다시 로그인해 주세요." }, 401);
   if (msg === "not_unlocked") return response({ error: "해당 구간의 일차별 어휘를 먼저 완료해 주세요." }, 409);
+  if (msg === "day_locked") return response({ error: "앞선 일차의 어휘 학습을 모두 완료하면 다음 일차가 열려요." }, 409);
   if (msg === "nothing_to_review") return response({ error: "이 구간에 복습할 오답 어휘가 없어요." }, 409);
   if (msg === "not_started") return response({ error: "학습 시작을 먼저 눌러 주세요." }, 409);
   if (msg === "in_progress") return response({ error: "현재 카드를 먼저 풀어 주세요." }, 409);
@@ -207,6 +208,9 @@ export async function GET(request: Request) {
         day, count: deck.cardsForDay(day).length,
         started: saved.has(activityKey("day", day, today)),
         completed: completedDays.has(day),
+        // 총복습·오답연습 완료는 다음 일차 잠금 해제 조건에 포함하지 않습니다.
+        unlocked: deck.activeDays.every(previousDay =>
+          previousDay >= day || completedDays.has(previousDay)),
       })),
       roundups: FIVE_DAY_REVIEW_ENDS.map(end => ({
         end, from: end - 4, count: deck.cardsForReview(end).length,
@@ -260,6 +264,19 @@ export async function POST(request: Request) {
     const result = await db.runTransaction(async tx => {
       // Firestore reads all happen before writes, so competing requests cannot lose updates.
       const [oldSnapshot, queueSnapshot] = await Promise.all([tx.get(ref), tx.get(queueRef)]);
+      // 학생 화면의 잠금 버튼을 우회한 직접 요청도 차단합니다.
+      // 이전 일차의 정식 완료 기록만 검사하고, 5일 총복습·오답연습은 제외합니다.
+      if (mode === "day" && day > 1) {
+        const requiredDays = deck.activeDays.filter(previousDay => previousDay < day);
+        const requiredRefs = requiredDays.map(previousDay => db.collection(SESSIONS).doc(
+          sessionDoc(student.id, activityKey("day", previousDay, today), BOOK)
+        ));
+        const priorSessions = await Promise.all(requiredRefs.map(previousRef => tx.get(previousRef)));
+        if (!priorSessions.every(snapshot =>
+          snapshot.exists && wasCompleted(snapshot.data() as Session))) {
+          throw new Error("day_locked");
+        }
+      }
       const queue = queueSnapshot.exists ? queueSnapshot.data() as MissedQueue : undefined;
       const currentQueueItems = queueEntries(queue);
       if (action === "start" || action === "restart") {

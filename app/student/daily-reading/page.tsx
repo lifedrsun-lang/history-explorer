@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DAILY_READING_DAY_COUNT, DAILY_READING_SERIES } from "@/lib/dailyReading";
 
 type Mode = "day" | "roundup" | "mistakes" | "full" | "full_mistakes";
-type DayInfo = { day: number; count: number; started: boolean; completed: boolean };
+type DayInfo = { day: number; count: number; started: boolean; completed: boolean; unlocked: boolean };
 type RoundupInfo = {
   end: number; from: number; count: number;
   unlocked: boolean; started: boolean; completed: boolean;
@@ -154,7 +154,7 @@ export default function StudentDailyReadingPage() {
   const chosenDay = dashboard?.days.find(item => item.day === day);
   const chosenRoundup = dashboard?.roundups.find(item => item.end === day);
   const weeklyMistakes = dashboard?.mistakes.find(item => item.end === day);
-  const available = isActiveBook && (mode === "day" ? Boolean(chosenDay) :
+  const available = isActiveBook && (mode === "day" ? Boolean(chosenDay?.unlocked) :
     mode === "roundup" ? Boolean(chosenRoundup?.unlocked || chosenRoundup?.started) :
       mode === "mistakes" ? Boolean(weeklyMistakes?.due || weeklyMistakes?.started || weeklyMistakes?.completed) :
       mode === "full" ? Boolean(dashboard?.fullReview.unlocked) :
@@ -174,7 +174,8 @@ export default function StudentDailyReadingPage() {
       </div>
       {!available ? (
         <div className="mt-5 rounded-xl bg-slate-50 p-6 text-center text-sm font-bold text-slate-500">
-          {mode === "roundup" ? "먼저 이 구간의 일차별 학습을 모두 완료해 주세요." :
+          {mode === "day" ? "앞선 일차의 어휘 학습을 모두 완료하면 열려요." :
+            mode === "roundup" ? "먼저 이 구간의 일차별 학습을 모두 완료해 주세요." :
             "지금은 복습할 어휘가 없어요."}
         </div>
       ) : !progress ? (
@@ -325,7 +326,7 @@ export default function StudentDailyReadingPage() {
                     <span className="text-xs font-bold text-teal-700">1~15일차 공개</span>
                   </div>
                   <p className="mt-2 text-xs font-bold text-slate-500">
-                    5일씩 학습한 뒤 복습해요. 날짜나 복습을 선택하면 그 묶음 바로 아래에 카드가 펼쳐져요.
+                    1일차부터 순서대로 학습해요. 앞 일차를 완료해야 다음 일차가 열려요. 총복습과 오답연습은 다음 일차를 여는 필수 조건이 아니에요.
                   </p>
                   <div className="mt-4 space-y-5">
                     {Array.from({ length: Math.ceil(DAILY_READING_DAY_COUNT / 5) }, (_, groupIndex) => {
@@ -350,16 +351,16 @@ export default function StudentDailyReadingPage() {
                               const current = expanded && mode === "day" && day === num;
                               return (
                                 <button key={num} type="button"
-                                  disabled={!lesson || busy} onClick={() => choose("day", num)}
+                                  disabled={!lesson || !lesson.unlocked || busy} onClick={() => choose("day", num)}
                                   aria-pressed={current}
                                   className={
                                     "relative flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl border px-0.5 py-1 text-[10px] font-black transition sm:min-h-20 sm:text-xs " +
-                                    (!lesson ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300" :
+                                    (!lesson || !lesson.unlocked ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300" :
                                       current ? "border-teal-700 bg-teal-700 text-white" :
                                         lesson.completed ? "border-emerald-300 bg-emerald-50 text-emerald-800" :
                                           "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100")
                                   }>
-                                  <span aria-hidden="true">{!lesson ? "🔒" : lesson.completed ? "✅" : "📖"}</span>
+                                  <span aria-hidden="true">{!lesson || !lesson.unlocked ? "🔒" : lesson.completed ? "✅" : "📖"}</span>
                                   <span>{num}일</span>
                                   {lesson?.completed && <span aria-label="완료 도장" className="absolute -right-1 -top-1 -rotate-12 rounded-full border-2 border-rose-500 bg-white px-1 py-0.5 text-[9px] font-black text-rose-600 shadow-sm">완료</span>}
                                 </button>
