@@ -52,6 +52,13 @@ const RESOURCE_CARDS: ResourceCard[] = [
     href: "/history/timeline?view=sunlab",
   },
   {
+    permission: "literacy",
+    emoji: "📚",
+    title: "문해력 교실",
+    description: "리딩코어북의 어휘를 카드로 뽑아 복습해요.",
+    href: "/student/literacy",
+  },
+  {
     permission: "library",
     emoji: "📖",
     title: "도서관",
