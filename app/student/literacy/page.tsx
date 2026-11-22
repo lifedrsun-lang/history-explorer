@@ -7,6 +7,7 @@ type Progress = {
   started: boolean; total: number; solved: number; wrong: number;
   remaining: string[]; selectedId: string | null; clue: string | null;
   kind: "word" | "spelling" | "sound" | null; completed: boolean; reward: number;
+  swapsUsed: number; swapsAvailable: number; attemptNumber: number; firstRewardDecided: boolean;
 };
 type Status = {
   name: string; level: string | null; weeks: number[];
@@ -16,11 +17,15 @@ const kindLabel = (kind: Progress["kind"]) =>
   kind === "spelling" ? "맞춤법 연습" : kind === "sound" ? "소리 표현" : "뜻 보고 단어 쓰기";
 function cardPositions(ids: string[]) {
   // 한 줄 격자 대신 임의의 위치와 각도로 겹쳐 놓습니다.
-  const shuffled = [...ids].sort(() => Math.random() - 0.5);
+  const shuffled = [...ids];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
   return Object.fromEntries(shuffled.map((id, n) => [
     id, {
       left: (n % 4) * 21 + Math.random() * 6 + "%",
-      top: Math.floor(n / 4) * 19 + Math.random() * 4 + "%",
+      top: (Math.floor(n / 4) * 90 + 55 + Math.random() * 16).toFixed(0) + "px",
       transform: "rotate(" + (Math.random() * 36 - 18).toFixed(1) + "deg)",
       zIndex: n + 1,
     },
@@ -70,13 +75,21 @@ export default function LiteracyStudentPage() {
       const data=await response.json().catch(()=>({}));
       if(!response.ok)throw new Error(data.error||"결과를 저장하지 못했어요.");
       setStatus(prev=>prev?{...prev,progress:data.progress as Progress}:prev);
+      if(body && "action" in body && body.action==="restart"){
+        setAnswer("");setAnswerWasWrong(false);
+        setNotice("새로운 7문제 도전이에요! 카드를 직접 골라 주세요.");
+      }
+      if(data.swapped===true){
+        setAnswer("");setAnswerWasWrong(false);
+        setNotice("문제를 바꿨어요. 새 카드를 골라 주세요!");
+      }
       if(body && "action" in body && body.action==="answer"){
         if(data.correct===true){
           setAnswer("");setAnswerWasWrong(false);
-          setNotice(data.progress?.completed?"모든 단어를 완료했어요!":"정답이에요! 다음 카드를 골라주세요.");
+          setNotice(data.progress?.completed?"7문제를 모두 풀었어요!":"정답이에요! 다음 카드를 골라주세요.");
         }else{
           setAnswerWasWrong(true);
-          setNotice("아쉬워요. 다시 읽고 정답을 적어보세요. 이 카드는 오답 카드로 기록했어요.");
+          setNotice("다시 생각해 볼까요? 이 카드는 오답 카드로 한 번 기록했어요.");
         }
       }
     }catch(e){setError(e instanceof Error?e.message:"요청이 실패했어요.")}
@@ -112,42 +125,48 @@ export default function LiteracyStudentPage() {
               </button>;
             })}
           </div>
-          <p className="mt-2 text-xs text-slate-500">공개된 주차만 선택할 수 있고, 완료한 교재의 보상은 다시 지급되지 않아요.</p>
+          <p className="mt-2 text-xs text-slate-500">공개된 주차만 선택할 수 있고, 같은 교재의 보상은 첫 도전 완료 시 한 번만 지급돼요.</p>
         </section>
         {!status.weeks.includes(week)?
           <div className="rounded-2xl bg-white p-6 text-center font-bold">이 리딩코어북은 아직 공개되지 않았어요.</div>:
           <section className="rounded-3xl bg-white p-4 shadow-sm sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-lg font-black">{status.level} · 리딩코어북 {String(week).padStart(2,"0")}</h2>
-              <p className="text-sm font-black text-teal-700">{progress?progress.solved+" / "+progress.total+"장 완료":"학습 준비"}</p>
+              <p className="text-sm font-black text-teal-700">{progress?progress.solved+" / 7문제":"학습 준비"}</p>
             </div>
             <div className="mt-2 rounded-xl bg-amber-50 p-3 text-xs font-bold text-amber-800">
               틀린 카드 0개 → 동엽전 2개 · 1~3개 → 1개 · 4개 이상 → 0개
-              <p className="mt-1 text-amber-700">같은 카드를 여러 번 틀려도 오답 카드는 1개로 셉니다. 첫 완료 시에만 보상합니다.</p>
+              <p className="mt-1 text-amber-700">1회 도전은 7문제 · 문제 바꾸기 2회. 같은 카드를 여러 번 틀려도 오답 카드 수는 한 번만 셉니다.</p>
             </div>
             {!progress&&
               <div className="py-12 text-center">
                 <div className="text-5xl">🃏</div>
-                <p className="mt-3 font-black">무작위로 섞인 카드 속 단어를 찾아보세요!</p>
+                <p className="mt-3 font-black">무작위로 흩어진 카드에서 아이가 직접 7장을 골라요!</p>
                 <button type="button" disabled={busy} onClick={()=>void post({action:"start"})}
-                  className="mt-5 rounded-2xl bg-teal-700 px-8 py-3.5 font-black text-white disabled:opacity-50">학습 시작</button>
+                  className="mt-5 rounded-2xl bg-teal-700 px-8 py-3.5 font-black text-white disabled:opacity-50">7문제 도전 시작</button>
               </div>}
             {progress?.completed&&
               <div className="py-9 text-center">
                 <div className="text-5xl">🏆</div>
-                <h3 className="mt-3 text-2xl font-black">모든 카드 학습 완료!</h3>
+                <h3 className="mt-3 text-2xl font-black">{progress.attemptNumber}회차 · 7문제 도전 완료!</h3>
                 <p className="mt-2 text-sm text-slate-600">오답 카드 {progress.wrong}개</p>
                 <p className="mt-4 text-2xl font-black text-amber-700">🪙 동엽전 +{progress.reward}개</p>
-                <p className="mt-2 text-xs font-bold text-slate-500">최초 완료 결과가 저장되어 중복 지급되지 않아요.</p>
+                <p className="mt-2 text-xs font-bold text-slate-500">코인은 교재별 첫 완료에서만 지급돼요. 재도전은 복습용이에요.</p>
+                <button type="button" disabled={busy} onClick={()=>void post({action:"restart"})}
+                  className="mt-6 rounded-2xl bg-teal-700 px-7 py-3.5 font-black text-white disabled:opacity-50">
+                  🔀 다시 도전 · 새로운 카드 7장 고르기
+                </button>
               </div>}
             {progress&&!progress.completed&&<>
               <div className="mt-4 flex flex-wrap gap-3 text-xs font-black text-slate-600">
                 <span>✅ 맞힌 카드 {progress.solved}장</span>
                 <span>📝 오답 카드 {progress.wrong}장</span>
+                <span>🔄 바꾸기 남은 횟수 {progress.swapsAvailable ?? 2}/2</span>
               </div>
               {!progress.selectedId&&
-                <div className="relative mt-4 h-[490px] overflow-hidden rounded-[28px] border-2 border-dashed border-teal-100 bg-gradient-to-br from-emerald-50 via-white to-blue-50 sm:h-[510px]">
-                  <p className="absolute left-4 top-3 z-50 rounded-lg bg-white/90 p-2 text-xs font-black text-teal-800">카드 한 장을 골라 주세요!</p>
+                <div style={{height: Math.max(480, Math.ceil(progress.remaining.length / 4) * 90 + 200) + "px"}}
+                  className="relative mt-4 overflow-hidden rounded-[28px] border-2 border-dashed border-teal-100 bg-gradient-to-br from-emerald-50 via-white to-blue-50">
+                  <p className="absolute left-4 top-3 z-50 rounded-lg bg-white/90 p-2 text-xs font-black text-teal-800">카드를 직접 골라 보세요! ({progress.solved}/7)</p>
                   {progress.remaining.map((id,i)=>
                     <button key={id} type="button" disabled={busy}
                       style={positions[id]||{}} onClick={()=>void post({action:"draw",cardId:id})}
@@ -168,6 +187,11 @@ export default function LiteracyStudentPage() {
                     {answerWasWrong&&<p className="text-center text-xs font-bold text-amber-700">같은 카드를 다시 풀어도 오답 카드 수는 중복 증가하지 않아요.</p>}
                     <button type="submit" disabled={!answer.trim()||busy} className="w-full rounded-2xl bg-teal-700 p-4 font-black text-white disabled:opacity-40">
                       {busy?"확인 중...":"정답 확인"}
+                    </button>
+                    <button type="button" disabled={busy || (progress.swapsAvailable ?? 2) <= 0 || progress.remaining.length <= 7 - progress.solved}
+                      onClick={()=>void post({action:"swap"})}
+                      className="w-full rounded-2xl border-2 border-indigo-200 bg-white p-3 font-black text-indigo-700 disabled:opacity-40">
+                      🔄 이 문제 바꾸기 ({progress.swapsAvailable ?? 2}/2 남음)
                     </button>
                   </form>
                 </section>}

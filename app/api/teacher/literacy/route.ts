@@ -37,6 +37,7 @@ function fail(error: unknown) {
   }
   if (message === "invalid_member") return privateJson({ error: "SUN LAB 학생 정보를 확인해 주세요." }, 403);
   if (message === "previous_week_required") return privateJson({ error: "이전 리딩코어북을 먼저 공개해 주세요." }, 409);
+  if (message === "seven_cards_required") return privateJson({ error: "7문제 도전을 공개하려면 서로 다른 어휘 카드를 7개 이상 등록해 주세요." }, 400);
   console.error("literacy teacher API", message);
   return privateJson({ error: "문해력 교실을 불러오지 못했습니다." }, 503);
 }
@@ -103,7 +104,7 @@ export async function PUT(request: Request) {
     const week = literacyWeek(body.week);
     const cards = validateLiteracyCards(body.cards);
     const published = body.published === true;
-    if (published && cards.length === 0) throw new Error("invalid_literacy_cards");
+    if (published && cards.length < 7) throw new Error("seven_cards_required");
     const { db } = getFirebaseAdmin();
     // 주차 공개는 순서대로. 이전 주차를 건너뛰어 공개하지 않습니다.
     if (published && week > 1) {
