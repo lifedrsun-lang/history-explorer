@@ -9,7 +9,8 @@ export type SunLabPermission =
   | "byeolkkum_history"
   | "history_explorer"
   | "boardgame"
-  | "coding";
+  | "coding"
+  | "literacy";
 
 export const SUN_LAB_PERMISSION_OPTIONS: Array<{
   value: SunLabPermission;
@@ -22,6 +23,7 @@ export const SUN_LAB_PERMISSION_OPTIONS: Array<{
   { value: "history_explorer", label: "역사탐험대", emoji: "🏺" },
   { value: "boardgame", label: "보드게임", emoji: "🎲" },
   { value: "coding", label: "코딩", emoji: "💻" },
+  { value: "literacy", label: "문해력 교실", emoji: "📚" },
 ];
 
 const ALL_PERMISSION_VALUES = SUN_LAB_PERMISSION_OPTIONS.map(
@@ -76,6 +78,9 @@ export const resolveSunLabPermissions = (
   const permissions = new Set<SunLabPermission>(
     getExplicitSunLabPermissions(student)
   );
+
+  // SUN LAB 회원의 기본 교실: 레벨 미배정 상태에서는 학습을 시작할 수 없음
+  permissions.add("literacy");
 
   if (hasStudentProgramValue(student.program)) {
     const program = getStudentProgramValue(student.program);
