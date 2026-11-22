@@ -36,6 +36,7 @@ function fail(error: unknown) {
     return privateJson({ error: "레벨·주차·어휘 입력 내용을 확인해 주세요." }, 400);
   }
   if (message === "invalid_member") return privateJson({ error: "SUN LAB 학생 정보를 확인해 주세요." }, 403);
+  if (message === "previous_week_required") return privateJson({ error: "이전 리딩코어북을 먼저 공개해 주세요." }, 409);
   console.error("literacy teacher API", message);
   return privateJson({ error: "문해력 교실을 불러오지 못했습니다." }, 503);
 }
@@ -104,6 +105,13 @@ export async function PUT(request: Request) {
     const published = body.published === true;
     if (published && cards.length === 0) throw new Error("invalid_literacy_cards");
     const { db } = getFirebaseAdmin();
+    // 주차 공개는 순서대로. 이전 주차를 건너뛰어 공개하지 않습니다.
+    if (published && week > 1) {
+      const previous = await getDeck(level, week - 1);
+      if (!previous.published || previous.cards.length === 0) {
+        throw new Error("previous_week_required");
+      }
+    }
     await db.collection(DECKS).doc(literacyDeckKey(level, week)).set({
       schemaVersion: 1, level, week, cards, published,
       updatedBy: teacher.uid, updatedAt: FieldValue.serverTimestamp(),
