@@ -239,10 +239,10 @@ export default function TeacherCoinExchangesPage() {
         <div className="mb-4 flex flex-col gap-3 rounded-3xl bg-white p-5 shadow-md md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-black md:text-3xl">
-              🎁 은엽전 교환신청 관리
+              🎁 코인·용돈 교환신청 관리
             </h1>
             <p className="mt-2 text-sm font-bold text-slate-500">
-              은엽전 1개 = 1,000원 · 교환 완료 시 학생 은엽전이 차감됩니다.
+              은코인(은엽전) 1개 = 1,000원 · 용돈과 상품권 교환 완료 시 은코인이 차감됩니다.
             </p>
           </div>
 
@@ -368,7 +368,9 @@ export default function TeacherCoinExchangesPage() {
                           은엽전 {exchangeRequest.amountSilver}개 → {formatCoinExchangeWon(exchangeRequest.amountWon)}
                         </div>
                         <div className="mt-2 text-sm font-black text-slate-800">
-                          📱 쿠폰 수신번호 {exchangeRequest.recipientPhone || "기존 신청 · 번호 없음"}
+                          {exchangeRequest.vendor === "allowance"
+                            ? "💰 용돈 지급 후 교환 완료 처리하세요."
+                            : `📱 쿠폰 수신번호 ${exchangeRequest.recipientPhone || "기존 신청 · 번호 없음"}`}
                         </div>
                       </div>
 
