@@ -314,7 +314,6 @@ function SunLabStudentPage() {
                   inputMode="numeric"
                   autoComplete="off"
                   maxLength={8}
-                  placeholder="예: 20180713"
                   className="w-full rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-center text-xl font-black tracking-[0.18em] text-slate-800 outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-100"
                 />
               </label>
