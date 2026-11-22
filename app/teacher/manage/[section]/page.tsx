@@ -198,6 +198,13 @@ const sections: Record<string, ManagementSection> = {
         className: "border-teal-200 bg-teal-50 text-teal-950",
       },
       {
+        href: "/teacher/daily-reading",
+        icon: "📖",
+        title: "1일 1독해",
+        description: "보물·전래동화 29일차 기본 틀 · 자료 등록 기능 준비 중",
+        className: "border-sky-200 bg-sky-50 text-sky-950",
+      },
+      {
         href: "/teacher/sun-lab-students",
         icon: "👧",
         title: "선랩 수강생",
