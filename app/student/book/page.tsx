@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 
 import type { SunLabPermission } from "@/lib/sunLabMember";
 
@@ -31,6 +31,17 @@ type Member = {
   } | null;
   helloMapleMissions?: HelloMapleMission[];
   minecraftEducationAvailable?: boolean;
+};
+
+type CoinStatus = {
+  bronze: number;
+  silver: number;
+  pendingRequest: {
+    id: string;
+    vendorLabel: string;
+    amountSilver: number;
+    amountWon: number;
+  } | null;
 };
 
 type ResourceCard = {
@@ -139,9 +150,91 @@ function SunLabStudentPage() {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">(
     "idle"
   );
+  const [coins, setCoins] = useState<CoinStatus | null>(null);
+  const [coinLoading, setCoinLoading] = useState(false);
+  const [coinError, setCoinError] = useState("");
+  const [showAllowanceRequest, setShowAllowanceRequest] = useState(false);
+  const [allowanceSilver, setAllowanceSilver] = useState("1");
+  const [allowanceSubmitting, setAllowanceSubmitting] = useState(false);
+  const [allowanceNotice, setAllowanceNotice] = useState("");
+
+  const refreshCoins = useCallback(async () => {
+    setCoinLoading(true);
+    try {
+      const response = await fetch("/api/student/sun-lab-coins", {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || "코인 정보를 불러오지 못했습니다.");
+      }
+      setCoins(data as CoinStatus);
+      setCoinError("");
+    } catch (error) {
+      setCoins(null);
+      setCoinError(error instanceof Error ? error.message : "코인을 조회하지 못했습니다.");
+    } finally {
+      setCoinLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!member) return;
+    void refreshCoins();
+    const onResume = () => void refreshCoins();
+    window.addEventListener("focus", onResume);
+    return () => window.removeEventListener("focus", onResume);
+  }, [member, refreshCoins]);
+
+  const submitAllowanceRequest = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (allowanceSubmitting || !coins || coins.pendingRequest) return;
+    const amountSilver = Number(allowanceSilver);
+    if (
+      !Number.isSafeInteger(amountSilver) ||
+      amountSilver < 1 ||
+      amountSilver > coins.silver
+    ) {
+      setCoinError("교환 가능한 은코인 개수를 확인해 주세요.");
+      return;
+    }
+    if (!window.confirm(
+      "은코인 " + amountSilver + "개를 " +
+      (amountSilver * 1000).toLocaleString("ko-KR") +
+      "원 용돈으로 교환 요청할까요? 선생님이 승인하기 전에는 차감되지 않습니다."
+    )) return;
+
+    setAllowanceSubmitting(true);
+    setAllowanceNotice("");
+    setCoinError("");
+    try {
+      const response = await fetch("/api/student/sun-lab-coins", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amountSilver }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || "용돈 교환 요청을 전송하지 못했습니다.");
+      }
+      setAllowanceNotice("요청을 보냈어요. 교사관리실에서 확인할 수 있습니다.");
+      await refreshCoins();
+    } catch (error) {
+      setCoinError(error instanceof Error ? error.message : "교환 요청을 보내지 못했습니다.");
+    } finally {
+      setAllowanceSubmitting(false);
+    }
+  };
 
   const resetMember = () => {
     setMember(null);
+    setCoins(null);
+    setCoinError("");
+    setShowAllowanceRequest(false);
+    setAllowanceSilver("1");
+    setAllowanceNotice("");
     setName("");
     setBirthDate("");
     setError("");
@@ -158,6 +251,11 @@ function SunLabStudentPage() {
     event.preventDefault();
     setError("");
     setMember(null);
+    setCoins(null);
+    setCoinError("");
+    setShowAllowanceRequest(false);
+    setAllowanceSilver("1");
+    setAllowanceNotice("");
     setShowHelloMaple(false);
     setShowMinecraftEducation(false);
     setMinecraftAccount(null);
@@ -377,8 +475,8 @@ function SunLabStudentPage() {
     <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 px-4 py-8 text-slate-800">
       <div className="mx-auto max-w-xl">
         <header className="rounded-[30px] border border-white/80 bg-white/95 p-5 shadow-sm">
-          <div className="flex items-start justify-between gap-3">
-            <div>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
               <div className="text-sm font-black text-sky-600">🌞 SUN LAB</div>
               <h1 className="mt-1 text-2xl font-black text-slate-800">
                 {member.name}님의 SUN LAB
@@ -387,14 +485,98 @@ function SunLabStudentPage() {
                 이용할 수 있는 공간만 보여드려요.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={resetMember}
-              className="shrink-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-600"
-            >
-              다른 회원
-            </button>
+            <div className="ml-auto flex w-full flex-col items-end gap-2 sm:w-auto">
+              <button
+                type="button"
+                onClick={resetMember}
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-600"
+              >
+                다른 회원
+              </button>
+              <div className="flex flex-wrap justify-end gap-2 text-xs font-black" aria-live="polite">
+                <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
+                  🟤 동코인 {coins ? coins.bronze.toLocaleString("ko-KR") : "—"}개
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
+                  ⚪ 은코인 {coins ? coins.silver.toLocaleString("ko-KR") : "—"}개
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAllowanceRequest((open) => !open)}
+                disabled={!coins || coinLoading}
+                aria-expanded={showAllowanceRequest}
+                className="rounded-2xl bg-violet-600 px-3 py-2.5 text-xs font-black text-white shadow-sm transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                💰 코인을 용돈으로 교환하기
+              </button>
+              {coinLoading && !coins && (
+                <span className="text-xs font-bold text-slate-400">코인 잔액 확인 중...</span>
+              )}
+            </div>
           </div>
+          {coinError && (
+            <div role="alert" className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
+              {coinError}
+              <button type="button" onClick={() => void refreshCoins()} className="ml-2 underline">다시 조회</button>
+            </div>
+          )}
+          {showAllowanceRequest && coins && (
+            <form onSubmit={submitAllowanceRequest} className="mt-4 space-y-3 rounded-2xl border border-violet-100 bg-violet-50/70 p-4">
+              <div className="font-black text-violet-900">💰 용돈 교환 요청</div>
+              <p className="text-xs font-bold leading-5 text-slate-600">
+                동코인 10개 = 은코인 1개 · 은코인 1개 = 1,000원
+                <span className="block">은코인으로 교환을 요청할 수 있어요. 선생님이 완료 처리하면 차감됩니다.</span>
+              </p>
+              {coins.pendingRequest ? (
+                <div className="rounded-xl bg-white p-3 text-sm font-bold text-amber-800">
+                  ⏳ {coins.pendingRequest.vendorLabel} {coins.pendingRequest.amountSilver}개
+                  ({coins.pendingRequest.amountWon.toLocaleString("ko-KR")}원) 교환 요청이 대기 중이에요.
+                  <span className="mt-1 block text-xs text-slate-500">기존 요청이 처리된 후 다시 신청할 수 있어요.</span>
+                </div>
+              ) : coins.silver < 1 ? (
+                <div className="rounded-xl bg-white p-3 text-sm font-bold text-slate-600">
+                  은코인이 1개 이상 모이면 용돈 교환을 요청할 수 있어요.
+                </div>
+              ) : (
+                <>
+                  <label className="block text-xs font-black text-slate-700">
+                    교환할 은코인 개수 (최대 {coins.silver}개)
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min="1"
+                      max={coins.silver}
+                      step="1"
+                      required
+                      value={allowanceSilver}
+                      onChange={(event) => setAllowanceSilver(event.target.value)}
+                      className="mt-2 w-full rounded-xl border border-violet-200 bg-white px-3 py-2 text-base font-black outline-none focus:border-violet-400"
+                    />
+                  </label>
+                  <div className="rounded-xl bg-white px-3 py-2 text-sm font-black text-violet-800">
+                    교환 요청액: {Number.isSafeInteger(Number(allowanceSilver)) &&
+                      Number(allowanceSilver) >= 1 &&
+                      Number(allowanceSilver) <= coins.silver
+                        ? (Number(allowanceSilver) * 1000).toLocaleString("ko-KR") + "원"
+                        : "개수를 확인해 주세요"}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={allowanceSubmitting || coinLoading}
+                    className="w-full rounded-xl bg-violet-600 px-3 py-3 text-sm font-black text-white disabled:opacity-50"
+                  >
+                    {allowanceSubmitting ? "요청하는 중..." : "선생님께 용돈 교환 요청하기"}
+                  </button>
+                </>
+              )}
+              {allowanceNotice && (
+                <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">
+                  {allowanceNotice}
+                </p>
+              )}
+            </form>
+          )}
         </header>
 
         {visibleCards.length > 0 ? (
