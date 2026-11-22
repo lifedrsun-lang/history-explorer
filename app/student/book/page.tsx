@@ -59,6 +59,13 @@ const RESOURCE_CARDS: ResourceCard[] = [
     href: "/student/literacy",
   },
   {
+    permission: "daily_reading",
+    emoji: "📖",
+    title: "1일 1독해",
+    description: "보물·전래동화 29일 학습 공간 (준비 중)",
+    href: "/student/daily-reading",
+  },
+  {
     permission: "library",
     emoji: "📖",
     title: "도서관",
