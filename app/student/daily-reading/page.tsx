@@ -44,6 +44,7 @@ export default function StudentDailyReadingPage() {
   const [bookId, setBookId] = useState("folktales");
   const [mode, setMode] = useState<Mode>("day");
   const [day, setDay] = useState(1);
+  const [expanded, setExpanded] = useState(false);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -100,6 +101,7 @@ export default function StudentDailyReadingPage() {
     if (busy) return;
     setMode(newMode);
     setDay(newDay);
+    setExpanded(true);
     setNotice(""); setAnswer("");
   };
 
@@ -278,7 +280,7 @@ export default function StudentDailyReadingPage() {
               const selected = book.id === bookId;
               return (
                 <button key={book.id} type="button" disabled={busy}
-                  aria-pressed={selected} onClick={() => setBookId(book.id)}
+                  aria-pressed={selected} onClick={() => { setBookId(book.id); setExpanded(false); }}
                   className={
                     "rounded-2xl border-2 p-4 text-left transition disabled:opacity-60 " +
                     (selected ? "border-teal-500 bg-teal-50 shadow-sm" :
@@ -330,11 +332,11 @@ export default function StudentDailyReadingPage() {
                       const roundup = dashboard.roundups.find(item => item.end === to);
                       const mistake = dashboard.mistakes.find(item => item.end === to);
                       const finalGroup = to === DAILY_READING_DAY_COUNT;
-                      const selectedHere = mode === "day"
+                      const selectedHere = expanded && (mode === "day"
                         ? day >= from && day <= to
                         : finalGroup
                           ? day === 30 && (mode === "full" || mode === "full_mistakes")
-                          : day === to && (mode === "roundup" || mode === "mistakes");
+                          : day === to && (mode === "roundup" || mode === "mistakes"));
                       return (
                         <div key={from} className="space-y-2">
                           <p className="text-xs font-bold text-slate-500">
@@ -343,7 +345,7 @@ export default function StudentDailyReadingPage() {
                           <div className="grid grid-cols-7 gap-1 sm:gap-2">
                             {Array.from({ length: to - from + 1 }, (_, index) => from + index).map(num => {
                               const lesson = dashboard.days.find(item => item.day === num);
-                              const current = mode === "day" && day === num;
+                              const current = expanded && mode === "day" && day === num;
                               return (
                                 <button key={num} type="button"
                                   disabled={!lesson || busy} onClick={() => choose("day", num)}
