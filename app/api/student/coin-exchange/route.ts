@@ -184,7 +184,7 @@ export async function POST(request: Request) {
       throw new Error("invalid_exchange_amount");
     }
 
-    if (!isCoinExchangeVendor(vendor)) {
+    if (!isCoinExchangeVendor(vendor) || vendor === "allowance") {
       throw new Error("invalid_exchange_vendor");
     }
 
