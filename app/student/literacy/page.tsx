@@ -8,6 +8,7 @@ type Progress = {
   remaining: string[]; selectedId: string | null; clue: string | null;
   kind: "word" | "spelling" | "sound" | null; completed: boolean; reward: number;
   swapsUsed: number; swapsAvailable: number; attemptNumber: number; firstRewardDecided: boolean;
+  currentMistakes: number;
 };
 type Status = {
   name: string; level: string | null; weeks: number[];
@@ -87,9 +88,12 @@ export default function LiteracyStudentPage() {
         if(data.correct===true){
           setAnswer("");setAnswerWasWrong(false);
           setNotice(data.progress?.completed?"7문제를 모두 풀었어요!":"정답이에요! 다음 카드를 골라주세요.");
+        }else if (data.autoReturned === true) {
+          setAnswer("");setAnswerWasWrong(false);
+          setNotice("이 문제를 3번 틀렸어요. 다른 카드를 골라 보세요! 바꾸기 횟수는 줄어들지 않아요.");
         }else{
-          setAnswerWasWrong(true);
-          setNotice("다시 생각해 볼까요? 이 카드는 오답 카드로 한 번 기록했어요.");
+          setAnswer("");setAnswerWasWrong(true);
+          setNotice("아쉬워요. 같은 문제는 3번까지 도전할 수 있어요. 오답 카드는 한 번만 기록돼요.");
         }
       }
     }catch(e){setError(e instanceof Error?e.message:"요청이 실패했어요.")}
@@ -169,9 +173,10 @@ export default function LiteracyStudentPage() {
                   <p className="absolute left-4 top-3 z-50 rounded-lg bg-white/90 p-2 text-xs font-black text-teal-800">카드를 직접 골라 보세요! ({progress.solved}/7)</p>
                   {progress.remaining.map((id,i)=>
                     <button key={id} type="button" disabled={busy}
+                      aria-label={"카드 선택 " + (i + 1)}
                       style={positions[id]||{}} onClick={()=>void post({action:"draw",cardId:id})}
                       className="absolute flex h-32 w-[31%] max-w-40 items-center justify-center rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-500 to-teal-600 p-2 text-center text-white shadow-lg transition hover:z-50 hover:-translate-y-2 hover:shadow-xl focus-visible:z-50 sm:h-36">
-                      <span className="font-black"><span className="block text-2xl">✦</span>어휘 카드 <span className="block text-xs">{i+1}</span></span>
+                      <span aria-hidden="true" className="text-6xl font-black leading-none drop-shadow-sm">✦</span>
                     </button>
                   )}
                 </div>}
@@ -184,7 +189,10 @@ export default function LiteracyStudentPage() {
                     <input value={answer} onChange={e=>setAnswer(e.target.value)}
                       autoComplete="off" spellCheck={false} disabled={busy}
                       placeholder="정답 입력" className="w-full rounded-2xl border-2 border-teal-200 bg-white p-4 text-center text-lg font-black outline-none focus:border-teal-600"/>
-                    {answerWasWrong&&<p className="text-center text-xs font-bold text-amber-700">같은 카드를 다시 풀어도 오답 카드 수는 중복 증가하지 않아요.</p>}
+                    <p className="text-center text-xs font-bold text-slate-600">
+                      이 문제에서 틀린 횟수: {progress.currentMistakes ?? 0}/3
+                    </p>
+                    {answerWasWrong&&<p className="text-center text-xs font-bold text-amber-700">3번 틀리면 자동으로 카드 선택 화면으로 돌아가요. 같은 카드의 오답은 한 번만 계산해요.</p>}
                     <button type="submit" disabled={!answer.trim()||busy} className="w-full rounded-2xl bg-teal-700 p-4 font-black text-white disabled:opacity-40">
                       {busy?"확인 중...":"정답 확인"}
                     </button>
