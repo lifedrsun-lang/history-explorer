@@ -191,6 +191,13 @@ const sections: Record<string, ManagementSection> = {
     description: "선랩 수강생과 헬로메이플·도서관 등 선랩 전용 기능을 관리합니다.",
     items: [
       {
+        href: "/teacher/literacy",
+        icon: "📚",
+        title: "문해력 교실",
+        description: "K1~K12 레벨·24주 리딩코어북·어휘 카드·학생별 레벨 관리",
+        className: "border-teal-200 bg-teal-50 text-teal-950",
+      },
+      {
         href: "/teacher/sun-lab-students",
         icon: "👧",
         title: "선랩 수강생",
