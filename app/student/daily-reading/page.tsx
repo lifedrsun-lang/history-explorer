@@ -163,7 +163,7 @@ export default function StudentDailyReadingPage() {
   const weeklyMistakes = dashboard?.mistakes.find(item => item.end === day);
   const available = isFolktales && (mode === "day" ? Boolean(chosenDay) :
     mode === "roundup" ? Boolean(chosenRoundup?.unlocked || chosenRoundup?.started) :
-      mode === "mistakes" ? Boolean(weeklyMistakes?.due || weeklyMistakes?.started) :
+      mode === "mistakes" ? Boolean(weeklyMistakes?.due || weeklyMistakes?.started || weeklyMistakes?.completed) :
       mode === "full" ? Boolean(dashboard?.fullReview.unlocked) :
       Boolean(dashboard?.fullMistakes.unlocked));
   const totalCards = mode === "day" ? chosenDay?.count :
@@ -414,17 +414,17 @@ export default function StudentDailyReadingPage() {
                                   <span>총복습</span>
                                   {roundup?.completed && <span aria-label="완료 도장" className="absolute -right-1 -top-1 -rotate-12 rounded-full border-2 border-rose-500 bg-white px-1 py-0.5 text-[9px] font-black text-rose-600 shadow-sm">완료</span>}
                                 </button>
-                                <button type="button" disabled={busy || !mistake || (!mistake.due && !mistake.started)}
+                                <button type="button" disabled={busy || !mistake || (!mistake.due && !mistake.started && !mistake.completed)}
                                   aria-pressed={mode === "mistakes" && day === to}
                                   onClick={() => choose("mistakes", to)}
                                   className={
                                     "relative flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl border px-0.5 py-1 text-[10px] font-black sm:min-h-20 sm:text-xs " +
                                     (mode === "mistakes" && day === to ? "border-rose-700 bg-rose-700 text-white" :
-                                      !mistake || (!mistake.due && !mistake.started) ? "cursor-not-allowed border-rose-100 bg-rose-50 text-rose-300" :
+                                      !mistake || (!mistake.due && !mistake.started && !mistake.completed) ? "cursor-not-allowed border-rose-100 bg-rose-50 text-rose-300" :
                                         mistake.completed ? "border-rose-300 bg-rose-100 text-rose-800" :
                                           "border-rose-300 bg-rose-50 text-rose-800")
                                   }>
-                                  <span aria-hidden="true">{!mistake || (!mistake.due && !mistake.started) ? "🔒" : mistake.completed ? "✅" : "📝"}</span>
+                                  <span aria-hidden="true">{!mistake || (!mistake.due && !mistake.started && !mistake.completed) ? "🔒" : mistake.completed ? "✅" : "📝"}</span>
                                   <span>오답</span><span>연습</span>
                                   {mistake?.completed && <span aria-label="완료 도장" className="absolute -right-1 -top-1 -rotate-12 rounded-full border-2 border-rose-500 bg-white px-1 py-0.5 text-[9px] font-black text-rose-600 shadow-sm">완료</span>}
                                 </button>
