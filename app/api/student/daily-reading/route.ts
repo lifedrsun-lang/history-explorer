@@ -4,8 +4,12 @@ import {
   FOLKTALES_ACTIVE_DAYS, FOLKTALES_BY_ID, FOLKTALES_CARDS, FIVE_DAY_REVIEW_ENDS,
   formatKoreanLearningDate, nextKoreanLearningDate,
   normalizeDailyVocabularyAnswer, vocabularyCardsForDay,
-  vocabularyCardsForFiveDayReview,
+  vocabularyCardsForFiveDayReview, type DailyVocabularyCard,
 } from "@/lib/dailyReadingVocabulary";
+import {
+  TREASURE_ACTIVE_DAYS, TREASURE_BY_ID, TREASURE_CARDS,
+  treasureCardsForDay, treasureCardsForFiveDayReview,
+} from "@/lib/dailyReadingTreasureVocabulary";
 import {
   getSunLabStudentSession, readCookieValue, SUNLAB_STUDENT_SESSION_COOKIE,
 } from "@/lib/sunLabStudentSession";
@@ -13,7 +17,30 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const BOOK = "folktales";
+const VOCABULARY_BOOKS = {
+  folktales: {
+    label: "전래동화", activeDays: FOLKTALES_ACTIVE_DAYS, cards: FOLKTALES_CARDS,
+    byId: FOLKTALES_BY_ID, cardsForDay: vocabularyCardsForDay,
+    cardsForReview: vocabularyCardsForFiveDayReview,
+  },
+  treasure: {
+    label: "보물", activeDays: TREASURE_ACTIVE_DAYS, cards: TREASURE_CARDS,
+    byId: TREASURE_BY_ID, cardsForDay: treasureCardsForDay,
+    cardsForReview: treasureCardsForFiveDayReview,
+  },
+} as const;
+type BookId = keyof typeof VOCABULARY_BOOKS;
+type VocabularyDeck = {
+  label: string; activeDays: number[]; cards: DailyVocabularyCard[];
+  byId: Map<string, DailyVocabularyCard>;
+  cardsForDay: (day: number) => DailyVocabularyCard[];
+  cardsForReview: (end: number) => DailyVocabularyCard[];
+};
+function getBookId(value: unknown): BookId {
+  if (value === null || value === undefined || value === "") return "folktales";
+  if (value === "folktales" || value === "treasure") return value;
+  throw new Error("invalid_book");
+}
 const SESSIONS = "sunlab_daily_reading_sessions";
 const MISSED = "sunlab_daily_reading_missed";
 const AWARDS = "sunlab_daily_reading_coin_awards";
@@ -57,20 +84,20 @@ function activityKey(mode: Mode, day: number, today: string) {
   return mode === "mistakes" ? "mistakes_" + String(day).padStart(2, "0") + "_" + today :
     mode + "_" + String(day).padStart(2, "0");
 }
-function sessionDoc(studentId: string, key: string) {
-  return studentId + "_" + BOOK + "_" + key;
+function sessionDoc(studentId: string, key: string, bookId: BookId) {
+  return studentId + "_" + bookId + "_" + key;
 }
-function missedDoc(studentId: string) {
-  return studentId + "_" + BOOK;
+function missedDoc(studentId: string, bookId: BookId) {
+  return studentId + "_" + bookId;
 }
 function getMode(input: string): Mode {
   if (input === "day" || input === "roundup" || input === "mistakes" || input === "full" || input === "full_mistakes") return input;
   throw new Error("invalid_mode");
 }
-function getDay(mode: Mode, input: unknown) {
+function getDay(mode: Mode, input: unknown, deck: VocabularyDeck) {
   const day = Number(input);
   if (!Number.isInteger(day)) throw new Error("invalid_day");
-  if (mode === "day" && FOLKTALES_ACTIVE_DAYS.includes(day)) return day;
+  if (mode === "day" && deck.activeDays.includes(day)) return day;
   if (mode === "roundup" && FIVE_DAY_REVIEW_ENDS.some(end => end === day)) return day;
   if (mode === "mistakes" && GROUP_ENDS.some(end => end === day)) return day;
   if ((mode === "full" || mode === "full_mistakes") && day === 30) return day;
@@ -83,35 +110,38 @@ function queueEntries(queue: MissedQueue | undefined): Record<string, MissedEntr
 function wasCompleted(session: Session | undefined): boolean {
   return session?.completed === true || session?.everCompleted === true;
 }
-function dueCardIds(queue: MissedQueue | undefined, today: string): string[] {
+function dueCardIds(queue: MissedQueue | undefined, today: string, deck: VocabularyDeck): string[] {
   return Object.entries(queueEntries(queue))
-    .filter(([id, item]) => FOLKTALES_BY_ID.has(id) && item &&
+    .filter(([id, item]) => deck.byId.has(id) && item &&
       typeof item.dueDate === "string" && item.dueDate <= today)
     .map(([id]) => id);
 }
-function assignedIds(mode: Mode, day: number, queue: MissedQueue | undefined, today: string) {
-  if (mode === "day") return vocabularyCardsForDay(day).map(card => card.id);
-  if (mode === "roundup") return vocabularyCardsForFiveDayReview(day).map(card => card.id);
+function assignedIds(
+  mode: Mode, day: number, queue: MissedQueue | undefined,
+  today: string, deck: VocabularyDeck
+) {
+  if (mode === "day") return deck.cardsForDay(day).map(card => card.id);
+  if (mode === "roundup") return deck.cardsForReview(day).map(card => card.id);
   if (mode === "mistakes") {
-    const due = dueCardIds(queue, today).filter(id => {
-      const word = FOLKTALES_BY_ID.get(id);
+    const due = dueCardIds(queue, today, deck).filter(id => {
+      const word = deck.byId.get(id);
       return word && word.day > day - 5 && word.day <= day;
     });
     if (due.length) return due;
     // 오답연습 완료 후에도 같은 구간의 이전 오답 카드로 재연습 가능
     return Array.from(new Set(queue?.everWrongIds || []))
-      .filter(id => { const word = FOLKTALES_BY_ID.get(id);
+      .filter(id => { const word = deck.byId.get(id);
         return word && word.day > day - 5 && word.day <= day; });
   }
-  if (mode === "full") return FOLKTALES_CARDS.map(card => card.id);
+  if (mode === "full") return deck.cards.map(card => card.id);
   return Array.from(new Set(queue?.everWrongIds || Object.keys(queueEntries(queue))))
-    .filter(id => FOLKTALES_BY_ID.has(id));
+    .filter(id => deck.byId.has(id));
 }
-function toPublic(session: Session | null) {
+function toPublic(session: Session | null, deck: VocabularyDeck) {
   if (!session) return null;
   const solved = Array.isArray(session.solvedIds) ? session.solvedIds : [];
   const wrong = Array.isArray(session.wrongIds) ? session.wrongIds : [];
-  const current = session.currentId ? FOLKTALES_BY_ID.get(session.currentId) : undefined;
+  const current = session.currentId ? deck.byId.get(session.currentId) : undefined;
   return {
     started: true,
     total: session.cardIds.length,
@@ -147,44 +177,46 @@ export async function GET(request: Request) {
   try {
     const student = await loggedInStudent(request);
     const url = new URL(request.url);
+    const BOOK = getBookId(url.searchParams.get("bookId"));
+    const deck: VocabularyDeck = VOCABULARY_BOOKS[BOOK];
     const mode = getMode(url.searchParams.get("mode") || "day");
-    const day = getDay(mode, url.searchParams.get("day") || "1");
+    const day = getDay(mode, url.searchParams.get("day") || "1", deck);
     const today = formatKoreanLearningDate(new Date());
     const key = activityKey(mode, day, today);
     const { db } = getFirebaseAdmin();
     const [sessions, missed, selected] = await Promise.all([
       db.collection(SESSIONS).where("studentId", "==", student.id).get(),
-      db.collection(MISSED).doc(missedDoc(student.id)).get(),
-      db.collection(SESSIONS).doc(sessionDoc(student.id, key)).get(),
+      db.collection(MISSED).doc(missedDoc(student.id, BOOK)).get(),
+      db.collection(SESSIONS).doc(sessionDoc(student.id, key, BOOK)).get(),
     ]);
     const saved = new Map<string, Session>();
     for (const doc of sessions.docs) {
       const data = doc.data() as Session;
       if (data.bookId === BOOK && typeof data.key === "string") saved.set(data.key, data);
     }
-    const completedDays = new Set(FOLKTALES_ACTIVE_DAYS.filter(day => wasCompleted(saved.get(activityKey("day", day, today)))));
+    const completedDays = new Set(deck.activeDays.filter(day => wasCompleted(saved.get(activityKey("day", day, today)))));
     const queue = missed.exists ? missed.data() as MissedQueue : undefined;
-    const due = dueCardIds(queue, today);
-    const fullUnlocked = FOLKTALES_ACTIVE_DAYS.length === BOOK_DAYS &&
+    const due = dueCardIds(queue, today, deck);
+    const fullUnlocked = deck.activeDays.length === BOOK_DAYS &&
       Array.from({ length: BOOK_DAYS }, (_, i) => i + 1).every(day => completedDays.has(day));
     const everWrong = Array.from(new Set(queue?.everWrongIds || Object.keys(queueEntries(queue))))
-      .filter(id => FOLKTALES_BY_ID.has(id));
+      .filter(id => deck.byId.has(id));
     return response({
       name: student.name, bookId: BOOK, today,
-      days: FOLKTALES_ACTIVE_DAYS.map(day => ({
-        day, count: vocabularyCardsForDay(day).length,
+      days: deck.activeDays.map(day => ({
+        day, count: deck.cardsForDay(day).length,
         started: saved.has(activityKey("day", day, today)),
         completed: completedDays.has(day),
       })),
       roundups: FIVE_DAY_REVIEW_ENDS.map(end => ({
-        end, from: end - 4, count: vocabularyCardsForFiveDayReview(end).length,
+        end, from: end - 4, count: deck.cardsForReview(end).length,
         unlocked: fiveDayUnlocked(end, completedDays),
         started: saved.has(activityKey("roundup", end, today)),
         completed: wasCompleted(saved.get(activityKey("roundup", end, today))),
       })),
       mistakes: GROUP_ENDS.map(end => {
         const groupDue = due.filter(id => {
-          const word = FOLKTALES_BY_ID.get(id);
+          const word = deck.byId.get(id);
           return word && word.day >= end - 4 && word.day <= end;
         });
         const session = saved.get(activityKey("mistakes", end, today));
@@ -196,13 +228,13 @@ export async function GET(request: Request) {
           started: Boolean(session), completed: completedEver };
       
       }),
-      fullReview: { unlocked: fullUnlocked, count: FOLKTALES_CARDS.length,
+      fullReview: { unlocked: fullUnlocked, count: deck.cards.length,
         started: saved.has(activityKey("full", 30, today)),
         completed: wasCompleted(saved.get(activityKey("full", 30, today))) },
       fullMistakes: { unlocked: fullUnlocked && everWrong.length > 0, count: everWrong.length,
         started: saved.has(activityKey("full_mistakes", 30, today)),
         completed: wasCompleted(saved.get(activityKey("full_mistakes", 30, today))) },
-      session: toPublic(selected.exists ? selected.data() as Session : null),
+      session: toPublic(selected.exists ? selected.data() as Session : null, deck),
     });
   } catch (error) { return failure(error); }
 }
@@ -214,15 +246,17 @@ export async function POST(request: Request) {
     if (!request.headers.get("content-type")?.startsWith("application/json")) throw new Error("invalid_body");
     const student = await loggedInStudent(request);
     const body = await request.json().catch(() => ({}));
+    const BOOK = getBookId(body.bookId);
+    const deck: VocabularyDeck = VOCABULARY_BOOKS[BOOK];
     const mode = getMode(String(body.mode || ""));
-    const day = getDay(mode, body.day);
+    const day = getDay(mode, body.day, deck);
     const action = String(body.action || "");
     if (!["start", "restart", "draw", "answer"].includes(action)) throw new Error("invalid_action");
     const today = formatKoreanLearningDate(new Date());
     const key = activityKey(mode, day, today);
     const { db } = getFirebaseAdmin();
-    const ref = db.collection(SESSIONS).doc(sessionDoc(student.id, key));
-    const queueRef = db.collection(MISSED).doc(missedDoc(student.id));
+    const ref = db.collection(SESSIONS).doc(sessionDoc(student.id, key, BOOK));
+    const queueRef = db.collection(MISSED).doc(missedDoc(student.id, BOOK));
     const result = await db.runTransaction(async tx => {
       // Firestore reads all happen before writes, so competing requests cannot lose updates.
       const [oldSnapshot, queueSnapshot] = await Promise.all([tx.get(ref), tx.get(queueRef)]);
@@ -230,7 +264,7 @@ export async function POST(request: Request) {
       const currentQueueItems = queueEntries(queue);
       if (action === "start" || action === "restart") {
         if (oldSnapshot.exists && action === "start") {
-          return { progress: toPublic(oldSnapshot.data() as Session) };
+          return { progress: toPublic(oldSnapshot.data() as Session, deck) };
         }
         if (oldSnapshot.exists && !(oldSnapshot.data() as Session).completed) throw new Error("in_progress");
         if (!oldSnapshot.exists && action === "restart") throw new Error("not_started");
@@ -238,16 +272,16 @@ export async function POST(request: Request) {
           const dailyDays = mode === "roundup"
             ? Array.from({ length: 5 }, (_, i) => day - 4 + i)
             : Array.from({ length: BOOK_DAYS }, (_, i) => i + 1);
-          if (dailyDays.some(num => !FOLKTALES_ACTIVE_DAYS.includes(num))) throw new Error("not_unlocked");
+          if (dailyDays.some(num => !deck.activeDays.includes(num))) throw new Error("not_unlocked");
           const dailyRefs = dailyDays.map(num => db.collection(SESSIONS).doc(
-            sessionDoc(student.id, activityKey("day", num, today))
+            sessionDoc(student.id, activityKey("day", num, today), BOOK)
           ));
           const dailyDocs = await Promise.all(dailyRefs.map(item => tx.get(item)));
           if (!dailyDocs.every(item => item.exists && wasCompleted(item.data() as Session))) {
             throw new Error("not_unlocked");
           }
         }
-        const cardIds = assignedIds(mode, day, queue, today);
+        const cardIds = assignedIds(mode, day, queue, today, deck);
         // Completed reviews may be replayed; a first attempt requires at least one word.
         if ((mode === "mistakes" || mode === "full_mistakes") && cardIds.length === 0 && !oldSnapshot.exists) throw new Error("nothing_to_review");
         const finalIds = cardIds.length > 0 ? cardIds : oldSnapshot.exists
@@ -263,7 +297,7 @@ export async function POST(request: Request) {
           ...fresh, startedAt: FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         });
-        return { progress: toPublic(fresh) };
+        return { progress: toPublic(fresh, deck) };
       }
 
       if (!oldSnapshot.exists) throw new Error("not_started");
@@ -273,16 +307,16 @@ export async function POST(request: Request) {
         if (progress.currentId) throw new Error("in_progress");
         const cardId = String(body.cardId || "");
         if (!progress.cardIds.includes(cardId) || progress.solvedIds.includes(cardId) ||
-            !FOLKTALES_BY_ID.has(cardId)) throw new Error("invalid_card");
+            !deck.byId.has(cardId)) throw new Error("invalid_card");
         const next = { ...progress, currentId: cardId, currentMistakes: 0 };
         tx.update(ref, {
           currentId: cardId, currentMistakes: 0,
           updatedAt: FieldValue.serverTimestamp(),
         });
-        return { progress: toPublic(next) };
+        return { progress: toPublic(next, deck) };
       }
       if (action !== "answer" || !progress.currentId) throw new Error("invalid_card");
-      const word = FOLKTALES_BY_ID.get(progress.currentId);
+      const word = deck.byId.get(progress.currentId);
       if (!word || !progress.cardIds.includes(word.id)) throw new Error("invalid_card");
       const answer = String(body.answer || "").trim();
       if (!answer || answer.length > 80) throw new Error("invalid_answer");
@@ -314,7 +348,7 @@ export async function POST(request: Request) {
           currentMistakes: updated.currentMistakes,
           updatedAt: FieldValue.serverTimestamp(),
         });
-        return { correct: false, returned, progress: toPublic(updated) };
+        return { correct: false, returned, progress: toPublic(updated, deck) };
       }
 
       const solvedIds = [...progress.solvedIds, word.id];
@@ -363,8 +397,8 @@ export async function POST(request: Request) {
         const entries: Record<string, unknown>[] = [{
           id: "daily-reading-" + awardRef.id,
           date: today, createdAt: now, type: "earn", currency: "bronze", amount: reward,
-          source: "quiz", sourceDetail: "daily_reading_folktales",
-          text: "1일 1독해 전래동화 · " + name + " 완료 · 동엽전 " + reward + "개",
+          source: "quiz", sourceDetail: "daily_reading_" + BOOK,
+          text: "1일 1독해 " + deck.label + " · " + name + " 완료 · 동엽전 " + reward + "개",
         }];
         if (exchanged > 0) entries.push({
           id: "daily-reading-exchange-" + awardRef.id,
@@ -390,7 +424,7 @@ export async function POST(request: Request) {
         updatedAt: FieldValue.serverTimestamp(),
         ...(completed ? { completedAt: FieldValue.serverTimestamp() } : {}),
       });
-      return { correct: true, progress: toPublic(next), awardedCoins: shouldAward ? reward : 0 };
+      return { correct: true, progress: toPublic(next, deck), awardedCoins: shouldAward ? reward : 0 };
     });
     return response({ ok: true, ...result });
   } catch (error) { return failure(error); }
