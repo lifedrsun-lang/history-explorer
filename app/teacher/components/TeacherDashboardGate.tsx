@@ -165,7 +165,13 @@ export default function TeacherDashboardGate() {
       void loadSummary(user);
     };
 
-    if (pathname === "/teacher") refreshSummary();
+    if (pathname !== "/teacher") return;
+
+    refreshSummary();
+    const pollTimer = window.setInterval(() => {
+      if (document.visibilityState === "visible") refreshSummary();
+    }, 30000);
+    window.addEventListener("focus", refreshSummary);
 
     window.addEventListener(
       TEACHER_DASHBOARD_SUMMARY_REFRESH_EVENT,
@@ -173,6 +179,8 @@ export default function TeacherDashboardGate() {
     );
 
     return () => {
+      window.clearInterval(pollTimer);
+      window.removeEventListener("focus", refreshSummary);
       window.removeEventListener(
         TEACHER_DASHBOARD_SUMMARY_REFRESH_EVENT,
         refreshSummary
@@ -267,7 +275,7 @@ export default function TeacherDashboardGate() {
               href="/teacher/coin-exchanges"
               className="mt-4 flex items-center justify-between rounded-2xl border border-fuchsia-200 bg-fuchsia-50 px-4 py-3 text-sm font-black text-fuchsia-800"
             >
-              <span>🔔 은엽전 교환 신청이 들어왔어요.</span>
+              <span>🔔 코인·용돈 교환 신청이 들어왔어요.</span>
               <span className="rounded-full bg-fuchsia-600 px-3 py-1 text-xs text-white">
                 대기 {summary.pendingCoinExchangeCount}건
               </span>
