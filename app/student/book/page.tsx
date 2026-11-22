@@ -134,6 +134,8 @@ function SunLabStudentPage() {
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [member, setMember] = useState<Member | null>(null);
+  const [restoringSession, setRestoringSession] = useState(true);
+  const [switchingMember, setSwitchingMember] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showHelloMaple, setShowHelloMaple] = useState(false);
@@ -157,6 +159,50 @@ function SunLabStudentPage() {
   const [allowanceSilver, setAllowanceSilver] = useState("1");
   const [allowanceSubmitting, setAllowanceSubmitting] = useState(false);
   const [allowanceNotice, setAllowanceNotice] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+
+    const restoreSession = async () => {
+      try {
+        const response = await fetch("/api/student/sun-lab-member", {
+          method: "GET",
+          credentials: "same-origin",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+
+        if (response.status === 401) return;
+
+        const data = (await response.json().catch(() => ({}))) as {
+          member?: Member;
+          error?: string;
+        };
+        if (!response.ok || !data.member) {
+          throw new Error(data.error || "로그인 상태를 확인하지 못했습니다.");
+        }
+
+        if (active) {
+          setMember(data.member);
+          setError("");
+        }
+      } catch {
+        if (active && !controller.signal.aborted) {
+          setError("로그인 상태를 확인하지 못했습니다. 다시 시도하거나 로그인해 주세요.");
+        }
+      } finally {
+        if (active) setRestoringSession(false);
+      }
+    };
+
+    void restoreSession();
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, []);
 
   const refreshCoins = useCallback(async () => {
     setCoinLoading(true);
@@ -228,7 +274,23 @@ function SunLabStudentPage() {
     }
   };
 
-  const resetMember = () => {
+  const resetMember = async () => {
+    if (switchingMember) return;
+    setSwitchingMember(true);
+
+    try {
+      const response = await fetch("/api/student/sun-lab-session", {
+        method: "DELETE",
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("로그아웃에 실패했습니다.");
+    } catch {
+      setCoinError("회원 전환을 완료하지 못했습니다. 다시 시도해 주세요.");
+      setSwitchingMember(false);
+      return;
+    }
+
     setMember(null);
     setCoins(null);
     setCoinError("");
@@ -245,6 +307,7 @@ function SunLabStudentPage() {
     setShowMinecraftPassword(false);
     setMinecraftCopyState({ field: null, status: "idle" });
     setCopyState("idle");
+    setSwitchingMember(false);
   };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -379,6 +442,18 @@ function SunLabStudentPage() {
     }
   };
 
+  if (restoringSession) {
+    return (
+      <main className="flex min-h-[100dvh] items-center justify-center bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 px-4 text-slate-800">
+        <div role="status" className="rounded-[28px] border border-sky-100 bg-white px-8 py-7 text-center shadow-lg">
+          <div className="text-3xl">🌞</div>
+          <div className="mt-3 text-base font-black">SUN LAB 로그인 상태 확인 중...</div>
+          <p className="mt-2 text-xs font-bold text-slate-500">기존 회원 정보를 확인하고 있어요.</p>
+        </div>
+      </main>
+    );
+  }
+
   if (!member) {
     return (
       <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 px-4 py-8 text-slate-800">
@@ -488,10 +563,11 @@ function SunLabStudentPage() {
             <div className="ml-auto flex w-full flex-col items-end gap-2 sm:w-auto">
               <button
                 type="button"
-                onClick={resetMember}
-                className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-600"
+                onClick={() => void resetMember()}
+                disabled={switchingMember}
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-600 disabled:opacity-60"
               >
-                다른 회원
+                {switchingMember ? "전환 중..." : "다른 회원"}
               </button>
               <div className="flex flex-wrap justify-end gap-2 text-xs font-black" aria-live="polite">
                 <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
