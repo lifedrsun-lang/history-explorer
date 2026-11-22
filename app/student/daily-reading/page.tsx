@@ -67,7 +67,7 @@ export default function StudentDailyReadingPage() {
     }
     try {
       const response = await fetch(
-        "/api/student/daily-reading?mode=" + nextMode + "&day=" + nextDay,
+        "/api/student/daily-reading?bookId=" + encodeURIComponent(bookId) + "&mode=" + nextMode + "&day=" + nextDay,
         { cache: "no-store", credentials: "same-origin" }
       );
       const data = await response.json().catch(() => ({}));
@@ -80,16 +80,9 @@ export default function StudentDailyReadingPage() {
     } finally {
       if (requestId === requestRef.current && showLoading) setLoading(false);
     }
-  }, []);
+  }, [bookId]);
 
   useEffect(() => {
-    if (bookId !== "folktales") {
-      requestRef.current++;
-      const id = setTimeout(() => {
-        setDashboard(null); setLoading(false); setNotice(""); setError("");
-      }, 0);
-      return () => clearTimeout(id);
-    }
     const id = setTimeout(() => {
       setNotice(""); setAnswer("");
       void load(mode, day);
@@ -106,14 +99,14 @@ export default function StudentDailyReadingPage() {
   };
 
   const post = async (action: "start" | "restart" | "draw" | "answer", fields: Record<string, string> = {}) => {
-    if (busyRef.current || bookId !== "folktales") return;
+    if (busyRef.current || (bookId !== "folktales" && bookId !== "treasure")) return;
     busyRef.current = true;
     setBusy(true); setError(""); setNotice("");
     try {
       const response = await fetch("/api/student/daily-reading", {
         method: "POST", credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode, day, action, ...fields }),
+        body: JSON.stringify({ bookId, mode, day, action, ...fields }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "학습 내용을 저장할 수 없어요.");
@@ -157,11 +150,11 @@ export default function StudentDailyReadingPage() {
     mode === "full_mistakes" ? "30일 · 전체 오답 복습" :
     mode === "roundup" ? (day - 4) + "~" + day + "일차 어휘 총복습" :
       day + "일차 어휘 카드";
-  const isFolktales = bookId === "folktales";
+  const isActiveBook = bookId === "folktales" || bookId === "treasure";
   const chosenDay = dashboard?.days.find(item => item.day === day);
   const chosenRoundup = dashboard?.roundups.find(item => item.end === day);
   const weeklyMistakes = dashboard?.mistakes.find(item => item.end === day);
-  const available = isFolktales && (mode === "day" ? Boolean(chosenDay) :
+  const available = isActiveBook && (mode === "day" ? Boolean(chosenDay) :
     mode === "roundup" ? Boolean(chosenRoundup?.unlocked || chosenRoundup?.started) :
       mode === "mistakes" ? Boolean(weeklyMistakes?.due || weeklyMistakes?.started || weeklyMistakes?.completed) :
       mode === "full" ? Boolean(dashboard?.fullReview.unlocked) :
@@ -270,7 +263,7 @@ export default function StudentDailyReadingPage() {
           <p className="text-xs font-black tracking-widest text-sky-100">SUN LAB · DAILY VOCABULARY</p>
           <h1 className="mt-2 text-3xl font-black">📚 1일 1독해</h1>
           <p className="mt-2 text-sm font-bold text-sky-50">지문과 독해 문제 대신, 책에 나온 어휘의 뜻을 카드로 복습해요.</p>
-          {dashboard && isFolktales &&
+          {dashboard && isActiveBook &&
             <p className="mt-3 text-xs font-black text-white/90">{dashboard.name} · 한국 날짜 {dashboard.today}</p>}
         </header>
 
@@ -282,7 +275,14 @@ export default function StudentDailyReadingPage() {
               const selected = book.id === bookId;
               return (
                 <button key={book.id} type="button" disabled={busy}
-                  aria-pressed={selected} onClick={() => { setBookId(book.id); setExpanded(false); }}
+                  aria-pressed={selected} onClick={() => {
+                    if (book.id === bookId) return;
+                    requestRef.current++;
+                    setDashboard(null);
+                    setBookId(book.id);
+                    setMode("day"); setDay(1); setExpanded(false);
+                    setNotice(""); setAnswer(""); setError(""); setLoading(true);
+                  }}
                   className={
                     "rounded-2xl border-2 p-4 text-left transition disabled:opacity-60 " +
                     (selected ? "border-teal-500 bg-teal-50 shadow-sm" :
@@ -291,7 +291,7 @@ export default function StudentDailyReadingPage() {
                   <span aria-hidden="true" className="text-3xl">{book.icon}</span>
                   <span className="mt-2 block text-lg font-black">{book.title}</span>
                   <span className="mt-1 block text-xs font-bold text-slate-500">
-                    {book.id === "folktales" ? "1~15일차 학습 가능" : "29일 구성 · 준비 중"}
+                    {(book.id === "folktales" || book.id === "treasure") ? "1~15일차 학습 가능" : "29일 구성 · 준비 중"}
                   </span>
                 </button>
               );
@@ -299,7 +299,7 @@ export default function StudentDailyReadingPage() {
           </div>
         </section>
 
-        {!isFolktales ? (
+        {!isActiveBook ? (
           <section className="rounded-[26px] bg-white p-7 text-center shadow-sm">
             <div className="text-4xl">💎</div>
             <h2 className="mt-3 text-xl font-black">{selectedBook.title} 어휘는 준비 중이에요.</h2>
@@ -321,7 +321,7 @@ export default function StudentDailyReadingPage() {
               <>
                 <section className="rounded-[26px] bg-white p-4 shadow-sm sm:p-6">
                   <div className="flex items-center justify-between gap-2">
-                    <h2 className="text-lg font-black">📖 전래동화 · 일차 선택</h2>
+                    <h2 className="text-lg font-black">{selectedBook.icon} {selectedBook.title} · 일차 선택</h2>
                     <span className="text-xs font-bold text-teal-700">1~15일차 공개</span>
                   </div>
                   <p className="mt-2 text-xs font-bold text-slate-500">
@@ -448,7 +448,7 @@ export default function StudentDailyReadingPage() {
           </>
         )}
         <div className="rounded-2xl border border-dashed border-teal-200 bg-white/70 p-4 text-center text-xs font-bold text-slate-500">
-          보물편과 그 밖의 시리즈는 어휘 자료가 준비될 때 차례대로 확장합니다. 완료 보상은 SUN LAB 동엽전 잔액에 반영됩니다.
+          보물편·전래동화편은 각각 1~15일차까지 학습할 수 있어요. 16~29일차는 자료가 준비되면 공개합니다. 완료 보상은 SUN LAB 동엽전 잔액에 반영됩니다.
         </div>
       </div>
     </main>
