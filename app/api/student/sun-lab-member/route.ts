@@ -12,6 +12,9 @@ import {
 import {
   buildSunLabStudentSessionCookie,
   createSunLabStudentSession,
+  getSunLabStudentSession,
+  readCookieValue,
+  SUNLAB_STUDENT_SESSION_COOKIE,
 } from "@/lib/sunLabStudentSession";
 import { hasMinecraftEducationAccountForName } from "@/lib/minecraftEducation";
 
@@ -26,6 +29,7 @@ const jsonPrivate = (body: object, init?: ResponseInit) => {
   const headers = new Headers(init?.headers);
   headers.set("Cache-Control", "private, no-store, max-age=0");
   headers.set("Pragma", "no-cache");
+  headers.set("Vary", "Cookie");
 
   return Response.json(body, { ...init, headers });
 };
@@ -39,6 +43,119 @@ const isActiveStudent = (student: StudentRecord) => {
 
   return student.isActive !== false;
 };
+
+const loadSunLabProfile = async (student: StudentRecord): Promise<StudentRecord> => {
+  const { db } = getFirebaseAdmin();
+  const snapshot = await db.collection("sun_lab_members").doc(student.id).get();
+  if (!snapshot.exists) return student;
+  const profile = snapshot.data() || {};
+
+  return {
+    ...student,
+    birthDate: profile.birthDate,
+    sunLabAllAccess: profile.allAccess === true,
+    timelineFullAccess: profile.timelineFullAccess === true,
+    sunLabPermissions: Array.isArray(profile.permissions) ? profile.permissions : [],
+    helloMapleId: profile.helloMapleId,
+    helloMaplePassword: profile.helloMaplePassword,
+  };
+};
+
+const buildSunLabMemberPayload = async (student: StudentRecord) => {
+  const { db } = getFirebaseAdmin();
+  const permissions = resolveSunLabPermissions(student);
+  const hasHelloMaple = permissions.includes("hello_maple");
+  const helloMapleId = String(student.helloMapleId || "").trim();
+  const helloMaplePassword = String(student.helloMaplePassword || "").trim();
+  const memberName = String(student.name || "").trim();
+
+  let helloMapleMissions: Array<{
+    id: string;
+    title: string;
+    url: string;
+    sortOrder: number;
+  }> = [];
+
+  if (hasHelloMaple) {
+    const missionSnapshot = await db.collection(HELLO_MAPLE_MISSIONS_COLLECTION).get();
+    helloMapleMissions = missionSnapshot.docs
+      .map((item) =>
+        serializeHelloMapleMission(
+          item.id,
+          item.data() as Record<string, unknown>
+        )
+      )
+      .filter((mission) => mission.isPublished)
+      .filter((mission) => isAllowedHelloMapleUrl(mission.url))
+      .filter(
+        (mission) =>
+          mission.targetType === "all" ||
+          mission.targetStudentIds.includes(student.id)
+      )
+      .sort((a, b) => {
+        if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+        return a.title.localeCompare(b.title, "ko");
+      })
+      .map((mission) => ({
+        id: mission.id,
+        title: mission.title,
+        url: mission.url,
+        sortOrder: mission.sortOrder,
+      }));
+  }
+
+  return {
+    name: memberName,
+    permissions,
+    timelineFullAccess: student.timelineFullAccess === true,
+    helloMaple:
+      hasHelloMaple && helloMapleId && helloMaplePassword
+        ? { id: helloMapleId, password: helloMaplePassword }
+        : null,
+    helloMapleMissions,
+    minecraftEducationAvailable: hasMinecraftEducationAccountForName(memberName),
+  };
+};
+
+// The browser may remount this page after navigating back from a learning area.
+// Restore only a valid, non-expired HttpOnly session; do not require a birth date again.
+export async function GET(request: Request) {
+  try {
+    const sessionId = readCookieValue(request, SUNLAB_STUDENT_SESSION_COOKIE);
+    const session = await getSunLabStudentSession(sessionId);
+    if (!session?.studentId) {
+      return jsonPrivate({ error: "sunlab_session_required" }, { status: 401 });
+    }
+
+    const { db } = getFirebaseAdmin();
+    const snapshot = await db.collection("students").doc(session.studentId).get();
+    if (!snapshot.exists) {
+      return jsonPrivate({ error: "sunlab_member_unavailable" }, { status: 401 });
+    }
+
+    const student = {
+      id: snapshot.id,
+      ...(snapshot.data() as Record<string, unknown>),
+    } as StudentRecord;
+
+    if (
+      !isActiveStudent(student) ||
+      student.sunLabMember !== true ||
+      String(student.name || "").trim() !== session.name
+    ) {
+      return jsonPrivate({ error: "sunlab_member_unavailable" }, { status: 401 });
+    }
+
+    const profiledStudent = await loadSunLabProfile(student);
+    return jsonPrivate({ member: await buildSunLabMemberPayload(profiledStudent) });
+  } catch (error) {
+    console.error("Failed to restore SUN LAB session:", error);
+    return jsonPrivate(
+      { error: "SUN LAB 로그인 상태를 확인하지 못했습니다." },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -74,26 +191,7 @@ export async function POST(request: Request) {
       .filter((student) => isActiveStudent(student))
       .filter((student) => student.sunLabMember === true);
     const candidatesWithProfiles = await Promise.all(
-      candidates.map(async (student) => {
-        const profileSnapshot = await db
-          .collection("sun_lab_members")
-          .doc(student.id)
-          .get();
-        if (!profileSnapshot.exists) return student;
-
-        const profile = profileSnapshot.data() || {};
-        return {
-          ...student,
-          birthDate: profile.birthDate,
-          sunLabAllAccess: profile.allAccess === true,
-          timelineFullAccess: profile.timelineFullAccess === true,
-          sunLabPermissions: Array.isArray(profile.permissions)
-            ? profile.permissions
-            : [],
-          helloMapleId: profile.helloMapleId,
-          helloMaplePassword: profile.helloMaplePassword,
-        } as StudentRecord;
-      })
+      candidates.map(loadSunLabProfile)
     );
     const matches = candidatesWithProfiles.filter(
       (student) => normalizeBirthDate(student.birthDate) === birthDate
@@ -114,76 +212,14 @@ export async function POST(request: Request) {
     }
 
     const student = matches[0];
-    const permissions = resolveSunLabPermissions(student);
-    const hasHelloMaple = permissions.includes("hello_maple");
-    const helloMapleId = String(student.helloMapleId || "").trim();
-    const helloMaplePassword = String(student.helloMaplePassword || "").trim();
-
-    let helloMapleMissions: Array<{
-      id: string;
-      title: string;
-      url: string;
-      sortOrder: number;
-    }> = [];
-
-    if (hasHelloMaple) {
-      const missionSnapshot = await db
-        .collection(HELLO_MAPLE_MISSIONS_COLLECTION)
-        .get();
-
-      helloMapleMissions = missionSnapshot.docs
-        .map((docItem) =>
-          serializeHelloMapleMission(
-            docItem.id,
-            docItem.data() as Record<string, unknown>
-          )
-        )
-        .filter((mission) => mission.isPublished)
-        .filter((mission) => isAllowedHelloMapleUrl(mission.url))
-        .filter(
-          (mission) =>
-            mission.targetType === "all" ||
-            mission.targetStudentIds.includes(student.id)
-        )
-        .sort((a, b) => {
-          if (a.sortOrder !== b.sortOrder) {
-            return a.sortOrder - b.sortOrder;
-          }
-
-          return a.title.localeCompare(b.title, "ko");
-        })
-        .map((mission) => ({
-          id: mission.id,
-          title: mission.title,
-          url: mission.url,
-          sortOrder: mission.sortOrder,
-        }));
-    }
-
-    const memberName = String(student.name || name);
+    const member = await buildSunLabMemberPayload(student);
     const session = await createSunLabStudentSession(
       student.id,
-      memberName,
-      permissions
+      member.name,
+      member.permissions
     );
 
-    const response = jsonPrivate({
-      member: {
-        name: memberName,
-        permissions,
-        timelineFullAccess: student.timelineFullAccess === true,
-        helloMaple:
-          hasHelloMaple && helloMapleId && helloMaplePassword
-            ? {
-                id: helloMapleId,
-                password: helloMaplePassword,
-              }
-            : null,
-        helloMapleMissions,
-        minecraftEducationAvailable:
-          hasMinecraftEducationAccountForName(memberName),
-      },
-    });
+    const response = jsonPrivate({ member });
 
     response.headers.append(
       "Set-Cookie",
