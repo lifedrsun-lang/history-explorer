@@ -116,7 +116,6 @@ const RESOURCE_CARDS: ResourceCard[] = [
 
 export default function SunLabBookPage() {
   // SUN LAB member entry is independent of the teacher login session.
-  // Teacher access remains available through the explicit "교사모드" link below.
   return <SunLabStudentPage />;
 }
 
@@ -348,12 +347,6 @@ function SunLabStudentPage() {
             )}
 
             <div className="mt-5 text-center">
-              <Link
-                href="/teacher"
-                className="mb-3 flex w-full items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-black text-sky-700 transition hover:bg-sky-100"
-              >
-                교사모드
-              </Link>
               <Link
                 href="/student/history"
                 className="inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-500 transition hover:bg-slate-50"
