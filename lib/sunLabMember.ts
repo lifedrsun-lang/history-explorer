@@ -10,7 +10,8 @@ export type SunLabPermission =
   | "history_explorer"
   | "boardgame"
   | "coding"
-  | "literacy";
+  | "literacy"
+  | "daily_reading";
 
 export const SUN_LAB_PERMISSION_OPTIONS: Array<{
   value: SunLabPermission;
@@ -24,6 +25,7 @@ export const SUN_LAB_PERMISSION_OPTIONS: Array<{
   { value: "boardgame", label: "보드게임", emoji: "🎲" },
   { value: "coding", label: "코딩", emoji: "💻" },
   { value: "literacy", label: "문해력 교실", emoji: "📚" },
+  { value: "daily_reading", label: "1일 1독해", emoji: "📖" },
 ];
 
 const ALL_PERMISSION_VALUES = SUN_LAB_PERMISSION_OPTIONS.map(
@@ -81,6 +83,8 @@ export const resolveSunLabPermissions = (
 
   // SUN LAB 회원의 기본 교실: 레벨 미배정 상태에서는 학습을 시작할 수 없음
   permissions.add("literacy");
+  // 기본 틀만 제공하며 모든 일차별 학습 버튼은 비활성화 상태입니다.
+  permissions.add("daily_reading");
 
   if (hasStudentProgramValue(student.program)) {
     const program = getStudentProgramValue(student.program);
