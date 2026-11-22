@@ -114,7 +114,7 @@ export function formatKoreanLearningDate(date: Date): string {
   }).format(date);
 }
 export function nextKoreanLearningDate(yyyyMmDd: string): string {
-  const match = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(yyyyMmDd);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(yyyyMmDd);
   if (!match) throw new Error("invalid_learning_date");
   const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]) + 1));
   return date.toISOString().slice(0, 10);
