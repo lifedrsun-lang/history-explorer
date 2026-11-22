@@ -103,7 +103,7 @@ export function vocabularyCardsForDay(day: number): DailyVocabularyCard[] {
   return FOLKTALES_CARDS.filter(card => card.day === day);
 }
 
-export const FIVE_DAY_REVIEW_ENDS = [5, 10, 15] as const;
+export const FIVE_DAY_REVIEW_ENDS = [5, 10, 15, 20, 25] as const;
 export function vocabularyCardsForFiveDayReview(endingDay: number): DailyVocabularyCard[] {
   if (!FIVE_DAY_REVIEW_ENDS.some(day => day === endingDay)) return [];
   return FOLKTALES_CARDS.filter(card => card.day >= endingDay - 4 && card.day <= endingDay);

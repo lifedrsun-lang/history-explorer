@@ -1,7 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import {
-  FOLKTALES_ACTIVE_DAYS, FOLKTALES_BY_ID, FIVE_DAY_REVIEW_ENDS,
+  FOLKTALES_ACTIVE_DAYS, FOLKTALES_BY_ID, FOLKTALES_CARDS, FIVE_DAY_REVIEW_ENDS,
   formatKoreanLearningDate, nextKoreanLearningDate,
   normalizeDailyVocabularyAnswer, vocabularyCardsForDay,
   vocabularyCardsForFiveDayReview,
@@ -16,7 +16,9 @@ export const dynamic = "force-dynamic";
 const BOOK = "folktales";
 const SESSIONS = "sunlab_daily_reading_sessions";
 const MISSED = "sunlab_daily_reading_missed";
-type Mode = "day" | "roundup" | "mistakes";
+type Mode = "day" | "roundup" | "mistakes" | "full" | "full_mistakes";
+const BOOK_DAYS = 29;
+const GROUP_ENDS = [5, 10, 15, 20, 25] as const;
 
 type Session = {
   studentId: string;
@@ -31,7 +33,7 @@ type Session = {
   completed: boolean;
 };
 type MissedEntry = { dueDate: string; lastWrongDate: string };
-type MissedQueue = { items: Record<string, MissedEntry> };
+type MissedQueue = { items: Record<string, MissedEntry>; everWrongIds?: string[] };
 
 function response(body: object, status = 200) {
   return Response.json(body, { status, headers: {
@@ -50,7 +52,7 @@ async function loggedInStudent(request: Request) {
   return { id: session.studentId, name: session.name };
 }
 function activityKey(mode: Mode, day: number, today: string) {
-  return mode === "mistakes" ? "mistakes_" + today :
+  return mode === "mistakes" ? "mistakes_" + String(day).padStart(2, "0") + "_" + today :
     mode + "_" + String(day).padStart(2, "0");
 }
 function sessionDoc(studentId: string, key: string) {
@@ -60,15 +62,16 @@ function missedDoc(studentId: string) {
   return studentId + "_" + BOOK;
 }
 function getMode(input: string): Mode {
-  if (input === "day" || input === "roundup" || input === "mistakes") return input;
+  if (input === "day" || input === "roundup" || input === "mistakes" || input === "full" || input === "full_mistakes") return input;
   throw new Error("invalid_mode");
 }
 function getDay(mode: Mode, input: unknown) {
-  if (mode === "mistakes") return 0;
   const day = Number(input);
   if (!Number.isInteger(day)) throw new Error("invalid_day");
   if (mode === "day" && FOLKTALES_ACTIVE_DAYS.includes(day)) return day;
   if (mode === "roundup" && FIVE_DAY_REVIEW_ENDS.some(end => end === day)) return day;
+  if (mode === "mistakes" && GROUP_ENDS.some(end => end === day)) return day;
+  if ((mode === "full" || mode === "full_mistakes") && day === 30) return day;
   throw new Error("invalid_day");
 }
 function queueEntries(queue: MissedQueue | undefined): Record<string, MissedEntry> {
@@ -84,7 +87,13 @@ function dueCardIds(queue: MissedQueue | undefined, today: string): string[] {
 function assignedIds(mode: Mode, day: number, queue: MissedQueue | undefined, today: string) {
   if (mode === "day") return vocabularyCardsForDay(day).map(card => card.id);
   if (mode === "roundup") return vocabularyCardsForFiveDayReview(day).map(card => card.id);
-  return dueCardIds(queue, today);
+  if (mode === "mistakes") return dueCardIds(queue, today).filter(id => {
+    const word = FOLKTALES_BY_ID.get(id);
+    return word && word.day > day - 5 && word.day <= day;
+  });
+  if (mode === "full") return FOLKTALES_CARDS.map(card => card.id);
+  return Array.from(new Set(queue?.everWrongIds || Object.keys(queueEntries(queue))))
+    .filter(id => FOLKTALES_BY_ID.has(id));
 }
 function toPublic(session: Session | null) {
   if (!session) return null;
@@ -106,8 +115,8 @@ function toPublic(session: Session | null) {
 function failure(error: unknown) {
   const msg = error instanceof Error ? error.message : "";
   if (msg === "login_required") return response({ error: "SUN LAB에 다시 로그인해 주세요." }, 401);
-  if (msg === "not_unlocked") return response({ error: "해당 5일치의 어휘 학습을 먼저 완료해 주세요." }, 409);
-  if (msg === "nothing_to_review") return response({ error: "오늘 복습할 오답 어휘가 없어요." }, 409);
+  if (msg === "not_unlocked") return response({ error: "해당 구간의 일차별 어휘를 먼저 완료해 주세요." }, 409);
+  if (msg === "nothing_to_review") return response({ error: "이 구간에 복습할 오답 어휘가 없어요." }, 409);
   if (msg === "not_started") return response({ error: "학습 시작을 먼저 눌러 주세요." }, 409);
   if (msg === "in_progress") return response({ error: "현재 카드를 먼저 풀어 주세요." }, 409);
   if (msg === "already_completed") return response({ error: "다시 도전 버튼을 눌러 주세요." }, 409);
@@ -143,7 +152,10 @@ export async function GET(request: Request) {
     const completedDays = new Set(FOLKTALES_ACTIVE_DAYS.filter(day => saved.get(activityKey("day", day, today))?.completed));
     const queue = missed.exists ? missed.data() as MissedQueue : undefined;
     const due = dueCardIds(queue, today);
-    const mistakeSession = saved.get(activityKey("mistakes", 0, today));
+    const fullUnlocked = FOLKTALES_ACTIVE_DAYS.length === BOOK_DAYS &&
+      Array.from({ length: BOOK_DAYS }, (_, i) => i + 1).every(day => completedDays.has(day));
+    const everWrong = Array.from(new Set(queue?.everWrongIds || Object.keys(queueEntries(queue))))
+      .filter(id => FOLKTALES_BY_ID.has(id));
     return response({
       name: student.name, bookId: BOOK, today,
       days: FOLKTALES_ACTIVE_DAYS.map(day => ({
@@ -157,11 +169,21 @@ export async function GET(request: Request) {
         started: saved.has(activityKey("roundup", end, today)),
         completed: saved.get(activityKey("roundup", end, today))?.completed === true,
       })),
-      mistakes: {
-        due: due.length,
-        started: Boolean(mistakeSession),
-        completed: mistakeSession?.completed === true,
-      },
+      mistakes: GROUP_ENDS.map(end => {
+        const groupDue = due.filter(id => {
+          const word = FOLKTALES_BY_ID.get(id);
+          return word && word.day >= end - 4 && word.day <= end;
+        });
+        const session = saved.get(activityKey("mistakes", end, today));
+        return { end, from: end - 4, due: groupDue.length,
+          started: Boolean(session), completed: session?.completed === true };
+      }),
+      fullReview: { unlocked: fullUnlocked, count: FOLKTALES_CARDS.length,
+        started: saved.has(activityKey("full", 30, today)),
+        completed: saved.get(activityKey("full", 30, today))?.completed === true },
+      fullMistakes: { unlocked: fullUnlocked && everWrong.length > 0, count: everWrong.length,
+        started: saved.has(activityKey("full_mistakes", 30, today)),
+        completed: saved.get(activityKey("full_mistakes", 30, today))?.completed === true },
       session: toPublic(selected.exists ? selected.data() as Session : null),
     });
   } catch (error) { return failure(error); }
@@ -194,9 +216,13 @@ export async function POST(request: Request) {
         }
         if (oldSnapshot.exists && !(oldSnapshot.data() as Session).completed) throw new Error("in_progress");
         if (!oldSnapshot.exists && action === "restart") throw new Error("not_started");
-        if (mode === "roundup") {
-          const dailyRefs = Array.from({ length: 5 }, (_, i) => db.collection(SESSIONS).doc(
-            sessionDoc(student.id, activityKey("day", day - 4 + i, today))
+        if (mode === "roundup" || mode === "full" || mode === "full_mistakes") {
+          const dailyDays = mode === "roundup"
+            ? Array.from({ length: 5 }, (_, i) => day - 4 + i)
+            : Array.from({ length: BOOK_DAYS }, (_, i) => i + 1);
+          if (dailyDays.some(num => !FOLKTALES_ACTIVE_DAYS.includes(num))) throw new Error("not_unlocked");
+          const dailyRefs = dailyDays.map(num => db.collection(SESSIONS).doc(
+            sessionDoc(student.id, activityKey("day", num, today))
           ));
           const dailyDocs = await Promise.all(dailyRefs.map(item => tx.get(item)));
           if (!dailyDocs.every(item => item.exists && (item.data() as Session).completed === true)) {
@@ -204,8 +230,8 @@ export async function POST(request: Request) {
           }
         }
         const cardIds = assignedIds(mode, day, queue, today);
-        // Completing the daily mistake review does not erase its history if replayed later.
-        if (mode === "mistakes" && cardIds.length === 0 && !oldSnapshot.exists) throw new Error("nothing_to_review");
+        // Completed reviews may be replayed; a first attempt requires at least one word.
+        if ((mode === "mistakes" || mode === "full_mistakes") && cardIds.length === 0 && !oldSnapshot.exists) throw new Error("nothing_to_review");
         const finalIds = cardIds.length > 0 ? cardIds : oldSnapshot.exists
           ? (oldSnapshot.data() as Session).cardIds : [];
         const fresh: Session = {
@@ -260,6 +286,7 @@ export async function POST(request: Request) {
             ...currentQueueItems,
             [word.id]: { dueDate: nextDate, lastWrongDate: today },
           },
+          everWrongIds: Array.from(new Set([...(queue?.everWrongIds || Object.keys(currentQueueItems)), word.id])),
           updatedAt: FieldValue.serverTimestamp(),
         });
         tx.update(ref, {
@@ -275,14 +302,16 @@ export async function POST(request: Request) {
       const next = { ...progress, solvedIds, currentId: null,
         currentMistakes: 0, completed };
       const pending = currentQueueItems[word.id];
-      // 지난날의 오답을 복습하여 맞히면 복습 대기에서 제거합니다.
+      // 해당 구간의 오답연습에서 지난날의 오답을 맞혀야 복습 대기에서 제거합니다.
       // 단, 오늘 틀렸던 단어는 오늘 다시 맞혀도 내일 한 번 더 복습합니다.
-      if (pending && pending.dueDate <= today && pending.lastWrongDate !== today) {
+      if (mode === "mistakes" && pending && pending.dueDate <= today && pending.lastWrongDate !== today) {
         const entries = { ...currentQueueItems };
         delete entries[word.id];
         tx.set(queueRef, {
           studentId: student.id, bookId: BOOK,
-          items: entries, updatedAt: FieldValue.serverTimestamp(),
+          items: entries,
+          everWrongIds: queue?.everWrongIds || Object.keys(currentQueueItems),
+          updatedAt: FieldValue.serverTimestamp(),
         });
       }
       tx.update(ref, {
