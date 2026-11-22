@@ -109,9 +109,11 @@ export function vocabularyCardsForFiveDayReview(endingDay: number): DailyVocabul
   return FOLKTALES_CARDS.filter(card => card.day >= endingDay - 4 && card.day <= endingDay);
 }
 export function formatKoreanLearningDate(date: Date): string {
-  return new Intl.DateTimeFormat("en-CA", {
+  const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit",
-  }).format(date);
+  }).formatToParts(date);
+  const fields = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return fields.year + "-" + fields.month + "-" + fields.day;
 }
 export function nextKoreanLearningDate(yyyyMmDd: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(yyyyMmDd);
