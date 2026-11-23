@@ -17,13 +17,15 @@ const PRODUCTION_GOOGLE_CALENDAR_REDIRECT_URI =
 export async function POST(request: Request) {
   try {
     const teacher = await verifyTeacherRequest(request);
+    const body = await request.json().catch(() => ({}));
     const redirectUri =
       process.env.VERCEL_ENV === "production"
         ? PRODUCTION_GOOGLE_CALENDAR_REDIRECT_URI
         : makeGoogleCalendarRedirectUri(request.url);
     const authorizationUrl = await createGoogleCalendarAuthorizationUrl(
       teacher.uid,
-      redirectUri
+      redirectUri,
+      body?.returnToConnections === true
     );
 
     return Response.json({ authorizationUrl });

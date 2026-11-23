@@ -49,11 +49,11 @@ export const atcGmailRedirectUri = (requestUrl: string) => {
   return `${origin}/api/teacher/google-calendar/callback`;
 };
 
-export async function createAtcGmailAuthorizationUrl(uid: string, redirectUri: string) {
+export async function createAtcGmailAuthorizationUrl(uid: string, redirectUri: string, returnToConnections = false) {
   const { clientId } = config();
   const state = `atc_gmail_${randomBytes(32).toString("hex")}`;
   const { db } = getFirebaseAdmin();
-  await db.collection(STATES).doc(state).set({ teacherUid: uid, redirectUri,
+  await db.collection(STATES).doc(state).set({ teacherUid: uid, redirectUri, returnToConnections,
     expiresAt: Date.now() + STATE_LIFETIME, createdAt: FieldValue.serverTimestamp() });
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.searchParams.set("client_id", clientId);
@@ -79,7 +79,8 @@ export async function consumeAtcGmailOauthState(state: string) {
     if (Number(data.expiresAt) < Date.now() || !data.teacherUid || !data.redirectUri) {
       throw new Error("atc_gmail_state_invalid");
     }
-    return { teacherUid: String(data.teacherUid), redirectUri: String(data.redirectUri) };
+    return { teacherUid: String(data.teacherUid), redirectUri: String(data.redirectUri),
+      returnToConnections: data.returnToConnections === true };
   });
 }
 

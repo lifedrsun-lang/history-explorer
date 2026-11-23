@@ -24,6 +24,13 @@ const libraryRedirect = (requestUrl: string, status: string) => {
   return Response.redirect(redirectUrl, 302);
 };
 
+const connectionsRedirect = (requestUrl: string, service: string, status: string) => {
+  const redirectUrl = new URL("/teacher/google-connections", requestUrl);
+  redirectUrl.searchParams.set("service", service);
+  redirectUrl.searchParams.set("result", status);
+  return Response.redirect(redirectUrl, 302);
+};
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const state = String(url.searchParams.get("state") || "").trim();
@@ -31,8 +38,10 @@ export async function GET(request: Request) {
   const oauthError = String(url.searchParams.get("error") || "").trim();
   if (state.startsWith("atc_gmail_")) {
     const redirectUrl = new URL("/teacher/atc-confirmations", request.url);
+    let returnToConnections = false;
     try {
       const oauthState = await consumeAtcGmailOauthState(state);
+      returnToConnections = oauthState.returnToConnections;
       if (oauthError || !code) {
         redirectUrl.searchParams.set("atcGmail", "cancelled");
       } else {
@@ -43,16 +52,22 @@ export async function GET(request: Request) {
       console.error("ATC Gmail OAuth callback failed", error instanceof Error ? error.message : "unknown");
       redirectUrl.searchParams.set("atcGmail", error instanceof Error && error.message === "atc_gmail_wrong_account" ? "wrong-account" : "error");
     }
-    return Response.redirect(redirectUrl, 302);
+    return returnToConnections
+      ? connectionsRedirect(request.url, "gmail", redirectUrl.searchParams.get("atcGmail") || "error")
+      : Response.redirect(redirectUrl, 302);
   }
   const isDriveFlow = state.startsWith("drive_");
 
   if (isDriveFlow) {
+    let returnToConnections = false;
     try {
       const oauthState = await consumeGoogleDriveOauthState(state);
+      returnToConnections = oauthState.returnToConnections;
 
       if (oauthError || !code) {
-        return libraryRedirect(request.url, "cancelled");
+        return returnToConnections
+          ? connectionsRedirect(request.url, "drive", "cancelled")
+          : libraryRedirect(request.url, "cancelled");
       }
 
       await completeGoogleDriveConnection(
@@ -61,18 +76,26 @@ export async function GET(request: Request) {
         oauthState.redirectUri
       );
 
-      return libraryRedirect(request.url, "connected");
+      return returnToConnections
+        ? connectionsRedirect(request.url, "drive", "connected")
+        : libraryRedirect(request.url, "connected");
     } catch (error) {
       console.error("Google Drive OAuth callback failed", error);
-      return libraryRedirect(request.url, "error");
+      return returnToConnections
+        ? connectionsRedirect(request.url, "drive", "error")
+        : libraryRedirect(request.url, "error");
     }
   }
 
+  let returnToConnections = false;
   try {
     const oauthState = await consumeGoogleCalendarOauthState(state);
+    returnToConnections = oauthState.returnToConnections;
 
     if (oauthError || !code) {
-      return scheduleRedirect(request.url, "cancelled");
+      return returnToConnections
+        ? connectionsRedirect(request.url, "calendar", "cancelled")
+        : scheduleRedirect(request.url, "cancelled");
     }
 
     const result = await completeGoogleCalendarConnection(
@@ -81,12 +104,14 @@ export async function GET(request: Request) {
       oauthState.redirectUri
     );
 
-    return scheduleRedirect(
-      request.url,
-      result.calendarFound ? "connected" : "calendar-missing"
-    );
+    const status = result.calendarFound ? "connected" : "calendar-missing";
+    return returnToConnections
+      ? connectionsRedirect(request.url, "calendar", status)
+      : scheduleRedirect(request.url, status);
   } catch (error) {
     console.error("Google Calendar OAuth callback failed", error);
-    return scheduleRedirect(request.url, "error");
+    return returnToConnections
+      ? connectionsRedirect(request.url, "calendar", "error")
+      : scheduleRedirect(request.url, "error");
   }
 }

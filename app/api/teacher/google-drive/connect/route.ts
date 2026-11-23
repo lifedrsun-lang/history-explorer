@@ -14,10 +14,12 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
     const teacher = await verifyTeacherRequest(request);
+    const body = await request.json().catch(() => ({}));
     const redirectUri = makeGoogleDriveRedirectUri(request.url);
     const authorizationUrl = await createGoogleDriveAuthorizationUrl(
       teacher.uid,
-      redirectUri
+      redirectUri,
+      body?.returnToConnections === true
     );
 
     return Response.json({ authorizationUrl });

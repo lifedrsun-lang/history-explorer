@@ -85,6 +85,14 @@ const supportingSections = [
     description: "입금·원천징수 내역을 모아 예상 납부·환급액 계산",
     className: "border-emerald-200 bg-emerald-50 text-emerald-900",
   },
+  {
+    key: "google-connections",
+    href: "/teacher/google-connections",
+    icon: "🔗",
+    title: "Google 연결 관리",
+    description: "캘린더·드라이브·메일 인증을 한 곳에서 재연결",
+    className: "border-sky-200 bg-sky-50 text-sky-900",
+  },
 ] as const;
 
 type ManagementSection =

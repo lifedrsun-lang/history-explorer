@@ -322,7 +322,8 @@ export const makeGoogleDriveRedirectUri = (requestUrl: string) => {
 
 export const createGoogleDriveAuthorizationUrl = async (
   teacherUid: string,
-  redirectUri: string
+  redirectUri: string,
+  returnToConnections = false
 ) => {
   const { clientId } = getGoogleDriveConfig();
   const state = `drive_${randomBytes(32).toString("hex")}`;
@@ -331,6 +332,7 @@ export const createGoogleDriveAuthorizationUrl = async (
   await db.collection(DRIVE_OAUTH_STATE_COLLECTION).doc(state).set({
     teacherUid,
     redirectUri,
+    returnToConnections,
     expiresAt: Date.now() + OAUTH_STATE_TTL_MS,
     createdAt: FieldValue.serverTimestamp(),
   });
@@ -378,7 +380,7 @@ export const consumeGoogleDriveOauthState = async (state: string) => {
     throw new Error("google_drive_state_invalid");
   }
 
-  return { teacherUid, redirectUri };
+  return { teacherUid, redirectUri, returnToConnections: data.returnToConnections === true };
 };
 
 export const completeGoogleDriveConnection = async (

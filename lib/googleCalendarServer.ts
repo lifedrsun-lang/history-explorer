@@ -301,7 +301,8 @@ export const makeGoogleCalendarRedirectUri = (requestUrl: string) => {
 
 export const createGoogleCalendarAuthorizationUrl = async (
   teacherUid: string,
-  redirectUri: string
+  redirectUri: string,
+  returnToConnections = false
 ) => {
   const { clientId } = getGoogleCalendarConfig();
   const state = randomBytes(32).toString("hex");
@@ -310,6 +311,7 @@ export const createGoogleCalendarAuthorizationUrl = async (
   await db.collection(OAUTH_STATE_COLLECTION).doc(state).set({
     teacherUid,
     redirectUri,
+    returnToConnections,
     expiresAt: Date.now() + OAUTH_STATE_TTL_MS,
     createdAt: FieldValue.serverTimestamp(),
   });
@@ -355,7 +357,7 @@ export const consumeGoogleCalendarOauthState = async (state: string) => {
     throw new Error("google_calendar_state_invalid");
   }
 
-  return { teacherUid, redirectUri };
+  return { teacherUid, redirectUri, returnToConnections: data.returnToConnections === true };
 };
 
 export const completeGoogleCalendarConnection = async (
