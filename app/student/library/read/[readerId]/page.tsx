@@ -3,6 +3,10 @@ import { notFound, redirect } from "next/navigation";
 
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import {
+  canStudentReadSunLabLibraryBook,
+  getSunLabLibraryAudience,
+} from "@/lib/googleDriveLibraryServer";
+import {
   getSunLabStudentSession,
   SUNLAB_STUDENT_SESSION_COOKIE,
 } from "@/lib/sunLabStudentSession";
@@ -43,6 +47,10 @@ export default async function StudentLibraryReaderPage({
 
   const book = snapshot.docs[0].data();
   if (book?.isActive === false) notFound();
+  const audience = await getSunLabLibraryAudience();
+  if (!canStudentReadSunLabLibraryBook(book?.visibility, session.studentId, audience)) {
+    notFound();
+  }
 
   const title = normalize(book?.title) || "제목 없는 책";
 
