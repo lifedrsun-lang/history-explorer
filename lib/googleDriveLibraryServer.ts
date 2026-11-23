@@ -14,6 +14,103 @@ const GOOGLE_DRIVE_API_BASE = "https://www.googleapis.com/drive/v3";
 const DRIVE_CONNECTION_COLLECTION = "teacher_google_drive_connections";
 const DRIVE_OAUTH_STATE_COLLECTION = "teacher_google_drive_oauth_states";
 const LIBRARY_BOOK_COLLECTION = "sunlab_library_books";
+const LIBRARY_AUDIENCE_COLLECTION = "sunlab_library_settings";
+const LIBRARY_AUDIENCE_DOC = "audience";
+
+export type SunLabLibraryVisibility = "all" | "minseo" | "minchae";
+export type SunLabLibraryAudience = {
+  minseoStudentId: string;
+  minchaeStudentId: string;
+};
+
+const LIBRARY_STUDENT_NAMES = [
+  "민서", "이민서", "송민서", "민채", "이민채", "송민채",
+];
+
+export const parseSunLabLibraryVisibility = (
+  value: unknown
+): SunLabLibraryVisibility =>
+  value === "minseo" || value === "minchae" ? value : "all";
+
+const validateSunLabLibraryVisibility = (value: unknown) => {
+  if (value !== "all" && value !== "minseo" && value !== "minchae") {
+    throw new Error("library_visibility_invalid");
+  }
+  return value as SunLabLibraryVisibility;
+};
+
+export const canStudentReadSunLabLibraryBook = (
+  visibilityInput: unknown,
+  studentIdInput: unknown,
+  audience: SunLabLibraryAudience
+) => {
+  const visibility = parseSunLabLibraryVisibility(visibilityInput);
+  if (visibility === "all") return true;
+  const studentId = normalize(studentIdInput);
+  if (!studentId) return false;
+  const targetId =
+    visibility === "minseo" ? audience.minseoStudentId : audience.minchaeStudentId;
+  return Boolean(targetId && studentId === targetId);
+};
+
+export const getSunLabLibraryAudience = async (): Promise<SunLabLibraryAudience> => {
+  const { db } = getFirebaseAdmin();
+  const doc = await db.collection(LIBRARY_AUDIENCE_COLLECTION).doc(LIBRARY_AUDIENCE_DOC).get();
+  return {
+    minseoStudentId: normalize(doc.data()?.minseoStudentId),
+    minchaeStudentId: normalize(doc.data()?.minchaeStudentId),
+  };
+};
+
+export const getSunLabLibraryAudienceCandidates = async () => {
+  const { db } = getFirebaseAdmin();
+  const snapshot = await db.collection("students")
+    .where("name", "in", LIBRARY_STUDENT_NAMES)
+    .limit(50)
+    .get();
+
+  return snapshot.docs
+    .filter((doc) => {
+      const data = doc.data();
+      return data.sunLabMember === true &&
+        data.isActive !== false &&
+        (!data.enrollmentStatus || data.enrollmentStatus === "active");
+    })
+    .map((doc) => ({ id: doc.id, name: normalize(doc.data().name) }))
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
+};
+
+export const setSunLabLibraryAudience = async (
+  teacherUid: string,
+  audienceInput: unknown
+) => {
+  const input = (audienceInput || {}) as Record<string, unknown>;
+  const audience: SunLabLibraryAudience = {
+    minseoStudentId: normalize(input.minseoStudentId),
+    minchaeStudentId: normalize(input.minchaeStudentId),
+  };
+  if (audience.minseoStudentId && audience.minseoStudentId === audience.minchaeStudentId) {
+    throw new Error("library_audience_duplicate");
+  }
+  const candidates = await getSunLabLibraryAudienceCandidates();
+  for (const [label, id] of [
+    ["민서", audience.minseoStudentId],
+    ["민채", audience.minchaeStudentId],
+  ]) {
+    if (!id) continue;
+    const candidate = candidates.find((item) => item.id === id);
+    if (!candidate || !candidate.name.endsWith(label)) {
+      throw new Error("library_audience_invalid_student");
+    }
+  }
+  const { db } = getFirebaseAdmin();
+  await db.collection(LIBRARY_AUDIENCE_COLLECTION).doc(LIBRARY_AUDIENCE_DOC).set({
+    ...audience,
+    updatedBy: teacherUid,
+    updatedAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
+  return audience;
+};
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 const ACCESS_TOKEN_SAFETY_WINDOW_MS = 60 * 1000;
 
@@ -71,6 +168,7 @@ export type SunLabLibraryBook = {
   modifiedTime: string;
   webViewLink: string;
   createdBy: string;
+  visibility: SunLabLibraryVisibility;
   isActive: boolean;
   createdAt: string | null;
   updatedAt: string | null;
@@ -445,6 +543,7 @@ const serializeBook = (
   modifiedTime: normalize(data?.modifiedTime),
   webViewLink: normalize(data?.webViewLink),
   createdBy: normalize(data?.createdBy),
+  visibility: parseSunLabLibraryVisibility(data?.visibility),
   isActive: data?.isActive !== false,
   createdAt: serializeDate(data?.createdAt),
   updatedAt: serializeDate(data?.updatedAt),
@@ -452,8 +551,10 @@ const serializeBook = (
 
 export const registerGoogleDriveLibraryBook = async (
   teacherUid: string,
-  fileIdInput: unknown
+  fileIdInput: unknown,
+  visibilityInput: unknown = "all"
 ) => {
+  const visibility = validateSunLabLibraryVisibility(visibilityInput);
   const fileId = normalize(fileIdInput);
   if (!fileId) {
     throw new Error("google_drive_file_id_required");
@@ -487,6 +588,7 @@ export const registerGoogleDriveLibraryBook = async (
     modifiedTime: normalize(metadata.modifiedTime),
     webViewLink: normalize(metadata.webViewLink),
     createdBy: teacherUid,
+    visibility,
     isActive: true,
     updatedAt: FieldValue.serverTimestamp(),
   };
@@ -512,6 +614,29 @@ export const listGoogleDriveLibraryBooks = async () => {
   return snapshot.docs
     .map((doc) => serializeBook(doc.id, doc.data()))
     .filter((book) => book.isActive);
+};
+
+export const updateGoogleDriveLibraryBookVisibility = async (
+  teacherUid: string,
+  bookIdInput: unknown,
+  visibilityInput: unknown
+) => {
+  const bookId = normalize(bookIdInput);
+  if (!bookId) throw new Error("library_book_id_required");
+  const visibility = validateSunLabLibraryVisibility(visibilityInput);
+  const { db } = getFirebaseAdmin();
+  const ref = db.collection(LIBRARY_BOOK_COLLECTION).doc(bookId);
+  const snapshot = await ref.get();
+  if (!snapshot.exists || snapshot.data()?.isActive === false) {
+    throw new Error("library_book_not_found");
+  }
+  await ref.update({
+    visibility,
+    updatedBy: teacherUid,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  const saved = await ref.get();
+  return serializeBook(saved.id, saved.data() || {});
 };
 
 export const archiveGoogleDriveLibraryBook = async (
