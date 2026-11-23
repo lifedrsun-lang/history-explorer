@@ -427,6 +427,18 @@ export default function TeacherLibraryPage() {
                 </button>
               )}
 
+              {status?.connected && (
+                <button
+                  type="button"
+                  onClick={connectDrive}
+                  disabled={connecting || loading || pickerOpening}
+                  className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-black text-blue-700 disabled:opacity-50"
+                  title="기존 도서 기록은 유지하고 Google Drive 접근 권한을 다시 승인합니다."
+                >
+                  {connecting ? "재연결 중..." : "↻ Google Drive 재연결"}
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => void refreshLibrary()}
