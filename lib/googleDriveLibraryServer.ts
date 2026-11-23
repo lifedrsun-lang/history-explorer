@@ -23,10 +23,6 @@ export type SunLabLibraryAudience = {
   minchaeStudentId: string;
 };
 
-const LIBRARY_STUDENT_NAMES = [
-  "민서", "이민서", "송민서", "민채", "이민채", "송민채",
-];
-
 export const parseSunLabLibraryVisibility = (
   value: unknown
 ): SunLabLibraryVisibility =>
@@ -65,14 +61,15 @@ export const getSunLabLibraryAudience = async (): Promise<SunLabLibraryAudience>
 export const getSunLabLibraryAudienceCandidates = async () => {
   const { db } = getFirebaseAdmin();
   const snapshot = await db.collection("students")
-    .where("name", "in", LIBRARY_STUDENT_NAMES)
-    .limit(50)
+    .where("sunLabMember", "==", true)
     .get();
 
   return snapshot.docs
     .filter((doc) => {
       const data = doc.data();
+      const name = normalize(data.name);
       return data.sunLabMember === true &&
+        (name.endsWith("민서") || name.endsWith("민채")) &&
         data.isActive !== false &&
         (!data.enrollmentStatus || data.enrollmentStatus === "active");
     })
