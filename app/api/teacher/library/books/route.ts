@@ -6,6 +6,7 @@ import {
 import {
   listGoogleDriveLibraryBooks,
   registerGoogleDriveLibraryBook,
+  updateGoogleDriveLibraryBookVisibility,
 } from "@/lib/googleDriveLibraryServer";
 
 export const runtime = "nodejs";
@@ -33,7 +34,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const book = await registerGoogleDriveLibraryBook(
       teacher.uid,
-      body?.fileId
+      body?.fileId,
+      body?.visibility ?? "all"
     );
 
     return Response.json({ book }, { status: 201 });
@@ -42,6 +44,10 @@ export async function POST(request: Request) {
 
     if (message === "teacher_auth_required") {
       return jsonError("교사 로그인이 필요합니다.", 401, message);
+    }
+
+    if (message === "library_visibility_invalid") {
+      return jsonError("공개 범위를 다시 선택해 주세요.", 400, message);
     }
 
     if (message === "google_drive_file_id_required") {
@@ -64,6 +70,31 @@ export async function POST(request: Request) {
       );
     }
 
+    return handleRouteError(error);
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const teacher = await verifyTeacherRequest(request);
+    const body = await request.json();
+    const book = await updateGoogleDriveLibraryBookVisibility(
+      teacher.uid,
+      body?.bookId,
+      body?.visibility
+    );
+    return Response.json({ book });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "teacher_auth_required") {
+      return jsonError("교사 로그인이 필요합니다.", 401, message);
+    }
+    if (message === "library_book_not_found") {
+      return jsonError("책을 찾을 수 없습니다.", 404, message);
+    }
+    if (message === "library_book_id_required" || message === "library_visibility_invalid") {
+      return jsonError("공개 범위 변경 요청을 확인해 주세요.", 400, message);
+    }
     return handleRouteError(error);
   }
 }

@@ -1,5 +1,9 @@
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
-import { getValidGoogleDriveAccessToken } from "@/lib/googleDriveLibraryServer";
+import {
+  canStudentReadSunLabLibraryBook,
+  getSunLabLibraryAudience,
+  getValidGoogleDriveAccessToken,
+} from "@/lib/googleDriveLibraryServer";
 import {
   getSunLabStudentSession,
   readCookieValue,
@@ -62,6 +66,14 @@ export async function GET(
     if (book?.isActive === false) {
       return Response.json(
         { error: "현재 읽을 수 없는 책입니다." },
+        { status: 404, headers: privateHeaders() }
+      );
+    }
+
+    const audience = await getSunLabLibraryAudience();
+    if (!canStudentReadSunLabLibraryBook(book?.visibility, session.studentId, audience)) {
+      return Response.json(
+        { error: "이 책을 읽을 권한이 없습니다." },
         { status: 404, headers: privateHeaders() }
       );
     }

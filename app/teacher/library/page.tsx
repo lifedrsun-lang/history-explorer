@@ -23,10 +23,24 @@ type LibraryBook = {
   modifiedTime: string;
   webViewLink: string;
   createdBy: string;
+  visibility: LibraryVisibility;
   isActive: boolean;
   createdAt: string | null;
   updatedAt: string | null;
 };
+
+type LibraryVisibility = "all" | "minseo" | "minchae";
+type LibraryAudience = { minseoStudentId: string; minchaeStudentId: string };
+type LibraryAudienceCandidate = { id: string; name: string };
+
+const VISIBILITY_LABELS: Record<LibraryVisibility, string> = {
+  all: "전체 공개",
+  minseo: "민서만 공개",
+  minchae: "민채만 공개",
+};
+
+const getBookVisibility = (value: unknown): LibraryVisibility =>
+  value === "minseo" || value === "minchae" ? value : "all";
 
 type PickerTokenPayload = {
   accessToken: string;
@@ -129,6 +143,13 @@ export default function TeacherLibraryPage() {
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<DriveStatus | null>(null);
   const [books, setBooks] = useState<LibraryBook[]>([]);
+  const [newBookVisibility, setNewBookVisibility] = useState<LibraryVisibility>("all");
+  const [visibilityFilter, setVisibilityFilter] = useState<LibraryVisibility | "allBooks">("allBooks");
+  const [audience, setAudience] = useState<LibraryAudience>({ minseoStudentId: "", minchaeStudentId: "" });
+  const [audienceDraft, setAudienceDraft] = useState<LibraryAudience>({ minseoStudentId: "", minchaeStudentId: "" });
+  const [audienceCandidates, setAudienceCandidates] = useState<LibraryAudienceCandidate[]>([]);
+  const [audienceSaving, setAudienceSaving] = useState(false);
+  const [savingBookId, setSavingBookId] = useState("");
   const [loading, setLoading] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [pickerOpening, setPickerOpening] = useState(false);
@@ -196,12 +217,20 @@ export default function TeacherLibraryPage() {
     setErrorMessage("");
 
     try {
-      const [statusData, booksData] = await Promise.all([
+      const [statusData, booksData, audienceData] = await Promise.all([
         requestJson("/api/teacher/google-drive/status"),
         requestJson("/api/teacher/library/books"),
+        requestJson("/api/teacher/library/audience"),
       ]);
       setStatus(statusData as DriveStatus);
       setBooks(Array.isArray(booksData?.books) ? booksData.books : []);
+      const nextAudience: LibraryAudience = {
+        minseoStudentId: String(audienceData?.audience?.minseoStudentId || ""),
+        minchaeStudentId: String(audienceData?.audience?.minchaeStudentId || ""),
+      };
+      setAudience(nextAudience);
+      setAudienceDraft(nextAudience);
+      setAudienceCandidates(Array.isArray(audienceData?.candidates) ? audienceData.candidates : []);
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "도서관 정보를 불러오지 못했습니다."
@@ -214,6 +243,48 @@ export default function TeacherLibraryPage() {
   useEffect(() => {
     void refreshLibrary();
   }, [refreshLibrary]);
+
+  const saveAudience = async () => {
+    setAudienceSaving(true);
+    setErrorMessage("");
+    setNotice("");
+    try {
+      const data = await requestJson("/api/teacher/library/audience", {
+        method: "PUT",
+        body: JSON.stringify({ audience: audienceDraft }),
+      });
+      setAudience(data.audience as LibraryAudience);
+      setAudienceDraft(data.audience as LibraryAudience);
+      setNotice("민서·민채 전용 도서 계정을 저장했습니다.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "학생 계정 연결에 실패했습니다.");
+    } finally {
+      setAudienceSaving(false);
+    }
+  };
+
+  const updateBookVisibility = async (bookId: string, visibility: LibraryVisibility) => {
+    if (visibility !== "all" && !audience[visibility === "minseo" ? "minseoStudentId" : "minchaeStudentId"]) {
+      setErrorMessage("전용 공개를 사용하려면 먼저 아래에서 해당 학생 계정을 연결하고 저장해 주세요.");
+      return;
+    }
+    setSavingBookId(bookId);
+    setErrorMessage("");
+    setNotice("");
+    try {
+      const data = await requestJson("/api/teacher/library/books", {
+        method: "PATCH",
+        body: JSON.stringify({ bookId, visibility }),
+      });
+      const updated = data.book as LibraryBook;
+      setBooks((current) => current.map((book) => book.id === bookId ? updated : book));
+      setNotice(`「${updated.title}」 공개 범위를 ${VISIBILITY_LABELS[visibility]}로 저장했습니다.`);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "공개 범위를 저장하지 못했습니다.");
+    } finally {
+      setSavingBookId("");
+    }
+  };
 
   const connectDrive = async () => {
     setConnecting(true);
@@ -238,9 +309,12 @@ export default function TeacherLibraryPage() {
 
   const registerPickedFile = useCallback(
     async (fileId: string) => {
+      if (newBookVisibility !== "all" && !audience[newBookVisibility === "minseo" ? "minseoStudentId" : "minchaeStudentId"]) {
+        throw new Error("먼저 해당 학생 계정을 연결하고 저장해 주세요.");
+      }
       const data = await requestJson("/api/teacher/library/books", {
         method: "POST",
-        body: JSON.stringify({ fileId }),
+        body: JSON.stringify({ fileId, visibility: newBookVisibility }),
       });
 
       const book = data?.book as LibraryBook | undefined;
@@ -252,7 +326,7 @@ export default function TeacherLibraryPage() {
         setNotice(`「${book.title}」 등록이 완료되었습니다.`);
       }
     },
-    [requestJson]
+    [requestJson, newBookVisibility, audience]
   );
 
   const openPicker = async () => {
@@ -321,6 +395,13 @@ export default function TeacherLibraryPage() {
       setPickerOpening(false);
     }
   };
+
+  const filteredBooks = useMemo(
+    () => books.filter((book) =>
+      visibilityFilter === "allBooks" || getBookVisibility(book.visibility) === visibilityFilter
+    ),
+    [books, visibilityFilter]
+  );
 
   const registeredSize = useMemo(
     () => books.reduce((sum, book) => sum + Number(book.size || 0), 0),
@@ -449,6 +530,25 @@ export default function TeacherLibraryPage() {
               </button>
             </div>
 
+            {status?.connected && (
+              <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3">
+                <label htmlFor="new-book-visibility" className="mb-2 block text-xs font-black text-slate-700">
+                  새 PDF 등록 시 공개 범위
+                </label>
+                <select
+                  id="new-book-visibility"
+                  value={newBookVisibility}
+                  onChange={(event) => setNewBookVisibility(event.target.value as LibraryVisibility)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-800 sm:max-w-xs"
+                >
+                  <option value="all">전체 공개 (민서·민채)</option>
+                  <option value="minseo">민서만 공개</option>
+                  <option value="minchae">민채만 공개</option>
+                </select>
+                <p className="mt-2 text-xs leading-5 text-slate-500">선택한 공개 범위로 Google Drive PDF를 등록합니다.</p>
+              </div>
+            )}
+
             {!status?.configured && !loading && (
               <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-700">
                 Google Drive 환경변수 설정을 확인해 주세요.
@@ -477,11 +577,72 @@ export default function TeacherLibraryPage() {
         </div>
 
         <section className="rounded-3xl bg-white p-5 shadow-sm">
-          <div className="flex items-end justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-black text-slate-900">전용 도서 학생 계정 연결</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                민서와 민채의 SUN LAB 계정을 한 번 지정하면 전용 PDF를 해당 계정에만 공개합니다.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void saveAudience()}
+              disabled={audienceSaving || loading}
+              className="rounded-xl bg-slate-800 px-4 py-2.5 text-sm font-black text-white disabled:opacity-50"
+            >
+              {audienceSaving ? "저장 중..." : "계정 설정 저장"}
+            </button>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {(["minseoStudentId", "minchaeStudentId"] as const).map((field) => {
+              const label = field === "minseoStudentId" ? "민서" : "민채";
+              const candidates = audienceCandidates.filter((student) => student.name.endsWith(label));
+              return (
+                <label key={field} className="block text-xs font-black text-slate-700">
+                  {label} 계정
+                  <select
+                    value={audienceDraft[field]}
+                    onChange={(event) => setAudienceDraft((current) => ({ ...current, [field]: event.target.value }))}
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-slate-800"
+                  >
+                    <option value="">계정을 선택해 주세요</option>
+                    {candidates.map((candidate) => (
+                      <option key={candidate.id} value={candidate.id}>
+                        {candidate.name} (계정 {candidate.id.slice(-6)})
+                      </option>
+                    ))}
+                  </select>
+                  {candidates.length === 0 && (
+                    <span className="mt-2 block text-amber-700">등록된 SUN LAB {label} 계정을 찾지 못했습니다.</span>
+                  )}
+                </label>
+              );
+            })}
+          </div>
+          <p className="mt-3 text-xs leading-5 text-slate-500">
+            전용 공개는 연결된 계정 ID로 확인합니다. 계정을 연결하기 전에는 전체 공개 도서만 열람 가능합니다.
+          </p>
+        </section>
+
+        <section className="rounded-3xl bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 className="text-lg font-black text-slate-900">등록된 책</h2>
-              <p className="mt-1 text-sm text-slate-500">1차 단계에서는 PDF 선택·등록까지 검증합니다.</p>
+              <p className="mt-1 text-sm text-slate-500">기존 책은 전체 공개로 유지되며, 책마다 공개 범위를 변경할 수 있습니다.</p>
             </div>
+            <label className="text-xs font-black text-slate-600">
+              공개 범위 필터
+              <select
+                value={visibilityFilter}
+                onChange={(event) => setVisibilityFilter(event.target.value as LibraryVisibility | "allBooks")}
+                className="mt-1 block rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800"
+              >
+                <option value="allBooks">전체 도서</option>
+                <option value="all">전체 공개</option>
+                <option value="minseo">민서만 공개</option>
+                <option value="minchae">민채만 공개</option>
+              </select>
+            </label>
           </div>
 
           {loading && books.length === 0 ? (
@@ -492,9 +653,13 @@ export default function TeacherLibraryPage() {
               <p className="mt-3 text-sm font-black text-slate-700">아직 등록된 책이 없습니다.</p>
               <p className="mt-1 text-xs text-slate-500">Drive 연결 후 테스트 PDF 한 권부터 추가해 주세요.</p>
             </div>
+          ) : filteredBooks.length === 0 ? (
+            <div className="mt-5 rounded-2xl bg-slate-50 p-6 text-center text-sm font-bold text-slate-500">
+              해당 공개 범위로 등록된 책이 없습니다.
+            </div>
           ) : (
             <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {books.map((book) => (
+              {filteredBooks.map((book) => (
                 <article
                   key={book.id}
                   className="rounded-3xl border border-slate-100 bg-slate-50 p-4"
@@ -509,6 +674,30 @@ export default function TeacherLibraryPage() {
                       </h3>
                       <p className="mt-1 truncate text-xs text-slate-500">{book.originalName}</p>
                     </div>
+                  </div>
+                  <div className="mt-3">
+                    <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${
+                      getBookVisibility(book.visibility) === "all"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-blue-100 text-blue-700"
+                    }`}>
+                      {VISIBILITY_LABELS[getBookVisibility(book.visibility)]}
+                    </span>
+                    <label htmlFor={`book-visibility-${book.id}`} className="mt-3 block text-xs font-black text-slate-600">
+                      공개 범위 변경 (선택 시 자동 저장)
+                    </label>
+                    <select
+                      id={`book-visibility-${book.id}`}
+                      value={getBookVisibility(book.visibility)}
+                      onChange={(event) => void updateBookVisibility(book.id, event.target.value as LibraryVisibility)}
+                      disabled={savingBookId === book.id}
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 disabled:opacity-50"
+                    >
+                      <option value="all">전체 공개</option>
+                      <option value="minseo">민서만 공개</option>
+                      <option value="minchae">민채만 공개</option>
+                    </select>
+                    {savingBookId === book.id && <p className="mt-1 text-xs text-slate-500">변경사항 저장 중...</p>}
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-bold text-slate-500">
                     <span className="rounded-full bg-white px-2.5 py-1">PDF</span>
@@ -526,7 +715,7 @@ export default function TeacherLibraryPage() {
         </section>
 
         <section className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-xs leading-6 text-amber-800">
-          <strong>다음 단계:</strong> PDF 등록이 정상 작동하는 것을 확인한 뒤 학생용 책장과 페이지 넘김 뷰어를 붙입니다. 브라우저에서 스크린샷 자체를 완전히 막을 수는 없으므로, 학생 뷰어는 다운로드·인쇄 UI 제거와 원본 Drive 링크 비노출을 기본으로 설계합니다.
+          <strong>열람 보안:</strong> 학생 목록·읽기 화면·PDF 요청 모두에서 계정별 공개 범위를 검사합니다. PDF는 Google Drive 원본 링크를 학생에게 표시하지 않지만, Drive 자체의 공유 권한은 별도로 관리해야 합니다.
         </section>
       </div>
     </div>
