@@ -5,6 +5,11 @@ import { redirect } from "next/navigation";
 
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import {
+  canStudentReadSunLabLibraryBook,
+  getSunLabLibraryAudience,
+  type SunLabLibraryAudience,
+} from "@/lib/googleDriveLibraryServer";
+import {
   getSunLabStudentSession,
   SUNLAB_STUDENT_SESSION_COOKIE,
 } from "@/lib/sunLabStudentSession";
@@ -56,7 +61,10 @@ const formatBytes = (value: number) => {
   return `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 };
 
-const loadBooks = async (): Promise<StudentLibraryBook[] | null> => {
+const loadBooks = async (
+  studentId: string,
+  audience: SunLabLibraryAudience
+): Promise<StudentLibraryBook[] | null> => {
   try {
     const { db } = getFirebaseAdmin();
     const snapshot = await db
@@ -70,6 +78,7 @@ const loadBooks = async (): Promise<StudentLibraryBook[] | null> => {
     for (const doc of snapshot.docs) {
       const data = doc.data();
       if (data?.isActive === false) continue;
+      if (!canStudentReadSunLabLibraryBook(data?.visibility, studentId, audience)) continue;
 
       let readerId = normalize(data?.readerId);
       if (!readerId) {
@@ -102,7 +111,8 @@ export default async function StudentLibraryPage() {
     redirect("/student/book");
   }
 
-  const books = await loadBooks();
+  const audience = await getSunLabLibraryAudience();
+  const books = await loadBooks(session.studentId, audience);
 
   return (
     <main className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-amber-50 to-yellow-100 px-4 py-6 text-slate-800 sm:py-8">
