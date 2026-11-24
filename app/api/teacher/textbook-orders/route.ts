@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     if (data.action === "export") {
       const workbook = makeTextbookOrderWorkbook(input);
       const title = input.title.replace(/[\\/<>:"|?*\r\n]/g, "_").slice(0, 80);
-      return new Response(new Uint8Array(workbook), { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`드림잇_별꼼역사_주문서_${title}_${input.date}.xlsx`)}`, "Cache-Control": "no-store" } });
+      return new Response(new Uint8Array(workbook), { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`드림잇_교재_주문서_${title}_${input.date}.xlsx`)}`, "Cache-Control": "no-store" } });
     }
     const now = new Date().toISOString();
     const order: TextbookOrder = { ...input, id: randomUUID(), revision: 1, createdAt: now, updatedAt: now };
