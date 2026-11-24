@@ -19,6 +19,14 @@ const managementSections = [
     className: "border-violet-200 bg-violet-50 text-violet-900",
   },
   {
+    key: "ppt-viewer",
+    href: "/teacher/ppt-viewer-test",
+    icon: "🖥️",
+    title: "PPT 뷰어",
+    description: "OneDrive PPT를 넘겨 보고 수업 영상을 큰 화면으로 재생",
+    className: "border-sky-200 bg-sky-50 text-sky-900",
+  },
+  {
     key: "after-school",
     href: "/teacher/manage/after-school",
     icon: "🏫",
