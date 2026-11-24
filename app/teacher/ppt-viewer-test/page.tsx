@@ -39,7 +39,7 @@ const sampleVideoUrl =
   "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
 
 const testOneDriveEmbedUrl =
-  "https://1drv.ms/p/c/bcc43c5a7c759aaf/IQQ44sa-rRHATZ0ccam2wh7xAefEanU9dhLUHCzXpXsfPlE?em=2&wdAr=1.3333333333333333&wdEaaCheck=1";
+  "https://1drv.ms/p/c/bcc43c5a7c759aaf/IQTKNq2SbG8KSqdKZL_LbKKSAatqPVlRvZRafQcxndq870Q?em=2&wdAr=1.3333333333333333";
 
 function parseOneDriveUrl(value: string) {
   const trimmed = value.trim();
