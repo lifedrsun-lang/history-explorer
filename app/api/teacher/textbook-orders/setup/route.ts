@@ -1,7 +1,8 @@
 import { verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
-import { getStudentProgramValue } from "@/lib/programs";
-import { isSameSchool, isStudentEnrolledInQuarter, toStudentRosterRecord, type QuarterKey } from "@/lib/studentRoster";
+import { AFTER_SCHOOL_SCHOOLS, matchesAfterSchoolSchool } from "@/lib/afterSchool";
+import { getAfterSchoolStatuses } from "@/lib/afterSchoolStatusServer";
+import { isStudentEnrolledInQuarter, toStudentRosterRecord, type QuarterKey } from "@/lib/studentRoster";
 import { newTextbookOrder, validateOrder } from "@/lib/textbookOrders";
 
 export const runtime = "nodejs";
@@ -24,31 +25,37 @@ export async function GET(request: Request) {
     const year = Number(new URL(request.url).searchParams.get("year"));
     if (!Number.isInteger(year) || year < 2000 || year > 2100) return Response.json({ error: "신청 연도를 확인해주세요." }, { status: 400 });
     const { db } = getFirebaseAdmin();
-    const [settings, contracts, students] = await Promise.all([
+    const [settings, students, statuses] = await Promise.all([
       db.collection(SETTINGS).doc(teacher.uid).get(),
-      db.collection("teacher_fee_contracts").where("type", "==", "afterschool").get(),
       db.collection("students").get(),
+      getAfterSchoolStatuses(),
     ]);
     // Defaults are served only through this authenticated route, never bundled in public client code.
     const delivery = settings.data()?.delivery || { ...newTextbookOrder().delivery, recipient: "이화선", phone: "010-8376-2497", address: "경기도 부천시 원미구 역곡로 20번길 13, 상원탑스빌 501호" };
-    const schoolNames = [...new Set(contracts.docs.map(d => String(d.data().schoolName || "").trim()).filter(Boolean))];
-    const groups = new Map<string, { id: string; school: string; teachingClass: string; counts: Record<string, number> }>();
+    // The same registry drives the after-school management cards. Never infer schools from students or fees.
+    const groups = AFTER_SCHOOL_SCHOOLS.flatMap(school => ["A반", "B반", "반 미지정"].map(teachingClass => ({
+      id: `${school.slug}::${teachingClass}`,
+      school: school.displayName,
+      teachingClass,
+      status: statuses[school.slug] || school.status,
+      counts: { Q1: 0, Q2: 0, Q3: 0, Q4: 0 } as Record<QuarterKey, number>,
+    })));
     for (const doc of students.docs) {
       const raw = doc.data();
-      if (getStudentProgramValue(raw.program) !== "byeolkkum_history") continue;
       const student = toStudentRosterRecord(doc.id, raw);
-      if (!student.name || !student.school) continue;
-      // Order only for current attendees; quarter application history is retained for paused/ended students.
-      if (student.enrollmentStatus !== "active") continue;
-      const school = schoolNames.find(name => isSameSchool(name, student.school));
+      if (!student.name || !student.school || student.enrollmentStatus !== "active") continue;
+      const school = AFTER_SCHOOL_SCHOOLS.find(item => matchesAfterSchoolSchool(student.school, item));
       if (!school) continue;
-      const teachingClass = student.teachingClass || "반 미지정";
-      const id = `${school}::${teachingClass}`;
-      const group = groups.get(id) || { id, school, teachingClass, counts: { Q1: 0, Q2: 0, Q3: 0, Q4: 0 } };
-      for (const quarter of ["Q1", "Q2", "Q3", "Q4"] as QuarterKey[]) if (isStudentEnrolledInQuarter(student, quarter, year)) group.counts[quarter]++;
-      groups.set(id, group);
+      // Respect an explicit A/B class where present; otherwise use the existing roster convention.
+      const explicit = String(raw.teachingClass || "").trim();
+      const teachingClass = explicit === "A반" || explicit === "B반" ? explicit : student.teachingClass || "반 미지정";
+      const group = groups.find(item => item.id === `${school.slug}::${teachingClass}`);
+      if (!group) continue;
+      for (const quarter of ["Q1", "Q2", "Q3", "Q4"] as QuarterKey[]) {
+        if (isStudentEnrolledInQuarter(student, quarter, year)) group.counts[quarter]++;
+      }
     }
-    return Response.json({ delivery, year, groups: [...groups.values()].sort((a, b) => a.id.localeCompare(b.id, "ko")) }, { headers: { "Cache-Control": "no-store" } });
+    return Response.json({ delivery, year, groups: groups.filter(group => group.teachingClass !== "반 미지정" || Object.values(group.counts).some(Boolean)) }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) { return failure(error); }
 }
 export async function PUT(request: Request) {
