@@ -35,8 +35,18 @@ const demoSlides = [
   },
 ] as const;
 
-const sampleVideoUrl =
-  "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
+const testVideos = [
+  {
+    label: "1번 영상",
+    title: "안동차전놀이",
+    url: "https://drive.google.com/file/d/1xpos9P5lrrUg9uZ9NnquaoyDj8FLwvUI/view?usp=drive_link",
+  },
+  {
+    label: "2번 영상",
+    title: "신숭겸 — 왕건을 대신한 고려 개국공신",
+    url: "https://drive.google.com/file/d/1jYzKEpkJcSUJSQSmm92eguaudwnR4Ata/view?usp=sharing",
+  },
+] as const;
 
 const testOneDriveEmbedUrl =
   "https://1drv.ms/p/c/bcc43c5a7c759aaf/IQTKNq2SbG8KSqdKZL_LbKKSAatqPVlRvZRafQcxndq870Q?em=2&wdAr=1.3333333333333333";
@@ -143,11 +153,12 @@ export default function PptViewerTestPage() {
   const [oneDriveInput, setOneDriveInput] = useState(testOneDriveEmbedUrl);
   const [oneDriveUrl, setOneDriveUrl] = useState(testOneDriveEmbedUrl);
   const [oneDriveError, setOneDriveError] = useState("");
-  const [videoInput, setVideoInput] = useState(sampleVideoUrl);
+  const [videoInput, setVideoInput] = useState<string>(testVideos[0].url);
   const [videoSource, setVideoSource] = useState<VideoSource>({
-    kind: "video",
-    url: sampleVideoUrl,
+    kind: "google-drive",
+    url: "https://drive.google.com/file/d/1xpos9P5lrrUg9uZ9NnquaoyDj8FLwvUI/preview",
   });
+  const [videoTitle, setVideoTitle] = useState<string>(testVideos[0].title);
   const [videoError, setVideoError] = useState("");
   const [videoOpen, setVideoOpen] = useState(false);
 
@@ -215,15 +226,28 @@ export default function PptViewerTestPage() {
   const applyVideoSource = () => {
     const result = parseVideoSource(videoInput);
     setVideoError(result.error);
-    if (result.source) setVideoSource(result.source);
+    if (result.source) {
+      setVideoSource(result.source);
+      setVideoTitle("");
+    }
+  };
+
+  const selectTestVideo = (video: (typeof testVideos)[number]) => {
+    const result = parseVideoSource(video.url);
+    setVideoInput(video.url);
+    setVideoError(result.error);
+    if (result.source) {
+      setVideoSource(result.source);
+      setVideoTitle(video.title);
+    }
   };
 
   const videoSourceLabel = useMemo(
     () =>
-      videoSource.kind === "google-drive"
+      videoTitle || (videoSource.kind === "google-drive"
         ? "Google Drive 미리보기"
-        : "직접 MP4 재생",
-    [videoSource.kind]
+        : "직접 MP4 재생"),
+    [videoSource.kind, videoTitle]
   );
 
   return (
@@ -479,7 +503,25 @@ export default function PptViewerTestPage() {
               )}
             </div>
 
-            <div className="mx-auto mt-3 flex w-full max-w-[1600px] flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 sm:flex-row">
+            <div className="mx-auto mt-3 grid w-full max-w-[1600px] gap-2 sm:grid-cols-2">
+              {testVideos.map((video) => (
+                <button
+                  key={video.label}
+                  type="button"
+                  onClick={() => selectTestVideo(video)}
+                  className={`rounded-xl px-4 py-3 text-left text-sm font-black ${
+                    videoTitle === video.title
+                      ? "bg-white text-slate-950"
+                      : "border border-white/15 bg-white/5 text-white hover:bg-white/10"
+                  }`}
+                >
+                  <span className="block text-xs opacity-70">{video.label}</span>
+                  <span className="mt-1 block">{video.title}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="mx-auto mt-2 flex w-full max-w-[1600px] flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 sm:flex-row">
               <input
                 value={videoInput}
                 onChange={(event) => setVideoInput(event.target.value)}
