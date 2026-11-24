@@ -18,6 +18,8 @@
 ### 2단계 — OneDrive 연결 시험
 
 - OneDrive/Office 임베드 URL을 입력하는 별도 탭
+- Microsoft에서 복사한 전체 `<iframe>` 코드의 `src` 자동 추출
+- `em=2`가 포함된 Microsoft 생성 `1drv.ms` 임베드 주소 허용
 - 일반 `1drv.ms` 공유 주소와 SharePoint 공유 주소는 임베드 주소가 아님을 안내
 - 허용한 임베드 주소만 iframe에 연결
 - Microsoft 임베드 화면과 SUN LAB 독립 슬라이드 뷰어가 다른 방식임을 화면에 명시
@@ -42,7 +44,9 @@
 | 영상 닫기·복귀 | 완료 | 대화상자 0개, 2번 슬라이드 제목 유지 확인 |
 | OneDrive 일반 공유 링크 차단 | 완료 | `1drv.ms` 입력 시 임베드 주소 필요 안내 확인 |
 | OneDrive 임베드 iframe 생성 | 완료 | 허용 주소 입력 시 iframe과 입력한 `src` 생성 확인 |
-| 실제 OneDrive PPT 표시 품질 | 미검증 | 실제 PPT 임베드 주소 미제공 |
+| 실제 OneDrive PPT 로딩 | 완료 | `09-4 AI_남북국시대2 문화 인물탐방.pptx`, 39장 인식 및 1번 슬라이드 표시 확인 |
+| 실제 OneDrive 슬라이드 이동 | 완료 | Microsoft 임베드 뷰어의 이전·다음 버튼 확인 및 다음 슬라이드 이동 검증 |
+| 실제 OneDrive PPT 표시 품질 | 부분 검증 | 브라우저에서 1번 슬라이드 렌더링 확인. 전체 39장의 글꼴·도형 육안 검수는 미완료 |
 | 실제 PPT 안의 삽입 MP4 제어 | 미검증 | 실제 PPT와 임베드 내부 미디어 접근 권한 미확인 |
 | 실제 Google Drive 원본 영상 | 미검증 | 실제 Drive 공유 URL·권한 미제공 |
 | 전체 화면 진입 | 환경 제한으로 미검증 | 원격 시험 브라우저가 Fullscreen API를 거부했고, 실패 안내 표시는 정상 확인 |
@@ -62,6 +66,5 @@
 
 ## 다음 실제 검증에 필요한 자료
 
-1. 영상이 포함된 시험용 PPT의 OneDrive **임베드 코드 또는 임베드 URL**
-2. 같은 PPT에서 사용한 Google Drive MP4의 **보기 권한이 있는 공유 URL**
-3. PC 또는 전자칠판에서 Preview URL을 열어 Fullscreen API 동작을 확인한 결과
+1. 실제 OneDrive 임베드 PPT에서 삽입 MP4가 있는 슬라이드 번호
+2. PC 또는 전자칠판에서 Preview URL을 열어 Fullscreen API 동작을 확인한 결과
