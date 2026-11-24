@@ -38,12 +38,19 @@ const demoSlides = [
 const sampleVideoUrl =
   "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
 
+const testOneDriveEmbedUrl =
+  "https://1drv.ms/p/c/bcc43c5a7c759aaf/IQQ44sa-rRHATZ0ccam2wh7xAefEanU9dhLUHCzXpXsfPlE?em=2&wdAr=1.3333333333333333&wdEaaCheck=1";
+
 function parseOneDriveUrl(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return { url: "", error: "" };
 
   try {
-    const parsed = new URL(trimmed);
+    const iframeSrcMatch = trimmed.match(/\bsrc\s*=\s*(["'])(.*?)\1/i);
+    const candidate = iframeSrcMatch
+      ? iframeSrcMatch[2].replaceAll("&amp;", "&").replaceAll("&#38;", "&")
+      : trimmed;
+    const parsed = new URL(candidate);
     if (parsed.protocol !== "https:") {
       return { url: "", error: "HTTPS 주소만 사용할 수 있습니다." };
     }
@@ -58,8 +65,10 @@ function parseOneDriveUrl(value: string) {
       host.endsWith(".sharepoint.com") &&
       (parsed.searchParams.get("action")?.toLowerCase() === "embedview" ||
         parsed.pathname.toLowerCase().includes("embed"));
+    const isOneDriveShortEmbed =
+      host === "1drv.ms" && parsed.searchParams.get("em") === "2";
 
-    if (isOneDriveEmbed || isOfficeEmbed || isSharePointEmbed) {
+    if (isOneDriveEmbed || isOfficeEmbed || isSharePointEmbed || isOneDriveShortEmbed) {
       return { url: parsed.toString(), error: "" };
     }
 
@@ -127,12 +136,12 @@ function isTypingTarget(target: EventTarget | null) {
 export default function PptViewerTestPage() {
   const viewerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [mode, setMode] = useState<ViewerMode>("slides");
+  const [mode, setMode] = useState<ViewerMode>("onedrive");
   const [slideIndex, setSlideIndex] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
   const [message, setMessage] = useState("");
-  const [oneDriveInput, setOneDriveInput] = useState("");
-  const [oneDriveUrl, setOneDriveUrl] = useState("");
+  const [oneDriveInput, setOneDriveInput] = useState(testOneDriveEmbedUrl);
+  const [oneDriveUrl, setOneDriveUrl] = useState(testOneDriveEmbedUrl);
   const [oneDriveError, setOneDriveError] = useState("");
   const [videoInput, setVideoInput] = useState(sampleVideoUrl);
   const [videoSource, setVideoSource] = useState<VideoSource>({
@@ -368,16 +377,16 @@ export default function PptViewerTestPage() {
             <aside className="rounded-2xl border border-white/10 bg-white/5 p-5">
               <h2 className="text-lg font-black">OneDrive PPT 연결</h2>
               <p className="mt-2 text-sm font-bold leading-relaxed text-slate-300">
-                OneDrive에서 받은 포함(Embed) 코드의 <code>src</code> HTTPS 주소를 입력합니다. 원본 파일은 이동·수정하지 않습니다.
+                OneDrive에서 받은 전체 포함(Embed) 코드 또는 코드 안의 <code>src</code> HTTPS 주소를 입력합니다. 원본 파일은 이동·수정하지 않습니다.
               </p>
               <label className="mt-5 block text-sm font-black" htmlFor="onedrive-embed-url">
-                OneDrive 임베드 주소
+                OneDrive 임베드 코드 또는 주소
               </label>
               <textarea
                 id="onedrive-embed-url"
                 value={oneDriveInput}
                 onChange={(event) => setOneDriveInput(event.target.value)}
-                placeholder="https://onedrive.live.com/embed?..."
+                placeholder='<iframe src="https://1drv.ms/..."></iframe>'
                 className="mt-2 min-h-32 w-full rounded-xl border border-white/15 bg-slate-950 p-3 text-sm text-white outline-none focus:border-sky-400"
               />
               <button
@@ -405,6 +414,7 @@ export default function PptViewerTestPage() {
                   src={oneDriveUrl}
                   className="h-full min-h-[65dvh] w-full bg-white"
                   allow="fullscreen"
+                  allowFullScreen
                   referrerPolicy="strict-origin-when-cross-origin"
                 />
               ) : (
