@@ -1,6 +1,6 @@
 import { HISTORY_BOOKS } from "@/lib/presentations/catalog";
 // Column names and defaults follow the supplied 드림잇 물류(교재) 주문서.xls.
-export const ORDER_SUBJECTS = ["별꼼역사", "모나르떼", "헤르메스"] as const;
+export const ORDER_SUBJECTS = ["별꼼역사", "모나르떼", "헤르메스", "기타"] as const;
 export const ORDER_BOOKS = Array.from({ length: 24 }, (_, i) => {
   const number = i + 1;
   const book = HISTORY_BOOKS.find(b => b.number === number);
@@ -25,7 +25,7 @@ export function selectOrderBooks(lines: OrderLine[], numbers: number[], options:
 }
 export const ORDER_COLUMNS = ["주문번호", "상품번호", "상품명", "옵션명", "수량", "판매단가", "판매금액", "수령자", "전화", "핸드폰", "우편번호", "주소", "배송메세지", "배송비", "송장출력갯수", "택배크기"];
 export const ORDER_OPTIONS = ["스토리북", "워크북", "체험물"] as const;
-export type OrderLine = { id: string; orderNumber: string; productNumber: string; productName: string; option: string; quantity: number; unitPrice: number | null };
+export type OrderLine = { id: string; orderNumber: string; productNumber: string; productName: string; option: string; quantity: number; unitPrice: number | null; school?: string; teachingClass?: string; subject?: string; course?: string };
 export type OrderDelivery = { recipient: string; phone: string; mobile: string; postalCode: string; address: string; message: string; shipping: string; invoiceCount: number; parcelSize: string };
 export type TextbookOrder = { id: string; revision: number; title: string; date: string; delivery: OrderDelivery; lines: OrderLine[]; createdAt: string; updatedAt: string; mailStatus?: "sending" | "sent" | "failed" | "unknown"; mailSentAt?: string };
 export type OrderInput = Pick<TextbookOrder, "title" | "date" | "delivery" | "lines">;
@@ -78,8 +78,9 @@ export function validateOrder(raw: unknown, forExport = false): OrderInput {
     const productName = text(l.productName, "상품명");
     const option = text(l.option, "옵션명", 40);
     const quantity = number(l.quantity, "수량", 100000);
-    if (!productName.startsWith("별꼼역사 ") || !ORDER_OPTIONS.some(value => value === option) || quantity < 1) throw new OrderInputError("별꼼역사 상품명·옵션·수량을 확인해주세요.");
-    return { id, orderNumber: text(l.orderNumber, "주문번호", 100), productNumber: text(l.productNumber, "상품번호", 100), productName, option, quantity, unitPrice: l.unitPrice === null ? null : number(l.unitPrice, "판매단가", 100000000, false) };
+    if (!productName || quantity < 1 || (productName.startsWith("별꼼역사 ") && !ORDER_OPTIONS.some(value => value === option))) throw new OrderInputError("상품명·옵션·수량을 확인해주세요.");
+    const scope = { ...(l.school === undefined ? {} : { school: text(l.school, "학교", 100) }), ...(l.teachingClass === undefined ? {} : { teachingClass: text(l.teachingClass, "수업반", 40) }), ...(l.subject === undefined ? {} : { subject: text(l.subject, "교재 종류", 100) }), ...(l.course === undefined ? {} : { course: text(l.course, "수업명", 100) }) };
+    return { ...scope, id, orderNumber: text(l.orderNumber, "주문번호", 100), productNumber: text(l.productNumber, "상품번호", 100), productName, option, quantity, unitPrice: l.unitPrice === null ? null : number(l.unitPrice, "판매단가", 100000000, false) };
   });
   if (new Set(lines.map(l => l.id)).size !== lines.length) throw new OrderInputError("주문 항목이 중복되었습니다.");
   if (forExport && (!delivery.recipient || (!delivery.phone && !delivery.mobile) || !delivery.postalCode || !delivery.address)) throw new OrderInputError("엑셀 다운로드 전에 수령자·연락처·우편번호·주소를 입력해주세요.");
