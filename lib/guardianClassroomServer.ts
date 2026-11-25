@@ -7,6 +7,7 @@ import { getStudentTeachingClass } from "@/lib/studentRoster";
 import { ASSIGNMENTS_COLLECTION, ASSIGNMENT_SUBMISSIONS_COLLECTION } from "@/lib/assignments";
 import { getSubmissionDocId, verifyTeacherRequest } from "@/lib/assignmentServer";
 import { validateGuardianNotice } from "@/lib/guardianNotice";
+import { guardianLessonCountMatches, guardianTermPaused } from "@/lib/guardianTermPolicy";
 
 export const guardianCollections = {
   schools: "guardian_school_configs", access: "guardian_student_access",
@@ -27,7 +28,7 @@ const noStore = {"Cache-Control":"private, no-store, max-age=0"};
 export const guardianJson = (body:unknown,status=200) => Response.json(body,{status,headers:noStore});
 export function guardianError(error:unknown) {
   const message=error instanceof Error?error.message:"server_error";
-  const status:Record<string,number>={disabled:503,invalid_input:400,invalid_login:401,forbidden:403,not_found:404,rate_limited:429,lesson_unavailable:409};
+  const status:Record<string,number>={disabled:503,invalid_input:400,invalid_login:401,forbidden:403,not_found:404,rate_limited:429,lesson_unavailable:409,lesson_count_mismatch:409};
   return guardianJson({error:status[message]?message:"server_error"},status[message]||500);
 }
 function database() {
@@ -42,7 +43,7 @@ export async function guardianTeacher(request:Request) {
   if(!allowlist.includes(teacher.uid)) throw new Error("forbidden");
   return teacher;
 }
-export function isGuardianTermPaused(slug:string,term:unknown) { return slug==="sau"&&term==="2026-Q4"; }
+export const isGuardianTermPaused=guardianTermPaused;
 function school(value:unknown) {
   const s=getAfterSchoolSchool(id(value)); if(!s) throw new Error("not_found");return s;
 }
@@ -71,7 +72,7 @@ export async function configureGuardianSchool(body:any) {
   const term=str(body.term);if(!/^\d{4}-Q[1-4]$/.test(term))throw new Error("invalid_input");
   if(body.enabled===true&&isGuardianTermPaused(s.slug,term))throw new Error("forbidden");
   const classes:any={};for(const c of ["A반","B반"]){
-    if(body.classes?.[c]){const x=body.classes[c];classes[c]={lessons:parseLessons(x.lessons),supplies:str(x.supplies).slice(0,500),extra:str(x.extra).slice(0,500)};}
+    if(body.classes?.[c]){const x=body.classes[c];const lessons=parseLessons(x.lessons);if(!isGuardianTermPaused(s.slug,term)&&!guardianLessonCountMatches(s.slug,term,lessons.length))throw new Error("lesson_count_mismatch");classes[c]={lessons,supplies:str(x.supplies).slice(0,500),extra:str(x.extra).slice(0,500)};}
   }
   if(!Object.keys(classes).length&&body.enabled===true)throw new Error("invalid_input");
   const existing=(await ref.get()).data();
@@ -132,7 +133,7 @@ async function session(request:Request) {
   if(!config?.enabled||isGuardianTermPaused(ss.slug,config.term)||!access?.enabled||ss.schoolVersion!==config.version||ss.accessVersion!==access.version)throw new Error("invalid_login");
   const {data,teachingClass}=await readStudent(ss.studentId,ss.slug);
   if(!getEnrollmentTerms(data).includes(config.term))throw new Error("invalid_login");
-  const plan=config.classes?.[teachingClass];if(!plan)throw new Error("forbidden");
+  const plan=config.classes?.[teachingClass];if(!plan||!Array.isArray(plan.lessons)||!guardianLessonCountMatches(ss.slug,config.term,plan.lessons.length))throw new Error("forbidden");
   return {db,ss,config,plan,data,teachingClass,sessionRef};
 }
 const noticeId=(slug:string,term:string,studentId:string,lesson:number)=>hash([slug,term,studentId,lesson].join(":"));
