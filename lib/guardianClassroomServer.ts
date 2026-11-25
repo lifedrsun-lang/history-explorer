@@ -172,3 +172,10 @@ export async function confirmGuardianNotice(body:any) {
 }
 
 export async function getGuardianNoticeSummary(){const db=database();const snap=await db.collection(guardianCollections.notices).where("date",">=",today()).get();const result:Record<string,{pending:number;total:number}>={};for(const d of snap.docs){const n=d.data();if(n.cancelled||typeof n.studentId!=="string")continue;const row=result[n.studentId]||(result[n.studentId]={pending:0,total:0});row.total++;if(!n.confirmed)row.pending++;}return result;}
+
+export async function guardianTeacherSettings(slug:unknown) {
+ const db=database(),s=school(slug);const config=(await db.collection(guardianCollections.schools).doc(s.slug).get()).data();
+ const students=await db.collection("students").get();
+ const roster=students.docs.filter(d=>matchesAfterSchoolSchool(d.data().school,s)&&getEnrollmentStatus(d.data())==="active").map(d=>({id:d.id,name:str(d.data().name),teachingClass:getStudentTeachingClass(d.data()),terms:getEnrollmentTerms(d.data())}));
+ return {config:config?{enabled:config.enabled===true,term:config.term,classes:config.classes,hasCode:Boolean(config.codeHash)}:null,roster};
+}

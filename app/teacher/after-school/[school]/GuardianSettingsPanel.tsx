@@ -1,0 +1,34 @@
+"use client";
+import {useEffect,useState} from "react";
+import {auth} from "@/lib/firebase";
+type Lesson={lesson:number;date:string;cancelled:boolean};
+type Plan={lessons:Lesson[];supplies:string;extra:string};
+type Roster={id:string;name:string;teachingClass:string;terms:string[]};
+const blank=():Plan=>({lessons:Array.from({length:12},(_,i)=>({lesson:i+1,date:"",cancelled:false})),supplies:"",extra:""});
+const panel="rounded-2xl border bg-white p-4 shadow-sm";
+export default function GuardianSettingsPanel({slug}:{slug:string}){
+ const [ready,setReady]=useState(false);const [error,setError]=useState("");const [busy,setBusy]=useState(false);
+ const [enabled,setEnabled]=useState(false);const [term,setTerm]=useState("");const [plans,setPlans]=useState<Record<string,Plan>>({"A반":blank(),"B반":blank()});
+ const [selected,setSelected]=useState<string[]>([]);const [roster,setRoster]=useState<Roster[]>([]);const [code,setCode]=useState("");const [codeFor,setCodeFor]=useState("");const [rotate,setRotate]=useState(false);const [hasCode,setHasCode]=useState(false);const [studentId,setStudentId]=useState("");
+ async function request(body?:unknown){const user=auth.currentUser;if(!user)throw new Error("auth");const r=await fetch("/api/teacher/guardian"+(body?"":"?school="+encodeURIComponent(slug)),{method:body?"POST":"GET",headers:{Authorization:"Bearer "+await user.getIdToken(),...(body?{"Content-Type":"application/json"}:{})},...(body?{body:JSON.stringify(body)}:{}),cache:"no-store"});if(!r.ok)throw new Error("request");return r.json();}
+ useEffect(()=>{let live=true;const unsub=auth.onAuthStateChanged(user=>{if(!user){if(live)setReady(false);return;}void request().then(d=>{if(!live)return;const c=d.config;setEnabled(c?.enabled===true);setTerm(c?.term||"");setPlans({"A반":c?.classes?.["A반"]||blank(),"B반":c?.classes?.["B반"]||blank()});setSelected(Object.keys(c?.classes||{}));setRoster(d.roster||[]);setHasCode(c?.hasCode===true);setReady(true);}).catch(()=>{if(live)setError("보호자 관리가 비활성 상태이거나 권한이 없습니다.");});});return()=>{live=false;unsub();};},[slug]);
+ function update(c:string,fn:(p:Plan)=>Plan){setPlans(old=>({...old,[c]:fn(old[c])}));}
+ async function run(fn:()=>Promise<void>){setBusy(true);setError("");setCode("");try{await fn();}catch{setError("저장되지 않았습니다. 설정 및 권한을 확인해 주세요.");}finally{setBusy(false);}}
+ const valid=/^\d{4}-Q[1-4]$/.test(term)&&selected.length>0&&selected.every(c=>plans[c].lessons.every((l,i)=>l.date&&(i===0||l.date>plans[c].lessons[i-1].date)));
+ return <section className={panel}><h2 className="text-lg font-black">보호자 수업방 관리</h2>
+ {error&&<p role="alert" className="mt-2 text-sm text-rose-700">{error}</p>}
+ {!ready?<p className="mt-2 text-sm text-slate-600">보호자 관리 설정을 확인 중이거나 기능이 비활성 상태입니다.</p>:<>
+ <label className="mt-3 flex gap-2"><input type="checkbox" checked={enabled} onChange={e=>setEnabled(e.target.checked)}/>보호자 수업방 활성화</label>
+ <label className="mt-3 block text-sm font-bold">분기 (예: 2026-Q4)<input className="mt-1 w-full rounded border p-2" value={term} onChange={e=>setTerm(e.target.value)}/></label>
+ {["A반","B반"].map(c=><div key={c} className="mt-4 rounded-xl border p-3">
+ <label className="flex gap-2 font-bold"><input type="checkbox" checked={selected.includes(c)} onChange={e=>setSelected(old=>e.target.checked?[...old,c]:old.filter(x=>x!==c))}/>{c} 사용</label>
+ {selected.includes(c)&&<><label className="mt-2 block text-sm">공통 준비물<textarea className="w-full rounded border p-2" maxLength={500} value={plans[c].supplies} onChange={e=>update(c,p=>({...p,supplies:e.target.value}))}/></label><label className="mt-2 block text-sm">추가 준비물 / 특별 전달사항<textarea className="w-full rounded border p-2" maxLength={500} value={plans[c].extra} onChange={e=>update(c,p=>({...p,extra:e.target.value}))}/></label>
+ <p className="mt-2 text-sm font-bold">실제 수업일 12회 (자동 추정하지 않음)</p><div className="mt-1 grid gap-2 sm:grid-cols-2">{plans[c].lessons.map((l,i)=><div key={l.lesson} className="rounded bg-slate-50 p-2"><label className="text-xs">{Math.ceil(l.lesson/4)}텀 · {l.lesson}회차<input type="date" value={l.date} onChange={e=>update(c,p=>({...p,lessons:p.lessons.map((v,j)=>i===j?{...v,date:e.target.value}:v)}))} className="block w-full rounded border p-1"/></label><label className="mt-1 flex gap-1 text-xs"><input type="checkbox" checked={l.cancelled} onChange={e=>update(c,p=>({...p,lessons:p.lessons.map((v,j)=>i===j?{...v,cancelled:e.target.checked}:v)}))}/>휴강</label></div>)}</div></>}
+ </div>)}
+ {hasCode&&<label className="mt-3 flex gap-2 text-sm"><input type="checkbox" checked={rotate} onChange={e=>setRotate(e.target.checked)}/>학교 코드 재발급 (기존 보호자 세션 만료)</label>}
+ <button type="button" className="mt-3 w-full rounded-xl bg-violet-700 p-3 font-bold text-white disabled:opacity-40" disabled={busy||!valid} onClick={()=>void run(async()=>{const classes=Object.fromEntries(selected.map(c=>[c,plans[c]]));const r=await request({action:"configure",slug,enabled,term,classes,rotateCode:rotate});setCode(r.code||"");setCodeFor("학교 보호자 코드");setHasCode(true);setRotate(false);})}>학교 설정 저장</button>
+ <div className="mt-4 border-t pt-3"><h3 className="font-bold">자녀별 보호자 인증 코드</h3><select className="mt-2 w-full rounded border p-2" value={studentId} onChange={e=>setStudentId(e.target.value)}><option value="">학생 선택</option>{roster.filter(s=>s.terms.includes(term)).map(s=><option key={s.id} value={s.id}>{s.name} · {s.teachingClass}</option>)}</select><div className="mt-2 flex gap-2"><button type="button" disabled={busy||!studentId} className="flex-1 rounded bg-violet-100 p-2 font-bold disabled:opacity-40" onClick={()=>void run(async()=>{if(!window.confirm("기존 자녀 인증 코드가 있다면 무효화됩니다. 발급할까요?"))return;const r=await request({action:"issue",slug,studentId});setCode(r.code||"");setCodeFor("선택 학생 보호자 인증 코드");})}>발급 / 재발급</button><button type="button" disabled={busy||!studentId} className="rounded border p-2 text-rose-700" onClick={()=>void run(async()=>{if(!window.confirm("이 보호자 접근을 취소할까요?"))return;await request({action:"issue",slug,studentId,revoke:true});})}>접근 해제</button></div></div>
+ {code&&<div className="mt-3 rounded-xl bg-amber-50 p-3"><p className="text-sm font-bold">{codeFor} (한 번만 표시)</p><p className="break-all font-mono">{code}</p><button type="button" className="mt-2 rounded border p-2 text-sm" onClick={()=>setCode("")}>코드 숨기기</button></div>}
+ </>}
+ </section>;
+}
