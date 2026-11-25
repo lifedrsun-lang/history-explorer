@@ -27,7 +27,10 @@ async function checkCollection(collectionId) {
   const getUrl = `${base}/documents/${collectionId}/${probeId}`;
   const getResponse = await fetch(getUrl, { headers: { Accept: "application/json" } });
   if (!denied(getResponse.status)) {
-    throw new Error(`${collectionId}: anonymous direct get was not denied (HTTP ${getResponse.status}).`);
+    const diagnostic = await getResponse.json().catch(() => ({}));
+    const statusName = typeof diagnostic?.error?.status === "string" ? diagnostic.error.status : "unknown";
+    const message = typeof diagnostic?.error?.message === "string" ? diagnostic.error.message.slice(0, 300) : "no diagnostic message";
+    throw new Error(`${collectionId}: anonymous direct get was not denied (HTTP ${getResponse.status}, ${statusName}: ${message}).`);
   }
 
   const referenceValue = `projects/${projectId}/databases/(default)/documents/${collectionId}/${probeId}`;
