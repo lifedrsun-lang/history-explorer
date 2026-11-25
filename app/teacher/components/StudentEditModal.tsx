@@ -8,6 +8,9 @@ import {
   STUDENT_PROGRAM_OPTIONS,
   getStudentProgramValue,
   isQuarterManagedProgram,
+  isWorldCultureProgram,
+  WORLD_CULTURE_PROGRESS_OPTIONS,
+  getWorldCultureProgress,
 } from "@/lib/programs";
 import {
   ENROLLMENT_STATUS_OPTIONS,
@@ -42,6 +45,7 @@ export default function StudentEditModal({
     student?.sunLabMember === true
   );
   const [teachingClass, setTeachingClass] = useState<TeachingClass>(() => getStudentTeachingClass(student));
+  const [worldStage, setWorldStage] = useState(() => getWorldCultureProgress(student?.worldCultureStage)?.id || "");
   const [saving, setSaving] = useState(false);
 
   const toggleQuarter = (quarter: number) => {
@@ -69,6 +73,7 @@ export default function StudentEditModal({
         password: studentNumber.padStart(2, "0"),
         name: String(formData.get("name") || "").trim(),
         program,
+        ...(isWorldCultureProgram(program) ? { worldCultureStage: worldStage } : {}),
         teachingClass: isQuarterManagedProgram(program) ? teachingClass : "",
         enrollmentStatus: status,
         isActive: status === "active",
@@ -147,6 +152,15 @@ export default function StudentEditModal({
             </select>
           </label>
 
+          {isWorldCultureProgram(program) && (
+            <label className="grid gap-1.5 text-xs font-black text-slate-600">
+              세계문화 모나르떼 교재 진도
+              <select value={worldStage} onChange={(event) => setWorldStage(event.target.value)} className="w-full rounded-xl border px-4 py-3 text-sm">
+                <option value="">진도 미지정</option>
+                {WORLD_CULTURE_PROGRESS_OPTIONS.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
+              </select>
+            </label>
+          )}
           {isQuarterManagedProgram(program) && (
             <label className="grid gap-1.5 text-xs font-black text-slate-600">
               방과후 수강반 (실제 학교 반과 별도)
