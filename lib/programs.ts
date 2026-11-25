@@ -1,3 +1,5 @@
+import { WORLD_CULTURE_BOOKS } from "@/lib/presentations/catalog";
+
 export type StudentProgram =
   | "sun_lab"
   | "byeolkkum_history"
@@ -90,3 +92,19 @@ export const getStudentProgramLabel = (
 
 export const isQuarterManagedProgram = (value: unknown) =>
   getStudentProgramValue(value) !== "sun_lab";
+
+export const isWorldCultureProgram = (value: unknown) =>
+  getStudentProgramValue(value) === "monarte_world_culture";
+
+export const WORLD_CULTURE_PROGRESS_OPTIONS = WORLD_CULTURE_BOOKS.map(book => ({
+  id: `world_${book.series}_${book.number}`,
+  label: `${book.seriesLabel} ${book.number}호`,
+}));
+
+export const getWorldCultureProgress = (value: unknown) =>
+  WORLD_CULTURE_PROGRESS_OPTIONS.find(option => option.id === value);
+
+export const getStudentMaterialStageId = (student: { program?: unknown; stage?: unknown; worldCultureStage?: unknown }) =>
+  isWorldCultureProgram(student.program)
+    ? getWorldCultureProgress(student.worldCultureStage)?.id || ""
+    : String(student.stage || "");
