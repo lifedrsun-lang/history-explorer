@@ -1,4 +1,4 @@
-import { HISTORY_BOOKS } from "@/lib/presentations/catalog";
+import { HISTORY_BOOKS, WORLD_CULTURE_BOOKS } from "@/lib/presentations/catalog";
 // Column names and defaults follow the supplied 드림잇 물류(교재) 주문서.xls.
 export const ORDER_SUBJECTS = ["별꼼역사", "모나르떼", "헤르메스", "기타"] as const;
 export const ORDER_BOOKS = Array.from({ length: 24 }, (_, i) => {
@@ -7,6 +7,13 @@ export const ORDER_BOOKS = Array.from({ length: 24 }, (_, i) => {
   const topic = number === 24 ? "연대표(복습)" : book?.shortTitle.replace(/(\D)(\d+)$/, "$1 $2") || "";
   return { number, productName: `별꼼역사 ${String(number).padStart(2, "0")}호${topic ? ` ${topic}` : ""}`, confirmed: !!book || number === 24 };
 });
+export const ORDER_MONARTE_BOOKS = WORLD_CULTURE_BOOKS.map(book => ({
+  id: `world_${book.series}_${book.number}`,
+  series: book.series,
+  seriesLabel: book.seriesLabel,
+  number: book.number,
+  productName: `모나르떼 ${book.seriesLabel} ${book.number}호`,
+}));
 export function orderBookNumber(productName: string): number | null {
   const match = productName.match(/^별꼼역사\s+(\d{1,2})호/);
   const number = Number(match?.[1]);
@@ -25,6 +32,7 @@ export function selectOrderBooks(lines: OrderLine[], numbers: number[], options:
 }
 export const ORDER_COLUMNS = ["주문번호", "상품번호", "상품명", "옵션명", "수량", "판매단가", "판매금액", "수령자", "전화", "핸드폰", "우편번호", "주소", "배송메세지", "배송비", "송장출력갯수", "택배크기"];
 export const ORDER_OPTIONS = ["스토리북", "워크북", "체험물"] as const;
+export const ORDER_MONARTE_OPTIONS = ["교재", "체험물"] as const;
 export type OrderLine = { id: string; orderNumber: string; productNumber: string; productName: string; option: string; quantity: number; unitPrice: number | null; school?: string; teachingClass?: string; subject?: string; course?: string };
 export type OrderDelivery = { recipient: string; phone: string; mobile: string; postalCode: string; address: string; message: string; shipping: string; invoiceCount: number; parcelSize: string };
 export type TextbookOrder = { id: string; revision: number; title: string; date: string; delivery: OrderDelivery; lines: OrderLine[]; createdAt: string; updatedAt: string; mailStatus?: "sending" | "sent" | "failed" | "unknown"; mailSentAt?: string };
