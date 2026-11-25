@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash, randomBytes, timingSafeEqual, scryptSync } from "node:crypto";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
-import { getAfterSchoolSchool, matchesAfterSchoolSchool } from "@/lib/afterSchool";
+import { AFTER_SCHOOL_SCHOOLS, getAfterSchoolSchool, matchesAfterSchoolSchool } from "@/lib/afterSchool";
 import { getEnrollmentStatus, getEnrollmentTerms } from "@/lib/studentEnrollment";
 import { getStudentTeachingClass } from "@/lib/studentRoster";
 import { ASSIGNMENTS_COLLECTION, ASSIGNMENT_SUBMISSIONS_COLLECTION } from "@/lib/assignments";
@@ -46,8 +46,8 @@ function school(value:unknown) {
   const s=getAfterSchoolSchool(id(value)); if(!s) throw new Error("not_found");return s;
 }
 export function schoolSlugForName(value:unknown) {
-  for(const slug of ["sau","haneulbit","saesol","deunghyeon"]){
-    const s=getAfterSchoolSchool(slug);if(s&&matchesAfterSchoolSchool(value,s))return slug;
+  for(const s of AFTER_SCHOOL_SCHOOLS){
+    if(matchesAfterSchoolSchool(value,s))return s.slug;
   } return "";
 }
 async function readStudent(studentId:string, slug:string) {
@@ -99,6 +99,12 @@ async function limitLogin(slug:string,request:Request) {
     if(count>=12)throw new Error("rate_limited");
     tx.set(ref,{start:count?start:now,count:count+1,expiresAt:new Date(now+15*60_000)});
   });
+}
+export async function checkGuardianSchool(request:Request,body:any) {
+  const db=database();const slug=schoolSlugForName(body.school);if(!slug)return {guardian:false};
+  await limitLogin(slug,request);
+  const config=(await db.collection(guardianCollections.schools).doc(slug).get()).data();
+  return {guardian:Boolean(config?.enabled&&matches(str(body.schoolCode),config.codeSalt,config.codeHash)),slug};
 }
 export async function loginGuardian(request:Request,body:any) {
   const db=database();const s=school(body.slug);await limitLogin(s.slug,request);
@@ -164,3 +170,5 @@ export async function confirmGuardianNotice(body:any) {
     tx.update(ref,{confirmed:true,confirmedAt:Date.now()});
   });
 }
+
+export async function getGuardianNoticeSummary(){const db=database();const snap=await db.collection(guardianCollections.notices).where("date",">=",today()).get();const result:Record<string,{pending:number;total:number}>={};for(const d of snap.docs){const n=d.data();if(n.cancelled||typeof n.studentId!=="string")continue;const row=result[n.studentId]||(result[n.studentId]={pending:0,total:0});row.total++;if(!n.confirmed)row.pending++;}return result;}

@@ -18,6 +18,7 @@ import {
 
 import SchoolSelect from "./components/SchoolSelect";
 import StudentProfile from "./components/StudentProfile";
+import GuardianClassroom from "./components/GuardianClassroom";
 import ClassProgressBoard from "./components/ClassProgressBoard";
 import SearchDropdown from "./components/SearchDropdown";
 import LoadingSpinner from "./components/LoadingSpinner";
@@ -64,6 +65,8 @@ export default function StudentHistoryPage({
   const [pendingSchool, setPendingSchool] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [combinedSchoolVerified, setCombinedSchoolVerified] = useState(false);
+  const [guardianEntry,setGuardianEntry]=useState<{slug:string;schoolCode:string;studentId:string;studentName:string}|null>(null);
+  const [guardianChecking,setGuardianChecking]=useState(false);
 
   const DEFAULT_SCHOOLS = getDefaultSchoolDisplayNames();
 
@@ -516,6 +519,8 @@ export default function StudentHistoryPage({
     ? getStudentGroupLabel(selectedStudent)
     : "";
 
+  if (guardianEntry) return <GuardianClassroom {...guardianEntry} onExit={()=>{setGuardianEntry(null);setPasswordInput("");setStudentPassword("");setPendingStudent(null);setSearchName("");}} />;
+
   if (!selectedSchool) {
     if (pendingSchool) {
       return (
@@ -660,7 +665,7 @@ export default function StudentHistoryPage({
 
           <button
             type="button"
-            onClick={() => {
+            onClick={async () => {
               const schoolPasswordMatches =
                 normalize(passwordInput) === normalize(getSchoolPassword(selectedSchool));
               const attendanceNumberMatches =
@@ -668,6 +673,16 @@ export default function StudentHistoryPage({
                 normalize(studentPassword) === normalize(pendingStudent.studentNumber);
 
               if (!schoolPasswordMatches || !attendanceNumberMatches) {
+                if (!schoolPasswordMatches && attendanceNumberMatches && pendingStudent?.collectionName === "students" && !guardianChecking) {
+                  setGuardianChecking(true);
+                  try {
+                    const res=await fetch("/api/guardian",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"check",school:selectedSchool,schoolCode:passwordInput}),cache:"no-store"});
+                    if(res.ok){
+                      const result=await res.json();
+                      if(result.guardian&&result.slug){setGuardianEntry({slug:result.slug,schoolCode:passwordInput,studentId:String(pendingStudent.id),studentName:String(pendingStudent.name)});setPasswordInput("");setStudentPassword("");return;}
+                    }
+                  }catch{}finally{setGuardianChecking(false);}
+                }
                 alert("입력 정보를 확인해 주세요.");
                 return;
               }
@@ -680,7 +695,7 @@ export default function StudentHistoryPage({
               setPasswordInput("");
               setStudentPassword("");
             }}
-            disabled={!passwordInput.trim() || !pendingStudent || !studentPassword.trim()}
+            disabled={guardianChecking || !passwordInput.trim() || !pendingStudent || !studentPassword.trim()}
             className="mt-5 w-full rounded-2xl bg-sky-400 py-4 text-xl font-bold text-white shadow-sm transition hover:bg-sky-500 disabled:opacity-50"
           >
             수업방 입장
