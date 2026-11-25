@@ -75,7 +75,8 @@ export default function GuardianPreview() {
         <h2 className="text-xl font-black">예시 학생</h2>
         <div className="mt-2 flex flex-wrap gap-1 text-xs font-bold">
           {["📘 교재 미지급","📸 과제 없음","📝 복습","🎁 코인교환 없음","26-4분기"].map(s=><span className="rounded-full bg-slate-100 px-2 py-1" key={s}>{s}</span>)}
-          {counts.total>0&&<button type="button" className="rounded-full bg-violet-100 px-2 py-1 text-violet-800" onClick={()=>setOpen(!open)}>{counts.pending?"🔔 불참 미확인 "+counts.pending+"건":"📅 불참 예정 "+counts.total+"건"}</button>}
+          {counts.pending>0&&<button type="button" className="rounded-full bg-orange-100 px-2 py-1 text-orange-800" onClick={()=>setOpen(!open)}>🔔 불참 미확인 {counts.pending}건</button>}
+          {counts.total>0&&<button type="button" className="rounded-full bg-violet-100 px-2 py-1 text-violet-800" onClick={()=>setOpen(!open)}>📅 불참 예정 {counts.total}건</button>}
         </div>
         {open&&records.map(r=><div key={r.lesson} className="mt-2 rounded-lg border p-2 text-sm">
           <p>{r.lesson}회차 · {dates[r.lesson-1]} · {r.kind} 예정</p><p>사유: {guardianReasonLabel(r)}</p>
