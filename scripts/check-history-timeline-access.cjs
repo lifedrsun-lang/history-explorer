@@ -21,6 +21,7 @@ const root = path.join(__dirname, "..");
 const history = require(path.join(root, "lib/historyTimeline.ts"));
 const topicsLibrary = require(path.join(root, "lib/historyTimelineAllTopics.ts"));
 const peopleLibrary = require(path.join(root, "lib/historyTimelinePeople.ts"));
+const editionLibrary = require(path.join(root, "lib/historyTimelineEdition.ts"));
 const conflictLibrary = require(path.join(root, "lib/historyTimelineWarDetails.ts"));
 if (originalTs) Module._extensions[".ts"] = originalTs;
 else delete Module._extensions[".ts"];
@@ -63,11 +64,14 @@ assert(warDetails["republic-koreanwar-1950"].result.includes("1953년 정전 협
   "Korean War must distinguish the 1953 armistice from a peace treaty");
 
 
-assert.deepEqual(normalizeTimelineIssues([0,1,1,4,6,24,"13","bad",-1]), [1,4,6,13]);
+assert.deepEqual(normalizeTimelineIssues([0,1,1,4,6,24,"13","bad",-1]), [1,4,6,13,24]);
 assert.deepEqual(resolveTimelineCompletedIssues({timelineCompletedIssues:[]}).issues, []);
 assert.deepEqual(resolveTimelineCompletedIssues({timelineCompletedIssues:[6,4,6]}).issues, [4,6]);
 assert.deepEqual(resolveTimelineCompletedIssues({stage:"book_1"}).issues, []);
 assert.deepEqual(resolveTimelineCompletedIssues({stage:"book_4"}).issues, [1,2,3]);
+assert.deepEqual(resolveTimelineCompletedIssues({stage:"book_11",timelineCompletedIssues:[]}).issues, []);
+assert.deepEqual(resolveTimelineCompletedIssues({timelineCompletedIssues:[24]}).issues,[24]);
+assert.deepEqual(getTimelineEventsForIssues([24]),[]);
 assert.deepEqual(resolveTimelineCompletedIssues({stage:"5-2"}).issues, [1,2,3,4]);
 
 function checkScenario(input) {
@@ -173,6 +177,11 @@ assert(apiRouteSource.includes("const events = getTimelineEventsForIssues(comple
   "Ordinary enrolled student route must retain issue authorization");
 assert(apiRouteSource.includes("memberProfileDoc.data()?.timelineFullAccess === true"),
   "Full access must remain gated by server-side permission");
+const textbookRouteSource = fs.readFileSync(path.join(root, "app/api/history/timeline/byeolkkum/events/route.ts"), "utf8");
+assert(textbookRouteSource.includes("await verifyTeacherRequest(request)"), "Teacher-only rollout must gate new textbook API");
+const textbookEvents = editionLibrary.selectByeolkkumTimeline(fullAccessEvents, new Map(HISTORY_TIMELINE_EVENTS.map(e=>[e.id,e])));
+assert(!textbookEvents.some(e=>e.id==="goryeo-cheoin-battle-1232"),"Unverified heritage event leaked into textbook edition");
+assert(textbookEvents.every(e=>(e.studyNotes||[]).every(n=>n.kind==="textbook")),"Supplement note leaked into textbook edition");
 const timelineClientSource = fs.readFileSync(path.join(root, "app/history/timeline/TimelineClient.tsx"), "utf8");
 assert(timelineClientSource.includes("const [showHeritageDetails, setShowHeritageDetails] = useState(false)"),
   "Heritage checkbox must be unchecked initially");

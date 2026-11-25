@@ -472,6 +472,7 @@ export default function TeacherStudentsPage() {
       stage: isSunLabOnly || isWorldCultureProgram(newProgram) ? DEFAULT_STAGE_ID : newStage,
       worldCultureStage: isWorldCultureProgram(newProgram) ? newWorldStage : "",
       program: newProgram,
+      timelineCompletedIssues: [],
       isActive: newStatus === "active",
       enrollmentStatus: newStatus,
       enrollmentTerms: newEnrollmentTerms,
