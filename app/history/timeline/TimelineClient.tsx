@@ -6,7 +6,8 @@ import { Fragment, FormEvent, useEffect, useMemo, useState } from "react";
 
 import { auth } from "@/lib/firebase";
 import type { HistoryTimelineEvent } from "@/lib/historyTimeline";
-import { buildTimelinePersonDirectory } from "@/lib/historyTimelinePeople";
+import type { TimelinePersonIndex } from "@/lib/historyTimelinePeople";
+import { restrictPersonDirectoryToVisible } from "@/lib/historyTimelinePersonVisibility";
 import TimelinePersonCards from "./TimelinePersonCards";
 import { shouldShowTimelineMaterial } from "@/lib/historyTimelinePresentation";
 import {
@@ -163,6 +164,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
   const [referenceNotes, setReferenceNotes] = useState<Record<string, HistoryReferenceNote[]>>({});
   const [yongFlowEvents, setYongFlowEvents] = useState<StudentEvent[]>([]);
   const [referenceEvents, setReferenceEvents] = useState<StudentEvent[]>([]);
+  const [authorizedPeople,setAuthorizedPeople] = useState<TimelinePersonIndex>({byEvent:{},byTopic:{}});
   const [showRobinPreference, setShowRobin] = useState(false);
   const [showReadingBookPreference, setShowReadingBook] = useState(false);
   const [showElementaryPreference, setShowElementary] = useState(false);
@@ -219,6 +221,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
       setReferenceNotes({});
       setYongFlowEvents([]);
       setReferenceEvents([]);
+      setAuthorizedPeople({byEvent:{},byTopic:{}});
     }
     try {
       const token = !studentView && currentTeacher ? await currentTeacher.getIdToken() : "";
@@ -267,6 +270,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
       }
 
       setPayload(data);
+      setAuthorizedPeople({byEvent:{},byTopic:{}});
       setByeolbyeolNotes({}); setByeolbyeolFlowEvents([]); setYongNotes({}); setYongFlowEvents([]); setReferenceNotes({}); setReferenceEvents([]);
       try {
         const extraResponse = await fetch(`/api/history/timeline/byeolbyeol?edition=${edition}${viewQuery ? "&" + viewQuery.slice(1) : ""}`, {
@@ -275,6 +279,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
         });
         if (extraResponse.ok) {
           const extra = (await extraResponse.json().catch(() => ({}))) as {
+            personDirectory?:TimelinePersonIndex;
             notes?: Record<string, ByeolbyeolNote[]>;
             flowEvents?: StudentEvent[];
             yongNotes?: Record<string,YongNote[]>;
@@ -282,6 +287,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
             yongFlowEvents?: StudentEvent[];
             referenceEvents?: StudentEvent[];
           };
+          setAuthorizedPeople(extra.personDirectory??{byEvent:{},byTopic:{}});
           setByeolbyeolNotes(extra.notes ?? {});
           setByeolbyeolFlowEvents(Array.isArray(extra.flowEvents) ? extra.flowEvents : []);
           setYongNotes(extra.yongNotes ?? {});
@@ -418,8 +424,8 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
     });
   }, [visibleEvents, payload?.studyTopics]);
   const personDirectory = useMemo(
-    () => buildTimelinePersonDirectory(visibleEvents, visibleStudyTopics),
-    [visibleEvents, visibleStudyTopics]
+    () => showPersonCards?restrictPersonDirectoryToVisible(authorizedPeople,visibleEvents,visibleStudyTopics):{byEvent:{},byTopic:{}},
+    [showPersonCards,authorizedPeople,visibleEvents,visibleStudyTopics]
   );
   const personCardsByEvent = personDirectory.byEvent;
 

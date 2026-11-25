@@ -1,4 +1,6 @@
 import { getAuthorizedTimeline } from "@/lib/historyTimelineAuthorized";
+import { buildTimelinePersonDirectory, type PersonTimelineEvent } from "@/lib/historyTimelinePeople";
+import type { HistoryTimelineStudyTopic } from "@/lib/historyTimelineGoryeoTopics";
 import { filterTimelineMaterialRecords, type TimelineMaterialAccess } from "@/lib/historyTimelineMaterialPolicy";
 import { getByeolbyeolPublicNotes } from "@/lib/historyTimelineByeolbyeol";
 import { HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS } from "@/lib/historyTimelineByeolbyeolFlow";
@@ -65,16 +67,21 @@ export async function GET(request: Request) {
   const edition = new URL(request.url).searchParams.get("edition") === "byeolkkum" ? "byeolkkum" : "integrated";
   const authorized=await getAuthorizedTimeline(request,edition);
   if(!authorized.ok) return authorized;
-  const data=await authorized.json() as {materialAccess:TimelineMaterialAccess;allowedIssues:number[];events:{id:string}[]};
+  const data=await authorized.json() as {materialAccess:TimelineMaterialAccess;allowedIssues:number[];events:PersonTimelineEvent[];studyTopics?:HistoryTimelineStudyTopic[]};
   const access=data.materialAccess;
   const ids=new Set(data.events.map(e=>e.id));
   const materials=buildAllowedMaterials(data.allowedIssues);
+  const flowEvents=materials.flowEvents.filter(e=>access[e.byeolbyeolLevel]);
+  const yongFlowEvents=access.yong?materials.yongFlowEvents:[];
+  const referenceEvents=materials.referenceEvents.filter(e=>e.referenceGroup!==null && access[e.referenceGroup]);
+  const personDirectory=access.people?buildTimelinePersonDirectory([...data.events,...flowEvents,...yongFlowEvents,...referenceEvents],data.studyTopics??[]):undefined;
   return respond({
+    personDirectory,
     notes:filterTimelineMaterialRecords(materials.notes,n=>access[n.level],ids),
-    flowEvents:materials.flowEvents.filter(e=>access[e.byeolbyeolLevel]),
+    flowEvents,
     yongNotes:access.yong?filterTimelineMaterialRecords(materials.yongNotes,()=>true,ids):{},
-    yongFlowEvents:access.yong?materials.yongFlowEvents:[],
+    yongFlowEvents,
     referenceNotes:filterTimelineMaterialRecords(materials.referenceNotes,n=>access[n.referenceGroup],ids),
-    referenceEvents:materials.referenceEvents.filter(e=>e.referenceGroup!==null && access[e.referenceGroup]),
+    referenceEvents,
   });
 }

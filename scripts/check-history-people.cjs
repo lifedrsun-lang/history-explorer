@@ -347,3 +347,7 @@ assert.deepEqual(Object.keys(buildTimelinePersonDirectory([],nineLessonTopics.fi
   "9th-issue teaching person cards must not leak to issue 10");
 
 console.log("History person-card regression: coverage and permission assertions passed.");
+
+assert(!clientSrc.includes('import { buildTimelinePersonDirectory }'), "Student browser must not bundle person source dataset");
+const supplementSrc=fs.readFileSync(path.join(__dirname,"..","app","api","history","timeline","byeolbyeol","route.ts"),"utf8");
+assert(supplementSrc.includes("access.people?buildTimelinePersonDirectory"),"Person data must be generated only for authorized requests");
