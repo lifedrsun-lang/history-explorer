@@ -1,0 +1,7 @@
+# Guardian rollout verification gate
+
+Do not enable Production guardian access until a Firebase administrator verifies the deployed rules, including any overlapping recursive wildcard rules. Deny all direct client reads/writes for school_entry_codes, school_entry_code_limits, guardian_school_configs, guardian_student_access, guardian_sessions, guardian_absence_notices and guardian_login_limits. The Admin SDK routes must enforce teacher and child authorization. Do not replace existing rules with this checklist.
+
+Use synthetic accounts in an isolated test database. Verify unauthenticated/non-teacher code reveal and save are denied; another child's guardian session cannot access or modify a record; common-code change invalidates old sessions; expired/revoked sessions fail; rate limits work; Sau remains paused for 2026-Q4; wrong counts are rejected; legacy student entry still works with feature flags off. Check that Deunghyeon's existing server-only student code remains valid until explicitly changed by the teacher. A successful build is not proof of these runtime tests.
+
+Keep Production flags disabled until evidence is recorded and the deployment is separately approved. Never include credentials, student identities or actual absence reasons in logs or test documentation.

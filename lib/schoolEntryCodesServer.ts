@@ -38,6 +38,8 @@ function validateSchool(slug:string) {
   return school;
 }
 function legacyCode(slug:string) {
+  // Keep the existing server-only Deunghyeon code until an explicit teacher override.
+  if(slug==="deunghyeon")return norm(process.env.DEUNGHYEON_STUDENT_ENTRY_CODE);
   const school=getAfterSchoolSchool(slug);
   return school ? norm(getSchoolPassword(school.displayName)) : "";
 }
@@ -100,8 +102,10 @@ export async function verifyManagedStudentCode(request:Request,schoolName:unknow
   if(!school||!isInitialGuardianSchool(school.slug))throw new Error("not_found");
   const code=norm(value);
   if(!code||code.length>128)return false;
-  if(!entryCodesEnabled())return same(code,legacyCode(school.slug));
-  key();
+  const managed=entryCodesEnabled();
+  if(!managed&&school.slug!=="deunghyeon")return same(code,legacyCode(school.slug));
+  if(managed)key();
+  if(!managed&&!legacyCode(school.slug))throw new Error("disabled");
   const ip=(request.headers.get("x-vercel-forwarded-for")||"unknown").split(",")[0].trim();
   const limitId=createHash("sha256").update(school.slug+":"+ip).digest("hex");
   const ref=db().collection(LIMITS).doc(limitId),now=Date.now();
@@ -111,7 +115,9 @@ export async function verifyManagedStudentCode(request:Request,schoolName:unknow
     if(count>=30)throw new Error("rate_limited");
     tx.set(ref,{start:count?start:now,count:count+1,expiresAt:new Date(now+15*60_000)});
   });
+  if(!managed)return same(code,legacyCode(school.slug));
   const id="student_"+school.slug,d=(await doc(id).get()).data();
+  if(!d&&school.slug==="deunghyeon"&&!legacyCode(school.slug))throw new Error("disabled");
   return same(code,d?decrypt(d,id):legacyCode(school.slug));
 }
 export function entryCodeJson(body:unknown,status=200) {
