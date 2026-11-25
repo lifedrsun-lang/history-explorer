@@ -615,3 +615,10 @@ export const disconnectGoogleCalendar = async (teacherUid: string) => {
   const { db } = getFirebaseAdmin();
   await db.collection(CONNECTION_COLLECTION).doc(teacherUid).delete();
 };
+
+// Guardian import must never query unrelated calendar events.
+export async function listGuardianAfterSchoolCalendarEvents(teacherUid:string,timeMin:string,timeMax:string){
+ const {accessToken,calendars}=await ensureGoogleCalendarTargets(teacherUid);
+ if(!calendars.afterSchool)throw new Error("google_calendar_not_connected");
+ return fetchTargetCalendarEvents(accessToken,"afterSchool",calendars.afterSchool,timeMin,timeMax);
+}

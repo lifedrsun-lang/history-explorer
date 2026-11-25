@@ -73,6 +73,8 @@ export async function configureGuardianSchool(body:any) {
   }
   if(!Object.keys(classes).length)throw new Error("invalid_input");
   const existing=(await ref.get()).data();
+  // Prevent a new date list from silently moving existing absence records to different lessons.
+  if(existing?.term===term){const notices=await db.collection(guardianCollections.notices).where("slug","==",s.slug).get();for(const d of notices.docs){const n=d.data();if(n.cancelled||n.term!==term)continue;const student=(await db.collection("students").doc(n.studentId).get()).data();const cls=student?getStudentTeachingClass(student):"";const next=classes[cls]?.lessons?.[Number(n.lesson)-1];if(!next||next.date!==n.date||next.cancelled)throw new Error("lesson_unavailable");}}
   const rotate=body.rotateCode===true||!existing?.codeHash;
   const code=rotate?secret():null;
   const salt=code?randomBytes(16).toString("hex"):null;
