@@ -1,10 +1,8 @@
 import { FieldValue } from "firebase-admin/firestore";
 
-import {
-  handleRouteError,
-  jsonError,
-  verifyTeacherRequest,
-} from "@/lib/assignmentServer";
+import { handleRouteError,
+  jsonError, } from "@/lib/assignmentServer";
+import { verifyTimelineTeacherRequest } from "@/lib/historyTimelineTeacherAccess";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import {
   getHistoryTimelineStudentVisible,
@@ -23,7 +21,7 @@ const normalize = (value: unknown) => String(value || "").trim();
 
 export async function GET(request: Request) {
   try {
-    await verifyTeacherRequest(request);
+    await verifyTimelineTeacherRequest(request);
     const { db } = getFirebaseAdmin();
     const [snapshot, studentVisible] = await Promise.all([
       db.collection("students").where("program", "==", "byeolkkum_history").get(),
@@ -64,7 +62,7 @@ export async function GET(request: Request) {
 // 전체 공개 스위치는 학생별 진도/체크 기록을 삭제하지 않는다.
 export async function PUT(request: Request) {
   try {
-    const teacher = await verifyTeacherRequest(request);
+    const teacher = await verifyTimelineTeacherRequest(request);
     const body = await request.json().catch(() => ({}));
     if (typeof body?.studentVisible !== "boolean") {
       return jsonError("전체 공개 상태를 확인해 주세요.", 400, "invalid_visibility");
@@ -84,7 +82,7 @@ export async function PUT(request: Request) {
 // 이름 일치만으로 권한을 부여하지 않는다: 동명이인 검사 → 교사의 학생 ID 확인 → 원자적 기록.
 export async function POST(request: Request) {
   try {
-    const teacher = await verifyTeacherRequest(request);
+    const teacher = await verifyTimelineTeacherRequest(request);
     const body = await request.json().catch(() => ({}));
     const names = body.names;
     if (
@@ -155,7 +153,7 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const teacher = await verifyTeacherRequest(request);
+    const teacher = await verifyTimelineTeacherRequest(request);
     const body = await request.json();
     const studentId = normalize(body?.studentId);
     if (!studentId) {

@@ -1,5 +1,5 @@
 import { FieldValue } from "firebase-admin/firestore";
-import { verifyTeacherRequest } from "@/lib/assignmentServer";
+import { verifyTimelineTeacherRequest } from "@/lib/historyTimelineTeacherAccess";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 
 export const runtime = "nodejs";
@@ -9,7 +9,7 @@ const response = (data: object, status = 200) => Response.json(data, { status, h
 
 export async function GET(request: Request) {
   try {
-    await verifyTeacherRequest(request);
+    await verifyTimelineTeacherRequest(request);
     const { db } = getFirebaseAdmin();
     const snapshot = await db.collection("students").get();
     const candidates = snapshot.docs.filter(doc =>
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   let teacher: { uid: string };
   try {
-    teacher = await verifyTeacherRequest(request);
+    teacher = await verifyTimelineTeacherRequest(request);
   } catch {
     return response({ error: "교사 인증이 필요합니다." }, 401);
   }

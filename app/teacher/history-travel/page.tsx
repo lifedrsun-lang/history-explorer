@@ -17,7 +17,7 @@ export default function TeacherHistoryTravelPage() {
       setAccess("loading");
       try {
         const token = await user.getIdToken();
-        const response = await fetch("/api/teacher/dashboard-summary", { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+        const response = await fetch("/api/teacher/history-timeline/authorization", { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
         if (active && generation === current) setAccess(response.ok ? "allowed" : "denied");
       } catch { if (active && generation === current) setAccess("denied"); }
     });

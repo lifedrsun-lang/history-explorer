@@ -1,6 +1,7 @@
 import { getIntegratedTimelineStudentIds } from "@/lib/historyTimelineIntegratedAccess";
 import { FieldValue } from "firebase-admin/firestore";
-import { verifyTeacherRequest, jsonError, handleRouteError } from "@/lib/assignmentServer";
+import { jsonError, handleRouteError } from "@/lib/assignmentServer";
+import { verifyTimelineTeacherRequest } from "@/lib/historyTimelineTeacherAccess";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 
 export const runtime = "nodejs";
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
-    await verifyTeacherRequest(request);
+    await verifyTimelineTeacherRequest(request);
     const { db } = getFirebaseAdmin();
     const [membersSnap, integratedStudentIds] = await Promise.all([db.collection("students").get(), getIntegratedTimelineStudentIds()]);
     const members = membersSnap.docs.filter(d => {
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const teacher = await verifyTeacherRequest(request);
+    const teacher = await verifyTimelineTeacherRequest(request);
     const body = await request.json().catch(() => ({}));
     const studentId = String(body.studentId || "").trim();
     if (!studentId || typeof body.timelineFullAccess !== "boolean")
@@ -67,7 +68,7 @@ export async function PATCH(request: Request) {
 /** 교사가 직접 확인한 두 계정만 통합한국사에 지정한다. 기존 학생 권한 필드는 그대로 둔다. */
 export async function PUT(request: Request) {
   try {
-    const teacher = await verifyTeacherRequest(request);
+    const teacher = await verifyTimelineTeacherRequest(request);
     const body = await request.json().catch(() => ({}));
     const ids: unknown = body.studentIds;
     if (!Array.isArray(ids) || ids.length !== 2 || ids.some(id => typeof id !== "string" || !id.trim() || id.includes("/")) || new Set(ids).size !== 2)

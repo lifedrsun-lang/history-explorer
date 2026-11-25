@@ -23,6 +23,7 @@ const topicsLibrary = require(path.join(root, "lib/historyTimelineAllTopics.ts")
 const peopleLibrary = require(path.join(root, "lib/historyTimelinePeople.ts"));
 const editionLibrary = require(path.join(root, "lib/historyTimelineEdition.ts"));
 const materialPolicy = require(path.join(root, "lib/historyTimelineMaterialPolicy.ts"));
+const teacherPolicy = require(path.join(root, "lib/historyTimelineTeacherPolicy.ts"));
 const conflictLibrary = require(path.join(root, "lib/historyTimelineWarDetails.ts"));
 if (originalTs) Module._extensions[".ts"] = originalTs;
 else delete Module._extensions[".ts"];
@@ -214,3 +215,14 @@ assert(independentPolicy.byeolkkum["exam-basic"] && !independentPolicy.byeolkkum
 assert(independentPolicy.integrated["exam-basic"] && !independentPolicy.integrated["exam-advanced"]);
 assert.deepEqual(materialPolicy.filterTimelineMaterialRecords({allowed:[{examLevel:"basic"},{examLevel:"advanced"}],hidden:[{examLevel:"basic"}]},r=>r.examLevel==="basic",new Set(["allowed"])),{allowed:[{examLevel:"basic"}]});
 console.log("Timeline material policy regression passed");
+
+assert(!teacherPolicy.isTimelineTeacher({uid:"student"},undefined));
+assert(!teacherPolicy.isTimelineTeacher({uid:"student",teacher:"true"},"teacher-1"));
+assert(teacherPolicy.isTimelineTeacher({uid:"teacher-1"},"teacher-1, teacher-2"));
+assert(teacherPolicy.isTimelineTeacher({uid:"teacher-3",teacher:true},undefined));
+assert(!teacherPolicy.isTimelineTeacher({uid:"teacher-10"},"teacher-1"));
+for(const pathName of ["lib/historyTimelineEventsServer.ts","app/api/teacher/history-timeline/route.ts","app/api/teacher/history-timeline/materials/route.ts","app/api/teacher/history-timeline/byeolbyeol-access/route.ts","app/api/teacher/history-timeline/exam-links/route.ts","app/api/teacher/history-timeline/sun-lab-verified/route.ts"]) {
+ const source=fs.readFileSync(path.join(root,pathName),"utf8");
+ assert(source.includes("verifyTimelineTeacherRequest"),"Missing timeline-specific teacher authorization: "+pathName);
+}
+console.log("Timeline teacher access regression passed");

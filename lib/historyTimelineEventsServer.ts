@@ -1,7 +1,7 @@
 import "server-only";
 import { isIntegratedTimelineMember } from "@/lib/historyTimelineIntegratedAccess";
 import { getPublishedGanghwaNotesForEvent } from "@/lib/historyTimelineGanghwaHeritagePilot";
-import { verifyTeacherRequest } from "@/lib/assignmentServer";
+import { verifyTimelineTeacherRequest } from "@/lib/historyTimelineTeacherAccess";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { getTimelineExamReferences } from "@/lib/historyTimelineExam";
 import { getHistoryTimelineTopicsForIssues } from "@/lib/historyTimelineAllTopics";
@@ -37,7 +37,7 @@ const teacherResponse = async (request: Request) => {
   if (!authorization.toLowerCase().startsWith("bearer ")) return null;
 
   try {
-    await verifyTeacherRequest(request);
+    await verifyTimelineTeacherRequest(request);
     const examLinks = await getTimelineExamReferences(new Set(HISTORY_TIMELINE_EVENTS.map(event => event.id)));
     return privateJson({
       examLinks,

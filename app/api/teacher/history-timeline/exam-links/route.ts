@@ -1,5 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
-import { verifyTeacherRequest, handleRouteError, jsonError } from "@/lib/assignmentServer";
+import { handleRouteError, jsonError } from "@/lib/assignmentServer";
+import { verifyTimelineTeacherRequest } from "@/lib/historyTimelineTeacherAccess";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { normalizeTimelineExamLinks, resolveTimelineExamLinks } from "@/lib/historyTimelineExam";
 import { knownTimelineExamPending } from "@/lib/historyTimelineKnownExamLinks";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
-    await verifyTeacherRequest(request);
+    await verifyTimelineTeacherRequest(request);
     const { db } = getFirebaseAdmin();
     const snap = await db.collection("reviewQuestions").where("questionType", "==", "exam").get();
     const questions = snap.docs.map(doc => {
@@ -45,7 +46,7 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const teacher = await verifyTeacherRequest(request);
+    const teacher = await verifyTimelineTeacherRequest(request);
     const body = await request.json().catch(() => ({}));
     const questionId = String(body.questionId || "").trim();
     if (!questionId || !Array.isArray(body.timelineLinks)) {
