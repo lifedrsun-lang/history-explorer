@@ -1,4 +1,5 @@
 import { normalizeSchoolText } from "@/app/student/data/schoolInfo";
+import { getStudentTeachingClass } from "@/lib/studentRoster";
 
 export type AfterSchoolClass = "A반" | "B반";
 export type AfterSchoolStatus = "active" | "paused" | "completed";
@@ -88,11 +89,5 @@ export const matchesAfterSchoolSchool = (
     .some((candidate) => normalizeSchoolText(candidate) === target);
 };
 
-export const getAfterSchoolClass = (student: { grade?: unknown }): AfterSchoolClass | null => {
-  const match = String(student?.grade || "").match(/\d+/);
-  const grade = match ? Number(match[0]) : 0;
-
-  if (grade >= 1 && grade <= 2) return "A반";
-  if (grade >= 3 && grade <= 6) return "B반";
-  return null;
-};
+export const getAfterSchoolClass = (student: { grade?: unknown; teachingClass?: unknown }): AfterSchoolClass | null =>
+  getStudentTeachingClass(student) || null;
