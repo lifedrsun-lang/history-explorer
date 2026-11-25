@@ -234,7 +234,6 @@ export default function StudentReviewAssignments({ student, mode = "review" }: P
 
   const isCorrect = selectedIndex === currentQuestion.correctIndex;
   const isLast = questionIndex === activeAssignment.questions.length - 1;
-  const isExamImage = currentQuestion.questionType === "exam" && Boolean(currentQuestion.imageUrl);
   const answerCount = currentQuestion.options.length;
 
   return (
@@ -260,7 +259,7 @@ export default function StudentReviewAssignments({ student, mode = "review" }: P
             <img
               src={currentQuestion.imageUrl}
               alt={currentQuestion.imageOriginalName || "한능검 기출문제"}
-              className="max-h-[62dvh] w-full object-contain"
+              className="mx-auto max-h-[62dvh] w-auto max-w-full object-contain"
             />
           </div>
         )}
@@ -269,7 +268,7 @@ export default function StudentReviewAssignments({ student, mode = "review" }: P
           <div className="mt-4 text-lg font-black leading-7 text-slate-800">{currentQuestion.prompt}</div>
         )}
 
-        <div className={`mt-4 grid gap-2 ${isExamImage ? (answerCount === 5 ? "grid-cols-5" : "grid-cols-4") : ""}`}>
+        <div className={`mt-4 grid gap-2 ${currentQuestion.questionType === "exam" ? "grid-cols-1 sm:grid-cols-2" : ""}`}>
           {Array.from({ length: answerCount }).map((_, index) => {
             const selected = selectedIndex === index;
             const correct = checked && index === currentQuestion.correctIndex;
@@ -282,7 +281,7 @@ export default function StudentReviewAssignments({ student, mode = "review" }: P
                 type="button"
                 disabled={checked || isCompleting}
                 onClick={() => setSelectedIndex(index)}
-                className={`rounded-2xl border px-4 py-3 text-left text-sm font-black transition ${
+                className={`min-h-12 rounded-2xl border px-4 py-3 text-left text-sm font-black leading-6 transition ${
                   correct
                     ? "border-emerald-300 bg-emerald-50 text-emerald-800"
                     : wrongSelected
