@@ -51,6 +51,37 @@ async function firebaseGet(token, resource) {
   return payload;
 }
 
+function classifyFunctionGate(content, condition) {
+  const callNames = [...condition.matchAll(/(^|[!&|=,(])([A-Za-z_]\w*)\(/g)].map((match) => match[2]);
+  const bodies = [];
+  for (const name of callNames) {
+    const declaration = new RegExp(`function\\s+${name.replace(/[.*+?^${}()|[\\]\\]/g, "\\function ruleMatches(content) {")}\\s*\\([^)]*\\)\\s*\\{`, "g").exec(content);
+    if (!declaration) continue;
+    const start = content.indexOf("{", declaration.index);
+    let depth = 0, end = start;
+    for (; end < content.length; end += 1) {
+      if (content[end] === "{") depth += 1;
+      else if (content[end] === "}") {
+        depth -= 1;
+        if (depth === 0) { end += 1; break; }
+      }
+    }
+    bodies.push(content.slice(start, end));
+  }
+  if (!bodies.length) return "function-gated-unresolved";
+  const compact = bodies.join("").replace(/\s/g, "");
+  if (compact.includes("returntrue;")) return "function-public";
+  if (compact.includes("request.auth.token")) return "function-token-claim";
+  if (compact.includes("request.auth.uid")) {
+    if (/request\.auth\.uid(==|in\[)/.test(compact)) return "function-fixed-uid-or-list";
+    return "function-uid-check";
+  }
+  if (/\b(get|exists)\(/.test(bodies.join(""))) return "function-database-lookup";
+  if (compact.includes("request.auth!=null")) return "function-any-authenticated";
+  if (compact.includes("request.auth")) return "function-auth-condition-unverified";
+  return "function-other-unverified";
+}
+
 function ruleMatches(content) {
   const lines = content.split(/\r?\n/);
   const broad = [];
@@ -78,7 +109,7 @@ function ruleMatches(content) {
           else if (compact === "false") classification = "deny";
           else if (compact.includes("request.auth.uid")) classification = "uid-or-identity-restricted";
           else if (compact.includes("request.auth!=null") && !functionCall) classification = "any-authenticated";
-          else if (functionCall) classification = "function-gated-unverified";
+          else if (functionCall) classification = classifyFunctionGate(content, rawCondition);
           else if (compact.includes("request.auth")) classification = "auth-condition-unverified";
           return { operations: match[1].replace(/\s/g, ""), classification };
         });
