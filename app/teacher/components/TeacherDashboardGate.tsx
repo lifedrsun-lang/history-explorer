@@ -59,6 +59,14 @@ const managementSections = [
     className: "border-pink-200 bg-pink-50 text-pink-900",
   },
   {
+    key: "history-travel",
+    href: "/teacher/history-travel",
+    icon: "📜",
+    title: "한국사 시간여행",
+    description: "별꼼역사·통합한국사 연표 및 공개·자료 열람 관리",
+    className: "border-teal-200 bg-teal-50 text-teal-900",
+  },
+  {
     key: "sun-lab",
     href: "/teacher/manage/sun-lab",
     icon: "✨",
@@ -298,46 +306,6 @@ export default function TeacherDashboardGate() {
             </Link>
           )}
         </div>
-
-        {/* 교사 관리실의 실제 첫 화면: 연표 바로가기 두 기능을 한 카드에서 제공 */}
-        <section
-          aria-labelledby="teacher-timeline-quick-card"
-          className="mt-3 rounded-[24px] border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-4 shadow-sm sm:mt-4 sm:rounded-[30px] sm:p-6"
-        >
-          <div className="flex items-start gap-3">
-            <span
-              aria-hidden="true"
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-700 text-2xl shadow-sm"
-            >
-              📜
-            </span>
-            <div className="min-w-0">
-              <h2
-                id="teacher-timeline-quick-card"
-                className="text-lg font-black text-slate-900 sm:text-2xl"
-              >
-                한국사 시간여행
-              </h2>
-              <p className="mt-1 text-sm font-bold leading-relaxed text-slate-600">
-                1~23호 통합 한국사 연표를 확인하고 학생별 공개 범위를 관리하세요.
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <Link
-              href="/history/timeline"
-              className="flex min-h-12 items-center justify-center rounded-2xl bg-emerald-700 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
-            >
-              📖 전체 연표 보기
-            </Link>
-            <Link
-              href="/teacher/history-timeline"
-              className="flex min-h-12 items-center justify-center rounded-2xl border border-emerald-300 bg-white px-4 py-3 text-center text-sm font-black text-emerald-800 transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
-            >
-              🔐 학생별 공개 관리
-            </Link>
-          </div>
-        </section>
 
         <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 sm:mt-4 sm:gap-4">
           {managementSections.map(renderManagementSection)}
