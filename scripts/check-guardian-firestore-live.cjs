@@ -7,9 +7,8 @@ if (process.env.GUARDIAN_RULES_LIVE_CHECK !== "true") {
 }
 
 const source = fs.readFileSync(path.join(__dirname, "..", "lib", "firebase.ts"), "utf8");
-const apiKey = source.match(/apiKey:\s*"([^"]+)"/)?.[1];
 const projectId = source.match(/projectId:\s*"([^"]+)"/)?.[1];
-if (!apiKey || !projectId) throw new Error("Firebase public client configuration is unavailable.");
+if (!projectId) throw new Error("Firebase public project configuration is unavailable.");
 
 const collections = [
   "school_entry_codes",
@@ -25,14 +24,14 @@ const base = `https://firestore.googleapis.com/v1/projects/${projectId}/database
 const probeId = "__guardian_rule_probe__";
 
 async function checkCollection(collectionId) {
-  const getUrl = `${base}/documents/${collectionId}/${probeId}?key=${encodeURIComponent(apiKey)}`;
+  const getUrl = `${base}/documents/${collectionId}/${probeId}`;
   const getResponse = await fetch(getUrl, { headers: { Accept: "application/json" } });
   if (!denied(getResponse.status)) {
     throw new Error(`${collectionId}: anonymous direct get was not denied (HTTP ${getResponse.status}).`);
   }
 
   const referenceValue = `projects/${projectId}/databases/(default)/documents/${collectionId}/${probeId}`;
-  const queryResponse = await fetch(`${base}/documents:runQuery?key=${encodeURIComponent(apiKey)}`, {
+  const queryResponse = await fetch(`${base}/documents:runQuery`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
