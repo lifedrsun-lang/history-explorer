@@ -44,6 +44,13 @@ export default function TimelineExamReferences({ refs, eventId, edition = "integ
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [selected]);
 
+  // A revoked question is removed even when other allowed questions remain.
+  useEffect(() => {
+    if (selected && !refs.some(ref => ref.questionId === selected.questionId)) {
+      setSelected(null); setQuestion(null);
+    }
+  }, [selected, refs]);
+
   if (!refs.length) return null;
   const answer = refs.filter(ref => ref.relation === "answer");
   const context = refs.filter(ref => ref.relation === "context");

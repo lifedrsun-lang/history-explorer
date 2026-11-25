@@ -22,6 +22,7 @@ const history = require(path.join(root, "lib/historyTimeline.ts"));
 const topicsLibrary = require(path.join(root, "lib/historyTimelineAllTopics.ts"));
 const peopleLibrary = require(path.join(root, "lib/historyTimelinePeople.ts"));
 const editionLibrary = require(path.join(root, "lib/historyTimelineEdition.ts"));
+const materialPolicy = require(path.join(root, "lib/historyTimelineMaterialPolicy.ts"));
 const conflictLibrary = require(path.join(root, "lib/historyTimelineWarDetails.ts"));
 if (originalTs) Module._extensions[".ts"] = originalTs;
 else delete Module._extensions[".ts"];
@@ -202,3 +203,14 @@ assert(timelineClientSource.includes('data.code === "student_auth_required" || d
 
 assert(apiRouteSource.includes('headers.set("Cache-Control", "private, no-store, max-age=0")'), "Private timeline API must not be cached publicly");
 console.log(`History timeline access regression passed: ${scenarios.length + 4} issue scenarios, ${HISTORY_TIMELINE_EVENTS.length} source events, ${HISTORY_TIMELINE_ALL_TOPICS.length} source topics.`);
+
+const defaultMaterialPolicy=materialPolicy.normalizeTimelineMaterialSettings(undefined);
+assert.equal(materialPolicy.TIMELINE_MATERIALS.length,10);
+assert(materialPolicy.TIMELINE_MATERIALS.every(({key})=>!defaultMaterialPolicy.byeolkkum[key] && defaultMaterialPolicy.integrated[key]));
+assert(materialPolicy.isCompleteTimelineMaterialSettings(defaultMaterialPolicy));
+assert(!materialPolicy.isCompleteTimelineMaterialSettings({byeolkkum:{people:true}}));
+const independentPolicy=materialPolicy.normalizeTimelineMaterialSettings({byeolkkum:{"exam-basic":true},integrated:{"exam-advanced":false}});
+assert(independentPolicy.byeolkkum["exam-basic"] && !independentPolicy.byeolkkum["exam-advanced"]);
+assert(independentPolicy.integrated["exam-basic"] && !independentPolicy.integrated["exam-advanced"]);
+assert.deepEqual(materialPolicy.filterTimelineMaterialRecords({allowed:[{examLevel:"basic"},{examLevel:"advanced"}],hidden:[{examLevel:"basic"}]},r=>r.examLevel==="basic",new Set(["allowed"])),{allowed:[{examLevel:"basic"}]});
+console.log("Timeline material policy regression passed");
