@@ -102,7 +102,7 @@ export async function verifyManagedStudentCode(request:Request,schoolName:unknow
   if(!code||code.length>128)return false;
   if(!entryCodesEnabled())return same(code,legacyCode(school.slug));
   key();
-  const ip=(request.headers.get("x-forwarded-for")||"unknown").split(",")[0].trim();
+  const ip=(request.headers.get("x-vercel-forwarded-for")||"unknown").split(",")[0].trim();
   const limitId=createHash("sha256").update(school.slug+":"+ip).digest("hex");
   const ref=db().collection(LIMITS).doc(limitId),now=Date.now();
   await db().runTransaction(async tx=>{
