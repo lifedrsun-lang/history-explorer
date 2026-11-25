@@ -64,6 +64,8 @@ export default function StudentHistoryPage({
   const [pendingSchool, setPendingSchool] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [combinedSchoolVerified, setCombinedSchoolVerified] = useState(false);
+  const [deunghyeonCodeVerified, setDeunghyeonCodeVerified] = useState(false);
+  const [checkingSchoolCode, setCheckingSchoolCode] = useState(false);
 
   const DEFAULT_SCHOOLS = getDefaultSchoolDisplayNames();
 
@@ -372,7 +374,7 @@ export default function StudentHistoryPage({
       const savedStudent =
         localStorage.getItem("selectedStudent");
 
-      if (savedStudent) {
+      if (savedStudent && !normalizeNoSpace(school).includes("등현초")) {
         const parsed = JSON.parse(savedStudent);
 
         const matched = matchedList.find(
@@ -395,7 +397,7 @@ export default function StudentHistoryPage({
 
   const usesCombinedStudentEntry = (school: string) => {
     const normalized = normalizeNoSpace(school);
-    return normalized.includes("하늘빛초") || normalized.includes("새솔초");
+    return normalized.includes("하늘빛초") || normalized.includes("새솔초") || normalized.includes("등현초");
   };
 
   const handleSchoolSelect = (school: string) => {
@@ -403,6 +405,20 @@ export default function StudentHistoryPage({
       getSchoolDisplayName(school)
     );
     const password = getSchoolPassword(cleanSchool);
+
+    setDeunghyeonCodeVerified(false);
+    if (normalizeNoSpace(cleanSchool).includes("등현초")) {
+      setSelectedStudent(null);
+      setPendingStudent(null);
+      setCombinedSchoolVerified(false);
+      setSearchName("");
+      setStudentPassword("");
+      setPasswordInput("");
+      localStorage.removeItem("selectedStudent");
+      localStorage.removeItem("selectedSchool");
+      setPendingSchool(cleanSchool);
+      return;
+    }
 
     if (usesCombinedStudentEntry(cleanSchool)) {
       setSelectedSchool(cleanSchool);
@@ -536,7 +552,40 @@ export default function StudentHistoryPage({
             />
 
             <button
-              onClick={() => {
+              disabled={checkingSchoolCode || !passwordInput.trim()}
+              onClick={async () => {
+                if (normalizeNoSpace(pendingSchool).includes("등현초")) {
+                  setCheckingSchoolCode(true);
+                  try {
+                    const response = await fetch("/api/student/deunghyeon-entry", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ code: passwordInput }),
+                    });
+                    if (response.status === 429) {
+                      alert("입장 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.");
+                      return;
+                    }
+                    if (!response.ok) {
+                      alert("입장코드를 확인할 수 없습니다. 다시 시도해 주세요.");
+                      return;
+                    }
+                    const result = await response.json();
+                    if (result.valid !== true) {
+                      alert("비밀번호가 틀렸습니다.");
+                      return;
+                    }
+                    setDeunghyeonCodeVerified(true);
+                    setSelectedSchool(pendingSchool);
+                    setPendingSchool("");
+                    setPasswordInput("");
+                  } catch {
+                    alert("입장코드를 확인할 수 없습니다. 다시 시도해 주세요.");
+                  } finally {
+                    setCheckingSchoolCode(false);
+                  }
+                  return;
+                }
                 const correctPassword =
                   getSchoolPassword(pendingSchool);
 
@@ -563,6 +612,7 @@ export default function StudentHistoryPage({
             </button>
 
             <button
+              disabled={checkingSchoolCode}
               onClick={() => {
                 setPendingSchool("");
                 setPasswordInput("");
@@ -603,9 +653,10 @@ export default function StudentHistoryPage({
             🔐 {selectedSchool} 입장
           </div>
           <p className="mt-2 text-center text-sm font-bold text-slate-500">
-            학교 비밀번호, 이름, 출석번호를 입력해 주세요.
+            {deunghyeonCodeVerified ? "이름과 출석번호를 입력해 주세요." : "학교 비밀번호, 이름, 출석번호를 입력해 주세요."}
           </p>
 
+          {!deunghyeonCodeVerified && <>
           <label className="mt-6 block text-sm font-bold text-slate-700">학교 비밀번호</label>
           <input
             type="password"
@@ -614,6 +665,7 @@ export default function StudentHistoryPage({
             placeholder="학교 비밀번호"
             className="mt-2 w-full rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-lg text-slate-800 outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100"
           />
+          </>}
 
           <label className="mt-4 block text-sm font-bold text-slate-700">학생 이름</label>
           <input
@@ -661,8 +713,9 @@ export default function StudentHistoryPage({
           <button
             type="button"
             onClick={() => {
-              const schoolPasswordMatches =
-                normalize(passwordInput) === normalize(getSchoolPassword(selectedSchool));
+              const schoolPasswordMatches = normalizeNoSpace(selectedSchool).includes("등현초")
+                ? deunghyeonCodeVerified
+                : normalize(passwordInput) === normalize(getSchoolPassword(selectedSchool));
               const attendanceNumberMatches =
                 pendingStudent &&
                 normalize(studentPassword) === normalize(pendingStudent.studentNumber);
@@ -680,7 +733,7 @@ export default function StudentHistoryPage({
               setPasswordInput("");
               setStudentPassword("");
             }}
-            disabled={!passwordInput.trim() || !pendingStudent || !studentPassword.trim()}
+            disabled={(!deunghyeonCodeVerified && !passwordInput.trim()) || !pendingStudent || !studentPassword.trim()}
             className="mt-5 w-full rounded-2xl bg-sky-400 py-4 text-xl font-bold text-white shadow-sm transition hover:bg-sky-500 disabled:opacity-50"
           >
             수업방 입장
