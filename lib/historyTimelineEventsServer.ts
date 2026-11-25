@@ -1,0 +1,192 @@
+import "server-only";
+import { isIntegratedTimelineMember } from "@/lib/historyTimelineIntegratedAccess";
+import { getPublishedGanghwaNotesForEvent } from "@/lib/historyTimelineGanghwaHeritagePilot";
+import { verifyTeacherRequest } from "@/lib/assignmentServer";
+import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
+import { getTimelineExamReferences } from "@/lib/historyTimelineExam";
+import { getHistoryTimelineTopicsForIssues } from "@/lib/historyTimelineAllTopics";
+import { getSunLabStudentSession, SUNLAB_STUDENT_SESSION_COOKIE } from "@/lib/sunLabStudentSession";
+import { isHistoryTimelineVisibleForStudent } from "@/lib/historyTimelineVisibility";
+import {
+  getTimelineEventsForIssues,
+  HISTORY_TIMELINE_EVENTS,
+  HISTORY_TIMELINE_MAX_ISSUE,
+  resolveTimelineCompletedIssues,
+  toStudentTimelineEvent,
+} from "@/lib/historyTimeline";
+import {
+  getHistoryTimelineSession,
+  HISTORY_TIMELINE_SESSION_COOKIE,
+  readRequestCookie,
+} from "@/lib/historyTimelineSession";
+
+const privateJson = (body: object, init?: ResponseInit) => {
+  const headers = new Headers(init?.headers);
+  headers.set("Cache-Control", "private, no-store, max-age=0");
+  headers.set("Vary", "Authorization, Cookie");
+  return Response.json(body, { ...init, headers });
+};
+
+const heritageForEvents = (events: Array<{ id: string }>) => Object.fromEntries(
+  events.map(event => [event.id, getPublishedGanghwaNotesForEvent(event.id)])
+    .filter(([, notes]) => (notes as unknown[]).length > 0)
+);
+
+const teacherResponse = async (request: Request) => {
+  const authorization = request.headers.get("authorization") || "";
+  if (!authorization.toLowerCase().startsWith("bearer ")) return null;
+
+  try {
+    await verifyTeacherRequest(request);
+    const examLinks = await getTimelineExamReferences(new Set(HISTORY_TIMELINE_EVENTS.map(event => event.id)));
+    return privateJson({
+      examLinks,
+      heritageNotes: heritageForEvents(HISTORY_TIMELINE_EVENTS),
+      studyTopics: getHistoryTimelineTopicsForIssues(Array.from({length: HISTORY_TIMELINE_MAX_ISSUE}, (_, i) => i + 1)),
+      viewer: { role: "teacher", name: "교사", completedIssues: [] },
+      events: HISTORY_TIMELINE_EVENTS,
+      maxIssue: HISTORY_TIMELINE_MAX_ISSUE,
+    });
+  } catch {
+    return privateJson(
+      { error: "교사 로그인을 다시 확인해 주세요.", code: "teacher_auth_required" },
+      { status: 401 }
+    );
+  }
+};
+
+export async function getTimelineEvents(request: Request, edition: "integrated" | "byeolkkum") {
+  // SUN LAB 카드에서 명시적으로 들어온 학생은 교사 토큰이나 이전 수업방 세션으로 대체하지 않는다.
+  const view = new URL(request.url).searchParams.get("view");
+  const sunLabMemberView = view === "sunlab";
+  if (!sunLabMemberView && view !== "student") {
+    const teacher = await teacherResponse(request);
+    if (teacher) return teacher;
+  }
+
+  const sessionId = readRequestCookie(request, HISTORY_TIMELINE_SESSION_COOKIE);
+  const session = sunLabMemberView ? null : await getHistoryTimelineSession(sessionId);
+  if (edition === "integrated" && (session || view === "student")) {
+    return privateJson({ error: "통합한국사 연표는 지정된 계정만 이용할 수 있습니다.", code: "integrated_access_required" }, { status: 403 });
+  }
+  if (!session) {
+    const memberSessionId = readRequestCookie(request, SUNLAB_STUDENT_SESSION_COOKIE);
+    const memberSession = await getSunLabStudentSession(memberSessionId);
+    if (memberSession && view !== "student") {
+      const { db } = getFirebaseAdmin();
+      const [studentDoc, memberProfileDoc] = await Promise.all([
+        db.collection("students").doc(memberSession.studentId).get(),
+        db.collection("sun_lab_members").doc(memberSession.studentId).get(),
+      ]);
+      const member = studentDoc.data() || {};
+      if (
+        !studentDoc.exists ||
+        (member.sunLabMember !== true && member.program !== "sun_lab") ||
+        member.isActive === false ||
+        String(member.enrollmentStatus || "active") !== "active"
+      ) {
+        return privateJson(
+          { error: "현재 이용할 수 없는 SUN LAB 회원 계정입니다.", code: "sunlab_member_inactive" },
+          { status: 403 }
+        );
+      }
+      if (!memberProfileDoc.exists) {
+        return privateJson(
+          {
+            error: "회원 정보가 연결되지 않았습니다. 선생님께 회원정보 확인을 요청해 주세요.",
+            code: "sunlab_profile_not_linked",
+          },
+          { status: 403 }
+        );
+      }
+      if (edition === "integrated" && !(await isIntegratedTimelineMember(memberSession.studentId))) {
+        return privateJson({ error: "통합한국사 연표는 지정된 계정만 이용할 수 있습니다.", code: "integrated_access_required" }, { status: 403 });
+      }
+      if (memberProfileDoc.data()?.timelineFullAccess !== true) {
+        return privateJson(
+          {
+            error: "SUN LAB 로그인은 확인됐지만 한국사여행 열람 권한이 설정되지 않았습니다. 선생님께 연표 열람 허용을 요청해 주세요.",
+            code: "timeline_permission_required",
+          },
+          { status: 403 }
+        );
+      }
+      if (studentDoc.exists &&
+          (member.sunLabMember === true || member.program === "sun_lab") &&
+          member.isActive !== false &&
+          String(member.enrollmentStatus || "active") === "active" &&
+          memberProfileDoc.data()?.timelineFullAccess === true) {
+        const completedIssues = Array.from({ length: HISTORY_TIMELINE_MAX_ISSUE }, (_, i) => i + 1);
+        // timelineFullAccess 회원은 교재 호수가 아직 확인되지 않은 현장 사건도 열람할 수 있다.
+        // 일반 수강생은 아래의 호수별 getTimelineEventsForIssues 제한을 그대로 적용한다.
+        const events = HISTORY_TIMELINE_EVENTS.map(event =>
+          toStudentTimelineEvent(event, completedIssues));
+        const examLinks = await getTimelineExamReferences(new Set(events.map(event => event.id)));
+        return privateJson({
+          viewer: { role: "student", name: String(member.name || "SUN LAB 회원"), completedIssueCount: completedIssues.length },
+          examLinks, events,
+          heritageNotes: heritageForEvents(events),
+          studyTopics: getHistoryTimelineTopicsForIssues(completedIssues),
+          maxIssue: HISTORY_TIMELINE_MAX_ISSUE,
+        });
+      }
+    }
+    return privateJson(
+      {
+        error: "SUN LAB 회원 로그인 정보가 연표에서 확인되지 않았습니다.",
+        code: sunLabMemberView ? "sunlab_session_required" : "student_auth_required",
+      },
+      { status: 401 }
+    );
+  }
+
+  const { db } = getFirebaseAdmin();
+  const snapshot = await db
+    .collection(session.studentCollection)
+    .doc(session.studentId)
+    .get();
+  if (!snapshot.exists) {
+    return privateJson(
+      { error: "학생 정보를 찾지 못했습니다.", code: "student_not_found" },
+      { status: 403 }
+    );
+  }
+
+  const student = snapshot.data() || {};
+  if (
+    student.isActive === false ||
+    String(student.enrollmentStatus || "active") !== "active" ||
+    String(student.program || "") !== "byeolkkum_history"
+  ) {
+    return privateJson(
+      { error: "현재 별꼼역사 수강생만 이용할 수 있습니다.", code: "timeline_forbidden" },
+      { status: 403 }
+    );
+  }
+
+  if (!(await isHistoryTimelineVisibleForStudent(student))) {
+    return privateJson(
+      { error: "한국사 연표는 아직 학생에게 공개되지 않았습니다.", code: "timeline_not_published" },
+      { status: 403 }
+    );
+  }
+
+  const completedIssues = resolveTimelineCompletedIssues(student).issues;
+  const events = getTimelineEventsForIssues(completedIssues).map((event) =>
+    toStudentTimelineEvent(event, completedIssues)
+  );
+
+  const examLinks = await getTimelineExamReferences(new Set(events.map(event => event.id)));
+  return privateJson({
+    examLinks,
+    heritageNotes: heritageForEvents(events),
+    studyTopics: getHistoryTimelineTopicsForIssues(completedIssues),
+    viewer: {
+      role: "student",
+      name: String(student.name || "학생"),
+      completedIssueCount: completedIssues.length,
+    },
+    events,
+    maxIssue: HISTORY_TIMELINE_MAX_ISSUE,
+  });
+}

@@ -1,3 +1,4 @@
+import { isIntegratedTimelineMember } from "@/lib/historyTimelineIntegratedAccess";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { getHistoryTimelineSession, HISTORY_TIMELINE_SESSION_COOKIE, readRequestCookie } from "@/lib/historyTimelineSession";
 import { getSunLabStudentSession, SUNLAB_STUDENT_SESSION_COOKIE } from "@/lib/sunLabStudentSession";
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
         (data.sunLabMember === true || data.program === "sun_lab") &&
         data.isActive !== false && String(data.enrollmentStatus || "active") === "active" &&
         profile.data()?.timelineFullAccess === true;
-      return respond(allowed, allowed);
+      return respond(allowed, allowed && await isIntegratedTimelineMember(session.studentId));
     }
     const session = await getHistoryTimelineSession(readRequestCookie(request, HISTORY_TIMELINE_SESSION_COOKIE));
     if (!session) return respond(false, false, 401);

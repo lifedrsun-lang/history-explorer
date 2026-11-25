@@ -18,7 +18,7 @@ export default function StudentTravelClient({ member = false }: { member?: boole
       .catch(cause => { if (active) setError(cause instanceof Error ? cause.message : "열람 권한 확인 실패"); });
     return () => { active = false; controller.abort(); };
   }, [member]);
-  const suffix = member ? "?view=sunlab" : "";
+  const suffix = member ? "?view=sunlab" : "?view=student";
   const cards = [
     ...(access?.byeolkkum ? [{ ...timelineCards[0], href: "/history/timeline/byeolkkum" + suffix }] : []),
     ...(access?.integrated ? [{ ...timelineCards[1], href: "/history/timeline" + suffix }] : []),

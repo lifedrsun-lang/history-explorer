@@ -1,3 +1,4 @@
+import { isIntegratedTimelineMember } from "@/lib/historyTimelineIntegratedAccess";
 import { verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { getByeolbyeolPublicNotes } from "@/lib/historyTimelineByeolbyeol";
@@ -12,7 +13,6 @@ import {getHistoryReferenceNotes} from "@/lib/historyTimelinePhaseTwoReadingNote
 import {
   getTimelineEventsForIssues,
   HISTORY_TIMELINE_MAX_ISSUE,
-  resolveTimelineCompletedIssues,
   toStudentTimelineEvent,
 } from "@/lib/historyTimeline";
 import {
@@ -20,7 +20,6 @@ import {
   HISTORY_TIMELINE_SESSION_COOKIE,
   readRequestCookie,
 } from "@/lib/historyTimelineSession";
-import { isHistoryTimelineVisibleForStudent } from "@/lib/historyTimelineVisibility";
 import { getSunLabStudentSession, SUNLAB_STUDENT_SESSION_COOKIE } from "@/lib/sunLabStudentSession";
 
 export const runtime = "nodejs";
@@ -71,7 +70,9 @@ const buildAllowedMaterials = (allowedIssues: number[]) => ({
 });
 
 export async function GET(request: Request) {
-  const sunLabMemberView = new URL(request.url).searchParams.get("view") === "sunlab";
+  const view = new URL(request.url).searchParams.get("view");
+  const sunLabMemberView = view === "sunlab";
+  if (view === "student") return respond({ notes: {} }, 403);
   const authHeader = request.headers.get("authorization") || "";
   if (authHeader && !sunLabMemberView) {
     // Authorization을 받은 요청은 반드시 실제 교사 계정을 검증한다.
@@ -86,32 +87,18 @@ export async function GET(request: Request) {
 
   const { db } = getFirebaseAdmin();
 
-  // 일반 별꼼역사 로그인: 교사가 특정 학생 문서에 부여한 별도 권한이 있어야 한다.
+  // 일반 수강생의 세션은 통합한국사 자료에 사용할 수 없다.
   const timelineSession = sunLabMemberView ? null : await getHistoryTimelineSession(
     readRequestCookie(request, HISTORY_TIMELINE_SESSION_COOKIE)
   );
-  if (timelineSession) {
-    const snapshot = await db.collection(timelineSession.studentCollection)
-      .doc(timelineSession.studentId).get();
-    const student = snapshot.data();
-    if (!snapshot.exists || !student ||
-        student.timelineByeolbyeolAccess !== true ||
-        student.isActive === false ||
-        String(student.enrollmentStatus || "active") !== "active" ||
-        String(student.program || "") !== "byeolkkum_history" ||
-        !(await isHistoryTimelineVisibleForStudent(student))) {
-      return respond({ notes: {} }, 200);
-    }
-    const allowedIssues = resolveTimelineCompletedIssues(student).issues;
-    return respond(buildAllowedMaterials(allowedIssues));
-  }
+  if (timelineSession) return respond({ notes: {} }, 403);
 
   // SUN LAB 계정: 기존 연표 전체 권한과 보충설명 전용 권한을 모두 요구한다.
   // 이름만으로 이민서·이민채를 추정하거나 일반 회원에게 권한을 자동 부여하지 않는다.
   const memberSession = await getSunLabStudentSession(
     readRequestCookie(request, SUNLAB_STUDENT_SESSION_COOKIE)
   );
-  if (!memberSession) return respond({ notes: {} }, 200);
+  if (!memberSession || !(await isIntegratedTimelineMember(memberSession.studentId))) return respond({ notes: {} }, 403);
 
   const [studentSnapshot, profileSnapshot] = await Promise.all([
     db.collection("students").doc(memberSession.studentId).get(),
