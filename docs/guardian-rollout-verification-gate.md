@@ -5,3 +5,5 @@ Do not enable Production guardian access until a Firebase administrator verifies
 Use synthetic accounts in an isolated test database. Verify unauthenticated/non-teacher code reveal and save are denied; another child's guardian session cannot access or modify a record; common-code change invalidates old sessions; expired/revoked sessions fail; rate limits work; Sau remains paused for 2026-Q4; wrong counts are rejected; legacy student entry still works with feature flags off. Check that Deunghyeon's existing server-only student code remains valid until explicitly changed by the teacher. A successful build is not proof of these runtime tests.
 
 Keep Production flags disabled until evidence is recorded and the deployment is separately approved. Never include credentials, student identities or actual absence reasons in logs or test documentation.
+
+Offline regression checks: run `npm run test:guardian`. The same checks run before `next build`. They validate synthetic calendar events, school quarter counts, pause state, and absence form validation; they do not verify deployed Firestore rules, authentication or session isolation.
