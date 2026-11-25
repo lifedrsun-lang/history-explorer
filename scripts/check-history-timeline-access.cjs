@@ -183,7 +183,7 @@ const textbookEvents = editionLibrary.selectByeolkkumTimeline(fullAccessEvents, 
 assert(!textbookEvents.some(e=>e.id==="goryeo-cheoin-battle-1232"),"Unverified heritage event leaked into textbook edition");
 assert(textbookEvents.every(e=>(e.studyNotes||[]).every(n=>n.kind==="textbook")),"Supplement note leaked into textbook edition");
 const timelineClientSource = fs.readFileSync(path.join(root, "app/history/timeline/TimelineClient.tsx"), "utf8");
-assert(timelineClientSource.includes("const [showHeritageDetails, setShowHeritageDetails] = useState(false)"),
+assert(timelineClientSource.includes("const [showHeritageDetailsPreference, setShowHeritageDetails] = useState(false)"),
   "Heritage checkbox must be unchecked initially");
 // 학생의 30초 주기 열람권한 재조회가 로딩 화면으로 되돌리지 않아야 한다.
 assert(timelineClientSource.includes("const loadTimeline = async (currentTeacher: User | null, background = false) =>"),

@@ -25,7 +25,8 @@ type QuestionPreview = {
 const label = (ref: ExamReference) =>
   `${ref.examLevel === "advanced" ? "심화" : "기본"} ${ref.examRound}회 ${ref.examQuestionNumber}번`;
 
-export default function TimelineExamReferences({ refs, eventId }: {
+export default function TimelineExamReferences({ refs, eventId, edition = "integrated" }: {
+  edition?: "integrated" | "byeolkkum";
   refs: ExamReference[];
   eventId: string;
 }) {
@@ -56,7 +57,7 @@ export default function TimelineExamReferences({ refs, eventId }: {
       const view = new URLSearchParams(window.location.search).get("view");
       const studentView = view === "sunlab" || view === "student";
       const token = !studentView && auth.currentUser ? await auth.currentUser.getIdToken() : "";
-      const params = new URLSearchParams({ id: ref.questionId, eventId });
+      const params = new URLSearchParams({ id: ref.questionId, eventId, edition });
       if (studentView && view) params.set("view", view);
       const response = await fetch(`/api/history/timeline/question?${params}`, {
         cache: "no-store",

@@ -17,6 +17,7 @@ import {
   getHistoricNameBadge,
 } from "@/lib/historyTimelineLayout";
 import TimelineExamReferences, { type ExamReference } from "./TimelineExamReferences";
+import { defaultTimelineMaterialAccess, type TimelineMaterialAccess, type TimelineMaterialKey } from "@/lib/historyTimelineMaterialPolicy";
 import TimelineWarSummary from "./TimelineWarSummary";
 import TimelineStudyDetails from "./TimelineStudyDetails";
 import TimelineHeritageDetails from "./TimelineHeritageDetails";
@@ -60,6 +61,7 @@ type TimelinePayload = {
   examLinks?: Record<string, ExamReference[]>;
   heritageNotes?: Record<string, HeritagePilotNote[]>;
   studyTopics?: HistoryTimelineStudyTopic[];
+  materialAccess?: TimelineMaterialAccess;
   maxIssue: number;
 };
 
@@ -161,16 +163,27 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
   const [referenceNotes, setReferenceNotes] = useState<Record<string, HistoryReferenceNote[]>>({});
   const [yongFlowEvents, setYongFlowEvents] = useState<StudentEvent[]>([]);
   const [referenceEvents, setReferenceEvents] = useState<StudentEvent[]>([]);
-  const [showRobin, setShowRobin] = useState(false);
-  const [showReadingBook, setShowReadingBook] = useState(false);
-  const [showElementary, setShowElementary] = useState(false);
-  const [showYongseonsaeng, setShowYongseonsaeng] = useState(false);
-  const [showByeolbyeolBasic, setShowByeolbyeolBasic] = useState(false);
-  const [showByeolbyeolAdvanced, setShowByeolbyeolAdvanced] = useState(false);
-  const [showExamBasic, setShowExamBasic] = useState(false);
-  const [showExamAdvanced, setShowExamAdvanced] = useState(false);
-  const [showHeritageDetails, setShowHeritageDetails] = useState(false);
-  const [showPersonCards, setShowPersonCards] = useState(false);
+  const [showRobinPreference, setShowRobin] = useState(false);
+  const [showReadingBookPreference, setShowReadingBook] = useState(false);
+  const [showElementaryPreference, setShowElementary] = useState(false);
+  const [showYongseonsaengPreference, setShowYongseonsaeng] = useState(false);
+  const [showByeolbyeolBasicPreference, setShowByeolbyeolBasic] = useState(false);
+  const [showByeolbyeolAdvancedPreference, setShowByeolbyeolAdvanced] = useState(false);
+  const [showExamBasicPreference, setShowExamBasic] = useState(false);
+  const [showExamAdvancedPreference, setShowExamAdvanced] = useState(false);
+  const [showHeritageDetailsPreference, setShowHeritageDetails] = useState(false);
+  const [showPersonCardsPreference, setShowPersonCards] = useState(false);
+  const materialAccess = payload?.materialAccess ?? defaultTimelineMaterialAccess(edition);
+  const showPersonCards = materialAccess["people"] && showPersonCardsPreference;
+  const showElementary = materialAccess["elementary"] && showElementaryPreference;
+  const showByeolbyeolBasic = materialAccess["basic"] && showByeolbyeolBasicPreference;
+  const showByeolbyeolAdvanced = materialAccess["advanced"] && showByeolbyeolAdvancedPreference;
+  const showYongseonsaeng = materialAccess["yong"] && showYongseonsaengPreference;
+  const showRobin = materialAccess["robin"] && showRobinPreference;
+  const showReadingBook = materialAccess["reading"] && showReadingBookPreference;
+  const showExamBasic = materialAccess["exam-basic"] && showExamBasicPreference;
+  const showExamAdvanced = materialAccess["exam-advanced"] && showExamAdvancedPreference;
+  const showHeritageDetails = materialAccess["heritage"] && showHeritageDetailsPreference;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [needsLogin, setNeedsLogin] = useState(false);
@@ -254,8 +267,9 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
       }
 
       setPayload(data);
-      if (!textbookOnly) try {
-        const extraResponse = await fetch(`/api/history/timeline/byeolbyeol${viewQuery}`, {
+      setByeolbyeolNotes({}); setByeolbyeolFlowEvents([]); setYongNotes({}); setYongFlowEvents([]); setReferenceNotes({}); setReferenceEvents([]);
+      try {
+        const extraResponse = await fetch(`/api/history/timeline/byeolbyeol?edition=${edition}${viewQuery ? "&" + viewQuery.slice(1) : ""}`, {
           cache: "no-store",
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
@@ -306,7 +320,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
   const viewerRole = payload?.viewer.role;
   useEffect(() => {
     if (!viewerRole) return;
-    const defaultVisible = !textbookOnly && viewerRole === "student";
+    const defaultVisible = viewerRole === "student";
     setShowByeolbyeolBasic(defaultVisible);
     setShowByeolbyeolAdvanced(defaultVisible);
     setShowYongseonsaeng(defaultVisible);
@@ -426,7 +440,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
     { key: "exam-basic", label: "♣ 한능검 · 기본", checked: showExamBasic, update: setShowExamBasic },
     { key: "exam-advanced", label: "♣ 한능검 · 심화", checked: showExamAdvanced, update: setShowExamAdvanced },
     { key: "heritage", label: "문화유산 현장 해설", checked: showHeritageDetails, update: setShowHeritageDetails },
-  ].filter(() => !textbookOnly);
+  ].filter(option => materialAccess[option.key as TimelineMaterialKey]);
 
   // 한능검은 기본·심화 각각 선택한 급수만 표시하고, 최초 진입 시에는 모두 숨긴다.
   // 문제은행의 원본과 연결 메타데이터는 변경하지 않는다.
@@ -801,7 +815,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
                               </div>
                             )}
                             {showHeritageDetails && (<TimelineHeritageDetails notes={payload?.heritageNotes?.[event.id] || []} />)}
-                             {(showExamBasic || showExamAdvanced) && (<TimelineExamReferences eventId={event.id} refs={examRefsForEvent(event.id)} />)}
+                             {(showExamBasic || showExamAdvanced) && (<TimelineExamReferences edition={edition} eventId={event.id} refs={examRefsForEvent(event.id)} />)}
                             <small className={styles.gridSource}>
                               {textbookSourceLabel(event)}
                             </small>
@@ -925,7 +939,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
                           <TimelineReferenceNotes notes={referenceNotes[overviewEvent.id]} showRobin={showRobin} showReading={showReadingBook} showElementary={showElementary} />
                           <small className={styles.gridSource}>{textbookSourceLabel(overviewEvent)}</small>
                           {showHeritageDetails && (<TimelineHeritageDetails notes={payload?.heritageNotes?.[overviewEvent.id] || []} />)}
-                           {(showExamBasic || showExamAdvanced) && (<TimelineExamReferences eventId={overviewEvent.id} refs={examRefsForEvent(overviewEvent.id)} />)}
+                           {(showExamBasic || showExamAdvanced) && (<TimelineExamReferences edition={edition} eventId={overviewEvent.id} refs={examRefsForEvent(overviewEvent.id)} />)}
                         </div>
                       </article>
                     )}
@@ -1027,7 +1041,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
                                         </small>
                                       )}
                                       {showHeritageDetails && (<TimelineHeritageDetails notes={payload?.heritageNotes?.[event.id] || []} />)}
-                             {(showExamBasic || showExamAdvanced) && (<TimelineExamReferences eventId={event.id} refs={examRefsForEvent(event.id)} />)}
+                             {(showExamBasic || showExamAdvanced) && (<TimelineExamReferences edition={edition} eventId={event.id} refs={examRefsForEvent(event.id)} />)}
                                     </article>
                                   ))}
                               </div>
