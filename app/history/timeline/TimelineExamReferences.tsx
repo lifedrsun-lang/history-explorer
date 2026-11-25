@@ -53,8 +53,11 @@ export default function TimelineExamReferences({ refs, eventId }: {
     setError("");
     setLoading(true);
     try {
-      const token = auth.currentUser ? await auth.currentUser.getIdToken() : "";
+      const view = new URLSearchParams(window.location.search).get("view");
+      const studentView = view === "sunlab" || view === "student";
+      const token = !studentView && auth.currentUser ? await auth.currentUser.getIdToken() : "";
       const params = new URLSearchParams({ id: ref.questionId, eventId });
+      if (studentView && view) params.set("view", view);
       const response = await fetch(`/api/history/timeline/question?${params}`, {
         cache: "no-store",
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,

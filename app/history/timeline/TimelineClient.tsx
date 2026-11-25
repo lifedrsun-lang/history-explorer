@@ -148,9 +148,10 @@ function groupSameDates(events: StudentEvent[]) {
 export default function TimelineClient({ edition = "integrated" }: { edition?: "integrated" | "byeolkkum" }) {
   const textbookOnly = edition === "byeolkkum";
   // SUN LAB 카드에서 진입한 학생은 남아 있는 교사 Firebase 로그인과 독립적으로 조회한다.
-  const sunLabMemberView =
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("view") === "sunlab";
+  const view = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("view") : null;
+  const sunLabMemberView = view === "sunlab";
+  const studentView = sunLabMemberView || view === "student";
+  const viewQuery = studentView ? `?view=${view}` : "";
   const [teacher, setTeacher] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [payload, setPayload] = useState<TimelinePayload | null>(null);
@@ -207,9 +208,9 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
       setReferenceEvents([]);
     }
     try {
-      const token = !sunLabMemberView && currentTeacher ? await currentTeacher.getIdToken() : "";
+      const token = !studentView && currentTeacher ? await currentTeacher.getIdToken() : "";
       const endpoint = textbookOnly ? "/api/history/timeline/byeolkkum/events" : "/api/history/timeline/events";
-      const response = await fetch(`${endpoint}${sunLabMemberView ? "?view=sunlab" : ""}`, {
+      const response = await fetch(`${endpoint}${viewQuery}`, {
         cache: "no-store",
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
@@ -219,6 +220,12 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
       };
 
       if (!response.ok) {
+        if (response.status === 403 && data.code === "integrated_access_required") {
+          setPayload(null);
+          setNeedsLogin(false);
+          setSunLabAccessError(data.error || "통합한국사 연표 열람 권한이 없습니다.");
+          return;
+        }
         if (response.status === 403 && data.code === "timeline_not_published") {
           setPayload(null);
           setNeedsLogin(false);
@@ -248,7 +255,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
 
       setPayload(data);
       if (!textbookOnly) try {
-        const extraResponse = await fetch(`/api/history/timeline/byeolbyeol${sunLabMemberView ? "?view=sunlab" : ""}`, {
+        const extraResponse = await fetch(`/api/history/timeline/byeolbyeol${viewQuery}`, {
           cache: "no-store",
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
@@ -525,7 +532,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
     );
   }
 
-  if (sunLabMemberView && sunLabAccessError) {
+  if (sunLabAccessError) {
     return (
       <main className={styles.loginPage}>
         <section className={styles.loginCard}>
@@ -533,7 +540,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
           <h1>한국사여행 열람 권한 확인</h1>
           <p>{sunLabAccessError}</p>
           <div className={styles.loginLinks}>
-            <Link href="/student/book">SUN LAB으로 돌아가기</Link>
+            <Link href={sunLabMemberView ? "/history/travel/member" : "/history/travel"}>한국사 시간여행으로 돌아가기</Link>
           </div>
         </section>
       </main>
@@ -618,11 +625,13 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
             {payload?.viewer.role === "teacher" ? (
               <>
                 <span className={styles.teacherBadge}>교사용 전체 열람</span>
+                <Link href="/teacher/history-travel">한국사 시간여행</Link>
                 <Link href="/teacher/history-timeline">학생 공개 관리</Link>
               </>
             ) : (
               <>
                 <span>{payload?.viewer.name} 탐험가</span>
+                <Link href={sunLabMemberView ? "/history/travel/member" : "/history/travel"}>한국사 시간여행</Link>
                 <button type="button" onClick={() => void logoutStudent()}>
                   나가기
                 </button>
@@ -630,7 +639,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
             )}
           </div>
         </div>
-        <h1>{textbookOnly ? "별꼼역사 연표" : "한국사 시간여행"}</h1>
+        <h1>{textbookOnly ? "별꼼역사 연표" : "통합한국사 연표"}</h1>
         <p>같은 시대에 여러 나라에서 일어난 일을 함께 살펴봐요.</p>
       </header>
 

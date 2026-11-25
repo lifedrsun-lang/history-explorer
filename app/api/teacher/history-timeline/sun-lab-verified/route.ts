@@ -1,3 +1,4 @@
+import { getIntegratedTimelineStudentIds } from "@/lib/historyTimelineIntegratedAccess";
 import { FieldValue } from "firebase-admin/firestore";
 import { verifyTeacherRequest, jsonError, handleRouteError } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
@@ -9,7 +10,7 @@ export async function GET(request: Request) {
   try {
     await verifyTeacherRequest(request);
     const { db } = getFirebaseAdmin();
-    const membersSnap = await db.collection("students").get();
+    const [membersSnap, integratedStudentIds] = await Promise.all([db.collection("students").get(), getIntegratedTimelineStudentIds()]);
     const members = membersSnap.docs.filter(d => {
       const s = d.data();
       return (s.sunLabMember === true || s.program === "sun_lab") &&
@@ -17,6 +18,7 @@ export async function GET(request: Request) {
     });
     const profiles = await Promise.all(members.map(d => db.collection("sun_lab_members").doc(d.id).get()));
     return Response.json({
+      integratedStudentIds,
       members: members.map((d, i) => ({
         studentId: d.id, name: String(d.data().name || ""), school: String(d.data().school || ""),
         profileLinked: profiles[i].exists,
@@ -58,6 +60,34 @@ export async function PATCH(request: Request) {
   } catch (error) {
     if (error instanceof Error && error.message === "teacher_auth_required")
       return jsonError("교사 로그인이 필요합니다.", 401, "teacher_auth_required");
+    return handleRouteError(error);
+  }
+}
+
+/** 교사가 직접 확인한 두 계정만 통합한국사에 지정한다. 기존 학생 권한 필드는 그대로 둔다. */
+export async function PUT(request: Request) {
+  try {
+    const teacher = await verifyTeacherRequest(request);
+    const body = await request.json().catch(() => ({}));
+    const ids: unknown = body.studentIds;
+    if (!Array.isArray(ids) || ids.length !== 2 || ids.some(id => typeof id !== "string" || !id.trim() || id.includes("/")) || new Set(ids).size !== 2)
+      return jsonError("통합한국사 열람 계정 두 명을 확인해 주세요.", 400, "invalid_integrated_students");
+    const { db } = getFirebaseAdmin();
+    const pairs = await Promise.all(ids.map(async id => Promise.all([
+      db.collection("students").doc(id).get(), db.collection("sun_lab_members").doc(id).get()
+    ])));
+    if (pairs.some(([student, profile]) => {
+      const s = student.data();
+      return !student.exists || !profile.exists || !s ||
+        (s.sunLabMember !== true && s.program !== "sun_lab") ||
+        s.isActive === false || String(s.enrollmentStatus || "active") !== "active" ||
+        profile.data()?.timelineFullAccess !== true;
+    })) return jsonError("활동 중이며 기존 전체 열람이 허용된 회원 계정만 지정할 수 있습니다.", 409, "invalid_member");
+    await db.collection("history_timeline_settings").doc("integrated_access").set({
+      studentIds: ids, updatedBy: teacher.uid, updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
+    return Response.json({ ok: true, integratedStudentIds: ids }, { headers: { "Cache-Control": "private, no-store" } });
+  } catch (error) {
     return handleRouteError(error);
   }
 }
