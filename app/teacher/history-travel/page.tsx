@@ -23,7 +23,7 @@ export default function TeacherHistoryTravelPage() {
     });
     return () => { active = false; unsubscribe(); };
   }, []);
-  const cards = timelineCards.map((card, index) => ({ ...card, href: ["/history/timeline/byeolkkum", "/history/timeline", "/teacher/history-timeline"][index] }));
+  const cards = timelineCards.map((card, index) => ({ ...card, href: ["/history/timeline/byeolkkum", "/history/timeline", "/teacher/history-timeline", "/teacher/history-timeline/materials"][index] }));
   return <main className="mx-auto max-w-5xl px-4 py-8 sm:px-8">
     <Link href="/teacher" className="text-sm font-bold text-emerald-800">← 교사 홈</Link>
     <h1 className="mt-4 text-3xl font-black text-slate-900">한국사 시간여행</h1>
