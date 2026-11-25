@@ -50,6 +50,12 @@ export const getTeachingClass = (value: unknown): TeachingClass => {
   return "";
 };
 
+// Explicit after-school class takes precedence; legacy rosters retain grade-based defaults.
+export const getStudentTeachingClass = (student: { grade?: unknown; teachingClass?: unknown }): TeachingClass => {
+  const explicit = normalizeRosterText(student.teachingClass);
+  return explicit === "A반" || explicit === "B반" ? explicit : getTeachingClass(student.grade);
+};
+
 const normalizePhone = (value: unknown) => {
   if (typeof value !== "string" && typeof value !== "number") return "";
   return String(value).trim().slice(0, 40);
@@ -110,7 +116,7 @@ export const toStudentRosterRecord = (
     schoolClass: normalizeRosterText(
       data.schoolClass || data.className || data.class
     ),
-    teachingClass: getTeachingClass(grade),
+    teachingClass: getStudentTeachingClass(data),
     enrollmentStatus: getEnrollmentStatus(data),
     enrollmentTerms: getEnrollmentTerms(data),
     phone: getStudentPhone(data),
