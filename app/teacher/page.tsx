@@ -1166,24 +1166,16 @@ export default function TeacherPage() {
                 한국사 시간여행
               </h2>
               <p className="mt-1 text-sm font-medium leading-relaxed text-slate-600">
-                1~23호 통합 한국사 연표를 확인하고 학생별 공개 범위를 관리하세요.
+                별꼼역사 연표와 통합한국사 연표를 확인하고 공개 범위를 관리하세요.
               </p>
             </div>
           </div>
-          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <Link
-              href="/history/timeline"
-              className="flex min-h-12 items-center justify-center rounded-2xl bg-emerald-700 px-4 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
-            >
-              📖 전체 연표 보기
-            </Link>
-            <Link
-              href="/teacher/history-timeline"
-              className="flex min-h-12 items-center justify-center rounded-2xl border border-emerald-300 bg-white px-4 py-3 text-center text-sm font-bold text-emerald-800 shadow-sm transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
-            >
-              🔐 학생별 공개 관리
-            </Link>
-          </div>
+          <Link
+            href="/teacher/history-travel"
+            className="mt-4 flex min-h-12 items-center justify-center rounded-2xl bg-emerald-700 px-4 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800"
+          >
+            🧭 한국사 시간여행 들어가기
+          </Link>
         </section>
 
         {/* 학생 수 / 반 선택 */}
