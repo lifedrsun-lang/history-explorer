@@ -11,6 +11,22 @@ const DELIVERY_FIELDS: [keyof OrderDelivery, string][] = [["recipient", "수령�
 const money = (value: number | null) => value === null ? "미입력" : `${value.toLocaleString("ko-KR")}원`;
 type EnrollmentGroup = { id: string; school: string; teachingClass: string; status: string; counts: Record<string, number> };
 
+const COMBINED_CLASS = "A+B반";
+function withCombinedGroups(groups: EnrollmentGroup[]): EnrollmentGroup[] {
+  return groups.flatMap(group => {
+    if (group.teachingClass !== "B반") return [group];
+    const a = groups.find(item => item.school === group.school && item.teachingClass === "A반");
+    if (!a) return [group];
+    const counts = Object.fromEntries(["Q1", "Q2", "Q3", "Q4"].map(q => [q, (a.counts[q] || 0) + (group.counts[q] || 0)]));
+    return [group, { ...group, id: `${group.id}::combined-ab`, teachingClass: COMBINED_CLASS, counts }];
+  });
+}
+function overlapsClass(a?: string, b?: string): boolean {
+  if (a === b) return true;
+  return (a === COMBINED_CLASS && (b === "A반" || b === "B반")) ||
+    (b === COMBINED_CLASS && (a === "A반" || a === "B반"));
+}
+
 export default function TextbookOrdersPage() {
   const [user, setUser] = useState<User | null>(null);
   const [checked, setChecked] = useState(false);
@@ -72,7 +88,7 @@ export default function TextbookOrdersPage() {
     void user.getIdToken().then(token => fetch(`/api/teacher/textbook-orders/setup?year=${year}`, { signal: controller.signal, cache: "no-store", headers: { Authorization: `Bearer ${token}` } })).then(async response => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "신청 인원을 불러오지 못했습니다.");
-      if (!controller.signal.aborted) { setDefaultDelivery(data.delivery); setGroups(data.groups); }
+      if (!controller.signal.aborted) { setDefaultDelivery(data.delivery); setGroups(withCombinedGroups(data.groups)); }
     }).catch(e => { if (!controller.signal.aborted) setSetupError(e instanceof Error ? e.message : "신청 인원을 불러오지 못했습니다."); });
     return () => controller.abort();
   }, [user, year]);
@@ -128,8 +144,8 @@ export default function TextbookOrdersPage() {
     const lines = products.map(product => ({
       ...newOrderLine(), ...product, quantity, school: group.school, teachingClass: group.teachingClass, subject, course: course.trim(),
     }));
-    if (lines.some(line => editor.lines.some(existing => existing.school === line.school && existing.teachingClass === line.teachingClass && (existing.course || "") === line.course && existing.productName === line.productName && existing.option === line.option)) &&
-      !window.confirm("같은 학교·반·교재의 항목이 있습니다. 추가 주문 수량으로 별도 행을 더할까요?")) return;
+    if (lines.some(line => editor.lines.some(existing => existing.school === line.school && overlapsClass(existing.teachingClass, line.teachingClass) && (existing.course || "") === line.course && existing.productName === line.productName && existing.option === line.option)) &&
+      !window.confirm("같은 학교·교재에 동일하거나 겹치는 반의 주문이 있습니다. 중복 주문이 아닌 추가 수량이 맞다면 별도 행을 더할까요?")) return;
     patch("lines", [...editor.lines, ...lines]);
     setSelectedBooks([]); setSelectedOptions([]); setCustomProduct(""); setCustomOption(""); setError("");
     setMessage(`${group.school} ${group.teachingClass} 교재 ${lines.length}개 항목을 추가했습니다. 다른 학교·교재를 계속 추가할 수 있습니다.`);
@@ -236,7 +252,7 @@ export default function TextbookOrdersPage() {
             <label>방과후 학교 · 반<select value={selectedGroup} onChange={e => chooseGroup(e.target.value)}><option value="">학교와 반 선택</option>{groups.map(item => <option key={item.id} value={item.id}>{item.school} {item.teachingClass} · {item.counts[`Q${quarter}`] || 0}명{item.status === "paused" ? " (휴강)" : item.status === "completed" ? " (종강)" : ""}</option>)}</select></label>
             <label className={styles.wide}>수업명 (선택)<input maxLength={100} value={course} onChange={e => setCourse(e.target.value)} placeholder="예: 한국사, 세계문화" /></label>
           </div>
-          <p className={styles.muted}>방과후 관리에 등록된 학교만 표시합니다. 신청 인원이 없어도 직접 주문할 수 있습니다. 인원은 학교·반 기준 참고값이므로 과목별 실제 신청 인원과 반 편성을 확인해주세요.</p>
+          <p className={styles.muted}>방과후 관리에 등록된 학교만 표시합니다. 같은 과목·진도의 A반과 B반은 A+B반을 선택하여 교재별로 한 줄에 주문할 수 있습니다. A+B반 신청 인원은 두 반의 합계이며, 과목별 실제 신청 인원에 맞게 수량을 수정해주세요. 과목이나 진도가 다르면 각각 선택해주세요. 신청 인원이 없어도 직접 주문할 수 있습니다.</p>
           <div className={styles.subjectButtons} role="group" aria-label="교재 종류">{ORDER_SUBJECTS.map(value => <button type="button" key={value} aria-pressed={subject === value} className={subject === value ? styles.periodSelected : undefined} onClick={() => { setSubject(value); setSelectedBooks([]); setSelectedOptions([]); setCustomProduct(""); setCustomOption(""); }}>{value}</button>)}</div>
           {subject === "별꼼역사" ? <>
             <div className={styles.bookGrid}>{ORDER_BOOKS.map(book => <label key={book.number} className={selectedBooks.includes(book.number) ? styles.bookSelected : styles.bookChoice}><input type="checkbox" checked={selectedBooks.includes(book.number)} onChange={e => setSelectedBooks(old => e.target.checked ? [...old, book.number] : old.filter(n => n !== book.number))} />{book.productName}</label>)}</div>
