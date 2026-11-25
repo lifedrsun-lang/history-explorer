@@ -26,6 +26,14 @@ const escapeHtml = (value: unknown) =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 
+const imageContentType = (value: unknown) => {
+  const name = text(value).toLowerCase();
+  if (name.endsWith(".png")) return "image/png";
+  if (name.endsWith(".webp")) return "image/webp";
+  if (name.endsWith(".gif")) return "image/gif";
+  return "image/jpeg";
+};
+
 type AuditQuestion = {
   id: string;
   examLevel: string;
@@ -99,6 +107,32 @@ export async function GET(request: Request) {
   );
 
   const { db } = getFirebaseAdmin();
+  const collection = db.collection(
+    process.env.REVIEW_QUESTIONS_COLLECTION || "reviewQuestions"
+  );
+  const bucket = getSupabaseServer().storage.from(getAssignmentBucketName());
+  const rawId = text(url.searchParams.get("raw"));
+
+  if (rawId) {
+    const docItem = await collection.doc(rawId).get();
+    const data = docItem.data();
+    const imageStoragePath = text(data?.imageStoragePath);
+    if (!docItem.exists || data?.questionType !== "exam" || !imageStoragePath) {
+      return new Response("Not found", { status: 404 });
+    }
+    const downloaded = await bucket.download(imageStoragePath);
+    if (downloaded.error || !downloaded.data) {
+      return new Response("Image download failed", { status: 502 });
+    }
+    return new Response(await downloaded.data.arrayBuffer(), {
+      headers: {
+        "content-type": imageContentType(data?.imageOriginalName || imageStoragePath),
+        "cache-control": "no-store",
+        "x-robots-tag": "noindex, nofollow",
+      },
+    });
+  }
+
   const snapshot = await db
     .collection(process.env.REVIEW_QUESTIONS_COLLECTION || "reviewQuestions")
     .where("questionType", "==", "exam")
@@ -123,7 +157,6 @@ export async function GET(request: Request) {
 
   const start = page * limit;
   const selected = questions.slice(start, start + limit);
-  const bucket = getSupabaseServer().storage.from(getAssignmentBucketName());
 
   const audited = await Promise.all(
     selected.map(async (item): Promise<AuditImage> => {
