@@ -92,6 +92,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const page = Math.max(0, Math.floor(number(url.searchParams.get("page"))));
+  const compact = url.searchParams.get("compact") === "1";
   const limit = Math.min(
     MAX_LIMIT,
     Math.max(1, Math.floor(number(url.searchParams.get("limit")) || DEFAULT_LIMIT))
@@ -141,7 +142,12 @@ export async function GET(request: Request) {
         const preview = await sharp(source)
           .rotate()
           .flatten({ background: "#ffffff" })
-          .resize({ width: 760, height: 1100, fit: "inside", withoutEnlargement: true })
+          .resize({
+            width: compact ? 460 : 760,
+            height: compact ? 360 : 1100,
+            fit: "inside",
+            withoutEnlargement: true,
+          })
           .jpeg({ quality: 72, mozjpeg: true })
           .toBuffer();
         const originalArea = Math.max(1, number(original.width) * number(original.height));
@@ -188,11 +194,14 @@ export async function GET(request: Request) {
     img{display:block;max-width:100%;max-height:760px;width:auto;height:auto;margin:12px auto;border:1px solid #e2e8f0;background:#fff}
     .meta{font-size:11px;color:#64748b;word-break:break-all}.prompt{font-weight:800;line-height:1.55}.warning{margin-top:10px;border-radius:10px;background:#fff7ed;color:#c2410c;padding:8px;font-size:12px;font-weight:800}.error{margin:12px 0;background:#fef2f2;color:#b91c1c;padding:12px;border-radius:10px}
     ol{padding-left:24px;line-height:1.65;font-size:13px}nav{display:flex;gap:10px;margin-top:12px}a{color:#6d28d9;font-weight:800}
+    body.compact main{max-width:1320px;padding:14px}body.compact .summary{padding:10px 14px;margin-bottom:12px}body.compact .summary h1{font-size:22px;margin:0 0 6px}
+    body.compact .grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}body.compact .card{border-radius:14px;padding:10px}body.compact img{max-height:300px;margin:8px auto}
+    body.compact .prompt{font-size:13px;margin:8px 0}body.compact ol{font-size:11px;line-height:1.4;margin:6px 0}body.compact .meta{font-size:9px}
     @media(max-width:760px){main{padding:12px}.grid{grid-template-columns:1fr}.summary{position:static}}
-  </style></head><body><main>
+  </style></head><body class="${compact ? "compact" : ""}"><main>
     <section class="summary"><h1>기출문제 사진 읽기 검사</h1>
       <div>사진이 있는 기출문제 <strong>${questions.length}</strong>건 · 페이지 ${page + 1}/${totalPages} · 현재 ${audited.length}건</div>
-      <nav>${page > 0 ? `<a href="?page=${page - 1}&limit=${limit}">이전</a>` : ""}${start + limit < questions.length ? `<a href="?page=${page + 1}&limit=${limit}">다음</a>` : ""}</nav>
+      <nav>${page > 0 ? `<a href="?page=${page - 1}&limit=${limit}${compact ? "&compact=1" : ""}">이전</a>` : ""}${start + limit < questions.length ? `<a href="?page=${page + 1}&limit=${limit}${compact ? "&compact=1" : ""}">다음</a>` : ""}</nav>
     </section>
     <section class="grid">${audited.map(renderCard).join("")}</section>
   </main></body></html>`;
