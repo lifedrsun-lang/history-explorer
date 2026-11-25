@@ -55,7 +55,7 @@ function classifyFunctionGate(content, condition) {
   const callNames = [...condition.matchAll(/(^|[!&|=,(])([A-Za-z_]\w*)\(/g)].map((match) => match[2]);
   const bodies = [];
   for (const name of callNames) {
-    const declaration = new RegExp(`function\\s+${name.replace(/[.*+?^${}()|[\\]\\]/g, "\\function ruleMatches(content) {")}\\s*\\([^)]*\\)\\s*\\{`, "g").exec(content);
+    const declaration = new RegExp(`function\\s+${name}\\s*\\([^)]*\\)\\s*\\{`, "g").exec(content);
     if (!declaration) continue;
     const start = content.indexOf("{", declaration.index);
     let depth = 0, end = start;
