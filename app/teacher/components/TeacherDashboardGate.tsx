@@ -23,7 +23,7 @@ const managementSections = [
     href: "/teacher/presentations",
     icon: "📽️",
     title: "수업자료",
-    description: "PPT·수업자료 링크를 등록하고 수업용 자료를 관리",
+    description: "PPT·수업자료 링크 관리 및 PPT 뷰어 이용",
     className: "border-violet-200 bg-violet-50 text-violet-900",
   },
   {
@@ -65,14 +65,6 @@ const managementSections = [
     title: "돌봄/늘봄",
     description: "돌봄·늘봄 학교 및 기관 관리",
     className: "border-amber-200 bg-amber-50 text-amber-900",
-  },
-  {
-    key: "ppt-viewer",
-    href: "/teacher/ppt-viewer-test",
-    icon: "🖥️",
-    title: "PPT 뷰어",
-    description: "OneDrive PPT를 넘겨 보고 수업 영상을 큰 화면으로 재생",
-    className: "border-sky-200 bg-sky-50 text-sky-900",
   },
 ] as const;
 

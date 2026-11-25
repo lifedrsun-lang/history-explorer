@@ -983,9 +983,9 @@ function TeacherPresentationsPageContent() {
               </div>
             ) : null}
 
-            {!isLoading && !loadError ? (
+            {(!isLoading && !loadError) || !isArchiveSection ? (
               <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {visibleLibraries.map((library) => (
+                {!isLoading && !loadError ? visibleLibraries.map((library) => (
                   <button
                     key={library.value}
                     type="button"
@@ -1006,7 +1006,23 @@ function TeacherPresentationsPageContent() {
                       <span className={`text-sm font-black ${library.accent}`}>자료 보기 →</span>
                     </div>
                   </button>
-                ))}
+                )) : null}
+                {!isArchiveSection ? (
+                  <Link
+                    href="/teacher/ppt-viewer-test"
+                    className="group min-h-52 rounded-3xl border-2 border-sky-100 bg-sky-50 p-6 text-left shadow-sm transition hover:-translate-y-1 hover:border-sky-300 hover:shadow-lg"
+                  >
+                    <div className="text-5xl">🖥️</div>
+                    <div className="mt-5 text-2xl font-black text-sky-700">PPT 뷰어</div>
+                    <p className="mt-2 min-h-10 text-sm font-bold leading-6 text-slate-600">
+                      OneDrive PPT를 넘겨 보고 수업 영상을 큰 화면으로 재생합니다.
+                    </p>
+                    <div className="mt-5 flex items-center justify-between border-t border-black/5 pt-4">
+                      <span className="text-sm font-black text-slate-500">수업 도구</span>
+                      <span className="text-sm font-black text-sky-700">뷰어 열기 →</span>
+                    </div>
+                  </Link>
+                ) : null}
               </div>
             ) : null}
           </section>
