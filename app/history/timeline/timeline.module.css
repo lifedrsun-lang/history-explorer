@@ -379,3 +379,11 @@
 .compactDate>span{display:block}
 .yearCell{padding-left:4px;padding-right:4px;text-align:center}
 .introSource{display:block;margin-top:7px;font-size:11px;line-height:1.5;color:#b9c9c4;font-weight:500}
+
+/* 국가유산은 왕조/시대 필터에서 분리하여 별도 주제별로 탐색한다. */
+.heritageFilters{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:-8px 0 22px;padding:12px 14px;border:1px solid #496c5e;border-radius:14px;background:#1c3028}
+.heritageFilters strong{font-size:14px;color:#c5f3d6;white-space:nowrap}
+.heritageFilters button{padding:8px 16px;border-radius:999px;border:1px solid #638673;background:#243e32;color:#fff;font-weight:800;cursor:pointer}
+.heritageFilters button.activeHeritageFilter{background:#f4d58e;color:#342408;border-color:#f4d58e}
+.heritageFilters span{font-size:12px;color:#c0d0c7}
+@media(max-width:480px){.heritageFilters{gap:8px;padding:10px}.heritageFilters span{flex-basis:100%;}}
