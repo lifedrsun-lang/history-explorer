@@ -4,7 +4,7 @@ import Link from "next/link";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { useCallback, useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
-import { newOrderLine, newTextbookOrder, ORDER_BOOKS, ORDER_SUBJECTS, ORDER_COLUMNS, ORDER_OPTIONS, orderBookNumber, orderAmount, orderRows, parseTextbookOrderTitle, textbookOrderTitle, validateOrder, type OrderDelivery, type OrderLine, type TextbookOrder } from "@/lib/textbookOrders";
+import { newOrderLine, newTextbookOrder, ORDER_BOOKS, ORDER_MONARTE_BOOKS, ORDER_MONARTE_OPTIONS, ORDER_SUBJECTS, ORDER_COLUMNS, ORDER_OPTIONS, orderBookNumber, orderAmount, orderRows, parseTextbookOrderTitle, textbookOrderTitle, validateOrder, type OrderDelivery, type OrderLine, type TextbookOrder } from "@/lib/textbookOrders";
 import styles from "./orders.module.css";
 
 const DELIVERY_FIELDS: [keyof OrderDelivery, string][] = [["recipient", "수령자"], ["phone", "전화"], ["mobile", "핸드폰"], ["postalCode", "우편번호"], ["address", "주소"], ["message", "배송메세지"], ["shipping", "배송비"], ["invoiceCount", "송장출력갯수"], ["parcelSize", "택배크기"]];
@@ -44,6 +44,7 @@ export default function TextbookOrdersPage() {
   const [orderRound, setOrderRound] = useState("");
   const [subject, setSubject] = useState("별꼼역사");
   const [selectedBooks, setSelectedBooks] = useState<number[]>([]);
+  const [selectedMonarteBooks, setSelectedMonarteBooks] = useState<string[]>([]);
   const [groups, setGroups] = useState<EnrollmentGroup[]>([]);
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
@@ -107,7 +108,7 @@ export default function TextbookOrdersPage() {
     if (dirty && !window.confirm("저장하지 않은 주문 내용이 있습니다. 다른 주문을 열까요?")) return;
     const period = parseTextbookOrderTitle(order.title);
     setQuarter(period.quarter); setOrderRound(period.round);
-    setSubject("별꼼역사"); setSelectedBooks([]); setSelectedOptions([]); setCustomProduct(""); setCustomOption(""); setCourse(""); setSelectedGroup(""); setMailPreview(false); setQuantity(1);
+    setSubject("별꼼역사"); setSelectedBooks([]); setSelectedMonarteBooks([]); setSelectedOptions([]); setCustomProduct(""); setCustomOption(""); setCourse(""); setSelectedGroup(""); setMailPreview(false); setQuantity(1);
     setEditor(order); setBaseline(JSON.stringify(order)); setPreview(false); setError(""); setMessage("");
   };
   const changeOrderPeriod = (nextQuarter: string, nextRound: string) => {
@@ -138,7 +139,9 @@ export default function TextbookOrdersPage() {
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100000) { setError("수량을 1~100000으로 입력해주세요."); return; }
     const products = subject === "별꼼역사"
       ? ORDER_BOOKS.filter(book => selectedBooks.includes(book.number)).flatMap(book => selectedOptions.map(option => ({ productName: book.productName, option })))
-      : customProduct.trim() ? [{ productName: customProduct.trim(), option: customOption.trim() }] : [];
+      : subject === "모나르떼"
+        ? ORDER_MONARTE_BOOKS.filter(book => selectedMonarteBooks.includes(book.id)).flatMap(book => ORDER_MONARTE_OPTIONS.map(option => ({ productName: book.productName, option })))
+        : customProduct.trim() ? [{ productName: customProduct.trim(), option: customOption.trim() }] : [];
     if (!products.length) { setError("교재와 구성품 또는 실제 상품명을 입력해주세요."); return; }
     if (editor.lines.length + products.length > 200) { setError("주문 항목은 200개까지 저장할 수 있습니다."); return; }
     const lines = products.map(product => ({
@@ -147,7 +150,7 @@ export default function TextbookOrdersPage() {
     if (lines.some(line => editor.lines.some(existing => existing.school === line.school && overlapsClass(existing.teachingClass, line.teachingClass) && (existing.course || "") === line.course && existing.productName === line.productName && existing.option === line.option)) &&
       !window.confirm("같은 학교·교재에 동일하거나 겹치는 반의 주문이 있습니다. 중복 주문이 아닌 추가 수량이 맞다면 별도 행을 더할까요?")) return;
     patch("lines", [...editor.lines, ...lines]);
-    setSelectedBooks([]); setSelectedOptions([]); setCustomProduct(""); setCustomOption(""); setError("");
+    setSelectedBooks([]); setSelectedMonarteBooks([]); setSelectedOptions([]); setCustomProduct(""); setCustomOption(""); setError("");
     setMessage(`${group.school} ${group.teachingClass} 교재 ${lines.length}개 항목을 추가했습니다. 다른 학교·교재를 계속 추가할 수 있습니다.`);
   };
   const saveDelivery = async () => {
@@ -253,11 +256,15 @@ export default function TextbookOrdersPage() {
             <label className={styles.wide}>수업명 (선택)<input maxLength={100} value={course} onChange={e => setCourse(e.target.value)} placeholder="예: 한국사, 세계문화" /></label>
           </div>
           <p className={styles.muted}>방과후 관리에 등록된 학교만 표시합니다. 같은 과목·진도의 A반과 B반은 A+B반을 선택하여 교재별로 한 줄에 주문할 수 있습니다. A+B반 신청 인원은 두 반의 합계이며, 과목별 실제 신청 인원에 맞게 수량을 수정해주세요. 과목이나 진도가 다르면 각각 선택해주세요. 신청 인원이 없어도 직접 주문할 수 있습니다.</p>
-          <div className={styles.subjectButtons} role="group" aria-label="교재 종류">{ORDER_SUBJECTS.map(value => <button type="button" key={value} aria-pressed={subject === value} className={subject === value ? styles.periodSelected : undefined} onClick={() => { setSubject(value); setSelectedBooks([]); setSelectedOptions([]); setCustomProduct(""); setCustomOption(""); }}>{value}</button>)}</div>
+          <div className={styles.subjectButtons} role="group" aria-label="교재 종류">{ORDER_SUBJECTS.map(value => <button type="button" key={value} aria-pressed={subject === value} className={subject === value ? styles.periodSelected : undefined} onClick={() => { setSubject(value); setSelectedBooks([]); setSelectedMonarteBooks([]); setSelectedOptions([]); setCustomProduct(""); setCustomOption(""); }}>{value}</button>)}</div>
           {subject === "별꼼역사" ? <>
             <div className={styles.bookGrid}>{ORDER_BOOKS.map(book => <label key={book.number} className={selectedBooks.includes(book.number) ? styles.bookSelected : styles.bookChoice}><input type="checkbox" checked={selectedBooks.includes(book.number)} onChange={e => setSelectedBooks(old => e.target.checked ? [...old, book.number] : old.filter(n => n !== book.number))} />{book.productName}</label>)}</div>
             <div className={styles.bulkOptions}>{ORDER_OPTIONS.map(option => <label key={option}><input type="checkbox" checked={selectedOptions.includes(option)} onChange={e => setSelectedOptions(old => e.target.checked ? [...old, option] : old.filter(v => v !== option))} />{option}</label>)}</div>
             <p className={styles.muted}>선택한 호수마다 선택한 구성품이 추가됩니다. 다른 구성으로 주문하려면 나누어 추가하세요.</p>
+          </> : subject === "모나르떼" ? <>
+            <div className={styles.bookGrid}>{ORDER_MONARTE_BOOKS.map(book => <label key={book.id} className={selectedMonarteBooks.includes(book.id) ? styles.bookSelected : styles.bookChoice}><input type="checkbox" checked={selectedMonarteBooks.includes(book.id)} onChange={e => setSelectedMonarteBooks(old => e.target.checked ? [...old, book.id] : old.filter(id => id !== book.id))} />{book.productName}</label>)}</div>
+            <div className={styles.bulkOptions}>{ORDER_MONARTE_OPTIONS.map(option => <label key={option}><input type="checkbox" checked readOnly />{option}</label>)}</div>
+            <p className={styles.muted}>세계문화 모나르떼 4개 시리즈의 1~3호, 총 12권을 선택할 수 있습니다. 선택한 각 호는 교재 1권 + 체험물 구성으로 함께 추가됩니다.</p>
           </> : <div className={styles.fields}>
             <label className={styles.wide}>실제 상품명<input maxLength={300} value={customProduct} onChange={e => setCustomProduct(e.target.value)} placeholder={subject === "기타" ? "업체 상품명 직접 입력" : `${subject} 교재의 정확한 상품명`} /></label>
             <label>옵션명 (선택)<input maxLength={40} value={customOption} onChange={e => setCustomOption(e.target.value)} placeholder="업체 옵션명" /></label>
