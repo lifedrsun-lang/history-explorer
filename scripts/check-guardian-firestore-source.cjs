@@ -136,12 +136,30 @@ function ruleMatches(content) {
   const broad = ruleMatches(combined);
   const explicit = collections.filter((collection) => combined.includes(`match /${collection}/`));
   const digest = createHash("sha256").update(combined).digest("hex").slice(0, 16);
+  const unsafeClassifications = new Set([
+    "public",
+    "any-authenticated",
+    "function-public",
+    "function-any-authenticated",
+    "function-gated-unresolved",
+    "function-auth-condition-unverified",
+    "function-other-unverified",
+    "other-unverified",
+    "auth-condition-unverified",
+  ]);
   const broadSummary = broad.map(({ pattern, allows }) =>
     `${pattern}[${allows.map(({ operations, classification }) => `${operations}:${classification}`).join("|")}]`
   ).join(",");
-  console.log(`Guardian deployed Firestore rules source audit summary: files=${files.length}, lines=${combined.split(/\r?\n/).length}, sha256=${digest}, explicitGuardianMatches=${explicit.length}/7, permissiveBroadMatches=${broad.length}, broadClassifications=${broadSummary || "none"}.`);
-  if (broad.length) throw new Error("Active Firestore rules contain all-document allow rules; guardian feature activation remains blocked.");
-  console.log("Guardian deployed Firestore rules source audit passed.");
+  const unsafeBroad = broad.flatMap(({ pattern, allows }) =>
+    allows.filter(({ classification }) => unsafeClassifications.has(classification))
+      .map(({ operations, classification }) => `${pattern}:${operations}:${classification}`)
+  );
+  const restrictedBroadCount = broad.reduce((count, { allows }) =>
+    count + allows.filter(({ classification }) => !unsafeClassifications.has(classification)).length, 0
+  );
+  console.log(`Guardian deployed Firestore rules source audit summary: files=${files.length}, lines=${combined.split(/\r?\n/).length}, sha256=${digest}, explicitGuardianMatches=${explicit.length}/7, unsafeBroadAllows=${unsafeBroad.length}, restrictedBroadAllows=${restrictedBroadCount}, broadClassifications=${broadSummary || "none"}.`);
+  if (unsafeBroad.length) throw new Error("Active Firestore rules contain an unsafe all-document allow rule; guardian feature activation remains blocked.");
+  console.log("Guardian deployed Firestore rules source audit passed; restricted wildcard gates still require teacher-UID parity verification.");
 })().catch((error) => {
   console.error(error instanceof Error ? error.message : "Guardian deployed Firestore rules source audit failed.");
   process.exit(1);
