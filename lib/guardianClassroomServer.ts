@@ -42,6 +42,7 @@ export async function guardianTeacher(request:Request) {
   if(!allowlist.includes(teacher.uid)) throw new Error("forbidden");
   return teacher;
 }
+export function isGuardianTermPaused(slug:string,term:unknown) { return slug==="sau"&&term==="2026-Q4"; }
 function school(value:unknown) {
   const s=getAfterSchoolSchool(id(value)); if(!s) throw new Error("not_found");return s;
 }
@@ -60,18 +61,19 @@ async function readStudent(studentId:string, slug:string) {
 }
 type Lesson={lesson:number;date:string;cancelled:boolean};
 function parseLessons(value:unknown):Lesson[] {
-  if(!Array.isArray(value)||value.length!==12)throw new Error("invalid_input");
+  if(!Array.isArray(value)||value.length<1||value.length>12)throw new Error("invalid_input");
   const rows=value.map((x,i)=>{const date=str(x?.date);if(!validDate(date)||Number(x?.lesson)!==i+1)throw new Error("invalid_input");return {lesson:i+1,date,cancelled:x?.cancelled===true}});
-  if(new Set(rows.map(x=>x.date)).size!==12||rows.some((x,i)=>i>0&&x.date<=rows[i-1].date))throw new Error("invalid_input");
+  if(new Set(rows.map(x=>x.date)).size!==rows.length||rows.some((x,i)=>i>0&&x.date<=rows[i-1].date))throw new Error("invalid_input");
   return rows;
 }
 export async function configureGuardianSchool(body:any) {
   const db=database();const s=school(body.slug);const ref=db.collection(guardianCollections.schools).doc(s.slug);
   const term=str(body.term);if(!/^\d{4}-Q[1-4]$/.test(term))throw new Error("invalid_input");
+  if(body.enabled===true&&isGuardianTermPaused(s.slug,term))throw new Error("forbidden");
   const classes:any={};for(const c of ["A반","B반"]){
     if(body.classes?.[c]){const x=body.classes[c];classes[c]={lessons:parseLessons(x.lessons),supplies:str(x.supplies).slice(0,500),extra:str(x.extra).slice(0,500)};}
   }
-  if(!Object.keys(classes).length)throw new Error("invalid_input");
+  if(!Object.keys(classes).length&&body.enabled===true)throw new Error("invalid_input");
   const existing=(await ref.get()).data();
   // Prevent a new date list from silently moving existing absence records to different lessons.
   if(existing?.term===term){const notices=await db.collection(guardianCollections.notices).where("slug","==",s.slug).get();for(const d of notices.docs){const n=d.data();if(n.cancelled||n.term!==term)continue;const student=(await db.collection("students").doc(n.studentId).get()).data();const cls=student?getStudentTeachingClass(student):"";const next=classes[cls]?.lessons?.[Number(n.lesson)-1];if(!next||next.date!==n.date||next.cancelled)throw new Error("lesson_unavailable");}}
@@ -86,7 +88,7 @@ export async function configureGuardianSchool(body:any) {
 export async function issueGuardianAccess(body:any) {
   const db=database();const s=school(body.slug);const studentId=id(body.studentId);
   const {data}=await readStudent(studentId,s.slug);const config=(await db.collection(guardianCollections.schools).doc(s.slug).get()).data();
-  if(!config?.enabled||!getEnrollmentTerms(data).includes(config.term))throw new Error("forbidden");
+  if(!config?.enabled||isGuardianTermPaused(s.slug,config.term)||!getEnrollmentTerms(data).includes(config.term))throw new Error("forbidden");
   const ref=db.collection(guardianCollections.access).doc(hash(s.slug+":"+studentId));
   if(body.revoke===true){await ref.set({enabled:false,version:secret()},{merge:true});return {code:null};}
   const code=secret(),salt=randomBytes(16).toString("hex");
@@ -106,14 +108,14 @@ export async function checkGuardianSchool(request:Request,body:any) {
   const db=database();const slug=schoolSlugForName(body.school);if(!slug)return {guardian:false};
   await limitLogin(slug,request);
   const config=(await db.collection(guardianCollections.schools).doc(slug).get()).data();
-  return {guardian:Boolean(config?.enabled&&matches(str(body.schoolCode),config.codeSalt,config.codeHash)),slug};
+  return {guardian:Boolean(config?.enabled&&!isGuardianTermPaused(slug,config.term)&&matches(str(body.schoolCode),config.codeSalt,config.codeHash)),slug};
 }
 export async function loginGuardian(request:Request,body:any) {
   const db=database();const s=school(body.slug);await limitLogin(s.slug,request);
   const code=str(body.schoolCode),childCode=str(body.childCode);const studentId=id(body.studentId);
   const config=(await db.collection(guardianCollections.schools).doc(s.slug).get()).data();
   const access=(await db.collection(guardianCollections.access).doc(hash(s.slug+":"+studentId)).get()).data();
-  if(!config?.enabled||!access?.enabled||!matches(code,config.codeSalt,config.codeHash)||!matches(childCode,access.salt,access.codeHash))throw new Error("invalid_login");
+  if(!config?.enabled||isGuardianTermPaused(s.slug,config.term)||!access?.enabled||!matches(code,config.codeSalt,config.codeHash)||!matches(childCode,access.salt,access.codeHash))throw new Error("invalid_login");
   const {data}=await readStudent(studentId,s.slug);
   if(!getEnrollmentTerms(data).includes(config.term))throw new Error("invalid_login");
   const token=secret();
@@ -127,7 +129,7 @@ async function session(request:Request) {
   if(!ss||Number(ss.expiresAt?.toMillis?.()||0)<=Date.now())throw new Error("invalid_login");
   const config=(await db.collection(guardianCollections.schools).doc(ss.slug).get()).data();
   const access=(await db.collection(guardianCollections.access).doc(hash(ss.slug+":"+ss.studentId)).get()).data();
-  if(!config?.enabled||!access?.enabled||ss.schoolVersion!==config.version||ss.accessVersion!==access.version)throw new Error("invalid_login");
+  if(!config?.enabled||isGuardianTermPaused(ss.slug,config.term)||!access?.enabled||ss.schoolVersion!==config.version||ss.accessVersion!==access.version)throw new Error("invalid_login");
   const {data,teachingClass}=await readStudent(ss.studentId,ss.slug);
   if(!getEnrollmentTerms(data).includes(config.term))throw new Error("invalid_login");
   const plan=config.classes?.[teachingClass];if(!plan)throw new Error("forbidden");
@@ -179,5 +181,5 @@ export async function guardianTeacherSettings(slug:unknown) {
  const db=database(),s=school(slug);const config=(await db.collection(guardianCollections.schools).doc(s.slug).get()).data();
  const students=await db.collection("students").get();
  const roster=students.docs.filter(d=>matchesAfterSchoolSchool(d.data().school,s)&&getEnrollmentStatus(d.data())==="active").map(d=>({id:d.id,name:str(d.data().name),teachingClass:getStudentTeachingClass(d.data()),terms:getEnrollmentTerms(d.data())}));
- return {config:config?{enabled:config.enabled===true,term:config.term,classes:config.classes,hasCode:Boolean(config.codeHash)}:null,roster};
+ return {config:config?{enabled:config.enabled===true&&!isGuardianTermPaused(s.slug,config.term),term:config.term,classes:config.classes,hasCode:Boolean(config.codeHash)}:null,roster};
 }
