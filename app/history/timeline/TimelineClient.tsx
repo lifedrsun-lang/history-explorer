@@ -145,7 +145,8 @@ function groupSameDates(events: StudentEvent[]) {
   return [...groups.values()];
 }
 
-export default function TimelineClient() {
+export default function TimelineClient({ edition = "integrated" }: { edition?: "integrated" | "byeolkkum" }) {
+  const textbookOnly = edition === "byeolkkum";
   // SUN LAB 카드에서 진입한 학생은 남아 있는 교사 Firebase 로그인과 독립적으로 조회한다.
   const sunLabMemberView =
     typeof window !== "undefined" &&
@@ -207,7 +208,8 @@ export default function TimelineClient() {
     }
     try {
       const token = !sunLabMemberView && currentTeacher ? await currentTeacher.getIdToken() : "";
-      const response = await fetch(`/api/history/timeline/events${sunLabMemberView ? "?view=sunlab" : ""}`, {
+      const endpoint = textbookOnly ? "/api/history/timeline/byeolkkum/events" : "/api/history/timeline/events";
+      const response = await fetch(`${endpoint}${sunLabMemberView ? "?view=sunlab" : ""}`, {
         cache: "no-store",
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
@@ -245,7 +247,7 @@ export default function TimelineClient() {
       }
 
       setPayload(data);
-      try {
+      if (!textbookOnly) try {
         const extraResponse = await fetch(`/api/history/timeline/byeolbyeol${sunLabMemberView ? "?view=sunlab" : ""}`, {
           cache: "no-store",
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -297,14 +299,14 @@ export default function TimelineClient() {
   const viewerRole = payload?.viewer.role;
   useEffect(() => {
     if (!viewerRole) return;
-    const defaultVisible = viewerRole === "student";
+    const defaultVisible = !textbookOnly && viewerRole === "student";
     setShowByeolbyeolBasic(defaultVisible);
     setShowByeolbyeolAdvanced(defaultVisible);
     setShowYongseonsaeng(defaultVisible);
     setShowRobin(defaultVisible);
     setShowReadingBook(defaultVisible);
     setShowElementary(defaultVisible);
-  }, [viewerRole]);
+  }, [viewerRole, textbookOnly]);
 
   // 이미 열어 둔 학생 페이지도 탭 복귀 또는 주기적인 재조회 시 공개 중단을 반영한다.
   useEffect(() => {
@@ -417,7 +419,7 @@ export default function TimelineClient() {
     { key: "exam-basic", label: "♣ 한능검 · 기본", checked: showExamBasic, update: setShowExamBasic },
     { key: "exam-advanced", label: "♣ 한능검 · 심화", checked: showExamAdvanced, update: setShowExamAdvanced },
     { key: "heritage", label: "문화유산 현장 해설", checked: showHeritageDetails, update: setShowHeritageDetails },
-  ];
+  ].filter(() => !textbookOnly);
 
   // 한능검은 기본·심화 각각 선택한 급수만 표시하고, 최초 진입 시에는 모두 숨긴다.
   // 문제은행의 원본과 연결 메타데이터는 변경하지 않는다.
@@ -559,7 +561,7 @@ export default function TimelineClient() {
         <section className={styles.loginCard}>
           <div className={styles.brand}>별꼼역사 · 한국사 시간여행</div>
           <div className={styles.loginSymbol}>🧭</div>
-          <h1>나의 한국사 연표</h1>
+          <h1>{textbookOnly ? "별꼼역사 연표" : "나의 한국사 연표"}</h1>
           <p>수강생 정보로 로그인하면 선생님이 공개한 사건만 볼 수 있어요.</p>
           <form onSubmit={login} className={styles.loginForm}>
             <label>
@@ -628,7 +630,7 @@ export default function TimelineClient() {
             )}
           </div>
         </div>
-        <h1>한국사 시간여행</h1>
+        <h1>{textbookOnly ? "별꼼역사 연표" : "한국사 시간여행"}</h1>
         <p>같은 시대에 여러 나라에서 일어난 일을 함께 살펴봐요.</p>
       </header>
 
@@ -647,7 +649,7 @@ export default function TimelineClient() {
                 {ERA_NAV_LABELS[period.key] ?? period.title}
               </button>
             ))}
-            <fieldset className={styles.materialChecks} aria-label="자료별 표시 설정">
+            {materialToggles.length > 0 && <fieldset className={styles.materialChecks} aria-label="자료별 표시 설정">
               <legend>자료 표시 / 숨김</legend>
               {materialToggles.map((option) => (
                 <label key={option.key} className={styles.materialCheck}>
@@ -656,7 +658,7 @@ export default function TimelineClient() {
                   <span>{option.label}</span>
                 </label>
               ))}
-            </fieldset>
+            </fieldset>}
           </nav>
           <div className={styles.mobileEraJump}>
             <label htmlFor="timeline-era-jump">시대 바로가기</label>
@@ -672,7 +674,7 @@ export default function TimelineClient() {
                 </option>
               ))}
             </select>
-            <details className={styles.mobileMaterials}>
+            {materialToggles.length > 0 && <details className={styles.mobileMaterials}>
               <summary>☑ 자료</summary>
               <fieldset className={styles.mobileMaterialPanel} aria-label="자료별 표시 설정">
                 <legend>자료 표시 / 숨김</legend>
@@ -684,13 +686,13 @@ export default function TimelineClient() {
                   </label>
                 ))}
               </fieldset>
-            </details>
+            </details>}
           </div>
         </>
       )}
 
       <div className={styles.wrap}>
-        <section className={styles.introSection}>
+        {!textbookOnly && <section className={styles.introSection}>
           <h2>역사는 언제부터 시작되었을까?</h2>
           <div className={styles.introGrid}>
             <article>
@@ -708,7 +710,7 @@ export default function TimelineClient() {
             <div>💡 시대를 구분하는 기준은 문자 기록이지만, 선사 시대도 사람들의 역사예요.</div>
             <small className={styles.introSource}>참고: 『용선생 교과서 한국사』 1권 13쪽(해당 단원)</small>
           </div>
-        </section>
+        </section>}
 
         <section className={styles.timelineSection}>
           <div className={styles.sectionHeading}>
@@ -732,7 +734,7 @@ export default function TimelineClient() {
             ))}
           </nav>
 
-          {payload?.viewer.role === "teacher" && (
+          {!textbookOnly && payload?.viewer.role === "teacher" && (
             <div className={supplementStyles.teacherControls}>
               <span>보충 자료의 표시 여부는 오른쪽 ‘자료 표시 / 숨김’ 메뉴에서 설정합니다.</span>
               <Link href="/teacher/history-timeline/byeolbyeol-access">민서·민채 열람 권한 확인 →</Link>
@@ -762,7 +764,7 @@ export default function TimelineClient() {
                           <div className={styles.transitionBody}>
                             <h3>{event.title}</h3>
                             <p>{event.summary}</p>
-                            <TimelineWarSummary id={event.id} summary={event.summary} life={event.life} />
+                            {!textbookOnly && <TimelineWarSummary id={event.id} summary={event.summary} life={event.life} />}
                             <TimelineStudyDetails
                               notes={event.studyNotes ?? []}
                               fallback={{ heading: event.title, text: event.life }}
@@ -972,7 +974,7 @@ export default function TimelineClient() {
                                       {event.referenceGroup && <span className={supplementStyles.flowBadge}>🧭 역사 흐름 보충</span>}
                                       <h4>{event.title}</h4>
                                       <p className={styles.gridSummary}>{event.summary}</p>
-                                      <TimelineWarSummary id={event.id} summary={event.summary} life={event.life} />
+                                      {!textbookOnly && <TimelineWarSummary id={event.id} summary={event.summary} life={event.life} />}
                                       {event.referenceGroup ? (
                                         <details className={supplementStyles.disclosure}>
                                           <summary>📖 {event.referenceSource?.book ?? "참고문헌"} 시대 흐름 더 보기</summary>
