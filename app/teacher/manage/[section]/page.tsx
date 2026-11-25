@@ -120,6 +120,13 @@ const sections: Record<string, ManagementSection> = {
         className: "border-sky-200 bg-sky-50 text-sky-900",
       },
       {
+        href: "/teacher/timer",
+        icon: "⏱️",
+        title: "40분 수업 타이머",
+        description: "20분 → 10분 → 10분 구간을 자동으로 안내하는 수업용 타이머",
+        className: "border-sky-200 bg-sky-50 text-sky-900",
+      },
+      {
         href: "/teacher/atc-plans",
         icon: "📋",
         title: "ATC 수업계획서",
@@ -134,18 +141,11 @@ const sections: Record<string, ManagementSection> = {
         className: "border-indigo-200 bg-indigo-50 text-indigo-900",
       },
       {
-        href: "/teacher/schedule?tab=teaching",
-        icon: "📅",
-        title: "출강 일정",
-        description: "방과후·건별계약 출강일정과 Google Calendar 연동 확인",
-        className: "border-cyan-200 bg-cyan-50 text-cyan-900",
-      },
-      {
-        href: "/teacher/timer",
-        icon: "⏱️",
-        title: "40분 수업 타이머",
-        description: "20분 → 10분 → 10분 구간을 자동으로 안내하는 수업용 타이머",
-        className: "border-sky-200 bg-sky-50 text-sky-900",
+        href: "/teacher/activity-lab",
+        icon: "🤖",
+        title: "활동 결과 연구소",
+        description: "모럴머신 참여 현황과 반별·학년별 결과 관리",
+        className: "border-indigo-200 bg-indigo-50 text-indigo-900",
       },
       {
         href: "/teacher/live-vote",
@@ -167,13 +167,6 @@ const sections: Record<string, ManagementSection> = {
         title: "모둠 토론 활동",
         description: "5개 모둠 토론·서술형/비교표형 의견 수집·왕관 선정·결과 제출",
         className: "border-amber-200 bg-amber-50 text-amber-950",
-      },
-      {
-        href: "/teacher/activity-lab",
-        icon: "🤖",
-        title: "활동 결과 연구소",
-        description: "모럴머신 참여 현황과 반별·학년별 결과 관리",
-        className: "border-indigo-200 bg-indigo-50 text-indigo-900",
       },
       {
         href: "/teacher/fees?scope=contract&tab=payments",
@@ -384,7 +377,7 @@ export default async function TeacherManagementSectionPage({
                 {group.title && (
                   <h3 className="mb-3 px-1 text-base font-black text-slate-700 sm:text-lg">{group.title}</h3>
                 )}
-                <div className={`grid grid-cols-2 gap-3 sm:gap-4 ${section === "after-school" ? "lg:grid-cols-4" : section === "teaching" ? "lg:grid-cols-3" : ""}`}>
+                <div className={`grid grid-cols-2 gap-3 sm:gap-4 ${section === "after-school" ? "lg:grid-cols-4" : section === "teaching" ? "lg:grid-cols-4" : ""}`}>
               {group.items.map((item) => (
                 <Link
                   key={`${item.href}-${item.title}`}

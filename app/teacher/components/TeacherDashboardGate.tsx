@@ -70,6 +70,14 @@ const managementSections = [
 
 const supportingSections = [
   {
+    key: "teaching-schedule",
+    href: "/teacher/schedule?tab=teaching",
+    icon: "📅",
+    title: "출강 일정",
+    description: "방과후·건별계약 출강일정과 Google Calendar 연동 확인",
+    className: "border-cyan-200 bg-cyan-50 text-cyan-900",
+  },
+  {
     key: "operations",
     href: "/teacher/manage/operations",
     icon: "⚙️",
