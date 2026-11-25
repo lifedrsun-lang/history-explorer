@@ -70,8 +70,9 @@ function ruleMatches(content) {
         }
         const block = content.slice(start, end);
         const allows = [...block.matchAll(/allow\s+([^:]+):\s*if\s+([^;]+);/g)].map((match) => {
-          const compact = match[2].replace(/[()\s]/g, "");
-          const functionCall = /(^|[!&|=,])([A-Za-z_]\w*)\(/.test(compact);
+          const rawCondition = match[2].replace(/\s/g, "");
+          const compact = rawCondition.replace(/[()]/g, "");
+          const functionCall = /(^|[!&|=,])([A-Za-z_]\w*)\(/.test(rawCondition);
           let classification = "other-unverified";
           if (compact === "true") classification = "public";
           else if (compact === "false") classification = "deny";
