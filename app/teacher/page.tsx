@@ -419,6 +419,7 @@ export default function TeacherPage() {
 
       stage: selectedStage,
       program: studentProgram,
+      timelineCompletedIssues: [],
       isActive: true,
 
       coinHistory: [],

@@ -22,7 +22,7 @@ export default function HistoryTimelineAdminPage() {
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [students, setStudents] = useState<StudentAccess[]>([]);
-  const [maxIssue, setMaxIssue] = useState(23);
+  const [maxIssue, setMaxIssue] = useState(24);
   const [studentVisible, setStudentVisible] = useState(false);
   const [visibilityLoaded, setVisibilityLoaded] = useState(false);
   const [savingVisibility, setSavingVisibility] = useState(false);
@@ -72,7 +72,7 @@ export default function HistoryTimelineAdminPage() {
     try {
       const data = await request();
       setStudents(Array.isArray(data.students) ? data.students : []);
-      setMaxIssue(Number(data.maxIssue) || 23);
+      setMaxIssue(Number(data.maxIssue) || 24);
       setStudentVisible(data.studentVisible === true);
       setVisibilityLoaded(true);
     } catch (loadError) {
@@ -224,6 +224,7 @@ export default function HistoryTimelineAdminPage() {
   };
 
   const toggleIssue = (student: StudentAccess, issue: number) => {
+    if (savingId) return;
     const current = student.timelineCompletedIssues || [];
     const next = current.includes(issue)
       ? current.filter((item) => item !== issue)
@@ -259,7 +260,7 @@ export default function HistoryTimelineAdminPage() {
             <div className="flex flex-wrap gap-2">
               <Link href="/history/timeline" className="rounded-2xl bg-amber-300 px-4 py-2 text-sm font-black text-slate-900">전체 연표 보기</Link>
               <Link href="/teacher/history-timeline/exam-links" className="rounded-2xl bg-emerald-200 px-4 py-2 text-sm font-black text-emerald-950">♣ 한능검 연결</Link>
-              <Link href="/teacher/history-timeline/sun-lab-access" className="rounded-2xl bg-sky-200 px-4 py-2 text-sm font-black text-sky-950">🌞 SUN LAB 열람 권한</Link>
+              <Link href="/teacher/history-timeline/sun-lab-access" className="rounded-2xl bg-sky-200 px-4 py-2 text-sm font-black text-sky-950">🌞 통합한국사 열람 권한</Link>
               <Link href="/teacher/history-travel" className="rounded-2xl bg-white/10 px-4 py-2 text-sm font-black text-white">한국사 시간여행</Link>
             </div>
           </div>
@@ -327,7 +328,7 @@ export default function HistoryTimelineAdminPage() {
           {notice && <div className="mt-3 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{notice}</div>}
         </section>
 
-        <section className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <section className="mt-4 grid grid-cols-1 gap-3">
           {visibleStudents.map((student) => (
             <article key={student.studentId} className="rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm">
               <div className="flex items-start justify-between gap-3">
@@ -348,20 +349,28 @@ export default function HistoryTimelineAdminPage() {
               >
                 {student.timelineVisibleWhileHidden ? "예외 열람 해제" : "이 학생만 예외 열람 허용"}
               </button>
-              <div className="mt-4 grid grid-cols-6 gap-1.5 sm:grid-cols-8">
-                {Array.from({ length: maxIssue }, (_, index) => index + 1).map((issue) => {
-                  const checked = student.timelineCompletedIssues.includes(issue);
-                  return (
-                    <button key={issue} type="button" disabled={savingId === student.studentId} onClick={() => toggleIssue(student, issue)} className={`rounded-xl py-2 text-xs font-black transition disabled:opacity-50 ${checked ? "bg-emerald-600 text-white shadow-sm" : "bg-slate-100 text-slate-500 hover:bg-emerald-50"}`} aria-pressed={checked}>
-                      {issue}
-                    </button>
-                  );
-                })}
+              <div className="mt-4 overflow-x-auto pb-2" aria-label="교재별 열람 권한">
+                <div className="min-w-[620px] space-y-2">
+                  {[0, 1].map(year => (
+                    <div key={year} className="grid grid-cols-[64px_repeat(12,minmax(0,1fr))] items-center gap-1.5">
+                      <span className="text-xs font-black text-slate-700">{year + 1}년 차</span>
+                      {Array.from({ length: 12 }, (_, index) => year * 12 + index + 1).map(issue => {
+                        const checked = student.timelineCompletedIssues.includes(issue);
+                        return <button key={issue} type="button" disabled={Boolean(savingId) || issue > maxIssue}
+                          onClick={() => toggleIssue(student, issue)}
+                          className={`min-w-0 rounded-lg px-1 py-2.5 text-xs font-black whitespace-nowrap transition disabled:opacity-50 ${checked ? "bg-emerald-600 text-white shadow-sm" : "bg-slate-100 text-slate-500 hover:bg-emerald-50"}`}
+                          aria-pressed={checked} aria-label={`${student.name} ${issue}호 열람 ${checked ? "해제" : "허용"}`}>
+                          {issue}호
+                        </button>;
+                      })}
+                    </div>
+                  ))}
+                </div>
               </div>
               <p className="mt-3 text-[11px] font-bold text-slate-400">
                 {student.timelineAccessSource === "current_stage"
-                  ? "현재 진도 바로 전 호수까지 자동 공개 중 · 숫자를 누르면 학생별 설정으로 저장됩니다."
-                  : "학생별 공개 설정 · 숫자를 누르면 즉시 저장됩니다."}
+                  ? "기존 진도 기준 권한 유지 중 · 호수를 누르면 수동 설정으로 저장됩니다."
+                  : "학생별 공개 설정 · 호수를 누르면 즉시 저장됩니다."}
                 {" "}학생 화면에는 호수 번호가 표시되지 않습니다.
               </p>
             </article>

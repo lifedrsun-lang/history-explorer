@@ -17,7 +17,8 @@ import {
   HISTORY_TIMELINE_FOURTH_SHARED_SOURCE,
 } from "./historyTimelineFourth";
 
-export const HISTORY_TIMELINE_MAX_ISSUE = 23;
+// 24호는 관리용으로 예약한다. 교재 사건은 출처 확인 후 추가한다.
+export const HISTORY_TIMELINE_MAX_ISSUE = 24;
 
 export type HistoryTimelineImage = {
   kind: "emoji";
@@ -281,8 +282,9 @@ export const resolveTimelineCompletedIssues = (student: {
     };
   }
 
+  // 기존 명시적 권한이 없는 학생의 동작은 유지한다. 신규 등록은 []를 기록한다.
   const completedThrough = Math.min(
-    HISTORY_TIMELINE_MAX_ISSUE,
+    23,
     Math.max(0, getTimelineBookNumber(student.stage) - 1)
   );
   return {
