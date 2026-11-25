@@ -1147,38 +1147,6 @@ export default function TeacherPage() {
           </div>
         </div>
 
-        {/* 한국사 통합 연표 교사용 바로가기: 관리소 제목 바로 아래 */}
-        <section
-          aria-labelledby="teacher-history-timeline-title"
-          className="mb-4 rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-4 shadow-md sm:p-5"
-        >
-          <div className="flex items-start gap-3">
-            <div
-              aria-hidden="true"
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-2xl shadow-sm"
-            >
-              📜
-            </div>
-            <div className="min-w-0">
-              <h2
-                id="teacher-history-timeline-title"
-                className="text-xl font-black text-slate-900 sm:text-2xl"
-              >
-                한국사 시간여행
-              </h2>
-              <p className="mt-1 text-sm font-medium leading-relaxed text-slate-600">
-                별꼼역사 연표와 통합한국사 연표를 확인하고 공개 범위를 관리하세요.
-              </p>
-            </div>
-          </div>
-          <Link
-            href="/teacher/history-travel"
-            className="mt-4 flex min-h-12 items-center justify-center rounded-2xl bg-emerald-700 px-4 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800"
-          >
-            🧭 한국사 시간여행 들어가기
-          </Link>
-        </section>
-
         {/* 학생 수 / 반 선택 */}
         <div className="bg-white rounded-3xl p-4 mb-4 shadow-md">
           <div className="grid grid-cols-3 gap-3 text-center">
