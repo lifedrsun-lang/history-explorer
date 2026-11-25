@@ -123,7 +123,8 @@ export async function getTimelineEvents(request: Request, edition: "integrated" 
           toStudentTimelineEvent(event, completedIssues));
         const examLinks = await getTimelineExamReferences(new Set(events.map(event => event.id)));
         return privateJson({
-          viewer: { role: "student", name: String(member.name || "SUN LAB 회원"), completedIssueCount: completedIssues.length },
+          viewer: { role: "student", name: String(member.name || "SUN LAB 회원"), completedIssueCount: completedIssues.length, completedIssues },
+          legacySupplementAccess: memberProfileDoc.data()?.timelineByeolbyeolAccess === true,
           examLinks, events,
           heritageNotes: heritageForEvents(events),
           studyTopics: getHistoryTimelineTopicsForIssues(completedIssues),
@@ -185,6 +186,7 @@ export async function getTimelineEvents(request: Request, edition: "integrated" 
       role: "student",
       name: String(student.name || "학생"),
       completedIssueCount: completedIssues.length,
+      completedIssues,
     },
     events,
     maxIssue: HISTORY_TIMELINE_MAX_ISSUE,

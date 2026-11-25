@@ -1,6 +1,5 @@
-import { isIntegratedTimelineMember } from "@/lib/historyTimelineIntegratedAccess";
-import { verifyTeacherRequest } from "@/lib/assignmentServer";
-import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
+import { getAuthorizedTimeline } from "@/lib/historyTimelineAuthorized";
+import { filterTimelineMaterialRecords, type TimelineMaterialAccess } from "@/lib/historyTimelineMaterialPolicy";
 import { getByeolbyeolPublicNotes } from "@/lib/historyTimelineByeolbyeol";
 import { HISTORY_TIMELINE_BYEOLBYEOL_FLOW_EVENTS } from "@/lib/historyTimelineByeolbyeolFlow";
 import { AUDITED_ADVANCED_TIMELINE_EVENTS } from "@/lib/historyTimelineAuditedSupplements";
@@ -12,15 +11,8 @@ import {getYongNotesForEvents} from "@/lib/historyTimelineYongNotes";
 import {getHistoryReferenceNotes} from "@/lib/historyTimelinePhaseTwoReadingNotes";
 import {
   getTimelineEventsForIssues,
-  HISTORY_TIMELINE_MAX_ISSUE,
   toStudentTimelineEvent,
 } from "@/lib/historyTimeline";
-import {
-  getHistoryTimelineSession,
-  HISTORY_TIMELINE_SESSION_COOKIE,
-  readRequestCookie,
-} from "@/lib/historyTimelineSession";
-import { getSunLabStudentSession, SUNLAB_STUDENT_SESSION_COOKIE } from "@/lib/sunLabStudentSession";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -70,51 +62,19 @@ const buildAllowedMaterials = (allowedIssues: number[]) => ({
 });
 
 export async function GET(request: Request) {
-  const view = new URL(request.url).searchParams.get("view");
-  const sunLabMemberView = view === "sunlab";
-  if (view === "student") return respond({ notes: {} }, 403);
-  const authHeader = request.headers.get("authorization") || "";
-  if (authHeader && !sunLabMemberView) {
-    // Authorization을 받은 요청은 반드시 실제 교사 계정을 검증한다.
-    try {
-      await verifyTeacherRequest(request);
-      const allIssues = Array.from({ length: HISTORY_TIMELINE_MAX_ISSUE }, (_, i) => i + 1);
-      return respond(buildAllowedMaterials(allIssues));
-    } catch {
-      return respond({ error: "교사 인증이 필요합니다." }, 401);
-    }
-  }
-
-  const { db } = getFirebaseAdmin();
-
-  // 일반 수강생의 세션은 통합한국사 자료에 사용할 수 없다.
-  const timelineSession = sunLabMemberView ? null : await getHistoryTimelineSession(
-    readRequestCookie(request, HISTORY_TIMELINE_SESSION_COOKIE)
-  );
-  if (timelineSession) return respond({ notes: {} }, 403);
-
-  // SUN LAB 계정: 기존 연표 전체 권한과 보충설명 전용 권한을 모두 요구한다.
-  // 이름만으로 이민서·이민채를 추정하거나 일반 회원에게 권한을 자동 부여하지 않는다.
-  const memberSession = await getSunLabStudentSession(
-    readRequestCookie(request, SUNLAB_STUDENT_SESSION_COOKIE)
-  );
-  if (!memberSession || !(await isIntegratedTimelineMember(memberSession.studentId))) return respond({ notes: {} }, 403);
-
-  const [studentSnapshot, profileSnapshot] = await Promise.all([
-    db.collection("students").doc(memberSession.studentId).get(),
-    db.collection("sun_lab_members").doc(memberSession.studentId).get(),
-  ]);
-  const member = studentSnapshot.data();
-  const profile = profileSnapshot.data();
-  if (!studentSnapshot.exists || !profileSnapshot.exists || !member ||
-      (member.sunLabMember !== true && member.program !== "sun_lab") ||
-      member.isActive === false ||
-      String(member.enrollmentStatus || "active") !== "active" ||
-      profile?.timelineFullAccess !== true ||
-      profile?.timelineByeolbyeolAccess !== true) {
-    return respond({ notes: {} }, 200);
-  }
-
-  const allIssues = Array.from({ length: HISTORY_TIMELINE_MAX_ISSUE }, (_, i) => i + 1);
-  return respond(buildAllowedMaterials(allIssues));
+  const edition = new URL(request.url).searchParams.get("edition") === "byeolkkum" ? "byeolkkum" : "integrated";
+  const authorized=await getAuthorizedTimeline(request,edition);
+  if(!authorized.ok) return authorized;
+  const data=await authorized.json() as {materialAccess:TimelineMaterialAccess;allowedIssues:number[];events:{id:string}[]};
+  const access=data.materialAccess;
+  const ids=new Set(data.events.map(e=>e.id));
+  const materials=buildAllowedMaterials(data.allowedIssues);
+  return respond({
+    notes:filterTimelineMaterialRecords(materials.notes,n=>access[n.level],ids),
+    flowEvents:materials.flowEvents.filter(e=>access[e.byeolbyeolLevel]),
+    yongNotes:access.yong?filterTimelineMaterialRecords(materials.yongNotes,()=>true,ids):{},
+    yongFlowEvents:access.yong?materials.yongFlowEvents:[],
+    referenceNotes:filterTimelineMaterialRecords(materials.referenceNotes,n=>access[n.referenceGroup],ids),
+    referenceEvents:materials.referenceEvents.filter(e=>e.referenceGroup!==null && access[e.referenceGroup]),
+  });
 }

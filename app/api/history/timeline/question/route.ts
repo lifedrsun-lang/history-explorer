@@ -1,4 +1,4 @@
-import { GET as getTimelineEvents } from "@/app/api/history/timeline/events/route";
+import { getAuthorizedTimeline } from "@/lib/historyTimelineAuthorized";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { resolveTimelineExamLinks } from "@/lib/historyTimelineExam";
 import { getAssignmentBucketName, getSupabaseServer } from "@/lib/supabaseServer";
@@ -17,7 +17,8 @@ export async function GET(request: Request) {
   }
 
   // 학생별 공개 범위·SUN LAB 특별 권한·교사 인증을 기존 연표 API와 동일하게 판정한다.
-  const access = await getTimelineEvents(request);
+  const edition = url.searchParams.get("edition") === "byeolkkum" ? "byeolkkum" : "integrated";
+  const access = await getAuthorizedTimeline(request,edition);
   if (!access.ok) return access;
   const timeline = await access.json() as {
     examLinks?: Record<string, { questionId: string }[]>;
