@@ -21,7 +21,7 @@ const collections = [
 ];
 const denied = (status) => status === 401 || status === 403;
 const base = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)`;
-const probeId = "__guardian_rule_probe__";
+const probeId = "guardian_rule_probe_nonexistent_20261126";
 
 async function checkCollection(collectionId) {
   const getUrl = `${base}/documents/${collectionId}/${probeId}`;
