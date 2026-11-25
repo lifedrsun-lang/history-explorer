@@ -42,6 +42,13 @@ const sections: Record<string, ManagementSection> = {
         className: "border-amber-200 bg-amber-50 text-amber-900",
       },
       {
+        href: "/teacher/coin-exchanges",
+        icon: "🎁",
+        title: "은엽전 교환",
+        description: "학생의 은엽전 상품 교환 신청 처리",
+        className: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-900",
+      },
+      {
         href: "/teacher/assignments",
         icon: "📸",
         title: "과제 관리",
@@ -56,25 +63,18 @@ const sections: Record<string, ManagementSection> = {
         className: "border-indigo-200 bg-indigo-50 text-indigo-900",
       },
       {
-        href: "/teacher/coin-exchanges",
-        icon: "🎁",
-        title: "은엽전 교환",
-        description: "학생의 은엽전 상품 교환 신청 처리",
-        className: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-900",
+        href: "/teacher/history-cards",
+        icon: "🃏",
+        title: "역사 카드 문장 만들기",
+        description: "별꼼역사 01~23호 · 2주차/4주차 복습 · 반별 학생 선택 및 동엽전 지급",
+        className: "border-violet-200 bg-violet-50 text-violet-950",
       },
       {
-        href: "/teacher/fees?scope=afterschool&tab=payments",
-        icon: "💰",
-        title: "수강료 관리",
-        description: "방과후 수강료와 수입 내역을 확인하고 관리",
-        className: "border-teal-200 bg-teal-50 text-teal-900",
-      },
-      {
-        href: "/teacher/textbook-receipts",
-        icon: "📚",
-        title: "교재 수령인원",
-        description: "학교별·분기별 1~3텀 교재 수령 학생과 인원 확인",
-        className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+        href: "/teacher/golden-bingo",
+        icon: "🏆",
+        title: "공용 골든빙고",
+        description: "공개수업·정규수업용 빙고 퀴즈 생성과 문제·진행 상태 관리",
+        className: "border-amber-300 bg-amber-50 text-amber-950",
       },
       {
         href: "/teacher/textbook-orders",
@@ -84,6 +84,13 @@ const sections: Record<string, ManagementSection> = {
         className: "border-orange-200 bg-orange-50 text-orange-900",
       },
       {
+        href: "/teacher/textbook-receipts",
+        icon: "📚",
+        title: "교재 수령인원",
+        description: "학교별·분기별 1~3텀 교재 수령 학생과 인원 확인",
+        className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+      },
+      {
         href: "/teacher/semester-plans",
         icon: "📋",
         title: "학기 계획안",
@@ -91,11 +98,11 @@ const sections: Record<string, ManagementSection> = {
         className: "border-indigo-200 bg-indigo-50 text-indigo-950",
       },
       {
-        href: "/teacher/golden-bingo",
-        icon: "🏆",
-        title: "공용 골든빙고",
-        description: "공개수업·정규수업용 빙고 퀴즈 생성과 문제·진행 상태 관리",
-        className: "border-amber-300 bg-amber-50 text-amber-950",
+        href: "/teacher/fees?scope=afterschool&tab=payments",
+        icon: "💰",
+        title: "수강료 관리",
+        description: "방과후 수강료와 수입 내역을 확인하고 관리",
+        className: "border-teal-200 bg-teal-50 text-teal-900",
       },
     ],
   },
@@ -348,19 +355,6 @@ export default async function TeacherManagementSectionPage({
         {section === "after-school" && (
           <>
             <AfterSchoolAlerts />
-            <Link
-              href="/teacher/history-cards"
-              className="mt-4 flex items-center gap-4 rounded-[26px] border border-violet-200 bg-violet-50 p-5 text-violet-950 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:p-6"
-            >
-              <span aria-hidden="true" className="text-4xl">🃏</span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-lg font-black sm:text-2xl">역사 카드 문장 만들기</span>
-                <span className="mt-1 block text-xs font-bold leading-relaxed text-violet-700 sm:text-sm">
-                  별꼼역사 01~23호 · 2주차/4주차 복습 · 반별 학생 선택 및 동엽전 지급
-                </span>
-              </span>
-              <span className="shrink-0 text-sm font-black text-violet-800">열기 →</span>
-            </Link>
             <section className="mt-4">
             <div className="mb-3 px-1">
               <h2 className="text-lg font-black text-slate-900 sm:text-xl">학교 선택</h2>
@@ -378,8 +372,20 @@ export default async function TeacherManagementSectionPage({
             {section === "after-school" && (
               <h2 className="mb-3 px-1 text-lg font-black text-slate-900 sm:text-xl">방과후 공통 관리</h2>
             )}
-            <div className={`grid grid-cols-2 gap-3 sm:gap-4 ${section === "teaching" ? "lg:grid-cols-3" : ""}`}>
-              {config.items.map((item) => (
+            {(section === "after-school"
+              ? [
+                  { title: "수강생 관리", items: config.items.slice(0, 3) },
+                  { title: "수업 관리", items: config.items.slice(3, 7) },
+                  { title: "교재 및 행정 관리", items: config.items.slice(7) },
+                ]
+              : [{ title: "", items: config.items }]
+            ).map((group) => (
+              <div key={group.title || section} className={group.title ? "mt-4" : ""}>
+                {group.title && (
+                  <h3 className="mb-3 px-1 text-base font-black text-slate-700 sm:text-lg">{group.title}</h3>
+                )}
+                <div className={`grid grid-cols-2 gap-3 sm:gap-4 ${section === "after-school" ? "lg:grid-cols-4" : section === "teaching" ? "lg:grid-cols-3" : ""}`}>
+              {group.items.map((item) => (
                 <Link
                   key={`${item.href}-${item.title}`}
                   href={item.href}
@@ -391,7 +397,9 @@ export default async function TeacherManagementSectionPage({
                   <div className="mt-3 text-xs font-black opacity-80 sm:mt-5 sm:text-sm">관리하기 →</div>
                 </Link>
               ))}
-            </div>
+                </div>
+              </div>
+            ))}
           </section>
         ) : (
           <section className="mt-4 rounded-[28px] border border-amber-200 bg-amber-50 p-7 text-center shadow-sm sm:rounded-[32px] sm:p-10">
