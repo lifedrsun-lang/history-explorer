@@ -2,7 +2,7 @@
 
 import { getStageInfo } from "@/app/student/data/stageData";
 import { db } from "@/lib/firebase";
-import { getStudentProgramLabel } from "@/lib/programs";
+import { getStudentProgramLabel, isWorldCultureProgram, getWorldCultureProgress, getStudentMaterialStageId } from "@/lib/programs";
 import { formatEnrollmentTerm, getEnrollmentTerms } from "@/lib/studentEnrollment";
 import { doc, updateDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
@@ -25,6 +25,9 @@ export default function StudentCard({
 }: any) {
   const router = useRouter();
   const stage = getStageInfo(student?.stage).current;
+  const world = isWorldCultureProgram(student?.program);
+  const worldProgress = getWorldCultureProgress(student?.worldCultureStage);
+  const materialStageId = getStudentMaterialStageId(student);
   const enrollmentTerms = getEnrollmentTerms(student);
   const [materialHistory, setMaterialHistory] = useState<any[]>(
     Array.isArray(student?.materialHistory) ? student.materialHistory : []
@@ -36,8 +39,8 @@ export default function StudentCard({
     );
   }, [student?.materialHistory]);
 
-  const hasCurrentMaterial = materialHistory.some(
-    (item: any) => String(item?.stageId || "") === String(student?.stage || "")
+  const hasCurrentMaterial = Boolean(materialStageId) && materialHistory.some(
+    (item: any) => String(item?.stageId || "") === materialStageId
   );
   const programLabel = getStudentProgramLabel(student?.program);
   const hasPendingCoinExchange = Boolean(
@@ -100,6 +103,7 @@ export default function StudentCard({
         <button
           type="button"
           onClick={handleMaterialClick}
+          disabled={world && !worldProgress}
           title={hasCurrentMaterial ? "현재 교재 지급 취소하기" : "현재 교재 지급하기"}
           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black transition ${
             hasCurrentMaterial
@@ -108,7 +112,7 @@ export default function StudentCard({
           }`}
         >
           <span className={hasCurrentMaterial ? "opacity-100" : "opacity-30"}>📘</span>
-          <span>{hasCurrentMaterial ? "교재 지급완료" : "교재 미지급"}</span>
+          <span>{world && !worldProgress ? "교재 미지정" : hasCurrentMaterial ? "교재 지급완료" : "교재 미지급"}</span>
         </button>
 
         <StudentActivityBadges student={student} />
@@ -163,8 +167,8 @@ export default function StudentCard({
 
       <div className="bg-gray-100 rounded-2xl p-2 sm:p-3 mb-2">
         <div className="text-xs text-gray-400">현재 진도</div>
-        <div className="text-xs text-gray-500 truncate">{stage?.short || "별꼼역사 1권"}</div>
-        <div className="text-yellow-600 font-bold text-base sm:text-2xl truncate">{stage?.title || "진도 없음"}</div>
+        <div className="text-xs text-gray-500 truncate">{world ? "세계문화 모나르떼" : stage?.short || "별꼼역사 1권"}</div>
+        <div className="text-yellow-600 font-bold text-base sm:text-2xl truncate">{world ? worldProgress?.label || "진도 미지정" : stage?.title || "진도 없음"}</div>
       </div>
 
       <div className="bg-orange-50 rounded-2xl p-2 sm:p-3 mb-2">
