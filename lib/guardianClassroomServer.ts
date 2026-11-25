@@ -222,7 +222,11 @@ async function scheduleImpact(
     const eventId = str(notice.eventId) || str(oldLesson?.eventId);
     const next = eventId
       ? allNext.find((row) => row.eventId === eventId)
-      : classes[teachingClass]?.lessons.find((row) => row.lesson === Number(notice.lesson) && row.date === notice.date);
+      : allNext.find((row) =>
+        row.teachingClass === teachingClass
+        && row.lesson === Number(notice.lesson)
+        && row.date === notice.date
+      );
     const base: ScheduleImpactRow = {
       noticeId: noticeDoc.id,
       studentId: str(notice.studentId),
