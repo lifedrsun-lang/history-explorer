@@ -143,8 +143,8 @@ export async function GET(request: Request) {
           .rotate()
           .flatten({ background: "#ffffff" })
           .resize({
-            width: compact ? 460 : 760,
-            height: compact ? 360 : 1100,
+            width: compact ? 340 : 760,
+            height: compact ? 220 : 1100,
             fit: "inside",
             withoutEnlargement: true,
           })
@@ -195,8 +195,8 @@ export async function GET(request: Request) {
     .meta{font-size:11px;color:#64748b;word-break:break-all}.prompt{font-weight:800;line-height:1.55}.warning{margin-top:10px;border-radius:10px;background:#fff7ed;color:#c2410c;padding:8px;font-size:12px;font-weight:800}.error{margin:12px 0;background:#fef2f2;color:#b91c1c;padding:12px;border-radius:10px}
     ol{padding-left:24px;line-height:1.65;font-size:13px}nav{display:flex;gap:10px;margin-top:12px}a{color:#6d28d9;font-weight:800}
     body.compact main{max-width:1320px;padding:14px}body.compact .summary{padding:10px 14px;margin-bottom:12px}body.compact .summary h1{font-size:22px;margin:0 0 6px}
-    body.compact .grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}body.compact .card{border-radius:14px;padding:10px}body.compact img{max-height:300px;margin:8px auto}
-    body.compact .prompt{font-size:13px;margin:8px 0}body.compact ol{font-size:11px;line-height:1.4;margin:6px 0}body.compact .meta{font-size:9px}
+    body.compact .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}body.compact .card{border-radius:12px;padding:8px}body.compact header{font-size:11px}body.compact code{font-size:8px}body.compact img{max-height:170px;margin:5px auto}
+    body.compact .prompt{font-size:10px;line-height:1.3;margin:5px 0;max-height:2.6em;overflow:hidden}body.compact ol{font-size:9px;line-height:1.25;margin:4px 0;max-height:5em;overflow:hidden;padding-left:20px}body.compact .meta{font-size:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}body.compact .warning{margin-top:4px;padding:4px;font-size:9px}
     @media(max-width:760px){main{padding:12px}.grid{grid-template-columns:1fr}.summary{position:static}}
   </style></head><body class="${compact ? "compact" : ""}"><main>
     <section class="summary"><h1>기출문제 사진 읽기 검사</h1>
