@@ -43,6 +43,10 @@ export function textbookOrderTitle(quarter: string, round: string): string {
   if (!Number.isInteger(q) || q < 1 || q > 4 || !Number.isInteger(r) || r < 1 || r > 999) return "";
   return `이화선 // ${q}분기 ${r}차 교재 주문`;
 }
+export function textbookOrderMailSubject(order: OrderInput): string {
+  const schools = [...new Set(order.lines.map(line => (line.school || "").replace(/[\r\n]+/g, " ").trim()).filter(Boolean))];
+  return schools.length ? `${order.title} (${schools.join(", ")})` : order.title;
+}
 export function parseTextbookOrderTitle(title: string) {
   const match = title.match(/^이화선 \/\/ ([1-4])분기 ([1-9]\d{0,2})차 교재 주문$/);
   return { quarter: match?.[1] || "", round: match?.[2] || "" };
