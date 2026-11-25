@@ -18,6 +18,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const REVIEW_QUESTIONS_COLLECTION = "reviewQuestions";
+const REVIEW_ASSIGNMENTS_COLLECTION = "reviewAssignments";
 const normalizeText = (value: unknown) => String(value || "").trim();
 
 const normalizeBookNumber = normalizeReviewBookNumber;
@@ -209,6 +210,56 @@ const parseQuestionBody = (body: Record<string, unknown>) => {
   };
 };
 
+const assignmentQuestionFromPayload = (
+  questionId: string,
+  payload: ReturnType<typeof parseQuestionBody>
+) => ({
+  questionId,
+  questionType: payload.questionType,
+  examLevel: payload.examLevel,
+  examRound: payload.examRound,
+  examQuestionNumber: payload.examQuestionNumber,
+  bookNumber: payload.bookNumber,
+  lesson: payload.lesson,
+  topic: payload.topic,
+  prompt: payload.prompt,
+  options: payload.options,
+  correctIndex: payload.correctIndex,
+  explanation: payload.explanation,
+  imageStoragePath: payload.imageStoragePath,
+  imageOriginalName: payload.imageOriginalName,
+});
+
+const syncQuestionToAssignments = async (
+  db: FirebaseFirestore.Firestore,
+  questionId: string,
+  payload: ReturnType<typeof parseQuestionBody>
+) => {
+  const assignmentSnapshot = await db.collection(REVIEW_ASSIGNMENTS_COLLECTION).get();
+  const matching = assignmentSnapshot.docs.filter((docItem) => {
+    const questions = docItem.data()?.questions;
+    return Array.isArray(questions) && questions.some(
+      (question: { questionId?: unknown }) => normalizeText(question?.questionId) === questionId
+    );
+  });
+  for (let start = 0; start < matching.length; start += 450) {
+    const batch = db.batch();
+    matching.slice(start, start + 450).forEach((docItem) => {
+      const questions = Array.isArray(docItem.data()?.questions) ? docItem.data().questions : [];
+      batch.update(docItem.ref, {
+        questions: questions.map((question: { questionId?: unknown }) =>
+          normalizeText(question?.questionId) === questionId
+            ? assignmentQuestionFromPayload(questionId, payload)
+            : question
+        ),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    });
+    await batch.commit();
+  }
+  return matching.length;
+};
+
 export async function GET(request: Request) {
   try {
     await verifyTeacherRequest(request);
@@ -289,7 +340,9 @@ export async function PATCH(request: Request) {
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    return Response.json({ ok: true, questionId });
+    const syncedAssignmentCount = await syncQuestionToAssignments(db, questionId, payload);
+
+    return Response.json({ ok: true, questionId, syncedAssignmentCount });
   } catch (error) {
     return mapError(error);
   }
