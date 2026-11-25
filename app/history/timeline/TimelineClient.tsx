@@ -253,6 +253,11 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
         throw new Error(data.error || "연표를 불러오지 못했습니다.");
       }
 
+      if (studentView && data.viewer?.role !== "student") {
+        setPayload(null);
+        setNeedsLogin(true);
+        return;
+      }
       setPayload(data);
       if (!textbookOnly) try {
         const extraResponse = await fetch(`/api/history/timeline/byeolbyeol${viewQuery}`, {
@@ -486,7 +491,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "학생 정보를 확인하지 못했습니다.");
       setPassword("");
-      await loadTimeline(null);
+      window.location.assign("/history/timeline?view=student");
     } catch (loginError) {
       setError(
         loginError instanceof Error
@@ -517,7 +522,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
     );
   }
 
-  if (unpublished && !teacher) {
+  if (unpublished && (studentView || !teacher)) {
     return (
       <main className={styles.loginPage}>
         <section className={styles.loginCard}>
@@ -562,7 +567,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
     );
   }
 
-  if (needsLogin && !teacher) {
+  if (needsLogin && (studentView || !teacher)) {
     return (
       <main className={styles.loginPage}>
         <section className={styles.loginCard}>
@@ -731,7 +736,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
           </div>
 
           <nav className={styles.filters} aria-label="시대별 사건 필터">
-            {FILTERS.map(([value, label]) => (
+            {FILTERS.filter(([value]) => value === "전체" || payload?.viewer.role === "teacher" || allDisplayEvents.some(event => event.eraFilter === value || (value === "고려" && (event.id === "goryeo-founded-918" || event.id === "later-baekje-falls-936")))).map(([value, label]) => (
               <button
                 key={value}
                 type="button"
@@ -801,7 +806,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
                               </div>
                             )}
                             {showHeritageDetails && (<TimelineHeritageDetails notes={payload?.heritageNotes?.[event.id] || []} />)}
-                             {(showExamBasic || showExamAdvanced) && (<TimelineExamReferences eventId={event.id} refs={examRefsForEvent(event.id)} />)}
+                             {(showExamBasic || showExamAdvanced) && (<TimelineExamReferences eventId={event.id} refs={examRefsForEvent(event.id)} viewerRole={payload?.viewer.role ?? "student"} studentView={sunLabMemberView ? "sunlab" : "student"} />)}
                             <small className={styles.gridSource}>
                               {textbookSourceLabel(event)}
                             </small>
@@ -925,7 +930,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
                           <TimelineReferenceNotes notes={referenceNotes[overviewEvent.id]} showRobin={showRobin} showReading={showReadingBook} showElementary={showElementary} />
                           <small className={styles.gridSource}>{textbookSourceLabel(overviewEvent)}</small>
                           {showHeritageDetails && (<TimelineHeritageDetails notes={payload?.heritageNotes?.[overviewEvent.id] || []} />)}
-                           {(showExamBasic || showExamAdvanced) && (<TimelineExamReferences eventId={overviewEvent.id} refs={examRefsForEvent(overviewEvent.id)} />)}
+                           {(showExamBasic || showExamAdvanced) && (<TimelineExamReferences eventId={overviewEvent.id} refs={examRefsForEvent(overviewEvent.id)} viewerRole={payload?.viewer.role ?? "student"} studentView={sunLabMemberView ? "sunlab" : "student"} />)}
                         </div>
                       </article>
                     )}
@@ -1027,7 +1032,7 @@ export default function TimelineClient({ edition = "integrated" }: { edition?: "
                                         </small>
                                       )}
                                       {showHeritageDetails && (<TimelineHeritageDetails notes={payload?.heritageNotes?.[event.id] || []} />)}
-                             {(showExamBasic || showExamAdvanced) && (<TimelineExamReferences eventId={event.id} refs={examRefsForEvent(event.id)} />)}
+                             {(showExamBasic || showExamAdvanced) && (<TimelineExamReferences eventId={event.id} refs={examRefsForEvent(event.id)} viewerRole={payload?.viewer.role ?? "student"} studentView={sunLabMemberView ? "sunlab" : "student"} />)}
                                     </article>
                                   ))}
                               </div>

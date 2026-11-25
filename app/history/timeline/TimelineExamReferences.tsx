@@ -25,9 +25,11 @@ type QuestionPreview = {
 const label = (ref: ExamReference) =>
   `${ref.examLevel === "advanced" ? "심화" : "기본"} ${ref.examRound}회 ${ref.examQuestionNumber}번`;
 
-export default function TimelineExamReferences({ refs, eventId }: {
+export default function TimelineExamReferences({ refs, eventId, viewerRole, studentView }: {
   refs: ExamReference[];
   eventId: string;
+  viewerRole: "teacher" | "student";
+  studentView: "student" | "sunlab";
 }) {
   const [selected, setSelected] = useState<ExamReference | null>(null);
   const [question, setQuestion] = useState<QuestionPreview | null>(null);
@@ -53,8 +55,9 @@ export default function TimelineExamReferences({ refs, eventId }: {
     setError("");
     setLoading(true);
     try {
-      const token = auth.currentUser ? await auth.currentUser.getIdToken() : "";
+      const token = viewerRole === "teacher" && auth.currentUser ? await auth.currentUser.getIdToken() : "";
       const params = new URLSearchParams({ id: ref.questionId, eventId });
+      if (viewerRole === "student") params.set("view", studentView);
       const response = await fetch(`/api/history/timeline/question?${params}`, {
         cache: "no-store",
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,

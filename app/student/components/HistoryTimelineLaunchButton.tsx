@@ -59,7 +59,7 @@ export default function HistoryTimelineLaunchButton({ student }: Props) {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "연표 입장 정보를 확인하지 못했습니다.");
-      window.location.assign("/history/timeline");
+      window.location.assign("/history/timeline?view=student");
     } catch (launchError) {
       setError(launchError instanceof Error ? launchError.message : "연표를 열지 못했습니다.");
       setLoading(false);
