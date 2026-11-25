@@ -1,6 +1,7 @@
 export type StudentProgram =
   | "sun_lab"
   | "byeolkkum_history"
+  | "monarte_world_culture"
   | "history_explorer"
   | "boardgame";
 
@@ -21,7 +22,11 @@ export const STUDENT_PROGRAM_OPTIONS: Array<{
   },
   {
     value: "byeolkkum_history",
-    label: "별꼼역사",
+    label: "한국사 별꼼역사",
+  },
+  {
+    value: "monarte_world_culture",
+    label: "세계문화 모나르떼",
   },
   {
     value: "history_explorer",
@@ -80,7 +85,7 @@ export const getStudentProgramLabel = (
     (item) => item.value === program
   );
 
-  return option?.label || "별꼼역사";
+  return option?.label || "한국사 별꼼역사";
 };
 
 export const isQuarterManagedProgram = (value: unknown) =>
