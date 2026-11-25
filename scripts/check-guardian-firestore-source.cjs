@@ -69,8 +69,20 @@ function ruleMatches(content) {
           else if (content[end] === "}") { depth -= 1; if (depth === 0) { end += 1; break; } }
         }
         const block = content.slice(start, end);
-        const expressions = [...block.matchAll(/allow\s+[^:]+:\s*if\s+([^;]+);/g)].map((match) => match[1].replace(/[()\s]/g, ""));
-        if (expressions.some((expression) => expression !== "false")) broad.push(pattern);
+        const allows = [...block.matchAll(/allow\s+([^:]+):\s*if\s+([^;]+);/g)].map((match) => {
+          const compact = match[2].replace(/[()\s]/g, "");
+          const functionCall = /(^|[!&|=,])([A-Za-z_]\w*)\(/.test(compact);
+          let classification = "other-unverified";
+          if (compact === "true") classification = "public";
+          else if (compact === "false") classification = "deny";
+          else if (compact.includes("request.auth.uid")) classification = "uid-or-identity-restricted";
+          else if (compact.includes("request.auth!=null") && !functionCall) classification = "any-authenticated";
+          else if (functionCall) classification = "function-gated-unverified";
+          else if (compact.includes("request.auth")) classification = "auth-condition-unverified";
+          return { operations: match[1].replace(/\s/g, ""), classification };
+        });
+        const active = allows.filter((allow) => allow.classification !== "deny");
+        if (active.length) broad.push({ pattern, allows: active });
       }
     }
     offset += line.length + 1;
@@ -92,8 +104,12 @@ function ruleMatches(content) {
   const broad = ruleMatches(combined);
   const explicit = collections.filter((collection) => combined.includes(`match /${collection}/`));
   const digest = createHash("sha256").update(combined).digest("hex").slice(0, 16);
-  if (broad.length) throw new Error(`Active Firestore rules include potentially permissive all-document matches: ${broad.join(", ")}`);
-  console.log(`Guardian deployed Firestore rules source audit passed: files=${files.length}, lines=${combined.split(/\r?\n/).length}, sha256=${digest}, explicitGuardianMatches=${explicit.length}/7, permissiveBroadMatches=0.`);
+  const broadSummary = broad.map(({ pattern, allows }) =>
+    `${pattern}[${allows.map(({ operations, classification }) => `${operations}:${classification}`).join("|")}]`
+  ).join(",");
+  console.log(`Guardian deployed Firestore rules source audit summary: files=${files.length}, lines=${combined.split(/\r?\n/).length}, sha256=${digest}, explicitGuardianMatches=${explicit.length}/7, permissiveBroadMatches=${broad.length}, broadClassifications=${broadSummary || "none"}.`);
+  if (broad.length) throw new Error("Active Firestore rules contain all-document allow rules; guardian feature activation remains blocked.");
+  console.log("Guardian deployed Firestore rules source audit passed.");
 })().catch((error) => {
   console.error(error instanceof Error ? error.message : "Guardian deployed Firestore rules source audit failed.");
   process.exit(1);
