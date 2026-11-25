@@ -782,7 +782,7 @@ export default function TeacherStudentsPage() {
         </div>
 
         {selectedStatus === "active" ? (
-          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3 xl:gap-4 items-start">
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-5 xl:gap-4 items-start">
             {visibleStudents.map((student) => (
               <StudentCard
                 key={student.id}
