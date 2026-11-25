@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import SchoolEntryCodePanel from "./SchoolEntryCodePanel";
+import {isInitialGuardianSchool} from "@/lib/schoolEntryScope";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { useCallback, useEffect, useState } from "react";
 
@@ -236,6 +238,7 @@ export default function AfterSchoolSchoolCards() {
                 </a>
               )}
 
+              {isInitialGuardianSchool(school.slug)&&<SchoolEntryCodePanel slug={school.slug}/>}
               <div className="border-t border-current/10 bg-white/45 p-3">
                 <div className="mb-2 text-[11px] font-black opacity-65">
                   수업 상태 변경

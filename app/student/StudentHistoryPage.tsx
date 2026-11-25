@@ -38,7 +38,8 @@ import {
   getStudentGroupLabel,
 } from "./data/studentGroups";
 import type { ContractSchoolSummary } from "@/lib/contractSchools";
-import type { AfterSchoolStatusMap } from "@/lib/afterSchool";
+import { AFTER_SCHOOL_SCHOOLS, matchesAfterSchoolSchool, type AfterSchoolStatusMap } from "@/lib/afterSchool";
+import { isInitialGuardianSchool } from "@/lib/schoolEntryScope";
 
 type Props = {
   program?: StudentProgram;
@@ -398,7 +399,7 @@ export default function StudentHistoryPage({
 
   const usesCombinedStudentEntry = (school: string) => {
     const normalized = normalizeNoSpace(school);
-    return normalized.includes("하늘빛초") || normalized.includes("새솔초") || normalized.includes("등현초");
+    return normalized.includes("하늘빛초") || normalized.includes("새솔초") || normalized.includes("사우초") || normalized.includes("등현초");
   };
 
   const handleSchoolSelect = (school: string) => {
@@ -666,8 +667,19 @@ export default function StudentHistoryPage({
           <button
             type="button"
             onClick={async () => {
-              const schoolPasswordMatches =
-                normalize(passwordInput) === normalize(getSchoolPassword(selectedSchool));
+              if(guardianChecking)return;
+              const entrySchool=AFTER_SCHOOL_SCHOOLS.find(s=>matchesAfterSchoolSchool(selectedSchool,s));
+              let schoolPasswordMatches=false;
+              if(entrySchool&&isInitialGuardianSchool(entrySchool.slug)){
+                setGuardianChecking(true);
+                try{
+                  const response=await fetch("/api/student/school-entry-code",{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",body:JSON.stringify({school:selectedSchool,code:passwordInput})});
+                  if(!response.ok){alert("입장코드 확인에 실패했습니다. 잠시 후 다시 시도해 주세요.");return;}
+                  schoolPasswordMatches=(await response.json()).valid===true;
+                }catch{alert("입장코드 확인에 실패했습니다. 잠시 후 다시 시도해 주세요.");return;}finally{setGuardianChecking(false);}
+              }else{
+                schoolPasswordMatches=!!getSchoolPassword(selectedSchool)&&normalize(passwordInput)===normalize(getSchoolPassword(selectedSchool));
+              }
               const attendanceNumberMatches =
                 pendingStudent &&
                 normalize(studentPassword) === normalize(pendingStudent.studentNumber);

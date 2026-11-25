@@ -54,8 +54,6 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
   const [roster, setRoster] = useState<Roster[]>([]);
   const [code, setCode] = useState("");
   const [codeFor, setCodeFor] = useState("");
-  const [rotate, setRotate] = useState(false);
-  const [hasCode, setHasCode] = useState(false);
   const [studentId, setStudentId] = useState("");
 
   const paused = guardianTermPaused(slug, term);
@@ -104,7 +102,6 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
         });
         setSelected(Object.keys(config?.classes || {}));
         setRoster(result.roster || []);
-        setHasCode(config?.hasCode === true);
         setReady(true);
       }).catch((caught) => {
         if (live) setError(caught instanceof Error ? caught.message : "��ȣ�� ���� ������ �ҷ����� ���߽��ϴ�.");
@@ -144,7 +141,7 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
 
   async function saveConfig() {
     const classes = Object.fromEntries(selected.map((className) => [className, plans[className]]));
-    const common = { slug, enabled: enabled && !paused, term, classes, rotateCode: rotate };
+    const common = { slug, enabled: enabled && !paused, term, classes };
     const impact = await request({ action: "scheduleImpact", ...common }) as ScheduleImpact;
     if (impact.blocked.length) {
       const details = impact.blocked
@@ -160,15 +157,11 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
         return;
       }
     }
-    const result = await request({
+    await request({
       action: "configure",
       ...common,
       confirmScheduleImpact: impact.changes.length > 0,
     });
-    setCode(result.code || "");
-    setCodeFor("�б� ��ȣ�� �ڵ�");
-    setHasCode(true);
-    setRotate(false);
   }
 
   return <section className={panel}>
@@ -332,7 +325,7 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
         </>}
       </div>)}
 
-      {hasCode && <label className="mt-3 flex gap-2 text-sm"><input type="checkbox" checked={rotate} onChange={(event) => setRotate(event.target.checked)} />�б� �ڵ� ��߱� (���� ��ȣ�� ���� ����)</label>}
+      <p className="mt-3 text-xs text-slate-600">학교 선택 카드의 입장코드 관리에서 보호자 공통 코드를 설정하세요.</p>
       <button type="button" className="mt-3 w-full rounded-xl bg-violet-700 p-3 font-bold text-white disabled:opacity-40" disabled={busy || !valid} onClick={() => void run(saveConfig)}>�б� ���� ����</button>
 
       <div className="mt-4 border-t pt-3">
@@ -345,7 +338,6 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
           <button type="button" disabled={paused || busy || !studentId} className="flex-1 rounded bg-violet-100 p-2 font-bold disabled:opacity-40" onClick={() => void run(async () => {
             if (!window.confirm("���� �ڳ� ���� �ڵ尡 �ִٸ� ��ȿȭ�˴ϴ�. �߱��ұ��?")) return;
             const result = await request({ action: "issue", slug, studentId });
-            setCode(result.code || "");
             setCodeFor("���� �л� ��ȣ�� ���� �ڵ�");
           })}>�߱� / ��߱�</button>
           <button type="button" disabled={paused || busy || !studentId} className="rounded border p-2 text-rose-700" onClick={() => void run(async () => {

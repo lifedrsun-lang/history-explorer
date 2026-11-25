@@ -17,6 +17,8 @@ import {
 import { getSubmissionDocId, verifyTeacherRequest } from "@/lib/assignmentServer";
 import { validateGuardianNotice } from "@/lib/guardianNotice";
 import { guardianLessonCountMatches, guardianTermPaused } from "@/lib/guardianTermPolicy";
+import { commonGuardianVersion, matchCommonGuardianCode } from "@/lib/schoolEntryCodesServer";
+import { isInitialGuardianSchool } from "@/lib/schoolEntryScope";
 
 export const guardianCollections = {
   schools: "guardian_school_configs",
@@ -269,7 +271,7 @@ export async function configureGuardianSchool(body: any) {
   const ref = db.collection(guardianCollections.schools).doc(selectedSchool.slug);
   const term = str(body.term);
   if (!/^\d{4}-Q[1-4]$/.test(term)) throw new Error("invalid_input");
-  if (body.enabled === true && isGuardianTermPaused(selectedSchool.slug, term)) throw new Error("forbidden");
+  if (body.enabled === true && (!isInitialGuardianSchool(selectedSchool.slug) || isGuardianTermPaused(selectedSchool.slug, term) || !await commonGuardianVersion())) throw new Error("forbidden");
 
   const classes = proposedClasses(body, selectedSchool.slug, term);
   const existing = (await ref.get()).data();
@@ -279,16 +281,14 @@ export async function configureGuardianSchool(body: any) {
     throw new Error("schedule_change_confirmation_required");
   }
 
-  const rotate = body.rotateCode === true || !existing?.codeHash;
-  const code = rotate ? secret() : null;
-  const salt = code ? randomBytes(16).toString("hex") : null;
+  const code = null;
   const fields = {
     enabled: body.enabled === true,
     term,
     classes,
     updatedAt: Date.now(),
     version: secret(),
-    ...(code && salt ? { codeSalt: salt, codeHash: digest(code, salt) } : {}),
+
   };
 
   const batch = db.batch();
@@ -359,14 +359,14 @@ async function limitLogin(slug: string, request: Request) {
 export async function checkGuardianSchool(request: Request, body: any) {
   const db = database();
   const slug = schoolSlugForName(body.school);
-  if (!slug) return { guardian: false };
+  if (!slug || !isInitialGuardianSchool(slug)) return { guardian: false };
   await limitLogin(slug, request);
   const config = (await db.collection(guardianCollections.schools).doc(slug).get()).data();
   return {
     guardian: Boolean(
       config?.enabled
       && !isGuardianTermPaused(slug, config.term)
-      && matches(str(body.schoolCode), config.codeSalt, config.codeHash)
+      && await matchCommonGuardianCode(body.schoolCode)
     ),
     slug,
   };
@@ -376,7 +376,7 @@ export async function loginGuardian(request: Request, body: any) {
   const db = database();
   const selectedSchool = school(body.slug);
   await limitLogin(selectedSchool.slug, request);
-  const schoolCode = str(body.schoolCode);
+  const commonVersion = await matchCommonGuardianCode(body.schoolCode);
   const childCode = str(body.childCode);
   const studentId = id(body.studentId);
   const config = (await db.collection(guardianCollections.schools).doc(selectedSchool.slug).get()).data();
@@ -385,7 +385,8 @@ export async function loginGuardian(request: Request, body: any) {
     !config?.enabled
     || isGuardianTermPaused(selectedSchool.slug, config.term)
     || !access?.enabled
-    || !matches(schoolCode, config.codeSalt, config.codeHash)
+    || !isInitialGuardianSchool(selectedSchool.slug)
+    || !commonVersion
     || !matches(childCode, access.salt, access.codeHash)
   ) {
     throw new Error("invalid_login");
@@ -397,6 +398,7 @@ export async function loginGuardian(request: Request, body: any) {
     slug: selectedSchool.slug,
     studentId,
     schoolVersion: config.version,
+    commonVersion,
     accessVersion: access.version,
     expiresAt: new Date(Date.now() + 8 * 60 * 60_000),
   });
@@ -422,6 +424,9 @@ async function session(request: Request) {
     !config?.enabled
     || isGuardianTermPaused(sessionData.slug, config.term)
     || !access?.enabled
+    || !isInitialGuardianSchool(sessionData.slug)
+    || !sessionData.commonVersion
+    || sessionData.commonVersion !== await commonGuardianVersion()
     || sessionData.schoolVersion !== config.version
     || sessionData.accessVersion !== access.version
   ) {
@@ -640,7 +645,7 @@ export async function guardianTeacherSettings(slug: unknown) {
       enabled: config.enabled === true && !isGuardianTermPaused(selectedSchool.slug, config.term),
       term: config.term,
       classes: config.classes,
-      hasCode: Boolean(config.codeHash),
+      hasCode: Boolean(await commonGuardianVersion()),
     } : null,
     roster,
   };
