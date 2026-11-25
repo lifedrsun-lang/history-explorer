@@ -13,6 +13,7 @@ import {
 } from "@/lib/reviewQuestionFilters";
 import { normalizeReviewBookNumber, matchesReviewDistribution, type ReviewDistribution } from "@/lib/reviewQuestionMetadata";
 import ReviewAssignmentComposer from "./ReviewAssignmentComposer";
+import ReviewQuestionImageCropper from "./ReviewQuestionImageCropper";
 
 type QuestionType = "textbook" | "exam";
 type ExamLevel = "" | "basic" | "advanced";
@@ -142,6 +143,7 @@ export default function ReviewQuestionBankPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const [notice, setNotice] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -261,7 +263,22 @@ export default function ReviewQuestionBankPage() {
     setErrorMessage("");
   };
 
-  const uploadImage = async (file: File | null) => {
+  const chooseImage = (file: File | null) => {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setErrorMessage("JPG, PNG, WEBP 사진만 올릴 수 있습니다.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setErrorMessage("문제 사진은 10MB 이하로 올려 주세요.");
+      return;
+    }
+    setCropFile(file);
+    setErrorMessage("");
+    setNotice("");
+  };
+
+  const uploadImage = async (file: File) => {
     if (!file || !currentUser || isUploadingImage) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setErrorMessage("JPG, PNG, WEBP 사진만 올릴 수 있습니다.");
@@ -295,13 +312,31 @@ export default function ReviewQuestionBankPage() {
         imageOriginalName: String(data?.originalName || file.name),
         imageUrl: String(data?.previewUrl || ""),
       }));
-      setNotice("문제 사진을 올렸습니다. 보기와 정답을 입력한 뒤 문제 저장을 눌러 주세요.");
+      setCropFile(null);
+      setNotice("문제 부분만 자른 사진을 올렸습니다. 선택지 문장과 정답을 입력한 뒤 저장해 주세요.");
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "문제 사진 업로드에 실패했습니다."
       );
+      throw error;
     } finally {
       setIsUploadingImage(false);
+    }
+  };
+
+  const cropExistingImage = async () => {
+    if (!draft.imageUrl || isUploadingImage) return;
+    setErrorMessage("");
+    try {
+      const response = await fetch(draft.imageUrl, { cache: "no-store" });
+      if (!response.ok) throw new Error("image_download_failed");
+      const blob = await response.blob();
+      const type = ["image/jpeg", "image/png", "image/webp"].includes(blob.type)
+        ? blob.type
+        : "image/png";
+      setCropFile(new File([blob], draft.imageOriginalName || "question.png", { type }));
+    } catch {
+      setErrorMessage("현재 사진을 편집용으로 불러오지 못했습니다. 원본 사진을 다시 선택해 주세요.");
     }
   };
 
@@ -313,6 +348,7 @@ export default function ReviewQuestionBankPage() {
         : question.topic;
 
     setEditingId(question.id);
+    setCropFile(null);
     setDraft({
       ...question,
       examLevel: question.examLevel || "",
@@ -341,6 +377,7 @@ export default function ReviewQuestionBankPage() {
   const resetEditor = () => {
     setEditingId(null);
     setDraft(makeEmptyDraft());
+    setCropFile(null);
     setNotice("");
     setErrorMessage("");
   };
@@ -640,7 +677,10 @@ export default function ReviewQuestionBankPage() {
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
                       disabled={isUploadingImage}
-                      onChange={(event) => void uploadImage(event.target.files?.[0] || null)}
+                      onChange={(event) => {
+                        chooseImage(event.target.files?.[0] || null);
+                        event.currentTarget.value = "";
+                      }}
                       className="sr-only"
                     />
                   </label>
@@ -654,8 +694,22 @@ export default function ReviewQuestionBankPage() {
                       <div className="mt-2 truncate px-2 text-xs font-bold text-slate-500">
                         {draft.imageOriginalName}
                       </div>
+                      <button type="button" disabled={isUploadingImage} onClick={() => void cropExistingImage()} className="mt-2 w-full rounded-xl bg-violet-50 px-3 py-2 text-xs font-black text-violet-700 disabled:opacity-40">
+                        현재 사진에서 문제 영역 다시 자르기
+                      </button>
                     </div>
                   )}
+                  {cropFile && (
+                    <ReviewQuestionImageCropper
+                      key={`${cropFile.name}-${cropFile.size}-${cropFile.lastModified}`}
+                      file={cropFile}
+                      onCancel={() => setCropFile(null)}
+                      onConfirm={uploadImage}
+                    />
+                  )}
+                  <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
+                    글자로 된 ①~⑤ 선택지는 사진에 넣지 않습니다. 선택지 자체가 그림인 문항만 그림 선택지까지 남겨 주세요.
+                  </div>
                 </div>
               )}
 
@@ -684,7 +738,7 @@ export default function ReviewQuestionBankPage() {
                 </div>
                 <p className="mt-1 text-xs font-bold text-slate-500">
                   {draft.questionType === "exam"
-                    ? "사진에 보기가 있어도 학생이 누를 수 있도록 보기 내용을 입력하고 정답을 체크하세요."
+                    ? "사진에는 문제만 남기고, 학생이 누를 수 있도록 각 선택지 문장을 입력한 뒤 정답을 체크하세요."
                     : "보기 내용을 입력하고 정답인 보기 왼쪽 동그라미를 체크하세요."}
                 </p>
 
@@ -934,7 +988,7 @@ export default function ReviewQuestionBankPage() {
                     const selectedOrder = selectedIds.indexOf(question.id);
                     const isSelected = selectedOrder >= 0;
                     const topic = visibleTopic(question);
-                    const cardOptionCount = question.questionType === "exam" ? 4 : 3;
+                    const cardOptionCount = question.questionType === "exam" ? examOptionCount(question.examLevel) : 3;
                     const cardOptions = makeOptions(question.options, cardOptionCount);
 
                     return (

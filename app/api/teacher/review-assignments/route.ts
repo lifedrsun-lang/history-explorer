@@ -51,7 +51,7 @@ const serializeQuestionSnapshot = (
   prompt: normalizeText(data?.prompt),
   options: Array.isArray(data?.options)
     ? data.options
-        .slice(0, data?.questionType === "exam" ? 4 : 3)
+        .slice(0, data?.questionType === "exam" ? (data?.examLevel === "advanced" ? 5 : 4) : 3)
         .map((item: unknown) => normalizeText(item))
     : [],
   correctIndex: Number(data?.correctIndex || 0),

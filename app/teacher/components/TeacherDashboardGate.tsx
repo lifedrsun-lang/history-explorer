@@ -11,28 +11,28 @@ import { clearTeacherRememberLogin } from "@/lib/teacherSession";
 
 const managementSections = [
   {
+    key: "sun-lab",
+    href: "/teacher/manage/sun-lab",
+    icon: "✨",
+    title: "Sun Lab",
+    description: "선랩 수강생·헬로메이플 미션·도서관 관리",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+  },
+  {
     key: "class-materials",
     href: "/teacher/presentations",
     icon: "📽️",
     title: "수업자료",
-    description: "PPT·수업자료 링크를 등록하고 수업용 자료를 관리",
+    description: "PPT·수업자료 링크 관리 및 PPT 뷰어 이용",
     className: "border-violet-200 bg-violet-50 text-violet-900",
   },
   {
-    key: "ppt-viewer",
-    href: "/teacher/ppt-viewer-test",
-    icon: "🖥️",
-    title: "PPT 뷰어",
-    description: "OneDrive PPT를 넘겨 보고 수업 영상을 큰 화면으로 재생",
-    className: "border-sky-200 bg-sky-50 text-sky-900",
-  },
-  {
-    key: "after-school",
-    href: "/teacher/manage/after-school",
-    icon: "🏫",
-    title: "방과후학교",
-    description: "수강생·출석·진도·과제·복습·수강료 관리",
-    className: "border-blue-200 bg-blue-50 text-blue-900",
+    key: "history-travel",
+    href: "/teacher/history-travel",
+    icon: "📜",
+    title: "한국사 시간여행",
+    description: "별꼼역사·통합한국사 연표 및 공개·자료 열람 관리",
+    className: "border-teal-200 bg-teal-50 text-teal-900",
   },
   {
     key: "teaching",
@@ -43,12 +43,12 @@ const managementSections = [
     className: "border-cyan-200 bg-cyan-50 text-cyan-900",
   },
   {
-    key: "care",
-    href: "/teacher/manage/care",
-    icon: "🧸",
-    title: "돌봄/늘봄",
-    description: "돌봄·늘봄 학교 및 기관 관리",
-    className: "border-amber-200 bg-amber-50 text-amber-900",
+    key: "after-school",
+    href: "/teacher/manage/after-school",
+    icon: "🏫",
+    title: "방과후학교",
+    description: "수강생·출석·진도·과제·복습·수강료 관리",
+    className: "border-blue-200 bg-blue-50 text-blue-900",
   },
   {
     key: "experience",
@@ -59,24 +59,16 @@ const managementSections = [
     className: "border-pink-200 bg-pink-50 text-pink-900",
   },
   {
-    key: "sun-lab",
-    href: "/teacher/manage/sun-lab",
-    icon: "✨",
-    title: "Sun Lab",
-    description: "선랩 수강생·헬로메이플 미션·도서관 관리",
-    className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+    key: "care",
+    href: "/teacher/manage/care",
+    icon: "🧸",
+    title: "돌봄/늘봄",
+    description: "돌봄·늘봄 학교 및 기관 관리",
+    className: "border-amber-200 bg-amber-50 text-amber-900",
   },
 ] as const;
 
 const supportingSections = [
-  {
-    key: "application-documents",
-    href: "/teacher/application-documents",
-    icon: "📄",
-    title: "지원 · 제출서류",
-    description: "방과후·출강·돌봄/늘봄 공통 학교 제출서류 관리",
-    className: "border-indigo-200 bg-indigo-50 text-indigo-900",
-  },
   {
     key: "operations",
     href: "/teacher/manage/operations",
@@ -86,12 +78,12 @@ const supportingSections = [
     className: "border-rose-200 bg-rose-50 text-rose-900",
   },
   {
-    key: "income-tax",
-    href: "/teacher/income-tax",
-    icon: "💰",
-    title: "종합소득세",
-    description: "입금·원천징수 내역을 모아 예상 납부·환급액 계산",
-    className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+    key: "application-documents",
+    href: "/teacher/application-documents",
+    icon: "📄",
+    title: "지원 · 제출서류",
+    description: "방과후·출강·돌봄/늘봄 공통 학교 제출서류 관리",
+    className: "border-indigo-200 bg-indigo-50 text-indigo-900",
   },
   {
     key: "google-connections",
@@ -100,6 +92,14 @@ const supportingSections = [
     title: "Google 연결 관리",
     description: "캘린더·드라이브·메일 인증을 한 곳에서 재연결",
     className: "border-sky-200 bg-sky-50 text-sky-900",
+  },
+  {
+    key: "income-tax",
+    href: "/teacher/income-tax",
+    icon: "💰",
+    title: "종합소득세",
+    description: "입금·원천징수 내역을 모아 예상 납부·환급액 계산",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-900",
   },
 ] as const;
 
@@ -298,46 +298,6 @@ export default function TeacherDashboardGate() {
             </Link>
           )}
         </div>
-
-        {/* 교사 관리실의 실제 첫 화면: 연표 바로가기 두 기능을 한 카드에서 제공 */}
-        <section
-          aria-labelledby="teacher-timeline-quick-card"
-          className="mt-3 rounded-[24px] border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-4 shadow-sm sm:mt-4 sm:rounded-[30px] sm:p-6"
-        >
-          <div className="flex items-start gap-3">
-            <span
-              aria-hidden="true"
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-700 text-2xl shadow-sm"
-            >
-              📜
-            </span>
-            <div className="min-w-0">
-              <h2
-                id="teacher-timeline-quick-card"
-                className="text-lg font-black text-slate-900 sm:text-2xl"
-              >
-                한국사 시간여행
-              </h2>
-              <p className="mt-1 text-sm font-bold leading-relaxed text-slate-600">
-                1~23호 통합 한국사 연표를 확인하고 학생별 공개 범위를 관리하세요.
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <Link
-              href="/history/timeline"
-              className="flex min-h-12 items-center justify-center rounded-2xl bg-emerald-700 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
-            >
-              📖 전체 연표 보기
-            </Link>
-            <Link
-              href="/teacher/history-timeline"
-              className="flex min-h-12 items-center justify-center rounded-2xl border border-emerald-300 bg-white px-4 py-3 text-center text-sm font-black text-emerald-800 transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
-            >
-              🔐 학생별 공개 관리
-            </Link>
-          </div>
-        </section>
 
         <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 sm:mt-4 sm:gap-4">
           {managementSections.map(renderManagementSection)}

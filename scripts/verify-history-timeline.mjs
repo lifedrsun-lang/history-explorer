@@ -253,7 +253,7 @@ assert.equal(HISTORY_TIMELINE_EVENTS.filter((event) => event.stateOrEra === "백
 assert.equal(HISTORY_TIMELINE_EVENTS.find((event) => event.id === "baekje-falls")?.sortYear, 660);
 assert.equal(HISTORY_TIMELINE_EVENTS.find((event) => event.id === "baekje-onjo-founded")?.sortYear, -18);
 assert.equal(HISTORY_TIMELINE_EVENTS.find((event) => event.id === "balhae-founded")?.sortYear, 698);
-assert.deepEqual(normalizeTimelineIssues([1, "1", 0, 24, 2]), [1, 2]);
+assert.deepEqual(normalizeTimelineIssues([1, "1", 0, 24, 2]), [1, 2, 24]);
 assert.deepEqual(resolveTimelineCompletedIssues({ stage: "book_6" }), {
   issues: [1, 2, 3, 4, 5],
   source: "current_stage",
