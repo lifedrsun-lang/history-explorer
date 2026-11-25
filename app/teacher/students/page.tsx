@@ -37,7 +37,7 @@ import {
   makeEnrollmentTerm,
   type EnrollmentStatus,
 } from "@/lib/studentEnrollment";
-import { AFTER_SCHOOL_ACADEMIC_YEAR } from "@/lib/studentRoster";
+import { AFTER_SCHOOL_ACADEMIC_YEAR, getStudentTeachingClass, type TeachingClass } from "@/lib/studentRoster";
 import StudentCard from "../components/StudentCard";
 import StudentEditModal from "../components/StudentEditModal";
 import { normalizeSchoolText } from "@/app/student/data/schoolInfo";
@@ -53,12 +53,7 @@ const getGradeNumber = (value: unknown) => {
   return match ? Number(match[0]) : 0;
 };
 
-const getTeachingClass = (student: any) => {
-  const grade = getGradeNumber(student?.grade);
-  if (grade >= 1 && grade <= 2) return "A반";
-  if (grade >= 3 && grade <= 6) return "B반";
-  return "미분류";
-};
+const getTeachingClass = (student: any) => getStudentTeachingClass(student) || "미분류";
 
 const getSimpleStatus = (student: any): StudentStatusView => {
   return getEnrollmentStatus(student);
@@ -94,6 +89,7 @@ export default function TeacherStudentsPage() {
   const [newSchool, setNewSchool] = useState("");
   const [newGrade, setNewGrade] = useState("");
   const [newClass, setNewClass] = useState("");
+  const [newTeachingClass, setNewTeachingClass] = useState<TeachingClass>("");
   const [newNumber, setNewNumber] = useState("");
   const [newName, setNewName] = useState("");
   const [newProgram, setNewProgram] = useState<StudentProgram>(DEFAULT_STUDENT_PROGRAM);
@@ -419,6 +415,7 @@ export default function TeacherStudentsPage() {
     setNewSchool("");
     setNewGrade("");
     setNewClass("");
+    setNewTeachingClass("");
     setNewNumber("");
     setNewName("");
     setNewProgram(DEFAULT_STUDENT_PROGRAM);
@@ -442,12 +439,18 @@ export default function TeacherStudentsPage() {
       return;
     }
 
+    if (!isSunLabOnly && !newTeachingClass) {
+      alert("방과후 수강반(A반/B반)을 선택해주세요.");
+      return;
+    }
+
     const password = newNumber ? String(newNumber).padStart(2, "0") : "";
 
     await addDoc(collection(db, "students"), {
       school: newSchool || (isSunLabOnly ? "SUN LAB" : "미지정"),
       grade: newGrade,
       class: newClass,
+      teachingClass: isSunLabOnly ? "" : newTeachingClass,
       studentNumber: newNumber,
       password,
       name: newName.trim(),
@@ -957,6 +960,7 @@ export default function TeacherStudentsPage() {
                       setNewProgram(nextProgram);
                       if (nextProgram === "sun_lab") {
                         setNewSunLabMember(true);
+                        setNewTeachingClass("");
                         setNewEnrollmentTerms([]);
                       }
                     }}
@@ -974,6 +978,16 @@ export default function TeacherStudentsPage() {
                 <input value={newClass} onChange={(e) => setNewClass(e.target.value)} placeholder={newProgram === "sun_lab" ? "실제 학교 반 (선택)" : "실제 학교 반"} className="rounded-xl border px-3 py-2" />
                 <input value={newNumber} onChange={(e) => setNewNumber(e.target.value)} placeholder={newProgram === "sun_lab" ? "번호 (선택)" : "번호"} className="rounded-xl border px-3 py-2" />
 
+                {newProgram !== "sun_lab" && (
+                  <label className="grid gap-1.5 text-sm font-black text-slate-600 md:col-span-2">
+                    방과후 수강반 (실제 학교 반과 별도)
+                    <select value={newTeachingClass} onChange={(e) => setNewTeachingClass(e.target.value as TeachingClass)} className="rounded-xl border px-3 py-2">
+                      <option value="">수강반 선택</option>
+                      <option value="A반">A반</option>
+                      <option value="B반">B반</option>
+                    </select>
+                  </label>
+                )}
                 {newProgram !== "sun_lab" && (
                   <select value={newStage} onChange={(e) => setNewStage(e.target.value)} className="rounded-xl border px-3 py-2 md:col-span-2">
                     {STAGE_DATA.map((stage) => <option key={stage.id} value={stage.id}>{stage.label} {stage.title}</option>)}
