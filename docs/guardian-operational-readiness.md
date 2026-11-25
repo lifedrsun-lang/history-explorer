@@ -4,7 +4,7 @@
 
 `npm run test:guardian:rules-live` checks the effective deployed Firestore access path without reading real documents or writing any data. It requests only the non-existent document ID `guardian_rule_probe_nonexistent_20261126` and an ID-filtered query for the same non-existent document. The probe passes only when anonymous direct get and list/query requests are denied with HTTP 401 or 403.
 
-Set `GUARDIAN_RULES_LIVE_CHECK=true` only on the guardian feature Preview branch. Production must leave it false or unset. The probe does not prove authenticated cross-child isolation or teacher authorization. The source audit additionally rejects potentially permissive all-document wildcard matches, but Firebase Emulator synthetic-account tests are still required.
+Set `GUARDIAN_RULES_LIVE_CHECK=true` only on the guardian feature Preview branch. Production must leave it false or unset. The probe does not prove authenticated cross-child isolation or teacher authorization. The source audit rejects public, any-authenticated, unresolved, or otherwise unverified all-document wildcard grants. A wildcard grant restricted to a fixed UID/list, token claim, identity check, or database role lookup is reported but does not fail the build; its teacher-identity parity still requires separate verification. Firebase Emulator synthetic-account tests are still required.
 
 ## Required Vercel variables
 
@@ -20,6 +20,10 @@ Set `GUARDIAN_RULES_LIVE_CHECK=true` only on the guardian feature Preview branch
 
 The common guardian entry code `1919` must be saved through the teacher server route after the encryption key and teacher allowlist are configured. It must not be committed or stored in a `NEXT_PUBLIC_` variable.
 
+## Current deployed-rules finding
+
+The read-only active Ruleset audit found no explicit match blocks for the seven guardian/entry-code collections and one all-document read/write gate restricted to a fixed UID or UID list. Anonymous direct get/list is denied. This is compatible with server-only guardian access, but it does not prove that the fixed deployed UID list equals the intended teacher allowlist.
+
 ## Remaining hard gate
 
-The repository still does not contain the deployed `firestore.rules`, `firebase.json`, or `.firebaserc`. Do not enable either feature flag until the active rules are exported and the Firebase Emulator passes synthetic tests for teacher allowlist, student A/B isolation, notice create/update/cancel, session expiry/revocation, and absence-reason confidentiality.
+The repository still does not contain the deployed `firestore.rules`, `firebase.json`, or `.firebaserc`. Do not enable either feature flag until the active rules are exported, the deployed UID list is compared with the approved teacher UID list without exposing the values, and the Firebase Emulator passes synthetic tests for teacher allowlist, student A/B isolation, notice create/update/cancel, session expiry/revocation, and absence-reason confidentiality.
