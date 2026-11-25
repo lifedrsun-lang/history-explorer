@@ -29,6 +29,10 @@ import {
   getStudentProgramLabel,
   getStudentProgramValue,
   isQuarterManagedProgram,
+  isWorldCultureProgram,
+  WORLD_CULTURE_PROGRESS_OPTIONS,
+  getWorldCultureProgress,
+  getStudentMaterialStageId,
 } from "@/lib/programs";
 import {
   formatEnrollmentTerm,
@@ -86,6 +90,7 @@ export default function TeacherStudentsPage() {
   const [bulkSchool, setBulkSchool] = useState("");
   const [bulkClass, setBulkClass] = useState<(typeof BULK_CLASS_OPTIONS)[number]>("A반");
   const [bulkStage, setBulkStage] = useState(DEFAULT_STAGE_ID);
+  const [bulkWorldStage, setBulkWorldStage] = useState("");
   const [newSchool, setNewSchool] = useState("");
   const [newGrade, setNewGrade] = useState("");
   const [newClass, setNewClass] = useState("");
@@ -94,6 +99,7 @@ export default function TeacherStudentsPage() {
   const [newName, setNewName] = useState("");
   const [newProgram, setNewProgram] = useState<StudentProgram>(DEFAULT_STUDENT_PROGRAM);
   const [newStage, setNewStage] = useState(DEFAULT_STAGE_ID);
+  const [newWorldStage, setNewWorldStage] = useState("");
   const [newStatus, setNewStatus] = useState<EnrollmentStatus>("active");
   const [newEnrollmentTerms, setNewEnrollmentTerms] = useState<string[]>([]);
   const [newSunLabMember, setNewSunLabMember] = useState(false);
@@ -293,16 +299,19 @@ export default function TeacherStudentsPage() {
 
   const addMaterialRecord = async (student: any) => {
     const current = Array.isArray(student?.materialHistory) ? student.materialHistory : [];
+    const world = isWorldCultureProgram(student?.program);
+    const worldProgress = getWorldCultureProgress(student?.worldCultureStage);
+    if (world && !worldProgress) { alert("세계문화 교재 진도를 먼저 선택해주세요."); return; }
     const stageInfo = getStageInfo(student?.stage);
-    const materialName = stageInfo?.current?.short || `별꼼역사 ${getBookNumberFromStage(student?.stage)}권`;
+    const materialName = world ? `모나르떼 ${worldProgress?.label}` : stageInfo?.current?.short || `별꼼역사 ${getBookNumberFromStage(student?.stage)}권`;
     await updateDoc(getStudentRef(student), {
       materialHistory: [
         ...current,
         makeClassHistoryItem({
           type: "material",
           materialName,
-          stageId: student?.stage || "",
-          stageTitle: stageInfo?.current?.title || "",
+          stageId: getStudentMaterialStageId(student),
+          stageTitle: world ? worldProgress?.label || "" : stageInfo?.current?.title || "",
           text: `${materialName} 교재 지급`,
         }),
       ].slice(-100),
@@ -312,6 +321,7 @@ export default function TeacherStudentsPage() {
   };
 
   const changeStage = async (student: any, direction: number) => {
+    if (isWorldCultureProgram(student?.program)) return;
     let nextBook = getBookNumberFromStage(student?.stage) + direction;
     nextBook = Math.max(1, Math.min(STAGE_DATA.length, nextBook));
     await updateDoc(getStudentRef(student), { stage: getStageIdForBook(nextBook) });
@@ -420,6 +430,7 @@ export default function TeacherStudentsPage() {
     setNewName("");
     setNewProgram(DEFAULT_STUDENT_PROGRAM);
     setNewStage(DEFAULT_STAGE_ID);
+    setNewWorldStage("");
     setNewStatus("active");
     setNewEnrollmentTerms([]);
     setNewSunLabMember(false);
@@ -458,7 +469,8 @@ export default function TeacherStudentsPage() {
       silver: 0,
       totalBronze: 0,
       totalSilver: 0,
-      stage: isSunLabOnly ? DEFAULT_STAGE_ID : newStage,
+      stage: isSunLabOnly || isWorldCultureProgram(newProgram) ? DEFAULT_STAGE_ID : newStage,
+      worldCultureStage: isWorldCultureProgram(newProgram) ? newWorldStage : "",
       program: newProgram,
       isActive: newStatus === "active",
       enrollmentStatus: newStatus,
@@ -542,6 +554,7 @@ export default function TeacherStudentsPage() {
     ).sort((a, b) => a.localeCompare(b, "ko-KR"));
 
     setBulkProgram(nextProgram);
+    setBulkWorldStage("");
     setBulkSchool(
       selectedSchool !== "전체학교" && nextSchools.includes(selectedSchool)
         ? selectedSchool
@@ -552,7 +565,9 @@ export default function TeacherStudentsPage() {
   };
 
   const changeBulkStage = async () => {
-    if (!bulkSchool || !bulkClass || !selectedBulkStage) {
+    const world = isWorldCultureProgram(bulkProgram);
+    const worldProgress = getWorldCultureProgress(bulkWorldStage);
+    if (!bulkSchool || !bulkClass || (world ? !worldProgress : !selectedBulkStage)) {
       alert("프로그램, 학교, 반, 변경할 진도를 모두 선택해주세요.");
       return;
     }
@@ -563,16 +578,16 @@ export default function TeacherStudentsPage() {
     }
 
     const check = confirm(
-      `${getStudentProgramLabel(bulkProgram)} ${bulkSchool} ${bulkClass} 학생 ${bulkTargetStudents.length}명의 진도를 ${selectedBulkStage.label}으로 변경할까요?`
+      `${getStudentProgramLabel(bulkProgram)} ${bulkSchool} ${bulkClass} 학생 ${bulkTargetStudents.length}명의 진도를 ${world ? worldProgress?.label : selectedBulkStage.label}으로 변경할까요?`
     );
     if (!check) return;
 
     const studentsToUpdate = bulkTargetStudents.filter(
-      (student) => String(student?.stage || "") !== selectedBulkStage.id
+      (student) => world ? student?.worldCultureStage !== bulkWorldStage : String(student?.stage || "") !== selectedBulkStage.id
     );
 
     for (const student of studentsToUpdate) {
-      await updateDoc(getStudentRef(student), { stage: selectedBulkStage.id });
+      await updateDoc(getStudentRef(student), world ? { worldCultureStage: bulkWorldStage } : { stage: selectedBulkStage.id });
     }
 
     setIsBulkStageOpen(false);
@@ -881,6 +896,7 @@ export default function TeacherStudentsPage() {
                     onChange={(e) => {
                       const nextProgram = e.target.value as StudentProgram;
                       setBulkProgram(nextProgram);
+                      setBulkWorldStage("");
                       const nextSchools = Array.from(
                         new Set(
                           students
@@ -919,9 +935,16 @@ export default function TeacherStudentsPage() {
 
                 <label className="grid gap-1.5 text-sm font-black text-slate-600">
                   변경할 진도
-                  <select value={bulkStage} onChange={(e) => setBulkStage(e.target.value)} className="rounded-xl border px-3 py-2 font-bold">
-                    {STAGE_DATA.map((stage) => <option key={stage.id} value={stage.id}>{stage.label} {stage.title}</option>)}
-                  </select>
+                  {isWorldCultureProgram(bulkProgram) ? (
+                    <select value={bulkWorldStage} onChange={(e) => setBulkWorldStage(e.target.value)} className="rounded-xl border px-3 py-2 font-bold">
+                      <option value="">세계문화 교재 선택</option>
+                      {WORLD_CULTURE_PROGRESS_OPTIONS.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
+                    </select>
+                  ) : (
+                    <select value={bulkStage} onChange={(e) => setBulkStage(e.target.value)} className="rounded-xl border px-3 py-2 font-bold">
+                      {STAGE_DATA.map((stage) => <option key={stage.id} value={stage.id}>{stage.label} {stage.title}</option>)}
+                    </select>
+                  )}
                 </label>
               </div>
 
@@ -988,10 +1011,21 @@ export default function TeacherStudentsPage() {
                     </select>
                   </label>
                 )}
-                {newProgram !== "sun_lab" && (
-                  <select value={newStage} onChange={(e) => setNewStage(e.target.value)} className="rounded-xl border px-3 py-2 md:col-span-2">
-                    {STAGE_DATA.map((stage) => <option key={stage.id} value={stage.id}>{stage.label} {stage.title}</option>)}
-                  </select>
+                {isWorldCultureProgram(newProgram) ? (
+                  <label className="grid gap-1.5 text-sm font-black text-slate-600 md:col-span-2">
+                    세계문화 모나르떼 교재 진도
+                    <select value={newWorldStage} onChange={(e) => setNewWorldStage(e.target.value)} className="rounded-xl border px-3 py-2">
+                      <option value="">진도 미지정</option>
+                      {WORLD_CULTURE_PROGRESS_OPTIONS.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
+                    </select>
+                  </label>
+                ) : newProgram !== "sun_lab" && (
+                  <label className="grid gap-1.5 text-sm font-black text-slate-600 md:col-span-2">
+                    한국사 별꼼역사 교재 진도
+                    <select value={newStage} onChange={(e) => setNewStage(e.target.value)} className="rounded-xl border px-3 py-2">
+                      {STAGE_DATA.map((stage) => <option key={stage.id} value={stage.id}>{stage.label} {stage.title}</option>)}
+                    </select>
+                  </label>
                 )}
               </div>
 
