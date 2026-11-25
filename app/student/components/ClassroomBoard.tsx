@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import ClassroomActivityLinks from "./ClassroomActivityLinks";
-import TeacherClassAccountFinder from "./TeacherClassAccountFinder";
+import StudentClassAccountFinder from "./StudentClassAccountFinder";
 import type { SchoolClassroom } from "../data/classroomData";
 import { useClassroomLessons } from "../utils/useClassroomLessons";
 
@@ -111,10 +111,7 @@ export default function ClassroomBoard({
           </div>
         </header>
 
-        <TeacherClassAccountFinder
-          classroom={classroom}
-          studentPreview={studentPreview}
-        />
+        <StudentClassAccountFinder classroom={classroom} />
 
         <section className="rounded-[28px] border border-white/80 bg-white/90 p-4 shadow-sm">
           <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
@@ -218,6 +215,7 @@ export default function ClassroomBoard({
                           classroom={currentClassroom}
                           lesson={lesson}
                           studentPreview={studentPreview}
+                          studentMode={!studentPreview}
                         />
                       )}
                     </div>
