@@ -16,6 +16,15 @@ import {
   type SchoolDocumentSettings,
 } from "@/lib/schoolDocumentManagement";
 
+const SCHOOL_DISPLAY_ORDER = ["deunghyeon", "saesol", "haneulbit", "sau"];
+const orderedSchools = [...AFTER_SCHOOL_SCHOOLS].sort((a, b) => {
+  const rank = (slug: string) => {
+    const index = SCHOOL_DISPLAY_ORDER.indexOf(slug);
+    return index < 0 ? SCHOOL_DISPLAY_ORDER.length : index;
+  };
+  return rank(a.slug) - rank(b.slug);
+});
+
 const SCHOOL_CARD_STYLES = [
   "border-sky-200 bg-sky-50 text-sky-950",
   "border-indigo-200 bg-indigo-50 text-indigo-950",
@@ -154,8 +163,9 @@ export default function AfterSchoolSchoolCards() {
 
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
-        {AFTER_SCHOOL_SCHOOLS.map((school, index) => {
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
+        {orderedSchools.map((school) => {
+          const index = AFTER_SCHOOL_SCHOOLS.findIndex((item) => item.slug === school.slug);
           const currentStatus = statuses[school.slug] || school.status;
           const documents = documentSettings[school.slug];
           const attendanceUrl = ATTENDANCE_URLS[school.slug];

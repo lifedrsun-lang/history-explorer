@@ -70,6 +70,7 @@ export async function getTimelineEvents(request: Request, edition: "integrated" 
     return privateJson({ error: "통합한국사 연표는 지정된 계정만 이용할 수 있습니다.", code: "integrated_access_required" }, { status: 403 });
   }
   if (!session) {
+    if (view === "student") return privateJson({error:"학생 수업방 로그인을 확인해 주세요.",code:"student_auth_required"},{status:401});
     const memberSessionId = readRequestCookie(request, SUNLAB_STUDENT_SESSION_COOKIE);
     const memberSession = await getSunLabStudentSession(memberSessionId);
     if (memberSession && view !== "student") {

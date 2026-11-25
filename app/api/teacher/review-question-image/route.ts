@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import sharp from "sharp";
 
 import {
   handleRouteError,
@@ -60,7 +61,25 @@ export async function POST(request: Request) {
     const bucketName = getAssignmentBucketName();
     const extension = extensionForType(image.type);
     uploadedPath = `review-questions/${teacher.uid}/${randomUUID()}.${extension}`;
-    const buffer = await image.arrayBuffer();
+    const sourceBuffer = Buffer.from(await image.arrayBuffer());
+    let processor = sharp(sourceBuffer)
+      .rotate()
+      .flatten({ background: "#ffffff" })
+      .trim({ background: "#ffffff", threshold: 10 })
+      .resize({
+        width: 2400,
+        height: 2400,
+        fit: "inside",
+        withoutEnlargement: true,
+      });
+    if (image.type === "image/png") {
+      processor = processor.png({ compressionLevel: 9 });
+    } else if (image.type === "image/webp") {
+      processor = processor.webp({ quality: 90 });
+    } else {
+      processor = processor.jpeg({ quality: 90, mozjpeg: true });
+    }
+    const buffer = await processor.toBuffer();
     const { error } = await supabase.storage
       .from(bucketName)
       .upload(uploadedPath, buffer, {
@@ -87,7 +106,8 @@ export async function POST(request: Request) {
       storagePath: uploadedPath,
       originalName: image.name,
       contentType: image.type,
-      size: image.size,
+      size: buffer.byteLength,
+      originalSize: image.size,
       previewUrl: signedData?.signedUrl || "",
     });
   } catch (error) {

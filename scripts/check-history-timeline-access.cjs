@@ -226,3 +226,11 @@ for(const pathName of ["lib/historyTimelineEventsServer.ts","app/api/teacher/his
  assert(source.includes("verifyTimelineTeacherRequest"),"Missing timeline-specific teacher authorization: "+pathName);
 }
 console.log("Timeline teacher access regression passed");
+
+const roleIsolationClient=fs.readFileSync(path.join(root,"app/history/timeline/TimelineClient.tsx"),"utf8");
+const roleIsolationExam=fs.readFileSync(path.join(root,"app/history/timeline/TimelineExamReferences.tsx"),"utf8");
+assert(roleIsolationClient.includes('studentView && data.viewer?.role !== "student"'));
+assert(roleIsolationClient.includes('window.location.assign("/history/timeline/byeolkkum?view=student")'));
+assert(roleIsolationExam.includes('viewerRole === "teacher" && auth.currentUser'));
+assert(roleIsolationExam.includes('params.set("view", studentView)'));
+assert(apiRouteSource.includes('if (view === "student") return privateJson'));
