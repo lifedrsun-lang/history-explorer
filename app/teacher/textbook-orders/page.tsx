@@ -4,7 +4,7 @@ import Link from "next/link";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { useCallback, useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
-import { newOrderLine, newTextbookOrder, ORDER_BOOKS, ORDER_MONARTE_BOOKS, ORDER_MONARTE_OPTIONS, ORDER_SUBJECTS, ORDER_COLUMNS, ORDER_OPTIONS, orderBookNumber, orderAmount, orderRows, parseTextbookOrderTitle, textbookOrderTitle, validateOrder, type OrderDelivery, type OrderLine, type TextbookOrder } from "@/lib/textbookOrders";
+import { newOrderLine, newTextbookOrder, ORDER_BOOKS, ORDER_MONARTE_BOOKS, ORDER_MONARTE_OPTIONS, ORDER_SUBJECTS, ORDER_COLUMNS, ORDER_OPTIONS, orderBookNumber, orderAmount, orderRows, parseTextbookOrderTitle, textbookOrderMailSubject, textbookOrderTitle, validateOrder, type OrderDelivery, type OrderLine, type TextbookOrder } from "@/lib/textbookOrders";
 import styles from "./orders.module.css";
 
 const DELIVERY_FIELDS: [keyof OrderDelivery, string][] = [["recipient", "수령자"], ["phone", "전화"], ["mobile", "핸드폰"], ["postalCode", "우편번호"], ["address", "주소"], ["message", "배송메세지"], ["shipping", "배송비"], ["invoiceCount", "송장출력갯수"], ["parcelSize", "택배크기"]];
@@ -293,7 +293,7 @@ export default function TextbookOrdersPage() {
         <p className={styles.muted}>다운로드에는 현재 화면의 내용이 반영됩니다. 주문 내역을 보관하려면 저장해주세요. 원본 양식의 열 순서로 내보냅니다.</p>
         {locked && <p role="status" className={styles.muted}>{editor.mailStatus === "sent" ? "메일 발송 완료. 다음 텀 주문은 복사하여 작성해주세요." : "발송 중이거나 결과를 확인할 수 없는 주문입니다. 보낸편지함을 확인해주세요."}</p>}
         {!editor.id || dirty ? <p className={styles.muted}>메일 발송 전 주문 내용을 저장해주세요.</p> : null}
-        {mailPreview && <section className={styles.mailPreview}><h3>주문 메일 미리보기</h3><p>받는 사람: dreameat64@naver.com</p><p>숨은 참조: loveghkql@naver.com</p><p>제목: {editor.title}</p><p>첨부: 주문서 엑셀 (.xlsx) · {editor.lines.length}개 항목</p><p>안녕하세요.<br /><br />{editor.title} 주문서를 첨부합니다.<br />확인 부탁드립니다.<br /><br />감사합니다.<br />이화선</p><p className={styles.muted}>참여확인서에 연결한 Gmail 계정으로 발송합니다.</p><div className={styles.actions}><button disabled={busy || locked || dirty || !editor.id} className={styles.primary} onClick={() => void sendMail()}>드림잇에 주문 메일 발송</button><Link href="/teacher/atc-confirmations">Gmail 연결 관리</Link></div></section>}
+        {mailPreview && <section className={styles.mailPreview}><h3>주문 메일 미리보기</h3><p>받는 사람: dreameat64@naver.com</p><p>숨은 참조: loveghkql@naver.com</p><p>제목: {textbookOrderMailSubject(editor)}</p><p>첨부: 주문서 엑셀 (.xlsx) · {editor.lines.length}개 항목</p><p>안녕하세요.<br /><br />{editor.title} 주문서를 첨부합니다.<br />확인 부탁드립니다.<br /><br />감사합니다.<br />이화선</p><p className={styles.muted}>참여확인서에 연결한 Gmail 계정으로 발송합니다.</p><div className={styles.actions}><button disabled={busy || locked || dirty || !editor.id} className={styles.primary} onClick={() => void sendMail()}>드림잇에 주문 메일 발송</button><Link href="/teacher/atc-confirmations">Gmail 연결 관리</Link></div></section>}
         {preview && <div className={styles.tableScroll}><table><caption>드림잇주문 · 엑셀 내용 확인</caption><thead><tr>{ORDER_COLUMNS.map(c => <th key={c}>{c}</th>)}</tr></thead><tbody>{orderRows(editor).map((row, i) => <tr key={editor.lines[i].id}>{row.map((v, j) => <td key={j}>{v ?? ""}</td>)}</tr>)}</tbody></table></div>}
       </section> : <section className={styles.panel}><h2>통합 교재 주문서</h2><p>새 주문을 만들거나 저장한 주문을 선택해주세요.</p><button disabled={!defaultDelivery && !setupError} className={styles.primary} onClick={newOrder}>새 주문 작성</button></section>}
     </div>
