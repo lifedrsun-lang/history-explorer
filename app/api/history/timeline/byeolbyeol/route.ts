@@ -71,9 +71,11 @@ const buildAllowedMaterials = (allowedIssues: number[]) => ({
 });
 
 export async function GET(request: Request) {
-  const sunLabMemberView = new URL(request.url).searchParams.get("view") === "sunlab";
+  const view = new URL(request.url).searchParams.get("view");
+  const sunLabMemberView = view === "sunlab";
+  const enrolledStudentView = view === "student";
   const authHeader = request.headers.get("authorization") || "";
-  if (authHeader && !sunLabMemberView) {
+  if (authHeader && !sunLabMemberView && !enrolledStudentView) {
     // Authorization을 받은 요청은 반드시 실제 교사 계정을 검증한다.
     try {
       await verifyTeacherRequest(request);
@@ -105,6 +107,8 @@ export async function GET(request: Request) {
     const allowedIssues = resolveTimelineCompletedIssues(student).issues;
     return respond(buildAllowedMaterials(allowedIssues));
   }
+
+  if (enrolledStudentView) return respond({ notes: {} }, 200);
 
   // SUN LAB 계정: 기존 연표 전체 권한과 보충설명 전용 권한을 모두 요구한다.
   // 이름만으로 이민서·이민채를 추정하거나 일반 회원에게 권한을 자동 부여하지 않는다.

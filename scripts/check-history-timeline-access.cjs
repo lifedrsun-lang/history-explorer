@@ -201,4 +201,17 @@ assert(timelineClientSource.includes('data.code === "student_auth_required" || d
 
 
 assert(apiRouteSource.includes('headers.set("Cache-Control", "private, no-store, max-age=0")'), "Private timeline API must not be cached publicly");
+
+const studentLaunchSource = fs.readFileSync(path.join(root, "app/student/components/HistoryTimelineLaunchButton.tsx"), "utf8");
+const supplementalRouteSource = fs.readFileSync(path.join(root, "app/api/history/timeline/byeolbyeol/route.ts"), "utf8");
+const questionPreviewSource = fs.readFileSync(path.join(root, "app/history/timeline/TimelineExamReferences.tsx"), "utf8");
+assert(studentLaunchSource.includes('window.location.assign("/history/timeline?view=student")'), "Student entry must explicitly select student mode");
+assert(apiRouteSource.includes("if (!sunLabMemberView && !enrolledStudentView)"), "Student requests must not use teacher credentials");
+assert(apiRouteSource.includes('if (enrolledStudentView) {\n      return privateJson'), "Missing student session must not fall back to SUN LAB full access");
+assert(supplementalRouteSource.includes("if (authHeader && !sunLabMemberView && !enrolledStudentView)"), "Supplemental requests must honor student mode");
+assert(supplementalRouteSource.includes("if (enrolledStudentView) return respond({ notes: {} }, 200)"), "Missing enrolled session cannot use member supplements");
+assert(questionPreviewSource.includes('viewerRole === "teacher" && auth.currentUser'), "Exam preview must not use teacher token for students");
+assert(questionPreviewSource.includes('params.set("view", studentView)'), "Exam preview must carry student context");
+assert(timelineClientSource.includes('studentView && data.viewer?.role !== "student"'), "Student screen must reject teacher payloads");
+
 console.log(`History timeline access regression passed: ${scenarios.length + 4} issue scenarios, ${HISTORY_TIMELINE_EVENTS.length} source events, ${HISTORY_TIMELINE_ALL_TOPICS.length} source topics.`);
