@@ -48,7 +48,7 @@ export default function StudentCard({
   );
 
   const undoCurrentMaterial = async () => {
-    const currentStageId = String(student?.stage || "");
+    const currentStageId = materialStageId;
     let targetIndex = -1;
 
     for (let index = materialHistory.length - 1; index >= 0; index -= 1) {
