@@ -398,7 +398,7 @@ export default function StudentHistoryPage({
 
   const usesCombinedStudentEntry = (school: string) => {
     const normalized = normalizeNoSpace(school);
-    return normalized.includes("하늘빛초") || normalized.includes("새솔초");
+    return normalized.includes("하늘빛초") || normalized.includes("새솔초") || normalized.includes("등현초");
   };
 
   const handleSchoolSelect = (school: string) => {
