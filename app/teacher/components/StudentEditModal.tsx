@@ -16,7 +16,7 @@ import {
   makeEnrollmentTerm,
   type EnrollmentStatus,
 } from "@/lib/studentEnrollment";
-import { AFTER_SCHOOL_ACADEMIC_YEAR } from "@/lib/studentRoster";
+import { AFTER_SCHOOL_ACADEMIC_YEAR, getStudentTeachingClass, type TeachingClass } from "@/lib/studentRoster";
 
 type Props = {
   student: any;
@@ -41,6 +41,7 @@ export default function StudentEditModal({
   const [sunLabMember, setSunLabMember] = useState(
     student?.sunLabMember === true
   );
+  const [teachingClass, setTeachingClass] = useState<TeachingClass>(() => getStudentTeachingClass(student));
   const [saving, setSaving] = useState(false);
 
   const toggleQuarter = (quarter: number) => {
@@ -53,6 +54,10 @@ export default function StudentEditModal({
   };
 
   const saveEdit = async (formData: FormData) => {
+    if (isQuarterManagedProgram(program) && !teachingClass) {
+      alert("방과후 수강반(A반/B반)을 선택해주세요.");
+      return;
+    }
     setSaving(true);
     try {
       const studentNumber = String(formData.get("studentNumber") || "").trim();
@@ -64,6 +69,7 @@ export default function StudentEditModal({
         password: studentNumber.padStart(2, "0"),
         name: String(formData.get("name") || "").trim(),
         program,
+        teachingClass: isQuarterManagedProgram(program) ? teachingClass : "",
         enrollmentStatus: status,
         isActive: status === "active",
         enrollmentTerms,
@@ -107,7 +113,7 @@ export default function StudentEditModal({
             <input
               name="class"
               defaultValue={student.class}
-              placeholder="반"
+              placeholder="실제 학교 반"
               className="min-w-0 rounded-xl border px-3 py-3"
             />
             <input
@@ -140,6 +146,17 @@ export default function StudentEditModal({
               ))}
             </select>
           </label>
+
+          {isQuarterManagedProgram(program) && (
+            <label className="grid gap-1.5 text-xs font-black text-slate-600">
+              방과후 수강반 (실제 학교 반과 별도)
+              <select value={teachingClass} required onChange={(event) => setTeachingClass(event.target.value as TeachingClass)} className="w-full rounded-xl border px-4 py-3 text-sm">
+                <option value="">수강반 선택</option>
+                <option value="A반">A반</option>
+                <option value="B반">B반</option>
+              </select>
+            </label>
+          )}
 
           <div className="rounded-2xl border border-slate-200 p-4">
             <div className="text-xs font-black text-slate-600">현재 상태</div>
