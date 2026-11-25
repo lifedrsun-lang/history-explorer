@@ -26,7 +26,7 @@ function encrypt(value:string,id:string) {
   const ciphertext=Buffer.concat([cipher.update(value,"utf8"),cipher.final()]);
   return {iv:iv.toString("hex"),tag:cipher.getAuthTag().toString("hex"),ciphertext:ciphertext.toString("hex"),version:randomBytes(16).toString("hex"),updatedAt:Date.now()};
 }
-function decrypt(record:FirebaseFirestore.DocumentData,id:string) {
+function decrypt(record:Record<string,any>,id:string) {
   const cipher=createDecipheriv("aes-256-gcm",key(),Buffer.from(record.iv,"hex"));
   cipher.setAAD(Buffer.from(id));
   cipher.setAuthTag(Buffer.from(record.tag,"hex"));

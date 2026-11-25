@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
+import { isInitialGuardianSchool } from "@/lib/schoolEntryScope";
 import {
   guardianExpectedLessonCount,
   guardianLessonCountMatches,
@@ -46,7 +47,7 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
   const [busy, setBusy] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const [term, setTerm] = useState("");
-  const [plans, setPlans] = useState<Record<string, Plan>>({ "A��": blank(), "B��": blank() });
+  const [plans, setPlans] = useState<Record<string, Plan>>({ "A반": blank(), "B반": blank() });
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [calendarResult, setCalendarResult] = useState<CalendarResult | null>(null);
@@ -56,12 +57,12 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
   const [codeFor, setCodeFor] = useState("");
   const [studentId, setStudentId] = useState("");
 
-  const paused = guardianTermPaused(slug, term);
+  const paused = !isInitialGuardianSchool(slug) || guardianTermPaused(slug, term);
   const expected = guardianExpectedLessonCount(slug, term);
 
   async function request(body?: unknown) {
     const user = auth.currentUser;
-    if (!user) throw new Error("���� �α����� �ʿ��մϴ�.");
+    if (!user) throw new Error("교사 로그인이 필요합니다.");
     const response = await fetch(`/api/teacher/guardian${body ? "" : `?school=${encodeURIComponent(slug)}`}`, {
       method: body ? "POST" : "GET",
       headers: {
@@ -74,12 +75,12 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       const messages: Record<string, string> = {
-        disabled: "��ȣ�� ����� ���� ��Ȱ�� �����Դϴ�.",
-        lesson_count_mismatch: "Ȯ�� ���� Ƚ���� Ķ���� ���� ���� ��ġ���� �ʽ��ϴ�.",
-        lesson_unavailable: "���� ���� ��ϰ� ������ �� ���� ������ �ֽ��ϴ�. ������ �ǵ����ų� �ش� ����� ���� Ȯ���� �ּ���.",
-        schedule_change_confirmation_required: "���� ���� ������ �ٽ� Ȯ���� �ּ���.",
+        disabled: "보호자 기능이 비활성 상태입니다.",
+        lesson_count_mismatch: "확정 수업 횟수와 캘린더 일정 수가 일치하지 않습니다.",
+        lesson_unavailable: "기존 불참 기록과 연결된 수업이 있습니다. 일정을 복원하거나 해당 기록을 확인해 주세요.",
+        schedule_change_confirmation_required: "일정 변경 영향을 다시 확인해 주세요.",
       };
-      throw new Error(messages[payload.error] || "���� �� ������ Ȯ���� �ּ���.");
+      throw new Error(messages[payload.error] || "요청을 처리하지 못했습니다. 권한과 설정을 확인해 주세요.");
     }
     return payload;
   }
@@ -97,14 +98,14 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
         setEnabled(config?.enabled === true);
         setTerm(config?.term || "");
         setPlans({
-          "A��": config?.classes?.["A��"] || blank(),
-          "B��": config?.classes?.["B��"] || blank(),
+          "A반": config?.classes?.["A반"] || blank(),
+          "B반": config?.classes?.["B반"] || blank(),
         });
         setSelected(Object.keys(config?.classes || {}));
         setRoster(result.roster || []);
         setReady(true);
       }).catch((caught) => {
-        if (live) setError(caught instanceof Error ? caught.message : "��ȣ�� ���� ������ �ҷ����� ���߽��ϴ�.");
+        if (live) setError(caught instanceof Error ? caught.message : "보호자 관리 정보를 불러오지 못했습니다.");
       });
     });
     return () => {
@@ -124,7 +125,7 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
     try {
       await callback();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "��û�� �Ϸ����� ���߽��ϴ�.");
+      setError(caught instanceof Error ? caught.message : "요청을 완료하지 못했습니다.");
     } finally {
       setBusy(false);
     }
@@ -145,15 +146,15 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
     const impact = await request({ action: "scheduleImpact", ...common }) as ScheduleImpact;
     if (impact.blocked.length) {
       const details = impact.blocked
-        .map((item) => `${item.fromDate} ${item.fromLesson}ȸ�� ${item.kind}`)
+        .map((item) => `${item.fromDate} ${item.fromLesson}회차 ${item.kind}`)
         .join("\n");
-      throw new Error(`������ �� ���� ���� ���� ����� ${impact.blocked.length}�� �ֽ��ϴ�.\n${details}`);
+      throw new Error(`이동할 수 없는 기존 불참 기록이 ${impact.blocked.length}건 있습니다.\n${details}`);
     }
     if (impact.changes.length) {
       const details = impact.changes
-        .map((item) => `${item.fromDate} ${item.fromLesson}ȸ�� �� ${item.toDate} ${item.toLesson}ȸ��`)
+        .map((item) => `${item.fromDate} ${item.fromLesson}회차 → ${item.toDate} ${item.toLesson}회차`)
         .join("\n");
-      if (!window.confirm(`Ķ���� �������� ���� ���� ��� ${impact.changes.length}���� ��¥ �Ǵ� ȸ���� �ٲ�ϴ�.\n\n${details}\n\n���� �� ���� Ȯ�� ���´� �ٽ� ��Ȯ������ ��ȯ�˴ϴ�. ����ұ��?`)) {
+      if (!window.confirm(`캘린더 변경으로 기존 불참 기록 ${impact.changes.length}건의 날짜 또는 회차가 바뀝니다.\n\n${details}\n\n변경된 기록은 다시 미확인 상태로 전환됩니다. 저장할까요?`)) {
         return;
       }
     }
@@ -165,15 +166,15 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
   }
 
   return <section className={panel}>
-    <h2 className="text-lg font-black">��ȣ�� ������ ����</h2>
+    <h2 className="text-lg font-black">보호자 수업방 설정</h2>
     {error && <p role="alert" className="mt-2 whitespace-pre-wrap text-sm text-rose-700">{error}</p>}
-    {!ready ? <p className="mt-2 text-sm text-slate-600">��ȣ�� ���� ������ Ȯ�� ���̰ų� ����� ��Ȱ�� �����Դϴ�.</p> : <>
+    {!ready ? <p className="mt-2 text-sm text-slate-600">보호자 관리 권한을 확인 중이거나 기능이 비활성 상태입니다.</p> : <>
       <label className="mt-3 flex gap-2">
         <input type="checkbox" checked={enabled && !paused} disabled={paused} onChange={(event) => setEnabled(event.target.checked)} />
-        ��ȣ�� ������ Ȱ��ȭ
+        보호자 수업방 활성화
       </label>
       <label className="mt-3 block text-sm font-bold">
-        �б� (��: 2026-Q4)
+        분기 (예: 2026-Q4)
         <input
           className="mt-1 w-full rounded border p-2"
           value={term}
@@ -182,19 +183,19 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
             setCalendarResult(null);
             setSelected([]);
             setEnabled(false);
-            setPlans({ "A��": blank(), "B��": blank() });
+            setPlans({ "A반": blank(), "B반": blank() });
           }}
         />
       </label>
-      {expected !== null && expected > 0 && <p className="mt-2 text-sm font-bold text-slate-700">�� �б� Ȯ�� ����: �ݺ� {expected}ȸ</p>}
-      {paused && <p className="mt-3 rounded bg-slate-100 p-3 text-sm font-bold">2026�г⵵ 4�б� �ް� �� ��ȣ�� ������ Ȱ��ȭ ����</p>}
+      {expected !== null && expected > 0 && <p className="mt-2 text-sm font-bold text-slate-700">이 분기 확정 기준: 반별 {expected}회</p>}
+      {paused && <p className="mt-3 rounded bg-slate-100 p-3 text-sm font-bold">이번 분기 휴강 또는 1차 운영 대상 제외 · 보호자 수업방 활성화 불가</p>}
 
       <div className="mt-4 rounded-xl border bg-sky-50 p-3">
-        <h3 className="font-bold">Ķ�������� ������ ��������</h3>
-        <p className="text-xs text-slate-600">�Ⱝ����/����Ŀ��� �ش� �б��� �б��� ���� ������ ��ȸ�մϴ�. �������� �������� �ʽ��ϴ�.</p>
+        <h3 className="font-bold">캘린더에서 수업일 가져오기</h3>
+        <p className="text-xs text-slate-600">출강일정/방과후 캘린더에서 해당 학교의 분기별 수업일을 조회합니다. 원본 일정은 수정하지 않습니다.</p>
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <label className="text-xs">������<input type="date" className="block w-full rounded border p-1" value={from} onChange={(event) => setFrom(event.target.value)} /></label>
-          <label className="text-xs">������ (������)<input type="date" className="block w-full rounded border p-1" value={to} onChange={(event) => setTo(event.target.value)} /></label>
+          <label className="text-xs">시작일<input type="date" className="block w-full rounded border p-1" value={from} onChange={(event) => setFrom(event.target.value)} /></label>
+          <label className="text-xs">종료일 (미포함)<input type="date" className="block w-full rounded border p-1" value={to} onChange={(event) => setTo(event.target.value)} /></label>
         </div>
         <button
           type="button"
@@ -205,28 +206,28 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
           })}
           className="mt-2 w-full rounded bg-sky-700 p-2 font-bold text-white disabled:opacity-40"
         >
-          Ķ���� ���� ��ȸ
+          캘린더 일정 조회
         </button>
         {calendarResult && <div className="mt-2 space-y-2">
-          {["A��", "B��"].map((className) => {
+          {["A반", "B반"].map((className) => {
             const rows = calendarResult.classes[className] || [];
             const distinctDates = new Set(rows.map((row) => row.date)).size === rows.length;
             const distinctEvents = new Set(rows.map((row) => row.eventId)).size === rows.length;
             const matchesCount = guardianLessonCountMatches(slug, term, rows.length);
             return <div key={className} className="rounded border bg-white p-2 text-sm">
-              <p className="font-bold">{className} �� {rows.length}ȸ Ȯ��</p>
-              <p className="text-xs">{rows.map((row) => row.date).join(" �� ") || "Ȯ�ε� ���� ����"}</p>
+              <p className="font-bold">{className} · {rows.length}회 확인</p>
+              <p className="text-xs">{rows.map((row) => row.date).join(" · ") || "확인된 일정 없음"}</p>
               {(!matchesCount || !distinctDates || !distinctEvents) && <p className="text-xs text-amber-800">
                 {expected !== null
-                  ? `Ȯ�� ${expected}ȸ�� ����ġ�ϰų� ������ �ߺ��˴ϴ�. Ķ������ Ȯ���� �ּ���.`
-                  : "1~12ȸ ������ ����ų� ������ �ߺ��˴ϴ�. �������� �ʽ��ϴ�."}
+                  ? `확정 ${expected}회와 불일치하거나 일정이 중복됩니다. 캘린더를 확인해 주세요.`
+                  : "1~12회 범위를 벗어나거나 일정이 중복됩니다. 적용하지 않습니다."}
               </p>}
               <button
                 type="button"
                 disabled={paused || busy || !matchesCount || !distinctDates || !distinctEvents}
                 className="mt-2 rounded border px-2 py-1 disabled:opacity-40"
                 onClick={() => {
-                  if (!window.confirm(`${className} ������ ${rows.length}���� �ҷ��ñ��? �ش� �б��� ��ü �������� Ȯ���� �ּ���.`)) return;
+                  if (!window.confirm(`${className} 수업일 ${rows.length}개를 불러올까요? 해당 분기의 전체 일정인지 확인해 주세요.`)) return;
                   update(className, (plan) => ({
                     ...plan,
                     lessons: rows.map((row, index) => ({
@@ -239,17 +240,17 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
                   setSelected((old) => old.includes(className) ? old : [...old, className]);
                 }}
               >
-                Ȯ�ε� ���� �ҷ�����
+                확인된 일정 불러오기
               </button>
             </div>;
           })}
           {calendarResult.unmatched.length > 0 && <p className="text-xs text-amber-800">
-            �� ���� ��Ȯ�� {calendarResult.unmatched.length}��: {calendarResult.unmatched.map((row) => `${row.title} (${row.date})`).join(" / ")}
+            반 구분 미확인 {calendarResult.unmatched.length}건: {calendarResult.unmatched.map((row) => `${row.title} (${row.date})`).join(" / ")}
           </p>}
         </div>}
       </div>
 
-      {["A��", "B��"].map((className) => <div key={className} className="mt-4 rounded-xl border p-3">
+      {["A반", "B반"].map((className) => <div key={className} className="mt-4 rounded-xl border p-3">
         <label className="flex gap-2 font-bold">
           <input
             type="checkbox"
@@ -269,13 +270,13 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
               setSelected((old) => event.target.checked ? [...old, className] : old.filter((value) => value !== className));
             }}
           />
-          {className} ���
+          {className} 운영
         </label>
         {selected.includes(className) && <>
-          <label className="mt-2 block text-sm">���� �غ�<textarea className="w-full rounded border p-2" maxLength={500} value={plans[className].supplies} onChange={(event) => update(className, (plan) => ({ ...plan, supplies: event.target.value }))} /></label>
-          <label className="mt-2 block text-sm">�߰� �غ� / Ư�� ���޻���<textarea className="w-full rounded border p-2" maxLength={500} value={plans[className].extra} onChange={(event) => update(className, (plan) => ({ ...plan, extra: event.target.value }))} /></label>
+          <label className="mt-2 block text-sm">공통 준비물<textarea className="w-full rounded border p-2" maxLength={500} value={plans[className].supplies} onChange={(event) => update(className, (plan) => ({ ...plan, supplies: event.target.value }))} /></label>
+          <label className="mt-2 block text-sm">추가 준비물 / 특이 전달사항<textarea className="w-full rounded border p-2" maxLength={500} value={plans[className].extra} onChange={(event) => update(className, (plan) => ({ ...plan, extra: event.target.value }))} /></label>
           <label className="mt-2 block text-sm font-bold">
-            ���� ���� Ƚ��
+            실제 수업 횟수
             <select
               className="ml-2 rounded border p-1"
               value={plans[className].lessons.length}
@@ -296,11 +297,11 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
                 .map((count) => <option key={count} value={count}>{count}ȸ</option>)}
             </select>
           </label>
-          <p className="mt-1 text-xs text-slate-500">4ȸ�� ���� �����ϸ�, ������ ��¥�� �ڵ� �������� �ʽ��ϴ�.</p>
+          <p className="mt-1 text-xs text-slate-500">4회씩 텀을 구성하며, 부족한 날짜를 자동 추정하지 않습니다.</p>
           <div className="mt-1 grid gap-2 sm:grid-cols-2">
             {plans[className].lessons.map((lesson, index) => <div key={lesson.lesson} className="rounded bg-slate-50 p-2">
               <label className="text-xs">
-                {Math.ceil(lesson.lesson / 4)}�� �� {lesson.lesson}ȸ��
+                {Math.ceil(lesson.lesson / 4)}텀 · {lesson.lesson}회차
                 <input
                   type="date"
                   value={lesson.date}
@@ -318,7 +319,7 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
                   ...plan,
                   lessons: plan.lessons.map((value, lessonIndex) => lessonIndex === index ? { ...value, cancelled: event.target.checked } : value),
                 }))} />
-                �ް�
+                휴강
               </label>
             </div>)}
           </div>
@@ -326,30 +327,31 @@ export default function GuardianSettingsPanel({ slug }: { slug: string }) {
       </div>)}
 
       <p className="mt-3 text-xs text-slate-600">학교 선택 카드의 입장코드 관리에서 보호자 공통 코드를 설정하세요.</p>
-      <button type="button" className="mt-3 w-full rounded-xl bg-violet-700 p-3 font-bold text-white disabled:opacity-40" disabled={busy || !valid} onClick={() => void run(saveConfig)}>�б� ���� ����</button>
+      <button type="button" className="mt-3 w-full rounded-xl bg-violet-700 p-3 font-bold text-white disabled:opacity-40" disabled={busy || !valid} onClick={() => void run(saveConfig)}>학교 설정 저장</button>
 
       <div className="mt-4 border-t pt-3">
-        <h3 className="font-bold">�ڳະ ��ȣ�� ���� �ڵ�</h3>
+        <h3 className="font-bold">자녀별 보호자 인증 코드</h3>
         <select className="mt-2 w-full rounded border p-2" value={studentId} onChange={(event) => setStudentId(event.target.value)}>
-          <option value="">�л� ����</option>
-          {roster.filter((student) => student.terms.includes(term)).map((student) => <option key={student.id} value={student.id}>{student.name} �� {student.teachingClass}</option>)}
+          <option value="">학생 선택</option>
+          {roster.filter((student) => student.terms.includes(term)).map((student) => <option key={student.id} value={student.id}>{student.name} · {student.teachingClass}</option>)}
         </select>
         <div className="mt-2 flex gap-2">
           <button type="button" disabled={paused || busy || !studentId} className="flex-1 rounded bg-violet-100 p-2 font-bold disabled:opacity-40" onClick={() => void run(async () => {
-            if (!window.confirm("���� �ڳ� ���� �ڵ尡 �ִٸ� ��ȿȭ�˴ϴ�. �߱��ұ��?")) return;
+            if (!window.confirm("기존 자녀 인증 코드가 있다면 무효화됩니다. 발급할까요?")) return;
             const result = await request({ action: "issue", slug, studentId });
-            setCodeFor("���� �л� ��ȣ�� ���� �ڵ�");
-          })}>�߱� / ��߱�</button>
+            setCode(result.code || "");
+            setCodeFor("선택 학생 보호자 인증 코드");
+          })}>발급 / 재발급</button>
           <button type="button" disabled={paused || busy || !studentId} className="rounded border p-2 text-rose-700" onClick={() => void run(async () => {
-            if (!window.confirm("�� ��ȣ�� ������ ����ұ��?")) return;
+            if (!window.confirm("이 보호자의 접근을 해제할까요?")) return;
             await request({ action: "issue", slug, studentId, revoke: true });
-          })}>���� ����</button>
+          })}>접근 해제</button>
         </div>
       </div>
       {code && <div className="mt-3 rounded-xl bg-amber-50 p-3">
-        <p className="text-sm font-bold">{codeFor} (�� ���� ǥ��)</p>
+        <p className="text-sm font-bold">{codeFor} (한 번만 표시)</p>
         <p className="break-all font-mono">{code}</p>
-        <button type="button" className="mt-2 rounded border p-2 text-sm" onClick={() => setCode("")}>�ڵ� �����</button>
+        <button type="button" className="mt-2 rounded border p-2 text-sm" onClick={() => setCode("")}>코드 숨기기</button>
       </div>}
     </>}
   </section>;

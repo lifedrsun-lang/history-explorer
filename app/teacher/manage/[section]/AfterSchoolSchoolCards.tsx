@@ -238,7 +238,7 @@ export default function AfterSchoolSchoolCards() {
                 </a>
               )}
 
-              {isInitialGuardianSchool(school.slug)&&<SchoolEntryCodePanel slug={school.slug}/>}
+              {user&&isInitialGuardianSchool(school.slug)&&<SchoolEntryCodePanel key={`${school.slug}:${user.uid}`} slug={school.slug}/>}
               <div className="border-t border-current/10 bg-white/45 p-3">
                 <div className="mb-2 text-[11px] font-black opacity-65">
                   수업 상태 변경

@@ -77,7 +77,7 @@ export default function GuardianNoticeBadge({ student }: { student: any }) {
     try {
       setItems((await request(`?studentId=${encodeURIComponent(id)}`)).notices || []);
     } catch {
-      setError("���� ���� ��ȸ ����");
+      setError("불참 내역 조회 실패");
     } finally {
       setBusy(false);
     }
@@ -92,7 +92,7 @@ export default function GuardianNoticeBadge({ student }: { student: any }) {
       const map = await summaries(true);
       setSummary(map[id] || null);
     } catch {
-      setError("����� ������ �ٽ� Ȯ���� �ּ���.");
+      setError("잠시 후 다시 확인해 주세요.");
     } finally {
       setBusy(false);
     }
@@ -107,31 +107,31 @@ export default function GuardianNoticeBadge({ student }: { student: any }) {
         onClick={() => void show()}
         className="rounded-full bg-amber-100 px-2 py-1 text-[11px] font-black text-amber-800"
       >
-        ?? ���� ��Ȯ�� {summary?.pending || 0}��
+        🔔 불참 미확인 {summary?.pending || 0}건
       </button>}
       {Boolean(summary?.total) && <button
         type="button"
         onClick={() => void show()}
         className="rounded-full bg-violet-100 px-2 py-1 text-[11px] font-black text-violet-800"
       >
-        ?? ���� ���� {summary?.total || 0}��
+        📅 불참 예정 {summary?.total || 0}건
       </button>}
     </div>
 
     {open && <div
       role="dialog"
       aria-modal="true"
-      aria-label="��ȣ�� ���� ���"
+      aria-label="보호자 불참 내역"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
     >
       <div className="max-h-[85vh] w-full max-w-md overflow-auto rounded-2xl bg-white p-4">
-        <h2 className="font-black">��ȣ�� ���� ���</h2>
+        <h2 className="font-black">보호자 불참 내역</h2>
         {error && <p role="alert" className="text-rose-700">{error}</p>}
         {items.map((notice) => <div key={notice.id} className="mt-2 rounded-lg border p-2 text-sm">
-          <p>{notice.date} �� {notice.lesson}ȸ�� �� {notice.kind} ����</p>
-          <p>����: {notice.reason === "��Ÿ" ? notice.detail : notice.reason}</p>
+          <p>{notice.date} · {notice.lesson}회차 · {notice.kind} 예정</p>
+          <p>사유: {notice.reason === "기타" ? notice.detail : notice.reason}</p>
           <p className="mt-1 text-xs font-bold text-slate-500">
-            Ȯ�� ����: {notice.confirmed ? "���� Ȯ�� �Ϸ�" : "���� Ȯ�� ���"}
+            확인 상태: {notice.confirmed ? "교사 확인 완료" : "교사 확인 대기"}
           </p>
           <button
             type="button"
@@ -139,11 +139,11 @@ export default function GuardianNoticeBadge({ student }: { student: any }) {
             onClick={() => void confirm(notice)}
             className="mt-1 rounded bg-violet-100 px-2 py-1 disabled:opacity-50"
           >
-            {notice.confirmed ? "Ȯ�� �Ϸ�" : "Ȯ���ϱ�"}
+            {notice.confirmed ? "확인 완료" : "확인하기"}
           </button>
         </div>)}
-        {!busy && items.length === 0 && <p className="mt-3 text-sm text-slate-500">ǥ���� ���� ������ �����ϴ�.</p>}
-        <button type="button" onClick={() => setOpen(false)} className="mt-3 w-full rounded border p-2">�ݱ�</button>
+        {!busy && items.length === 0 && <p className="mt-3 text-sm text-slate-500">표시할 불참 내역이 없습니다.</p>}
+        <button type="button" onClick={() => setOpen(false)} className="mt-3 w-full rounded border p-2">닫기</button>
       </div>
     </div>}
   </>;

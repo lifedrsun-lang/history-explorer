@@ -168,7 +168,7 @@ function parseLessons(value: unknown): Lesson[] {
 
 function proposedClasses(body: any, slug: string, term: string): ProposedClasses {
   const classes: ProposedClasses = {};
-  for (const className of ["A��", "B��"]) {
+  for (const className of ["A반", "B반"]) {
     if (!body.classes?.[className]) continue;
     const source = body.classes[className];
     const lessons = parseLessons(source.lessons);
@@ -315,7 +315,7 @@ export async function issueGuardianAccess(body: any) {
   const studentId = id(body.studentId);
   const { data } = await readStudent(studentId, selectedSchool.slug);
   const config = (await db.collection(guardianCollections.schools).doc(selectedSchool.slug).get()).data();
-  if (!config?.enabled || isGuardianTermPaused(selectedSchool.slug, config.term) || !getEnrollmentTerms(data).includes(config.term)) {
+  if (!config?.enabled || !isInitialGuardianSchool(selectedSchool.slug) || isGuardianTermPaused(selectedSchool.slug, config.term) || !getEnrollmentTerms(data).includes(config.term)) {
     throw new Error("forbidden");
   }
   const ref = db.collection(guardianCollections.access).doc(hash(`${selectedSchool.slug}:${studentId}`));
@@ -508,7 +508,7 @@ export async function guardianDashboard(request: Request) {
       const attendance = attendanceForDate(data.attendanceHistory, lesson.date);
       return {
         ...lesson,
-        status: lesson.cancelled ? "�ް�" : attendance || (lesson.date < today() ? "��Ȯ��" : "����"),
+        status: lesson.cancelled ? "휴강" : attendance || (lesson.date < today() ? "미확인" : "예정"),
       };
     }),
     notices: visibleNotices,
