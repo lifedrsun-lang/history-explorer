@@ -11,10 +11,10 @@ Set `GUARDIAN_RULES_LIVE_CHECK=true` only on the guardian feature Preview branch
 | Variable | Type | Required scope before approval | Safe pre-approval value |
 | --- | --- | --- | --- |
 | `GUARDIAN_CLASSROOM_ENABLED` | Config | Preview, later Production | `false` |
-| `GUARDIAN_TEACHER_UIDS` | Secret/Config | isolated Preview, later Production | unset |
+| `GUARDIAN_TEACHER_UIDS` | Secret | isolated Preview, later Production | configured on this feature Preview only; Production unset |
 | `SCHOOL_ENTRY_CODES_ENABLED` | Config | Preview, later Production | `false` |
-| `SCHOOL_ENTRY_CODES_KEY` | Secret | Preview and Production with separately managed values | unset |
-| `SCHOOL_ENTRY_TEACHER_UIDS` | Secret/Config | isolated Preview, later Production | unset |
+| `SCHOOL_ENTRY_CODES_KEY` | Secret | Preview and Production with separately managed values | random 256-bit key configured on this feature Preview only; Production unset |
+| `SCHOOL_ENTRY_TEACHER_UIDS` | Secret | isolated Preview, later Production | configured on this feature Preview only; Production unset |
 | `GUARDIAN_RULES_LIVE_CHECK` | Config | guardian feature Preview branch only | `true` for the read-only probe |
 | `GUARDIAN_RULES_SOURCE_CHECK` | Config | guardian feature Preview branch only | `true` for active Ruleset audit |
 
@@ -27,3 +27,8 @@ The read-only active Ruleset audit found no explicit match blocks for the seven 
 ## Remaining hard gate
 
 The repository still does not contain the deployed `firestore.rules`, `firebase.json`, or `.firebaserc`. Do not enable either feature flag until the active rules are exported, the deployed UID list is compared with the approved teacher UID list without exposing the values, and the Firebase Emulator passes synthetic tests for teacher allowlist, student A/B isolation, notice create/update/cancel, session expiry/revocation, and absence-reason confidentiality.
+
+
+## Encrypted Ruleset backup
+
+The active Ruleset source and immutable Ruleset reference are exported only as an AES-256-GCM encrypted payload during the feature Preview build. The backup key is stored as the branch-scoped sensitive variable `GUARDIAN_RULES_BACKUP_KEY`; neither the key, rule source, nor teacher UID is logged. Store the encrypted payload in the PR branch before any approved production rules change. This backup mechanism does not modify the active release.
