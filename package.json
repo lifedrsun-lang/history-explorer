@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/check-history-people.cjs && node scripts/check-history-timeline-access.cjs && next build",
+    "build": "node scripts/verify-student-data-teacher-auth.cjs --allow-missing && node scripts/check-history-people.cjs && node scripts/check-history-timeline-access.cjs && next build",
     "start": "next start",
     "lint": "eslint",
     "test:golden-bingo": "node scripts/verify-golden-bingo.mjs",
