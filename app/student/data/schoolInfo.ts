@@ -34,7 +34,7 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     displayName: "김포 하늘빛초",
     aliases: ["김포 하늘빛초"],
     password: "2497",
-    loginCard: { title: "김포 하늘빛초", location: "2F 맞춤3실" },
+    loginCard: { title: "김포 하늘빛초", location: "2F 컴퓨터실" },
     notice: {
       title: "3분기 수업 안내",
       location: "2F 맞춤3교실",
