@@ -191,6 +191,25 @@ function ruleMatches(content) {
   return broad;
 }
 
+function publicDirectAllows(content) {
+  const findings = [];
+  const blocks = matchBlocks(content);
+  for (const block of blocks) {
+    let direct = content.slice(block.start + 1, block.end - 1);
+    const children = blocks.filter((candidate) => candidate.parent === block).sort((left, right) => right.start - left.start);
+    for (const child of children) {
+      const from = child.start - (block.start + 1);
+      const to = child.end - (block.start + 1);
+      direct = direct.slice(0, from) + " ".repeat(Math.max(0, to - from)) + direct.slice(to);
+    }
+    for (const match of direct.matchAll(/allow\s+([^:]+):\s*if\s+([^;]+);/g)) {
+      const condition = match[2].replace(/[()\s]/g, "");
+      if (condition === "true") findings.push({ path: block.effectivePath, operations: match[1].replace(/\s/g, "") });
+    }
+  }
+  return findings;
+}
+
 (async () => {
   const token = await accessToken();
   let release;
@@ -203,6 +222,7 @@ function ruleMatches(content) {
   if (!contents.length) throw new Error("Active Firestore rules source is empty.");
   const combined = contents.join("\n");
   const broad = ruleMatches(combined);
+  const publicAllows = publicDirectAllows(combined);
   const blocks = matchBlocks(combined);
   const explicit = collections.filter((collection) =>
     blocks.some((block) => block.effectivePath === `/${collection}` || block.effectivePath.startsWith(`/${collection}/`))
@@ -237,9 +257,11 @@ function ruleMatches(content) {
   const deployedUidHash = createHash("sha256").update(deployedTeacherUids.join(",")).digest("hex").slice(0, 16);
   const guardianUidHash = createHash("sha256").update(guardianTeacherUids.join(",")).digest("hex").slice(0, 16);
   const schoolEntryUidHash = createHash("sha256").update(schoolEntryTeacherUids.join(",")).digest("hex").slice(0, 16);
-  console.log(`Guardian deployed Firestore rules source audit summary: files=${files.length}, lines=${combined.split(/\r?\n/).length}, sha256=${digest}, explicitGuardianMatches=${explicit.length}/7, unsafeBroadAllows=${unsafeBroad.length}, restrictedBroadAllows=${restrictedBroadCount}, broadClassifications=${broadSummary || "none"}, deployedTeacherUidCount=${deployedTeacherUids.length}, guardianTeacherUidCount=${guardianTeacherUids.length}, schoolEntryTeacherUidCount=${schoolEntryTeacherUids.length}, guardianUidParity=${guardianParity}, schoolEntryUidParity=${schoolEntryParity}, deployedUidHash=${deployedUidHash}, guardianUidHash=${guardianUidHash}, schoolEntryUidHash=${schoolEntryUidHash}.`);
+  console.log(`Guardian deployed Firestore rules source audit summary: files=${files.length}, lines=${combined.split(/\r?\n/).length}, sha256=${digest}, explicitGuardianMatches=${explicit.length}/7, unsafeBroadAllows=${unsafeBroad.length}, restrictedBroadAllows=${restrictedBroadCount}, broadClassifications=${broadSummary || "none"}, deployedTeacherUidCount=${deployedTeacherUids.length}, guardianTeacherUidCount=${guardianTeacherUids.length}, schoolEntryTeacherUidCount=${schoolEntryTeacherUids.length}, guardianUidParity=${guardianParity}, schoolEntryUidParity=${schoolEntryParity}, deployedUidHash=${deployedUidHash}, guardianUidHash=${guardianUidHash}, schoolEntryUidHash=${schoolEntryUidHash}, publicDirectAllows=${publicAllows.length}, publicDirectPaths=${publicAllows.map((finding) => `${finding.path}:${finding.operations}`).join("|") || "none"}.`);
   if (unsafeBroad.length) throw new Error("Active Firestore rules contain an unsafe all-document allow rule; guardian feature activation remains blocked.");
   if (!deployedTeacherUids.length || !guardianParity || !schoolEntryParity) throw new Error("Teacher UID parity check failed; guardian feature activation remains blocked.");
+  if (publicAllows.length && process.env.GUARDIAN_CLASSROOM_ENABLED === "true") throw new Error("Public Firestore read/write grants exist; guardian feature activation is blocked.");
+  if (publicAllows.length) console.warn("Existing public Firestore read/write grants detected; production activation remains blocked pending a separately approved rules change.");
   console.log("Guardian deployed Firestore rules source audit and teacher UID parity checks passed.");
   const encryptedBackup = encryptedRulesBackup(release.rulesetName, files);
   if (encryptedBackup) console.log(`GUARDIAN_RULES_BACKUP_AES256GCM=${encryptedBackup}`);
