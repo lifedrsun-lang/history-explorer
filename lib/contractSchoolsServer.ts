@@ -11,7 +11,7 @@ import { FieldValue, type DocumentSnapshot } from "firebase-admin/firestore";
 
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import {
-  CLASSROOM_MONSTERS,
+  getClassroomMonsterSet,
   type ClassroomLink,
   type SchoolClassroom,
 } from "@/app/student/data/classroomData";
@@ -370,8 +370,14 @@ export const getContractSchool = async (
 const makeDirectToken = (slug: string, grade: number, classNumber: number) =>
   `${slug.slice(0, 8)}-${grade}c${classNumber}-${randomBytes(5).toString("hex")}`;
 
-const makeRandomMonsterId = () =>
-  CLASSROOM_MONSTERS[randomInt(CLASSROOM_MONSTERS.length)].id;
+const makeRandomMonsterId = (year: 2027 | undefined, used: Set<string>) => {
+  const pool = getClassroomMonsterSet(year);
+  const unused = pool.filter((monster) => !used.has(monster.id));
+  const choices = year === 2027 && unused.length > 0 ? unused : pool;
+  const id = choices[randomInt(choices.length)].id;
+  used.add(id);
+  return id;
+};
 
 const normalizeClassrooms = (
   value: unknown,
@@ -386,6 +392,9 @@ const normalizeClassrooms = (
     baseSchool.classrooms.map((classroom) => [classroom.id, classroom])
   );
   const seen = new Set<string>();
+  const used2027 = new Set(baseSchool.classrooms
+    .filter((classroom) => classroom.monsterSetYear === 2027)
+    .map((classroom) => classroom.monsterId));
 
   return value.map((item) => {
     const source = item as Partial<ContractSchoolClassroom>;
@@ -402,7 +411,10 @@ const normalizeClassrooms = (
     seen.add(id);
 
     const existing = existingById.get(id);
-    const monsterId = existing?.monsterId || makeRandomMonsterId();
+    // Existing classrooms retain both their password and their original set.
+    const monsterSetYear = existing ? existing.monsterSetYear :
+      source.monsterSetYear === 2027 ? 2027 : undefined;
+    const monsterId = existing?.monsterId || makeRandomMonsterId(monsterSetYear, used2027);
     const requestedLabel = normalizeText(source.label);
 
     return {
@@ -414,6 +426,7 @@ const normalizeClassrooms = (
           ? requestedLabel
           : existing?.label || `${grade}학년 ${classNumber}반`,
       monsterId,
+      ...(monsterSetYear === 2027 ? { monsterSetYear: 2027 as const } : {}),
       directToken:
         existing?.directToken || makeDirectToken(slug, grade, classNumber),
       active: source.active !== false,

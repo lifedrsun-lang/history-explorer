@@ -95,6 +95,7 @@ export default function ContractSchoolsPage() {
   const [showNewSchool, setShowNewSchool] = useState(false);
   const [newSchool, setNewSchool] = useState<NewSchoolDraft>(EMPTY_NEW_SCHOOL);
   const [newGrade, setNewGrade] = useState("1");
+  const [newMonsterSetYear, setNewMonsterSetYear] = useState<"2026" | "2027">("2026");
   const [newClassNumber, setNewClassNumber] = useState("1");
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
   const [passwordInput, setPasswordInput] = useState("");
@@ -400,6 +401,7 @@ export default function ContractSchoolsPage() {
       classNumber,
       label: `${grade}학년 ${classNumber}반`,
       monsterId: "",
+      ...(newMonsterSetYear === "2027" ? { monsterSetYear: 2027 as const } : {}),
       directToken: "",
       active: true,
     };
@@ -874,12 +876,13 @@ export default function ContractSchoolsPage() {
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div><div className="text-xs font-black text-sky-500">1단계</div><h3 className="mt-1 text-xl font-black text-slate-900">학년·반 등록</h3></div>
                 <div className="flex items-end gap-2">
+                  <label className="text-[11px] font-black text-slate-500">몬스터 학년도<select value={newMonsterSetYear} onChange={(event) => setNewMonsterSetYear(event.target.value === "2027" ? "2027" : "2026")} className="mt-1 block rounded-xl border border-slate-200 px-2 py-2 text-sm font-bold"><option value="2026">2026</option><option value="2027">2027</option></select></label>
                   <label className="text-[11px] font-black text-slate-500">학년<input type="number" min="1" max="12" value={newGrade} onChange={(event) => setNewGrade(event.target.value)} className="mt-1 w-16 rounded-xl border border-slate-200 px-2 py-2 text-center text-sm font-black" /></label>
                   <label className="text-[11px] font-black text-slate-500">반<input type="number" min="1" max="30" value={newClassNumber} onChange={(event) => setNewClassNumber(event.target.value)} className="mt-1 w-16 rounded-xl border border-slate-200 px-2 py-2 text-center text-sm font-black" /></label>
                   <button type="button" disabled={saving} onClick={() => void addClassroom()} className="rounded-xl bg-sky-500 px-3 py-2 text-sm font-black text-white disabled:opacity-50">+ 반 추가</button>
                 </div>
               </div>
-              <p className="mt-2 text-xs font-bold text-slate-500">새 반은 저장과 동시에 운영 중인 6종 가운데 접속 몬스터가 최초 1회 자동 배정됩니다.</p>
+              <p className="mt-2 text-xs font-bold text-slate-500">새 반은 선택한 학년도 몬스터 목록(2026: 6종, 2027: 8종)에서 최초 1회 자동 배정됩니다. 기존 반은 변경되지 않습니다.</p>
               <div className="mt-4 grid gap-3 lg:grid-cols-2">
                 {selectedSchool.classrooms.map((classroom) => {
                   const monster = getMonsterById(classroom.monsterId);
@@ -895,7 +898,7 @@ export default function ContractSchoolsPage() {
                             <div className="text-lg font-black text-slate-900">{classLabel(classroom)}</div>
                             <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${classroom.active ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>{classroom.active ? "운영 중" : "비활성"}</span>
                           </div>
-                          <div className="mt-1 text-xs font-black text-slate-600">접속 몬스터: {monster?.name || "저장 후 자동 배정"}</div>
+                          <div className="mt-1 text-xs font-black text-slate-600">접속 몬스터: {monster?.name || "저장 후 자동 배정"} · {classroom.monsterSetYear === 2027 ? "2027" : "2026"}</div>
                           <div className="mt-0.5 text-[10px] font-bold text-slate-400">접속 몬스터는 변경할 수 없습니다.</div>
                         </div>
                       </div>
