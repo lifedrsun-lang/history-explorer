@@ -62,6 +62,9 @@ export default function SchoolSelect({
   const renderSchoolCard = ({ school, contractSchool, status }: (typeof schoolCards)[number]) => {
     const cardInfo = getSchoolLoginCard(school);
     const schoolInfo = getSchoolInfo(school);
+    const cardLocation = schoolInfo?.loginCard.preferCardLocation
+      ? cardInfo.location
+      : contractSchool?.location || cardInfo.location;
     const routeBySchool: Record<string, string> = {
       "부천 원종초등학교": "/student/classroom/wonjong",
       "광명 광일초등학교": "/student/classroom/gwangil",
@@ -98,9 +101,9 @@ export default function SchoolSelect({
           {schoolInfo?.provider && (
             <div className="mt-2 text-xs font-bold text-sky-700 sm:text-sm">{schoolInfo.provider}</div>
           )}
-          {(contractSchool?.location || cardInfo.location) && <div className={`mt-2 text-xs sm:text-sm font-bold ${
+          {cardLocation && <div className={`mt-2 text-xs sm:text-sm font-bold ${
             isCompleted ? "text-slate-500" : isPaused ? "text-amber-700" : "text-sky-700"
-          }`}>📍 {contractSchool?.location || cardInfo.location}</div>}
+          }`}>📍 {cardLocation}</div>}
         </div>
       </div>
     );
