@@ -23,8 +23,8 @@ const studentId = "virtual-student-a";
 let testEnv;
 
 const virtualStudent = {
-  name: "�����л�A",
-  school: "������",
+  name: "가상학생A",
+  school: "가상초",
   studentNumber: "01",
   password: "not-a-real-secret",
   bronze: 3,
