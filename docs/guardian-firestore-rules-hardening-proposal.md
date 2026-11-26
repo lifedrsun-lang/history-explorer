@@ -1,95 +1,77 @@
 # Guardian Firestore rules hardening proposal
 
-Status: proposal only. Do not deploy without a separate production approval and rollback review.
+Status: proposal only. Do not deploy without separate production approval and rollback review.
 
-## Current verified state
+## Verified active Ruleset
 
-- The active Ruleset contains one recursive all-document read/write grant gated by a fixed Firebase UID or UID list.
-- No explicit match exists for the seven guardian and school-entry collections.
-- Anonymous direct get/list requests are denied.
-- Firebase Admin server routes bypass Firestore client rules, so server-only guardian operations do not need client access grants.
+The active Ruleset was exported through an encrypted backup and reproduced in Firebase Emulator. Its effective rules are:
 
-## Why an explicit `allow ... if false` block alone is insufficient
+- `students/{studentId}`: anonymous read and write are currently allowed.
+- `presentations/{presentationId}` and descendants: one fixed approved teacher UID is allowed.
+- The seven guardian and school-entry collections: no matching allow rule, so all client SDK access is denied, including the approved teacher.
+- Firebase Admin server routes bypass client rules and can operate on the seven protected collections.
 
-Firestore grants an operation when any matching `allow` expression is true. A protected-collection block with `if false` does not override the existing recursive wildcard grant. The wildcard must also exclude the protected top-level collections.
+The earlier audit treated the recursive match below `presentations` as a database-wide wildcard. That interpretation was incorrect; the audit now resolves nested match paths before classifying them.
 
-## Proposed replacement pattern
+## Guardian direct-access proposal
 
-Integrate the following pattern into a private copy of the current production rules. Replace the current recursive wildcard grant; do not add this as a second broad grant.
+The current default-deny behavior already blocks direct access to the seven collections. The following explicit blocks may be added for clarity only after approval:
 
 ```firestore
-rules_version = '2';
-
-service cloud.firestore {
-  match /databases/{database}/documents {
-    function isGuardianProtectedCollection(collection) {
-      return collection in [
-        'school_entry_codes',
-        'school_entry_code_limits',
-        'guardian_school_configs',
-        'guardian_student_access',
-        'guardian_sessions',
-        'guardian_absence_notices',
-        'guardian_login_limits'
-      ];
-    }
-
-    // Preserve the existing approved-teacher predicate from the backed-up Ruleset.
-    function isApprovedTeacher() {
-      // Insert the private, verified existing predicate here.
-      return false;
-    }
-
-    // Replacement for the current all-document teacher grant.
-    match /{collection}/{document=**} {
-      allow read, write:
-        if isApprovedTeacher()
-        && !isGuardianProtectedCollection(collection);
-    }
-
-    // All guardian and entry-code access must pass through server routes.
-    match /school_entry_codes/{document=**} {
-      allow read, write: if false;
-    }
-    match /school_entry_code_limits/{document=**} {
-      allow read, write: if false;
-    }
-    match /guardian_school_configs/{document=**} {
-      allow read, write: if false;
-    }
-    match /guardian_student_access/{document=**} {
-      allow read, write: if false;
-    }
-    match /guardian_sessions/{document=**} {
-      allow read, write: if false;
-    }
-    match /guardian_absence_notices/{document=**} {
-      allow read, write: if false;
-    }
-    match /guardian_login_limits/{document=**} {
-      allow read, write: if false;
-    }
-  }
+match /school_entry_codes/{document=**} {
+  allow read, write: if false;
+}
+match /school_entry_code_limits/{document=**} {
+  allow read, write: if false;
+}
+match /guardian_school_configs/{document=**} {
+  allow read, write: if false;
+}
+match /guardian_student_access/{document=**} {
+  allow read, write: if false;
+}
+match /guardian_sessions/{document=**} {
+  allow read, write: if false;
+}
+match /guardian_absence_notices/{document=**} {
+  allow read, write: if false;
+}
+match /guardian_login_limits/{document=**} {
+  allow read, write: if false;
 }
 ```
 
-## Expected impact
+Firestore combines matching allow expressions with logical OR. These explicit false blocks cannot override a future broad allow rule; every future recursive wildcard must therefore be checked separately.
 
-| Area | Expected effect |
+## Existing students collection blocker
+
+The active `students/{studentId}` rule allows unauthenticated read and write. Emulator confirmed anonymous get, list, create, update, and delete. This is a critical pre-existing authorization vulnerability and blocks guardian production activation.
+
+A production fix requires choosing and testing one of these designs:
+
+1. Firebase Auth ownership: students may read/write only their own document, with approved teacher override.
+2. Server-only access: deny all client SDK access and move student operations behind validated server routes.
+3. Transitional split: keep only the minimum read fields public in a separate non-sensitive collection, with all private fields server-only.
+
+Do not replace the current rule until the existing student login, attendance, timeline, homework, coin, and teacher-management data paths are inventoried. An immediate deny could break existing student functions that currently depend on anonymous Firestore access.
+
+## Expected guardian-rule impact
+
+| Area | Current and proposed effect |
 | --- | --- |
-| Guardian and school-entry browser SDK access | Denied for anonymous, student, guardian, and teacher clients |
-| Guardian and school-entry server routes | Unchanged because Firebase Admin bypasses Firestore client rules |
-| Existing non-guardian teacher Firestore access | Preserved by the existing approved-teacher predicate |
-| Existing student access | Must be rechecked against every existing non-guardian rule before deployment |
-| Production data | No migration or document change required |
+| Guardian and school-entry client SDK access | Denied for anonymous, students, guardians, approved teacher, and unrelated teacher |
+| Guardian and school-entry server routes | Allowed through Firebase Admin after server-side session/teacher checks |
+| Presentation teacher access | Unchanged |
+| Existing students access | Separate critical remediation required |
+| Production documents | No data migration is required for the guardian deny rules |
 
 ## Required pre-deployment checks
 
-1. Export the active Ruleset privately and record its immutable Ruleset ID and SHA-256.
-2. Search the complete codebase for direct client-SDK access to the seven protected collections.
-3. Run Emulator tests for anonymous, unrelated student, child A guardian, child B guardian, approved teacher, and non-approved teacher identities.
-4. Run existing student-login, attendance, timeline, homework, coin, and teacher-management regression tests.
-5. Prepare the previous Ruleset release reference for rollback.
-6. Obtain a separate production rules-change approval.
+1. Keep the encrypted active Ruleset backup and its SHA-256 reference.
+2. Inventory every direct client-SDK access to `students` and the seven protected collections.
+3. Run the committed Emulator harness against both the active rules and the proposed rules.
+4. Run existing student-login, attendance, timeline, homework, coin, presentation, and teacher-management regressions.
+5. Keep the previous immutable Ruleset release reference ready for rollback.
+6. Obtain separate approval for any production rules change.
 
 This document does not change the active Firestore release.
