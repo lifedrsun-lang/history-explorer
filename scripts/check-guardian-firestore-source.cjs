@@ -1,4 +1,4 @@
-const { createHash, createSign } = require("node:crypto");
+const { createCipheriv, createHash, createSign, randomBytes } = require("node:crypto");
 
 if (process.env.GUARDIAN_RULES_SOURCE_CHECK !== "true") {
   console.log("Guardian deployed Firestore rules source audit skipped (GUARDIAN_RULES_SOURCE_CHECK is not true).");
@@ -21,6 +21,27 @@ const collections = [
 ];
 
 const b64 = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+
+function encryptedRulesBackup(rulesetName, files) {
+  const keyHex = process.env.GUARDIAN_RULES_BACKUP_KEY?.trim();
+  if (!keyHex) return null;
+  if (!/^[a-f0-9]{64}$/i.test(keyHex)) throw new Error("Guardian rules backup key must be a 256-bit hex value.");
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", Buffer.from(keyHex, "hex"), iv);
+  const plaintext = Buffer.from(JSON.stringify({
+    createdAt: new Date().toISOString(),
+    rulesetName,
+    files: files.map((file) => ({ name: file.name || "firestore.rules", content: file.content || "" })),
+  }));
+  const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+  return Buffer.from(JSON.stringify({
+    version: 1,
+    algorithm: "aes-256-gcm",
+    iv: iv.toString("base64url"),
+    tag: cipher.getAuthTag().toString("base64url"),
+    data: encrypted.toString("base64url"),
+  })).toString("base64url");
+}
 async function accessToken() {
   const now = Math.floor(Date.now() / 1000);
   const unsigned = `${b64({ alg: "RS256", typ: "JWT" })}.${b64({
@@ -186,6 +207,8 @@ function ruleMatches(content) {
   if (unsafeBroad.length) throw new Error("Active Firestore rules contain an unsafe all-document allow rule; guardian feature activation remains blocked.");
   if (!deployedTeacherUids.length || !guardianParity || !schoolEntryParity) throw new Error("Teacher UID parity check failed; guardian feature activation remains blocked.");
   console.log("Guardian deployed Firestore rules source audit and teacher UID parity checks passed.");
+  const encryptedBackup = encryptedRulesBackup(release.rulesetName, files);
+  if (encryptedBackup) console.log(`GUARDIAN_RULES_BACKUP_AES256GCM=${encryptedBackup}`);
 })().catch((error) => {
   console.error(error instanceof Error ? error.message : "Guardian deployed Firestore rules source audit failed.");
   process.exit(1);
