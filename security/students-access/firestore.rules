@@ -1,0 +1,40 @@
+rules_version = '2';
+
+// Emulator-only prototype for the students access migration.
+// Do not deploy this file as the project's complete production ruleset.
+// Production rollout must preserve every unrelated rule and replace only the
+// permissive students block after all direct client access is removed.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Student records are server-only. Firebase Admin SDK operations are not
+    // evaluated by Firestore Security Rules and must enforce authorization in
+    // the application server before reading or changing these documents.
+    match /students/{document=**} {
+      allow read, write: if false;
+    }
+
+    // Legacy spelling/casing variants are also private. Current client code
+    // still probes these names and must be migrated before production rollout.
+    match /student/{document=**} {
+      allow read, write: if false;
+    }
+    match /Students/{document=**} {
+      allow read, write: if false;
+    }
+    match /Student/{document=**} {
+      allow read, write: if false;
+    }
+
+    // Session documents must never be accessible through the client SDK.
+    match /sunlab_student_sessions/{document=**} {
+      allow read, write: if false;
+    }
+
+    // This prototype intentionally denies every unrelated collection. It is a
+    // focused test fixture, not a copy of the live ruleset.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
