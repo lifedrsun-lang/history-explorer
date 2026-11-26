@@ -187,3 +187,22 @@ Data Access `DATA_READ`/`DATA_WRITE` 로그 활성화 여부, 보존 기간 확�
 않는다. 이 두 차단 조건이 해결되기 전에는 운영 Rules 변경 또는
 Production 배포를 진행하면 안 된다.
 
+## 2026-11-26 실제 검증 결과
+
+- 격리 Firestore Emulator와 가상 데이터로 28개 테스트를 실행했고
+  28개 성공, 0개 실패였다.
+- 직접 접근 탐지기는 배포 소스 11개 파일을 확인했고
+  `--require-zero` 게이트는 의도대로 실패한다. 운영 규칙 변경 전 이
+  수가 0이 되어야 한다.
+- 담당 교사 Auth 확인 스크립트는 UID, 이메일, 인증정보를 출력하지 않도록
+  작성했다. 그러나 기존 승인 UID 환경변수는 다른 Preview 브랜치에
+  암호화되어 있어 현재 접근 수단으로 실제 값을 안전하게 복사할 수
+  없었다. 암호문을 UID로 오인하지 않도록 형식 검증이 빌드를 차단했고,
+  이 작업 브랜치의 잘못된 값은 빈 placeholder로 되돌렸다.
+- 따라서 Firebase Auth 계정의 존재·활성 상태 및 실제 담당자 신원 대조는
+  아직 완료되지 않았다. 승인된 담당자가 Vercel의 이 브랜치 Preview
+  환경에 `STUDENT_DATA_TEACHER_UIDS` 실제 값을 직접 설정한 뒤
+  `node scripts/verify-student-data-teacher-auth.cjs` 결과가 passed인지
+  확인해야 한다.
+- 운영 데이터, 운영 Firestore Ruleset, Production 배포는 변경하지 않았다.
+
