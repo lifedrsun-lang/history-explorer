@@ -55,7 +55,7 @@ async function accessToken() {
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth-grant-type:jwt-bearer", assertion: `${unsigned}.${signature}` }),
+    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: `${unsigned}.${signature}` }),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || typeof payload.access_token !== "string") throw new Error(`Firebase rules audit token request failed (HTTP ${response.status}).`);
