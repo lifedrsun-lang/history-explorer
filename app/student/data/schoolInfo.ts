@@ -111,7 +111,7 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     name: "서울 신상도초등학교",
     displayName: "서울 신상도초",
     aliases: ["서울 신상도초", "신상도초"],
-    loginCard: { title: "서울 신상도초", location: "각 교실", preferCardLocation: true },
+    loginCard: { title: "서울 신상도초", location: "각 학년 교실", preferCardLocation: true },
   },
   {
     name: "서울 등현초등학교",
