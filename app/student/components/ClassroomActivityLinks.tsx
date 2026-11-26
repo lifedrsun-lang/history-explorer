@@ -16,6 +16,7 @@ type Props = {
   classroom: GaebongClassroom;
   lesson: ClassroomLesson;
   studentPreview?: boolean;
+  studentMode?: boolean;
 };
 
 type ActivityMap = Record<string, boolean>;
@@ -35,6 +36,7 @@ export default function ClassroomActivityLinks({
   classroom,
   lesson,
   studentPreview = false,
+  studentMode = false,
 }: Props) {
   const [teacherUser, setTeacherUser] = useState<User | null>(null);
   const [activities, setActivities] = useState<ActivityMap>({});
@@ -43,7 +45,7 @@ export default function ClassroomActivityLinks({
 
   const refreshState = useCallback(async () => {
     try {
-      const authToken = teacherUser ? await teacherUser.getIdToken() : null;
+      const authToken = !studentMode && teacherUser ? await teacherUser.getIdToken() : null;
       const response = await fetch(activityStateUrl(classroom.directToken), {
         cache: "no-store",
         ...(authToken
@@ -64,15 +66,19 @@ export default function ClassroomActivityLinks({
     } catch {
       // 서버 상태 조회 실패 시 수업 데이터의 기본 잠금 상태를 그대로 사용한다.
     }
-  }, [classroom.directToken, teacherUser]);
+  }, [classroom.directToken, teacherUser, studentMode]);
 
   useEffect(() => {
+    if (studentMode) {
+      setTeacherUser(null);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setTeacherUser(currentUser);
     });
 
     return unsubscribe;
-  }, []);
+  }, [studentMode]);
 
   useEffect(() => {
     return startVisiblePolling(refreshState, REFRESH_MS);
@@ -90,7 +96,7 @@ export default function ClassroomActivityLinks({
     activityId: string,
     currentUnlocked: boolean
   ) => {
-    if (!teacherUser || pendingActivityId) {
+    if (studentMode || studentPreview || !teacherUser || pendingActivityId) {
       return;
     }
 
@@ -142,7 +148,7 @@ export default function ClassroomActivityLinks({
 
   return (
     <div className="mt-4 grid gap-2">
-      {teacherUser && !studentPreview && (
+      {teacherUser && !studentPreview && !studentMode && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-[11px] font-black text-amber-800">
           🔐 교사 모드 · 오른쪽 상태 버튼을 눌러 활동을 열거나 잠글 수 있어요.
         </div>
@@ -185,7 +191,7 @@ export default function ClassroomActivityLinks({
               </div>
             )}
 
-            {teacherUser && !studentPreview && (
+            {teacherUser && !studentPreview && !studentMode && (
               <button
                 type="button"
                 onClick={() => toggleActivity(link.id, unlocked)}

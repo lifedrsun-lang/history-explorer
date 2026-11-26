@@ -20,7 +20,7 @@ export type SchoolInfo = {
   aliases?: string[];
   password?: string;
   provider?: string;
-  loginCard: { title: string; location: string };
+  loginCard: { title: string; location: string; preferCardLocation?: boolean };
   notice?: SchoolNoticeInfo;
   hideRanking?: boolean;
 };
@@ -34,7 +34,7 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     displayName: "김포 하늘빛초",
     aliases: ["김포 하늘빛초"],
     password: "2497",
-    loginCard: { title: "김포 하늘빛초", location: "2F 맞춤3실" },
+    loginCard: { title: "김포 하늘빛초", location: "2F 컴퓨터실" },
     notice: {
       title: "3분기 수업 안내",
       location: "2F 맞춤3교실",
@@ -105,19 +105,19 @@ export const STUDENT_SCHOOL_INFOS: SchoolInfo[] = [
     displayName: "화성 월문초",
     aliases: ["화성 월문초", "월문초"],
     password: "2792",
-    loginCard: { title: "화성 월문초", location: "컴퓨터실" },
+    loginCard: { title: "화성 월문초", location: "2F 컴퓨터실", preferCardLocation: true },
   },
   {
     name: "서울 신상도초등학교",
     displayName: "서울 신상도초",
     aliases: ["서울 신상도초", "신상도초"],
-    loginCard: { title: "서울 신상도초", location: "컴퓨터실" },
+    loginCard: { title: "서울 신상도초", location: "각 교실", preferCardLocation: true },
   },
   {
     name: "서울 등현초등학교",
     displayName: "서울 등현초",
     aliases: ["서울등현초등학교", "서울 등현초", "등현초등학교", "등현초"],
-    loginCard: { title: "서울 등현초", location: "강의실 미정" },
+    loginCard: { title: "서울 등현초", location: "본관3F 방과후교실", preferCardLocation: true },
   },
   {
     name: CULTURE_CENTER_LABEL,
