@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { verifyTeacherRequest } from "@/lib/assignmentServer";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
-import { ATC_GMAIL_FROM, getAtcGmailStatus, sendAtcGmail } from "@/lib/atcGmailServer";
+import { ATC_GMAIL_FROM, atcGmailBcc, getAtcGmailStatus, sendAtcGmail } from "@/lib/atcGmailServer";
 import { OrderInputError, textbookOrderMailSubject, validateOrder } from "@/lib/textbookOrders";
 import { makeTextbookOrderWorkbook } from "@/lib/textbookOrderWorkbook";
 
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       tx.update(ref, { mailStatus: "sending", mailAttemptId: attemptId, mailAttemptStartedAt: startedAt });
       return input;
     });
-    const info = { to: "dreameat64@naver.com", bcc: "loveghkql@naver.com", subject: textbookOrderMailSubject(input),
+    const info = { to: "dreameat64@naver.com", bcc: atcGmailBcc("loveghkql@naver.com"), subject: textbookOrderMailSubject(input),
       body: `안녕하세요.\n\n${input.title} 주문서를 첨부합니다.\n확인 부탁드립니다.\n\n감사합니다.\n이화선`,
       filename: `${input.title.replace(/[\\/<>:"|?*\r\n]/g, "_")}.xlsx` };
     let messageId: string;
