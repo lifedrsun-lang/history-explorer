@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, "..");
 const appRoot = path.join(root, "app");
 const requireZero = process.argv.includes("--require-zero");
 const extensions = new Set([".js", ".jsx", ".ts", ".tsx"]);
-const ignoredSegments = new Set(["node_modules", ".next", "����"]);
+const ignoredSegments = new Set(["node_modules", ".next", "보관"]);
 
 const files = [];
 const walk = (dir) => {
