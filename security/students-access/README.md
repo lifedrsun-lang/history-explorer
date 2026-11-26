@@ -22,6 +22,9 @@ arbitrary authenticated users, student-like claims, and teacher-like claims
 cannot access `students` through the client SDK. A rules-disabled Emulator
 context verifies the expected Admin SDK/server path.
 
+Verified on 2026-11-26 with Java 21 and the Firestore Emulator: 28 tests
+passed, 0 failed. The root application and production data were not used.
+
 ## Production gate
 
 Do not replace the permissive live `students` rule until all of these are true:
