@@ -6,7 +6,7 @@ New classrooms can explicitly select 2027, receiving a random one of eight; pref
 Add the four user-supplied files (without replacing legacy images):
 - public/images/classroom/2027/yeti.webp (31513.webp)
 - public/images/classroom/2027/pink-bean.webp (31514.webp)
-- public/images/classroom/2027/pixie.jpg (31515.jpg)
+- public/images/classroom/2027/pixie.webp (31515.jpg)
 - public/images/classroom/2027/stone-spirit.webp (31516.webp)
  
 ## Verification before merge
