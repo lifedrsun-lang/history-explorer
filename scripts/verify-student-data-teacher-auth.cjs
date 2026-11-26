@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 const crypto = require("node:crypto");
+
+// Output is limited to counts and UID hash prefixes; identity fields and credentials are never logged.
 const { cert, getApps, initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 
