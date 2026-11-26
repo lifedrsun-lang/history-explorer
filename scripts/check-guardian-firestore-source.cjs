@@ -55,7 +55,7 @@ async function accessToken() {
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: `${unsigned}.${signature}` }),
+    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth-grant-type:jwt-bearer", assertion: `${unsigned}.${signature}` }),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || typeof payload.access_token !== "string") throw new Error(`Firebase rules audit token request failed (HTTP ${response.status}).`);
@@ -264,7 +264,10 @@ function publicDirectAllows(content) {
   if (publicAllows.length) console.warn("Existing public Firestore read/write grants detected; production activation remains blocked pending a separately approved rules change.");
   console.log("Guardian deployed Firestore rules source audit and teacher UID parity checks passed.");
   const encryptedBackup = encryptedRulesBackup(release.rulesetName, files);
-  if (encryptedBackup) console.log(`GUARDIAN_RULES_BACKUP_AES256GCM=${encryptedBackup}`);
+  if (encryptedBackup) {
+    const encryptedDigest = createHash("sha256").update(encryptedBackup).digest("hex").slice(0, 16);
+    console.log(`Guardian rules backup encryption check passed: bytes=${Buffer.byteLength(encryptedBackup)}, sha256=${encryptedDigest}, ciphertextLogged=false.`);
+  }
 })().catch((error) => {
   console.error(error instanceof Error ? error.message : "Guardian deployed Firestore rules source audit failed.");
   process.exit(1);
