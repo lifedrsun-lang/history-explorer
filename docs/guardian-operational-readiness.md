@@ -31,4 +31,4 @@ The repository still does not contain the deployed `firestore.rules`, `firebase.
 
 ## Encrypted Ruleset backup
 
-The active Ruleset source and immutable Ruleset reference are exported only as an AES-256-GCM encrypted payload during the feature Preview build. The backup key is stored as the branch-scoped sensitive variable `GUARDIAN_RULES_BACKUP_KEY`; neither the key, rule source, nor teacher UID is logged. Store the encrypted payload in the PR branch before any approved production rules change. This backup mechanism does not modify the active release.
+The active Ruleset source and immutable Ruleset reference are exported only as an AES-256-GCM encrypted payload during the feature Preview build. The backup key is stored as the branch-scoped sensitive variable `GUARDIAN_RULES_BACKUP_KEY`; neither the key, rule source, nor teacher UID is logged. Store the encrypted payload in the PR branch before any approved production rules change. This backup mechanism does not modify the active release. After rotating the backup key, create a fresh feature Preview deployment before capturing the encrypted payload.
