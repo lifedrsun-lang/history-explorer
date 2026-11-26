@@ -21,6 +21,8 @@ function readRooms(source) {
       if (!declaration.initializer || !ts.isArrayLiteralExpression(declaration.initializer)) {
         throw new Error("Classroom declarations must use explicit persisted entries.");
       }
+      // ALL_CLASSROOMS is an aggregate of the explicit school arrays, not new entries.
+      if (declaration.name.getText(file) === "ALL_CLASSROOMS" && declaration.initializer.elements.every(ts.isSpreadElement)) continue;
       for (const entry of declaration.initializer.elements) {
         if (!ts.isObjectLiteralExpression(entry)) throw new Error("Expected explicit classroom entry.");
         const get = (key) => {
