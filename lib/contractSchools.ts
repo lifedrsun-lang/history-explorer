@@ -21,6 +21,7 @@ export type ContractSchoolClassroom = {
   classNumber: number;
   label: string;
   monsterId: string;
+  monsterSetYear?: 2027;
   directToken: string;
   active: boolean;
 };
@@ -376,6 +377,7 @@ export const toSchoolClassroom = (
   classNumber: classroom.classNumber,
   label: classroom.label,
   monsterId: classroom.monsterId,
+  ...(classroom.monsterSetYear === 2027 ? { monsterSetYear: 2027 as const } : {}),
   directToken: classroom.directToken,
   lessons: school.lessons.map((lesson) => ({
     lesson: lesson.lesson,

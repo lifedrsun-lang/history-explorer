@@ -7,7 +7,7 @@ import { CLASSROOM_LOCKOUT_MS } from "@/lib/classroomLockout";
 import { TEACHER_KAKAO_INQUIRY_URL } from "@/lib/teacherContact";
 import SchoolQrPanel from "@/app/components/SchoolQrPanel";
 import {
-  CLASSROOM_MONSTERS,
+  getClassroomMonsterSet,
   type ClassroomMonster,
   type SchoolClassroom,
 } from "../data/classroomData";
@@ -15,8 +15,8 @@ import {
 const MAX_FAILED_ATTEMPTS = 3;
 const LOCKOUT_MS = CLASSROOM_LOCKOUT_MS;
 
-const shuffleMonsters = () => {
-  const items = [...CLASSROOM_MONSTERS];
+const shuffleMonsters = (year?: 2027) => {
+  const items = [...getClassroomMonsterSet(year)];
   for (let index = items.length - 1; index > 0; index -= 1) {
     const swapIndex = Math.floor(Math.random() * (index + 1));
     [items[index], items[swapIndex]] = [items[swapIndex], items[index]];
@@ -97,7 +97,7 @@ export default function SchoolMonsterClassPortal({ schoolSlug, schoolDisplayName
   const selectClassroom = (classroom: SchoolClassroom) => {
     const state = readLockoutState(classroom);
     setSelectedClassroom(classroom);
-    setMonsterOptions(shuffleMonsters());
+    setMonsterOptions(shuffleMonsters(classroom.monsterSetYear));
     setIsUnlocked(false);
     setFailedAttempts(state.failedAttempts);
     setLockedUntil(state.lockedUntil);
@@ -140,13 +140,13 @@ export default function SchoolMonsterClassPortal({ schoolSlug, schoolDisplayName
       setLockedUntil(nextLockedUntil);
       setNow(Date.now());
       setErrorMessage("");
-      setMonsterOptions(shuffleMonsters());
+      setMonsterOptions(shuffleMonsters(currentClassroom.monsterSetYear));
       return;
     }
     window.localStorage.setItem(getStorageKey(currentClassroom), JSON.stringify({ failedAttempts: nextFailedAttempts, lockedUntil: null }));
     setFailedAttempts(nextFailedAttempts);
     setErrorMessage(`앗! 우리 반 몬스터가 아니에요. ${MAX_FAILED_ATTEMPTS - nextFailedAttempts}번 더 틀리면 10분 동안 잠겨요.`);
-    setMonsterOptions(shuffleMonsters());
+    setMonsterOptions(shuffleMonsters(currentClassroom.monsterSetYear));
   };
 
   if (currentClassroom && isUnlocked) {
@@ -207,10 +207,10 @@ export default function SchoolMonsterClassPortal({ schoolSlug, schoolDisplayName
               <h2 className="text-2xl font-black text-slate-800">{schoolDisplayName} <span className="text-emerald-600">{currentClassroom.grade}학년</span> <span className="text-orange-500">{currentClassroom.classNumber}반</span></h2>
               <p className="mt-3 text-base font-black text-slate-700">우리 반 <span className="text-violet-600">비밀번호 몬스터</span>를 찾아 눌러 보세요</p>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className={`mt-4 grid gap-3 ${currentClassroom.monsterSetYear === 2027 ? "grid-cols-4" : "grid-cols-2 sm:grid-cols-3"}`}>
               {monsterOptions.map((monster) => (
                 <button key={monster.id} type="button" onClick={() => chooseMonster(monster)} disabled={isLocked} className={`overflow-hidden rounded-[24px] border bg-gradient-to-br p-2 text-center shadow-sm transition ${isLocked ? "cursor-not-allowed opacity-50" : "hover:-translate-y-0.5 hover:shadow-md"} ${monster.className}`}>
-                  <div className="flex h-28 items-center justify-center overflow-hidden rounded-[18px] bg-white sm:h-32"><img src={monster.imageSrc} alt="" aria-hidden="true" className="h-full w-full object-contain" /></div>
+                  <div className={`flex items-center justify-center overflow-hidden rounded-[18px] bg-white ${currentClassroom.monsterSetYear === 2027 ? "h-16 sm:h-32" : "h-28 sm:h-32"}`}><img src={monster.imageSrc} alt="" aria-hidden="true" className="h-full w-full object-contain" /></div>
                   <div className="px-1 pb-1 pt-2 text-sm font-black text-slate-800 sm:text-base">{monster.name}</div>
                 </button>
               ))}
