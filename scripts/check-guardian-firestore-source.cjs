@@ -82,6 +82,23 @@ function classifyFunctionGate(content, condition) {
   return "function-other-unverified";
 }
 
+function parseUidList(value) {
+  return [...new Set(String(value || "").split(",").map((entry) => entry.trim()).filter(Boolean))].sort();
+}
+
+function fixedUidLiterals(content) {
+  const values = new Set();
+  for (const match of content.matchAll(/request\.auth\.uid\s*==\s*(["'])([^"'\\]+)\1/g)) values.add(match[2]);
+  for (const match of content.matchAll(/request\.auth\.uid\s+in\s+\[([^\]]*)\]/g)) {
+    for (const literal of match[1].matchAll(/(["'])([^"'\\]+)\1/g)) values.add(literal[2]);
+  }
+  return [...values].sort();
+}
+
+function sameValues(left, right) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
 function ruleMatches(content) {
   const lines = content.split(/\r?\n/);
   const broad = [];
@@ -157,9 +174,18 @@ function ruleMatches(content) {
   const restrictedBroadCount = broad.reduce((count, { allows }) =>
     count + allows.filter(({ classification }) => !unsafeClassifications.has(classification)).length, 0
   );
-  console.log(`Guardian deployed Firestore rules source audit summary: files=${files.length}, lines=${combined.split(/\r?\n/).length}, sha256=${digest}, explicitGuardianMatches=${explicit.length}/7, unsafeBroadAllows=${unsafeBroad.length}, restrictedBroadAllows=${restrictedBroadCount}, broadClassifications=${broadSummary || "none"}.`);
+  const deployedTeacherUids = fixedUidLiterals(combined);
+  const guardianTeacherUids = parseUidList(process.env.GUARDIAN_TEACHER_UIDS);
+  const schoolEntryTeacherUids = parseUidList(process.env.SCHOOL_ENTRY_TEACHER_UIDS);
+  const guardianParity = sameValues(deployedTeacherUids, guardianTeacherUids);
+  const schoolEntryParity = sameValues(deployedTeacherUids, schoolEntryTeacherUids);
+  const deployedUidHash = createHash("sha256").update(deployedTeacherUids.join(",")).digest("hex").slice(0, 16);
+  const guardianUidHash = createHash("sha256").update(guardianTeacherUids.join(",")).digest("hex").slice(0, 16);
+  const schoolEntryUidHash = createHash("sha256").update(schoolEntryTeacherUids.join(",")).digest("hex").slice(0, 16);
+  console.log(`Guardian deployed Firestore rules source audit summary: files=${files.length}, lines=${combined.split(/\r?\n/).length}, sha256=${digest}, explicitGuardianMatches=${explicit.length}/7, unsafeBroadAllows=${unsafeBroad.length}, restrictedBroadAllows=${restrictedBroadCount}, broadClassifications=${broadSummary || "none"}, deployedTeacherUidCount=${deployedTeacherUids.length}, guardianTeacherUidCount=${guardianTeacherUids.length}, schoolEntryTeacherUidCount=${schoolEntryTeacherUids.length}, guardianUidParity=${guardianParity}, schoolEntryUidParity=${schoolEntryParity}, deployedUidHash=${deployedUidHash}, guardianUidHash=${guardianUidHash}, schoolEntryUidHash=${schoolEntryUidHash}.`);
   if (unsafeBroad.length) throw new Error("Active Firestore rules contain an unsafe all-document allow rule; guardian feature activation remains blocked.");
-  console.log("Guardian deployed Firestore rules source audit passed; restricted wildcard gates still require teacher-UID parity verification.");
+  if (!deployedTeacherUids.length || !guardianParity || !schoolEntryParity) throw new Error("Teacher UID parity check failed; guardian feature activation remains blocked.");
+  console.log("Guardian deployed Firestore rules source audit and teacher UID parity checks passed.");
 })().catch((error) => {
   console.error(error instanceof Error ? error.message : "Guardian deployed Firestore rules source audit failed.");
   process.exit(1);
