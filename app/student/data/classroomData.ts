@@ -97,7 +97,7 @@ export const CLASSROOM_MONSTERS: ClassroomMonster[] = [
 export const CLASSROOM_MONSTERS_2027: ClassroomMonster[] = [
   { id: "yeti", name: "예티", imageSrc: "/images/classroom/2027/yeti.webp", className: "from-slate-100 to-sky-50 border-slate-200" },
   { id: "pink-bean", name: "핑크빈", imageSrc: "/images/classroom/2027/pink-bean.webp", className: "from-pink-100 to-rose-50 border-pink-200" },
-  { id: "pixie", name: "픽시", imageSrc: "/images/classroom/2027/pixie.jpg", className: "from-violet-100 to-purple-50 border-violet-200" },
+  { id: "pixie", name: "픽시", imageSrc: "/images/classroom/2027/pixie.webp", className: "from-violet-100 to-purple-50 border-violet-200" },
   { id: "stone-spirit", name: "돌의 정령", imageSrc: "/images/classroom/2027/stone-spirit.webp", className: "from-emerald-100 to-yellow-50 border-emerald-200" },
   ...CLASSROOM_MONSTERS.filter((monster) =>
     ["orange-mushroom", "slime", "choco-mushroom", "blue-mushroom"].includes(monster.id)
