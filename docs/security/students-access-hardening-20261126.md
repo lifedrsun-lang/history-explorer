@@ -206,3 +206,12 @@ Production 배포를 진행하면 안 된다.
   확인해야 한다.
 - 운영 데이터, 운영 Firestore Ruleset, Production 배포는 변경하지 않았다.
 
+### Preview 재검증 제약
+
+교사 UID placeholder를 비운 뒤 최종 Preview 재빌드를 요청했으나 Vercel API가
+`api-deployments-free-per-day` 한도 초과(하루 100회 초과)로 HTTP 402를
+반환했다. 안내된 재시도 시간은 24시간이다. 따라서 최종 Preview 빌드는
+확인 완료로 처리하지 않는다. 직전 성공 Preview는 커밋
+`66c7c8911e51df1fa08a82d8d12d5a7909646f48`이며, 해당 빌드에서는
+교사 UID 환경변수가 아직 없어 확인 스크립트가 skipped 상태였다.
+
