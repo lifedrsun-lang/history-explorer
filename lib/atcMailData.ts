@@ -2,7 +2,7 @@ import "server-only";
 import { resolveAtcEducatorName, resolveAtcEducatorSignature } from "@/lib/atcEducator";
 import { createHash } from "node:crypto";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
-import { ATC_GMAIL_FROM } from "@/lib/atcGmailServer";
+import { ATC_GMAIL_FROM, atcGmailBcc } from "@/lib/atcGmailServer";
 import { CLASS4EDU_MAIL_TO, getConfirmationPdfFileName, type ConfirmationOutputVersion } from "@/lib/confirmationOutput";
 export const ATC_COLLECTION = "teacher_atc_confirmations";
 const SETTINGS_COLLECTION = "teacher_atc_mail_settings";
@@ -86,7 +86,7 @@ export function makeAtcMailInfo(doc: AtcMailDocument, settings: AtcMailSettings,
     schoolName: rawSchoolName,
     educatorName: fields.강사명,
   });
-  return { from: ATC_GMAIL_FROM, to: outputVersion === "class4edu" ? CLASS4EDU_MAIL_TO : settings.to, bcc: settings.bcc, subject, body: render(settings.bodyTemplate), filename,
+  return { from: ATC_GMAIL_FROM, to: outputVersion === "class4edu" ? CLASS4EDU_MAIL_TO : settings.to, bcc: atcGmailBcc(settings.bcc), subject, body: render(settings.bodyTemplate), filename,
     schoolSignatureMissing: !Boolean(confirmation.schoolSignatureDataUrl),
     sentAt: clean(confirmation.mailSentAt), mailStatus: clean(confirmation.mailStatus), revision: doc.revision };
 }

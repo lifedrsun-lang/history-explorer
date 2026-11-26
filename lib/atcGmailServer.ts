@@ -5,6 +5,18 @@ import { FieldValue } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 
 export const ATC_GMAIL_FROM = "lifedr.sun@gmail.com";
+export const ATC_GMAIL_FROM_NAME = "이화선";
+export const ATC_GMAIL_AUTO_BCC = ATC_GMAIL_FROM;
+
+// Preserve existing recipients and add the connected account exactly once.
+export function atcGmailBcc(existing = ""): string {
+  const recipients = new Map<string, string>();
+  for (const address of [...existing.split(","), ATC_GMAIL_AUTO_BCC]) {
+    const trimmed = address.trim();
+    if (trimmed && !recipients.has(trimmed.toLowerCase())) recipients.set(trimmed.toLowerCase(), trimmed);
+  }
+  return [...recipients.values()].join(", ");
+}
 const SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
 const CONNECTIONS = "teacher_atc_gmail_connections";
 const STATES = "teacher_atc_gmail_oauth_states";
@@ -153,7 +165,7 @@ export function buildAtcGmailRaw(info: { to: string; bcc: string; subject: strin
   const filename = encodeURIComponent(info.filename).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
   const lines76 = (data: Buffer) => data.toString("base64").match(/.{1,76}/g)?.join("\r\n") || "";
   const mime = [
-    `From: ${ATC_GMAIL_FROM}`, `To: ${info.to}`, `Bcc: ${info.bcc}`,
+    `From: ${encodedSubject(ATC_GMAIL_FROM_NAME)} <${ATC_GMAIL_FROM}>`, `To: ${info.to}`, `Bcc: ${atcGmailBcc(info.bcc)}`,
     `Subject: ${encodedSubject(info.subject)}`, "MIME-Version: 1.0",
     `Content-Type: multipart/mixed; boundary="${boundary}"`, "",
     `--${boundary}`, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64", "",
@@ -190,9 +202,8 @@ export type GmailFileAttachment = {
   buffer: Buffer;
 };
 
-/** Send multiple attachments without changing the existing single-attachment API. */
-export async function sendAtcGmailMany(
-  uid: string,
+/** Construct multiple-attachment MIME without sending, for regression tests. */
+export function buildAtcGmailManyRaw(
   info: { to: string; subject: string; body: string },
   attachments: GmailFileAttachment[]
 ) {
@@ -200,8 +211,9 @@ export async function sendAtcGmailMany(
   const boundary = `sunlab_${randomBytes(18).toString("hex")}`;
   const base64Lines = (data: Buffer) => data.toString("base64").match(/.{1,76}/g)?.join("\r\n") || "";
   const lines = [
-    `From: ${ATC_GMAIL_FROM}`,
+    `From: ${encodedSubject(ATC_GMAIL_FROM_NAME)} <${ATC_GMAIL_FROM}>`,
     `To: ${info.to}`,
+    `Bcc: ${atcGmailBcc()}`,
     `Subject: ${encodedSubject(info.subject)}`,
     "MIME-Version: 1.0",
     `Content-Type: multipart/mixed; boundary="${boundary}"`, "",
@@ -219,13 +231,23 @@ export async function sendAtcGmailMany(
     );
   }
   lines.push(`--${boundary}--`, "");
+  return Buffer.from(lines.join("\r\n"), "utf8").toString("base64url");
+}
+
+/** Send multiple attachments without changing the existing single-attachment API. */
+export async function sendAtcGmailMany(
+  uid: string,
+  info: { to: string; subject: string; body: string },
+  attachments: GmailFileAttachment[]
+) {
+  const raw = buildAtcGmailManyRaw(info, attachments);
   const accessToken = await getAccessToken(uid);
   let response: Response;
   try {
     response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
       method: "POST", cache: "no-store",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ raw: Buffer.from(lines.join("\r\n"), "utf8").toString("base64url") }),
+      body: JSON.stringify({ raw }),
     });
   } catch {
     throw new Error("atc_gmail_send_unconfirmed");
