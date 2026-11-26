@@ -120,42 +120,73 @@ function sameValues(left, right) {
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
-function ruleMatches(content) {
+function matchBlocks(content) {
   const lines = content.split(/\r?\n/);
-  const broad = [];
+  const blocks = [];
   let offset = 0;
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.startsWith("match /") && trimmed.includes("{")) {
       const openInLine = line.lastIndexOf("{");
       const pattern = line.slice(line.indexOf("match ") + 6, openInLine).trim();
-      const onlyWildcards = pattern.replace(/\{[^}]+\}/g, "").replaceAll("/", "").trim() === "";
-      if (pattern.includes("=**") || onlyWildcards) {
-        const start = offset + openInLine;
-        let depth = 0, end = start;
-        for (; end < content.length; end += 1) {
-          if (content[end] === "{") depth += 1;
-          else if (content[end] === "}") { depth -= 1; if (depth === 0) { end += 1; break; } }
+      const start = offset + openInLine;
+      let depth = 0, end = start;
+      for (; end < content.length; end += 1) {
+        if (content[end] === "{") depth += 1;
+        else if (content[end] === "}") {
+          depth -= 1;
+          if (depth === 0) { end += 1; break; }
         }
-        const block = content.slice(start, end);
-        const allows = [...block.matchAll(/allow\s+([^:]+):\s*if\s+([^;]+);/g)].map((match) => {
-          const rawCondition = match[2].replace(/\s/g, "");
-          const compact = rawCondition.replace(/[()]/g, "");
-          const functionCall = /(^|[!&|=,])([A-Za-z_]\w*)\(/.test(rawCondition);
-          let classification = "other-unverified";
-          if (compact === "true") classification = "public";
-          else if (compact === "false") classification = "deny";
-          else if (compact.includes("request.auth.uid")) classification = "uid-or-identity-restricted";
-          else if (compact.includes("request.auth!=null") && !functionCall) classification = "any-authenticated";
-          else if (functionCall) classification = classifyFunctionGate(content, rawCondition);
-          else if (compact.includes("request.auth")) classification = "auth-condition-unverified";
-          return { operations: match[1].replace(/\s/g, ""), classification };
-        });
-        const active = allows.filter((allow) => allow.classification !== "deny");
-        if (active.length) broad.push({ pattern, allows: active });
       }
+      blocks.push({ pattern, start, end, parent: null, effectivePath: "" });
     }
     offset += line.length + 1;
+  }
+  for (const block of blocks) {
+    const parents = blocks.filter((candidate) => candidate.start < block.start && candidate.end >= block.end);
+    block.parent = parents.sort((left, right) => right.start - left.start)[0] || null;
+  }
+  for (const block of blocks) {
+    const chain = [];
+    let cursor = block;
+    while (cursor) { chain.unshift(cursor.pattern); cursor = cursor.parent; }
+    const parts = chain
+      .filter((pattern) => !(pattern.startsWith("/databases/") && pattern.includes("/documents")))
+      .map((pattern) => pattern.replace(/^\/+|\/+$/g, ""))
+      .filter(Boolean);
+    block.effectivePath = "/" + parts.join("/");
+  }
+  return blocks;
+}
+
+function ruleMatches(content) {
+  const broad = [];
+  const blocks = matchBlocks(content);
+  for (const block of blocks) {
+    const onlyWildcards = block.effectivePath.replace(/\{[^}]+\}/g, "").replaceAll("/", "").trim() === "";
+    if (!onlyWildcards) continue;
+    let direct = content.slice(block.start + 1, block.end - 1);
+    const children = blocks.filter((candidate) => candidate.parent === block).sort((left, right) => right.start - left.start);
+    for (const child of children) {
+      const from = child.start - (block.start + 1);
+      const to = child.end - (block.start + 1);
+      direct = direct.slice(0, from) + " ".repeat(Math.max(0, to - from)) + direct.slice(to);
+    }
+    const allows = [...direct.matchAll(/allow\s+([^:]+):\s*if\s+([^;]+);/g)].map((match) => {
+      const rawCondition = match[2].replace(/\s/g, "");
+      const compact = rawCondition.replace(/[()]/g, "");
+      const functionCall = /(^|[!&|=,])([A-Za-z_]\w*)\(/.test(rawCondition);
+      let classification = "other-unverified";
+      if (compact === "true") classification = "public";
+      else if (compact === "false") classification = "deny";
+      else if (compact.includes("request.auth.uid")) classification = "uid-or-identity-restricted";
+      else if (compact.includes("request.auth!=null") && !functionCall) classification = "any-authenticated";
+      else if (functionCall) classification = classifyFunctionGate(content, rawCondition);
+      else if (compact.includes("request.auth")) classification = "auth-condition-unverified";
+      return { operations: match[1].replace(/\s/g, ""), classification };
+    });
+    const active = allows.filter((allow) => allow.classification !== "deny");
+    if (active.length) broad.push({ pattern: block.effectivePath, allows: active });
   }
   return broad;
 }
@@ -172,7 +203,10 @@ function ruleMatches(content) {
   if (!contents.length) throw new Error("Active Firestore rules source is empty.");
   const combined = contents.join("\n");
   const broad = ruleMatches(combined);
-  const explicit = collections.filter((collection) => combined.includes(`match /${collection}/`));
+  const blocks = matchBlocks(combined);
+  const explicit = collections.filter((collection) =>
+    blocks.some((block) => block.effectivePath === `/${collection}` || block.effectivePath.startsWith(`/${collection}/`))
+  );
   const digest = createHash("sha256").update(combined).digest("hex").slice(0, 16);
   const unsafeClassifications = new Set([
     "public",
