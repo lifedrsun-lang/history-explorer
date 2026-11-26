@@ -1,0 +1,13 @@
+{
+  "name": "sunlab-guardian-firestore-emulator",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project demo-sunlab-guardian --config firebase.json \"node test-rules.mjs\""
+  },
+  "dependencies": {
+    "@firebase/rules-unit-testing": "5.0.1",
+    "firebase": "12.13.0",
+    "firebase-tools": "15.37.0"
+  }
+}
