@@ -6,6 +6,7 @@ import { ALLOWED_STUDENT_COLLECTIONS, type StudentCollection } from "@/lib/assig
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { getStudentProgramValue, type StudentProgram } from "@/lib/programs";
 import { normalizeSchoolText, isCultureCenterSchool } from "@/app/student/data/schoolInfo";
+import { getStudentGroup } from "@/app/student/data/studentGroups";
 
 const normalize = (value: unknown) => String(value || "").trim();
 const normalizeNoSpace = (value: unknown) => normalize(value).replace(/\s+/g, "");
@@ -234,8 +235,7 @@ export const calculateStudentRank = async (studentInput: SafeStudentClassroom) =
       (student) =>
         student.program === studentInput.program &&
         sameSchool(student.school, studentInput.school) &&
-        student.grade === studentInput.grade &&
-        student.class === studentInput.class
+        getStudentGroup(student) === getStudentGroup(studentInput)
     )
     .sort((a, b) => score(b) - score(a));
 
