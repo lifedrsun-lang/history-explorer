@@ -24,7 +24,6 @@ type Props = {
 type StudentLike = {
   id?: unknown;
   collectionName?: unknown;
-  password?: unknown;
   silver?: unknown;
   school?: unknown;
 };
@@ -55,7 +54,6 @@ export default function CoinExchangeRequest({ student }: Props) {
 
   const studentId = String(student?.id || "");
   const studentCollection = getStudentCollection(student);
-  const studentPassword = String(student?.password || "");
   const currentSilver = Math.max(0, Number(student?.silver || 0));
   const isSaesolStudent = isSaesolSchool(student?.school);
 
@@ -63,12 +61,11 @@ export default function CoinExchangeRequest({ student }: Props) {
     return {
       studentId,
       studentCollection,
-      studentPassword,
     };
-  }, [studentCollection, studentId, studentPassword]);
+  }, [studentCollection, studentId]);
 
   const loadStatus = useCallback(async () => {
-    if (!studentId || !studentPassword) {
+    if (!studentId ) {
       return;
     }
 
@@ -105,7 +102,7 @@ export default function CoinExchangeRequest({ student }: Props) {
     } finally {
       setIsLoading(false);
     }
-  }, [getStudentAuthBody, studentId, studentPassword]);
+  }, [getStudentAuthBody, studentId]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
