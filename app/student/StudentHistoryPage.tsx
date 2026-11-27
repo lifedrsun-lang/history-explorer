@@ -428,52 +428,11 @@ export default function StudentHistoryPage({
           <button
             type="button"
             onClick={async () => {
-              const attendanceNumberMatches =
-                pendingStudent &&
-                normalize(studentPassword) === normalize(pendingStudent.studentNumber);
-              if (!attendanceNumberMatches || checkingSchoolCode) {
-                alert("입력 정보를 확인해 주세요.");
-                return;
-              }
-              if (normalizeNoSpace(selectedSchool).includes("등현초")) {
-                setCheckingSchoolCode(true);
-                try {
-                  const response = await fetch("/api/student/deunghyeon-entry", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ code: passwordInput }),
-                  });
-                  if (response.status === 429) {
-                    alert("입장 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.");
-                    return;
-                  }
-                  if (!response.ok) {
-                    alert("입장코드를 확인할 수 없습니다. 다시 시도해 주세요.");
-                    return;
-                  }
-                  const result = await response.json();
-                  if (result.valid !== true) {
-                    alert("입력 정보를 확인해 주세요.");
-                    return;
-                  }
-                } catch {
-                  alert("입장코드를 확인할 수 없습니다. 다시 시도해 주세요.");
-                  return;
-                } finally {
-                  setCheckingSchoolCode(false);
-                }
-              } else if (normalize(passwordInput) !== normalize(getSchoolPassword(selectedSchool))) {
-                alert("입력 정보를 확인해 주세요.");
-                return;
-              }
-
-              setSelectedStudent(pendingStudent);
-              localStorage.setItem("selectedSchool", selectedSchool);
-              localStorage.setItem("selectedStudent", JSON.stringify(pendingStudent));
-              setCombinedSchoolVerified(true);
-              setPendingStudent(null);
-              setPasswordInput("");
-              setStudentPassword("");
+              if (!pendingStudent || checkingSchoolCode) return;
+              const schoolVerified = await enterSchool(selectedSchool, passwordInput);
+              if (!schoolVerified) return;
+              const studentVerified = await loginStudent(pendingStudent, studentPassword);
+              if (studentVerified) setCombinedSchoolVerified(true);
             }}
             disabled={checkingSchoolCode || !passwordInput.trim() || !pendingStudent || !studentPassword.trim()}
             className="mt-5 w-full rounded-2xl bg-sky-400 py-4 text-xl font-bold text-white shadow-sm transition hover:bg-sky-500 disabled:opacity-50"
