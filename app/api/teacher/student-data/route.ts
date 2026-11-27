@@ -35,6 +35,15 @@ const safeStudent = (id: string, data: FirebaseFirestore.DocumentData) => ({
   character: normalize(data?.character),
   stage: Number(data?.stage || 0),
   coinHistory: serializeValue(Array.isArray(data?.coinHistory) ? data.coinHistory : []),
+  materialHistory: serializeValue(Array.isArray(data?.materialHistory) ? data.materialHistory : []),
+  studentNumber: normalize(data?.studentNumber || data?.number || data?.studentNo),
+  teachingClass: normalize(data?.teachingClass),
+  worldCultureStage: normalize(data?.worldCultureStage),
+  sunLabMember: data?.sunLabMember === true,
+  enrollmentTerms: Array.isArray(data?.enrollmentTerms)
+    ? data.enrollmentTerms.map(normalize).filter(Boolean)
+    : [],
+  pendingCoinExchangeRequestId: normalize(data?.pendingCoinExchangeRequestId),
   isActive: data?.isActive !== false,
   enrollmentStatus: normalize(data?.enrollmentStatus || "active"),
 });
@@ -81,14 +90,11 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const teacher = await verifyStudentDataTeacherRequest(request);
-    const body = (await request.json().catch(() => ({}))) as {
-      studentId?: unknown;
-      character?: unknown;
-    };
+    const body = (await request.json().catch(() => ({}))) as Record<string, any>;
     const studentId = normalize(body.studentId);
-    const character = normalize(body.character);
-    if (!studentId || !character || character.length > 40) {
-      return Response.json({ error: "변경 정보를 확인해 주세요." }, { status: 400, headers });
+    const action = normalize(body.action || "character");
+    if (!studentId) {
+      return Response.json({ error: "학생 ID를 확인해 주세요." }, { status: 400, headers });
     }
 
     const { db } = getFirebaseAdmin();
@@ -97,13 +103,80 @@ export async function PATCH(request: NextRequest) {
     if (!snapshot.exists) {
       return Response.json({ error: "학생 정보를 찾지 못했습니다." }, { status: 404, headers });
     }
+
+    let changes: Record<string, unknown>;
+
+    if (action === "character") {
+      const character = normalize(body.character);
+      if (!character || character.length > 40) {
+        return Response.json({ error: "캐릭터 정보를 확인해 주세요." }, { status: 400, headers });
+      }
+      changes = { character };
+    } else if (action === "materialHistory") {
+      if (!Array.isArray(body.materialHistory) || body.materialHistory.length > 100) {
+        return Response.json({ error: "교재 지급 기록을 확인해 주세요." }, { status: 400, headers });
+      }
+      changes = { materialHistory: serializeValue(body.materialHistory) };
+    } else if (action === "profile") {
+      const fields = body.fields && typeof body.fields === "object" ? body.fields : {};
+      const school = normalize(fields.school);
+      const grade = normalize(fields.grade);
+      const className = normalize(fields.class);
+      const studentNumber = normalize(fields.studentNumber);
+      const name = normalize(fields.name);
+      const program = normalize(fields.program);
+      const teachingClass = normalize(fields.teachingClass);
+      const enrollmentStatus = normalize(fields.enrollmentStatus);
+      const worldCultureStage = normalize(fields.worldCultureStage);
+      const enrollmentTerms = Array.isArray(fields.enrollmentTerms)
+        ? fields.enrollmentTerms.map(normalize).filter(Boolean)
+        : [];
+
+      if (
+        !school ||
+        !name ||
+        school.length > 100 ||
+        name.length > 50 ||
+        grade.length > 20 ||
+        className.length > 20 ||
+        studentNumber.length > 20 ||
+        program.length > 50 ||
+        worldCultureStage.length > 80 ||
+        !["", "A반", "B반"].includes(teachingClass) ||
+        !["active", "paused", "completed", "withdrawn"].includes(enrollmentStatus) ||
+        enrollmentTerms.length > 20 ||
+        enrollmentTerms.some((term: string) => !/^\d{4}-Q[1-4]$/.test(term))
+      ) {
+        return Response.json({ error: "수강생 정보를 확인해 주세요." }, { status: 400, headers });
+      }
+
+      changes = {
+        school,
+        grade,
+        class: className,
+        studentNumber,
+        password: studentNumber.padStart(2, "0"),
+        name,
+        program,
+        worldCultureStage,
+        teachingClass,
+        enrollmentStatus,
+        isActive: enrollmentStatus === "active",
+        enrollmentTerms,
+        sunLabMember: fields.sunLabMember === true,
+      };
+    } else {
+      return Response.json({ error: "허용되지 않은 변경입니다." }, { status: 400, headers });
+    }
+
     await ref.update({
-      character,
+      ...changes,
       studentDataUpdatedBy: teacher.uid,
       studentDataUpdatedAt: new Date(),
     });
+
     return Response.json(
-      { student: safeStudent(studentId, { ...(snapshot.data() || {}), character }) },
+      { student: safeStudent(studentId, { ...(snapshot.data() || {}), ...changes }) },
       { headers }
     );
   } catch (error) {
