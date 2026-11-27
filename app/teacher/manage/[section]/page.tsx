@@ -77,6 +77,13 @@ const sections: Record<string, ManagementSection> = {
         className: "border-amber-300 bg-amber-50 text-amber-950",
       },
       {
+        href: "/teacher/review-messages",
+        icon: "💬",
+        title: "교육후기 문자",
+        description: "교재별·차시별 수업 후기 등록·수정·전체 복사",
+        className: "border-sky-200 bg-sky-50 text-sky-900",
+      },
+      {
         href: "/teacher/textbook-orders",
         icon: "📦",
         title: "교재주문",
@@ -368,8 +375,8 @@ export default async function TeacherManagementSectionPage({
             {(section === "after-school"
               ? [
                   { title: "수강생 관리", items: config.items.slice(0, 3) },
-                  { title: "수업 관리", items: config.items.slice(3, 7) },
-                  { title: "교재 및 행정 관리", items: config.items.slice(7) },
+                  { title: "수업 관리", items: config.items.slice(3, 8) },
+                  { title: "교재 및 행정 관리", items: config.items.slice(8) },
                 ]
               : [{ title: "", items: config.items }]
             ).map((group) => (
