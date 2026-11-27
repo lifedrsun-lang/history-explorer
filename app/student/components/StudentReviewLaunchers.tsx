@@ -29,13 +29,12 @@ export default function StudentReviewLaunchers({ student }: { student: any }) {
 
   const studentId = String(student?.id || "");
   const studentCollection = getStudentCollection(student);
-  const studentPassword = String(student?.password || "");
 
   useEffect(() => {
     let cancelled = false;
 
     const checkExamAssignments = async () => {
-      if (!studentId || !studentPassword) {
+      if (!studentId ) {
         if (!cancelled) setHasExamAssignments(false);
         return;
       }
@@ -44,7 +43,7 @@ export default function StudentReviewLaunchers({ student }: { student: any }) {
         const response = await fetch("/api/student/review-assignments", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ studentId, studentCollection, studentPassword }),
+          body: JSON.stringify({ studentId, studentCollection }),
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error("review_assignment_check_failed");
@@ -66,7 +65,7 @@ export default function StudentReviewLaunchers({ student }: { student: any }) {
     return () => {
       cancelled = true;
     };
-  }, [studentCollection, studentId, studentPassword]);
+  }, [studentCollection, studentId]);
 
   const popupTitle = activeMode === "exam" ? "🏆 기출문제" : "📘 교재문제";
   const popupDescription =
