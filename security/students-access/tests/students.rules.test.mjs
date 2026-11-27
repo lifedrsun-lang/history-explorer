@@ -46,10 +46,16 @@ beforeEach(async () => {
   await testEnv.clearFirestore();
   await testEnv.withSecurityRulesDisabled(async (context) => {
     await setDoc(doc(context.firestore(), "students", studentId), virtualStudent);
-    await setDoc(doc(context.firestore(), "sunlab_student_sessions", "virtual-session"), {
-      studentId,
-      expiresAt: Date.now() + 60_000,
-    });
+    for (const collectionName of [
+      "sunlab_student_sessions",
+      "student_classroom_sessions",
+      "student_school_access_sessions",
+    ]) {
+      await setDoc(doc(context.firestore(), collectionName, "virtual-session"), {
+        studentId,
+        expiresAt: Date.now() + 60_000,
+      });
+    }
   });
 });
 
@@ -96,10 +102,22 @@ for (const [label, contextFactory] of deniedClientCases) {
     await assertFails(deleteDoc(doc(db, "students", studentId)));
   });
 
-  test(`${label}: session document is denied`, async () => {
-    const db = contextFactory().firestore();
-    await assertFails(getDoc(doc(db, "sunlab_student_sessions", "virtual-session")));
-  });
+  for (const sessionCollection of [
+    "sunlab_student_sessions",
+    "student_classroom_sessions",
+    "student_school_access_sessions",
+  ]) {
+    test(`${label}: ${sessionCollection} document is denied`, async () => {
+      const db = contextFactory().firestore();
+      await assertFails(getDoc(doc(db, sessionCollection, "virtual-session")));
+      await assertFails(
+        setDoc(doc(db, sessionCollection, "injected-session"), {
+          studentId,
+          expiresAt: Date.now() + 60_000,
+        })
+      );
+    });
+  }
 }
 
 for (const legacyCollection of ["student", "Students", "Student"]) {
