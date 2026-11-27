@@ -27,7 +27,8 @@ import {
   type ContractSchoolConfig,
   type ContractSchoolLesson,
 } from "@/lib/contractSchools";
-import { getSchoolPassword, normalizeSchoolText } from "@/app/student/data/schoolInfo";
+import { normalizeSchoolText } from "@/app/student/data/schoolInfo";
+import { getConfiguredStudentSchoolEntryCode } from "@/lib/studentClassroomServer";
 import { getAfterSchoolSchool } from "@/lib/afterSchool";
 import { listOpinionLessonImages } from "@/lib/opinionLessonImagesServer";
 import { SHARED_LESSON_IMAGE_CLASSROOM_ID } from "@/lib/opinionLessonImages";
@@ -738,7 +739,7 @@ export const updateContractSchool = async (
   if (password.length > MAX_PASSWORD) throw new Error("invalid_school_password");
 
   const legacyPassword = !storedData && baseSchool.hasSchoolPassword
-    ? getSchoolPassword(baseSchool.schoolName) || ""
+    ? getConfiguredStudentSchoolEntryCode(baseSchool.schoolName) || ""
     : "";
   let passwordFields = legacyPassword
     ? makePasswordFields(legacyPassword)
@@ -815,7 +816,7 @@ export const verifyContractSchoolPassword = async (
   if (!snapshot.exists) {
     const defaultSchool = getDefaultContractSchool(slug);
     const legacyPassword = defaultSchool?.hasSchoolPassword
-      ? getSchoolPassword(defaultSchool.schoolName)
+      ? getConfiguredStudentSchoolEntryCode(defaultSchool.schoolName)
       : undefined;
 
     if (!legacyPassword) return false;
