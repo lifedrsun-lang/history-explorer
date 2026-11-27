@@ -199,19 +199,16 @@ Production 배포를 진행하면 안 된다.
   암호화되어 있어 현재 접근 수단으로 실제 값을 안전하게 복사할 수
   없었다. 암호문을 UID로 오인하지 않도록 형식 검증이 빌드를 차단했고,
   이 작업 브랜치의 잘못된 값은 빈 placeholder로 되돌렸다.
-- 따라서 Firebase Auth 계정의 존재·활성 상태 및 실제 담당자 신원 대조는
-  아직 완료되지 않았다. 승인된 담당자가 Vercel의 이 브랜치 Preview
-  환경에 `STUDENT_DATA_TEACHER_UIDS` 실제 값을 직접 설정한 뒤
-  `node scripts/verify-student-data-teacher-auth.cjs` 결과가 passed인지
-  확인해야 한다.
+- 2026-11-27 승인된 담당 교사 UID를 이 브랜치 Preview 환경의
+  `STUDENT_DATA_TEACHER_UIDS`에 직접 설정했다. 검증 결과 configured 1,
+  Firebase Auth 발견 1, 누락 0, 비활성 0으로 통과했다. UID와 이메일은
+  보고서 및 빌드 로그에 출력하지 않았다.
 - 운영 데이터, 운영 Firestore Ruleset, Production 배포는 변경하지 않았다.
 
-### Preview 재검증 제약
+### Preview 재검증 결과
 
-교사 UID placeholder를 비운 뒤 최종 Preview 재빌드를 요청했으나 Vercel API가
-`api-deployments-free-per-day` 한도 초과(하루 100회 초과)로 HTTP 402를
-반환했다. 안내된 재시도 시간은 24시간이다. 따라서 최종 Preview 빌드는
-확인 완료로 처리하지 않는다. 직전 성공 Preview는 커밋
-`66c7c8911e51df1fa08a82d8d12d5a7909646f48`이며, 해당 빌드에서는
-교사 UID 환경변수가 아직 없어 확인 스크립트가 skipped 상태였다.
+2026-11-27 커밋 `469f514a802a0e0f3c4399140193a20a67335f21`의
+Preview 재빌드가 성공했다. 빌드 중 담당 교사 Firebase Auth 검증,
+기존 인물카드 회귀 검사, 연표 접근 회귀 검사가 모두 통과했다.
+운영 Ruleset과 Production 배포에는 변경을 가하지 않았다.
 
