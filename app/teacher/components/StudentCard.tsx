@@ -1,12 +1,11 @@
 "use client";
 
 import { getStageInfo } from "@/app/student/data/stageData";
-import { db } from "@/lib/firebase";
 import { getStudentProgramLabel, isWorldCultureProgram, getWorldCultureProgress, getStudentMaterialStageId } from "@/lib/programs";
 import { formatEnrollmentTerm, getEnrollmentTerms } from "@/lib/studentEnrollment";
-import { doc, updateDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { updateTeacherStudentMaterialHistory } from "@/lib/teacherStudentDataClient";
 import StudentActivityBadges from "./StudentActivityBadges";
 import TeacherTopRankBadge from "./TeacherTopRankBadge";
 
@@ -70,9 +69,7 @@ export default function StudentCard({
 
     const nextHistory = materialHistory.filter((_, index) => index !== targetIndex);
 
-    await updateDoc(doc(db, "students", student.id), {
-      materialHistory: nextHistory,
-    });
+    await updateTeacherStudentMaterialHistory(student.id, nextHistory);
 
     setMaterialHistory(nextHistory);
   };
