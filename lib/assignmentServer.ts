@@ -23,11 +23,15 @@ import {
   isFirebaseAdminConfigurationError,
 } from "@/lib/firebaseAdmin";
 import { isSupabaseConfigurationError } from "@/lib/supabaseServer";
+import {
+  getStudentClassroomSession,
+  readStudentClassroomCookie,
+} from "@/lib/studentClassroomSession";
 
 type StudentAuthInput = {
-  studentId: unknown;
-  studentCollection: unknown;
-  studentPassword: unknown;
+  studentId?: unknown;
+  studentCollection?: unknown;
+  studentPassword?: unknown;
 };
 
 type UploadedFileInput = {
@@ -180,17 +184,38 @@ const getStudentPassword = (data: FirebaseFirestore.DocumentData) => {
   return normalizeText(data?.password || data?.studentPassword || data?.pw);
 };
 
-export const getVerifiedStudent = async (input: StudentAuthInput) => {
-  const studentId = normalizeText(input.studentId);
-  const studentCollection = normalizeText(input.studentCollection);
+export const getVerifiedStudent = async (
+  input: StudentAuthInput = {},
+  request?: Request
+) => {
+  const classroomSession = request
+    ? await getStudentClassroomSession(readStudentClassroomCookie(request))
+    : null;
+
+  const studentId = classroomSession?.studentId || normalizeText(input.studentId);
+  const studentCollection =
+    classroomSession?.collectionName || normalizeText(input.studentCollection);
   const studentPassword = normalizeText(input.studentPassword);
 
-  if (!studentId || !studentPassword) {
+  if (!studentId || !studentCollection) {
     throw new Error("student_auth_required");
   }
 
   if (!isAllowedStudentCollection(studentCollection)) {
     throw new Error("invalid_student_collection");
+  }
+
+  if (
+    classroomSession &&
+    ((normalizeText(input.studentId) && normalizeText(input.studentId) !== studentId) ||
+      (normalizeText(input.studentCollection) &&
+        normalizeText(input.studentCollection) !== studentCollection))
+  ) {
+    throw new Error("student_session_mismatch");
+  }
+
+  if (!classroomSession && !studentPassword) {
+    throw new Error("student_auth_required");
   }
 
   const { db } = getFirebaseAdmin();
@@ -206,7 +231,7 @@ export const getVerifiedStudent = async (input: StudentAuthInput) => {
     throw new Error("inactive_student");
   }
 
-  if (getStudentPassword(data) !== studentPassword) {
+  if (!classroomSession && getStudentPassword(data) !== studentPassword) {
     throw new Error("invalid_student_password");
   }
 
