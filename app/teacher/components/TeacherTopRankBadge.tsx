@@ -1,6 +1,5 @@
 "use client";
 
-import { collection, getDocs } from "firebase/firestore";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -8,8 +7,8 @@ import {
   normalizeSchoolText,
 } from "@/app/student/data/schoolInfo";
 import { getStudentGroup } from "@/app/student/data/studentGroups";
-import { db } from "@/lib/firebase";
 import { getStudentProgramValue } from "@/lib/programs";
+import { loadTeacherStudents } from "@/lib/teacherStudentDataClient";
 
 const CACHE_MS = 5 * 60_000;
 const NO_TOP_RANK = 999;
@@ -40,21 +39,18 @@ const loadStudents = async (force = false) => {
   }
 
   pendingRequest = (async () => {
-    const snapshot = await getDocs(collection(db, "students"));
-    cachedStudents = snapshot.docs
-      .map((item) => {
-        const data = item.data();
-        return {
-          id: item.id,
-          school: String(data?.school || ""),
-          grade: data?.grade,
-          class: data?.class,
-          program: data?.program,
-          bronze: Number(data?.bronze || 0),
-          silver: Number(data?.silver || 0),
-          isActive: data?.isActive !== false,
-        } satisfies RankStudent;
-      })
+    const students = await loadTeacherStudents();
+    cachedStudents = students
+      .map((data) => ({
+        id: String(data?.id || ""),
+        school: String(data?.school || ""),
+        grade: data?.grade,
+        class: data?.class,
+        program: data?.program,
+        bronze: Number(data?.bronze || 0),
+        silver: Number(data?.silver || 0),
+        isActive: data?.isActive !== false,
+      } satisfies RankStudent))
       .filter((item) => item.isActive);
     cachedAt = Date.now();
     return cachedStudents;
