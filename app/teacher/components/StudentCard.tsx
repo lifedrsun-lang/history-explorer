@@ -8,6 +8,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import StudentActivityBadges from "./StudentActivityBadges";
+import GuardianNoticeBadge from "./GuardianNoticeBadge";
 import TeacherTopRankBadge from "./TeacherTopRankBadge";
 
 export default function StudentCard({
@@ -116,6 +117,7 @@ export default function StudentCard({
         </button>
 
         <StudentActivityBadges student={student} />
+        <GuardianNoticeBadge student={student} />
 
         <button
           type="button"

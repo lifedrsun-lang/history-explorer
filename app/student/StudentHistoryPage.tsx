@@ -18,6 +18,7 @@ import {
 
 import SchoolSelect from "./components/SchoolSelect";
 import StudentProfile from "./components/StudentProfile";
+import GuardianClassroom from "./components/GuardianClassroom";
 import ClassProgressBoard from "./components/ClassProgressBoard";
 import SearchDropdown from "./components/SearchDropdown";
 import LoadingSpinner from "./components/LoadingSpinner";
@@ -37,7 +38,8 @@ import {
   getStudentGroupLabel,
 } from "./data/studentGroups";
 import type { ContractSchoolSummary } from "@/lib/contractSchools";
-import type { AfterSchoolStatusMap } from "@/lib/afterSchool";
+import { AFTER_SCHOOL_SCHOOLS, matchesAfterSchoolSchool, type AfterSchoolStatusMap } from "@/lib/afterSchool";
+import { isInitialGuardianSchool } from "@/lib/schoolEntryScope";
 
 type Props = {
   program?: StudentProgram;
@@ -64,7 +66,8 @@ export default function StudentHistoryPage({
   const [pendingSchool, setPendingSchool] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [combinedSchoolVerified, setCombinedSchoolVerified] = useState(false);
-  const [checkingSchoolCode, setCheckingSchoolCode] = useState(false);
+  const [guardianEntry,setGuardianEntry]=useState<{slug:string;schoolCode:string;studentId:string;studentName:string}|null>(null);
+  const [guardianChecking,setGuardianChecking]=useState(false);
 
   const DEFAULT_SCHOOLS = getDefaultSchoolDisplayNames();
 
@@ -373,7 +376,7 @@ export default function StudentHistoryPage({
       const savedStudent =
         localStorage.getItem("selectedStudent");
 
-      if (savedStudent && !normalizeNoSpace(school).includes("등현초")) {
+      if (savedStudent) {
         const parsed = JSON.parse(savedStudent);
 
         const matched = matchedList.find(
@@ -396,7 +399,7 @@ export default function StudentHistoryPage({
 
   const usesCombinedStudentEntry = (school: string) => {
     const normalized = normalizeNoSpace(school);
-    return normalized.includes("하늘빛초") || normalized.includes("새솔초") || normalized.includes("등현초");
+    return normalized.includes("하늘빛초") || normalized.includes("새솔초") || normalized.includes("사우초") || normalized.includes("등현초");
   };
 
   const handleSchoolSelect = (school: string) => {
@@ -404,20 +407,6 @@ export default function StudentHistoryPage({
       getSchoolDisplayName(school)
     );
     const password = getSchoolPassword(cleanSchool);
-
-    if (normalizeNoSpace(cleanSchool).includes("등현초")) {
-      setSelectedStudent(null);
-      setPendingStudent(null);
-      setCombinedSchoolVerified(false);
-      setSearchName("");
-      setStudentPassword("");
-      setPasswordInput("");
-      localStorage.removeItem("selectedStudent");
-      localStorage.removeItem("selectedSchool");
-      setPendingSchool("");
-      setSelectedSchool(cleanSchool);
-      return;
-    }
 
     if (usesCombinedStudentEntry(cleanSchool)) {
       setSelectedSchool(cleanSchool);
@@ -531,6 +520,8 @@ export default function StudentHistoryPage({
     ? getStudentGroupLabel(selectedStudent)
     : "";
 
+  if (guardianEntry) return <GuardianClassroom {...guardianEntry} onExit={()=>{setGuardianEntry(null);setPasswordInput("");setStudentPassword("");setPendingStudent(null);setSearchName("");}} />;
+
   if (!selectedSchool) {
     if (pendingSchool) {
       return (
@@ -626,7 +617,6 @@ export default function StudentHistoryPage({
             type="password"
             value={passwordInput}
             onChange={(e) => setPasswordInput(e.target.value)}
-            disabled={checkingSchoolCode}
             placeholder="학교 비밀번호"
             className="mt-2 w-full rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-lg text-slate-800 outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100"
           />
@@ -640,7 +630,6 @@ export default function StudentHistoryPage({
               setPendingStudent(null);
               setStudentPassword("");
             }}
-            disabled={checkingSchoolCode}
             placeholder="이름 검색"
             className="mt-2 w-full rounded-2xl border border-sky-200 bg-sky-50/70 px-4 py-4 text-lg text-slate-800 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
           />
@@ -671,7 +660,6 @@ export default function StudentHistoryPage({
             inputMode="numeric"
             value={studentPassword}
             onChange={(e) => setStudentPassword(e.target.value)}
-            disabled={checkingSchoolCode}
             placeholder="출석번호"
             className="mt-2 w-full rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-lg text-slate-800 outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100"
           />
@@ -679,41 +667,34 @@ export default function StudentHistoryPage({
           <button
             type="button"
             onClick={async () => {
+              if(guardianChecking)return;
+              const entrySchool=AFTER_SCHOOL_SCHOOLS.find(s=>matchesAfterSchoolSchool(selectedSchool,s));
+              let schoolPasswordMatches=false;
+              if(entrySchool&&isInitialGuardianSchool(entrySchool.slug)){
+                setGuardianChecking(true);
+                try{
+                  const response=await fetch("/api/student/school-entry-code",{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",body:JSON.stringify({school:selectedSchool,code:passwordInput})});
+                  if(!response.ok){alert("입장코드 확인에 실패했습니다. 잠시 후 다시 시도해 주세요.");return;}
+                  schoolPasswordMatches=(await response.json()).valid===true;
+                }catch{alert("입장코드 확인에 실패했습니다. 잠시 후 다시 시도해 주세요.");return;}finally{setGuardianChecking(false);}
+              }else{
+                schoolPasswordMatches=!!getSchoolPassword(selectedSchool)&&normalize(passwordInput)===normalize(getSchoolPassword(selectedSchool));
+              }
               const attendanceNumberMatches =
                 pendingStudent &&
                 normalize(studentPassword) === normalize(pendingStudent.studentNumber);
-              if (!attendanceNumberMatches || checkingSchoolCode) {
-                alert("입력 정보를 확인해 주세요.");
-                return;
-              }
-              if (normalizeNoSpace(selectedSchool).includes("등현초")) {
-                setCheckingSchoolCode(true);
-                try {
-                  const response = await fetch("/api/student/deunghyeon-entry", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ code: passwordInput }),
-                  });
-                  if (response.status === 429) {
-                    alert("입장 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.");
-                    return;
-                  }
-                  if (!response.ok) {
-                    alert("입장코드를 확인할 수 없습니다. 다시 시도해 주세요.");
-                    return;
-                  }
-                  const result = await response.json();
-                  if (result.valid !== true) {
-                    alert("입력 정보를 확인해 주세요.");
-                    return;
-                  }
-                } catch {
-                  alert("입장코드를 확인할 수 없습니다. 다시 시도해 주세요.");
-                  return;
-                } finally {
-                  setCheckingSchoolCode(false);
+
+              if (!schoolPasswordMatches || !attendanceNumberMatches) {
+                if (!schoolPasswordMatches && attendanceNumberMatches && pendingStudent?.collectionName === "students" && !guardianChecking) {
+                  setGuardianChecking(true);
+                  try {
+                    const res=await fetch("/api/guardian",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"check",school:selectedSchool,schoolCode:passwordInput}),cache:"no-store"});
+                    if(res.ok){
+                      const result=await res.json();
+                      if(result.guardian&&result.slug){setGuardianEntry({slug:result.slug,schoolCode:passwordInput,studentId:String(pendingStudent.id),studentName:String(pendingStudent.name)});setPasswordInput("");setStudentPassword("");return;}
+                    }
+                  }catch{}finally{setGuardianChecking(false);}
                 }
-              } else if (normalize(passwordInput) !== normalize(getSchoolPassword(selectedSchool))) {
                 alert("입력 정보를 확인해 주세요.");
                 return;
               }
@@ -726,15 +707,14 @@ export default function StudentHistoryPage({
               setPasswordInput("");
               setStudentPassword("");
             }}
-            disabled={checkingSchoolCode || !passwordInput.trim() || !pendingStudent || !studentPassword.trim()}
+            disabled={guardianChecking || !passwordInput.trim() || !pendingStudent || !studentPassword.trim()}
             className="mt-5 w-full rounded-2xl bg-sky-400 py-4 text-xl font-bold text-white shadow-sm transition hover:bg-sky-500 disabled:opacity-50"
           >
-            {checkingSchoolCode ? "확인 중..." : "수업방 입장"}
+            수업방 입장
           </button>
 
           <button
             type="button"
-            disabled={checkingSchoolCode}
             onClick={() => {
               setSelectedSchool("");
               setCombinedSchoolVerified(false);

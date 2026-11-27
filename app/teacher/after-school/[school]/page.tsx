@@ -6,6 +6,7 @@ import {
   getAfterSchoolSchool,
 } from "@/lib/afterSchool";
 import AfterSchoolDocumentsPanel from "./AfterSchoolDocumentsPanel";
+import GuardianSettingsPanel from "./GuardianSettingsPanel";
 
 export function generateStaticParams() {
   return AFTER_SCHOOL_SCHOOLS.map((school) => ({ school: school.slug }));
@@ -108,6 +109,7 @@ export default async function AfterSchoolSchoolPage({
         </section>
 
         <div className="mt-4">
+          <div className="mb-4"><GuardianSettingsPanel slug={school.slug} /></div>
           <AfterSchoolDocumentsPanel
             school={{
               slug: school.slug,
