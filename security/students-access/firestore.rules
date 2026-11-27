@@ -29,6 +29,12 @@ service cloud.firestore {
     match /sunlab_student_sessions/{document=**} {
       allow read, write: if false;
     }
+    match /student_classroom_sessions/{document=**} {
+      allow read, write: if false;
+    }
+    match /student_school_access_sessions/{document=**} {
+      allow read, write: if false;
+    }
 
     // This prototype intentionally denies every unrelated collection. It is a
     // focused test fixture, not a copy of the live ruleset.
