@@ -31,12 +31,16 @@ export function selectOrderBooks(lines: OrderLine[], numbers: number[], options:
   });
 }
 export const ORDER_COLUMNS = ["주문번호", "상품번호", "상품명", "옵션명", "수량", "판매단가", "판매금액", "수령자", "전화", "핸드폰", "우편번호", "주소", "배송메세지", "배송비", "송장출력갯수", "택배크기"];
+export const ORDER_COLUMNS_202610 = ["학교명", "수업시작일", "상품명", "옵션명", "수량", "기존학생수", "신규학생수", "수령자", "전화", "핸드폰", "우편번호", "주소", "배송메세지", "배송비", "송장출력갯수"];
+export type OrderFormat = "legacy" | "202610";
+export function orderColumns(order: { format?: OrderFormat }) { return order.format === "202610" ? ORDER_COLUMNS_202610 : ORDER_COLUMNS; }
+export function orderFormatLabel(order: { format?: OrderFormat }) { return order.format === "202610" ? "신규 양식 (2026년 10월~)" : "기존 양식"; }
 export const ORDER_OPTIONS = ["스토리북", "워크북", "체험물"] as const;
 export const ORDER_MONARTE_OPTIONS = ["교재", "체험물"] as const;
-export type OrderLine = { id: string; orderNumber: string; productNumber: string; productName: string; option: string; quantity: number; unitPrice: number | null; school?: string; teachingClass?: string; subject?: string; course?: string };
+export type OrderLine = { id: string; orderNumber: string; productNumber: string; productName: string; option: string; quantity: number; unitPrice: number | null; school?: string; teachingClass?: string; subject?: string; course?: string; classStartDate?: string; existingStudents?: number | null; newStudents?: number | null };
 export type OrderDelivery = { recipient: string; phone: string; mobile: string; postalCode: string; address: string; message: string; shipping: string; invoiceCount: number; parcelSize: string };
-export type TextbookOrder = { id: string; revision: number; title: string; date: string; delivery: OrderDelivery; lines: OrderLine[]; createdAt: string; updatedAt: string; mailStatus?: "sending" | "sent" | "failed" | "unknown"; mailSentAt?: string };
-export type OrderInput = Pick<TextbookOrder, "title" | "date" | "delivery" | "lines">;
+export type TextbookOrder = { id: string; revision: number; format?: OrderFormat; title: string; date: string; delivery: OrderDelivery; lines: OrderLine[]; createdAt: string; updatedAt: string; mailStatus?: "sending" | "sent" | "failed" | "unknown"; mailSentAt?: string };
+export type OrderInput = Pick<TextbookOrder, "title" | "date" | "delivery" | "lines" | "format">;
 export class OrderInputError extends Error {}
 export function textbookOrderTitle(quarter: string, round: string): string {
   const q = Number(quarter), r = Number(round);
@@ -55,7 +59,7 @@ export function newOrderLine(): OrderLine {
   return { id: crypto.randomUUID(), orderNumber: "", productNumber: "", productName: ORDER_BOOKS[0].productName, option: "스토리북", quantity: 1, unitPrice: null };
 }
 export function newTextbookOrder(): TextbookOrder {
-  return { id: "", revision: 0, title: textbookOrderTitle("1", "1"), date: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()),
+  return { id: "", revision: 0, format: "legacy", title: textbookOrderTitle("1", "1"), date: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()),
     delivery: { recipient: "", phone: "", mobile: "", postalCode: "", address: "", message: "", shipping: "선결재", invoiceCount: 1, parcelSize: "" },
     lines: [newOrderLine()], createdAt: "", updatedAt: "" };
 }
@@ -73,6 +77,8 @@ export function validateOrder(raw: unknown, forExport = false): OrderInput {
     if (typeof v !== "number" || !Number.isFinite(v) || v < 0 || v > max || (integer && !Number.isInteger(v))) throw new OrderInputError(`${label} 입력을 확인해주세요.`);
     return v;
   };
+  if (input.format !== undefined && input.format !== "legacy" && input.format !== "202610") throw new OrderInputError("주문서 양식을 확인해주세요.");
+  const format: OrderFormat = input.format === "202610" ? "202610" : "legacy";
   const title = text(input.title, "주문 제목", 150);
   if (!title) throw new OrderInputError("주문 제목을 입력해주세요.");
   const date = text(input.date, "주문일", 10);
@@ -92,13 +98,20 @@ export function validateOrder(raw: unknown, forExport = false): OrderInput {
     const quantity = number(l.quantity, "수량", 100000);
     if (!productName || quantity < 1 || (productName.startsWith("별꼼역사 ") && !ORDER_OPTIONS.some(value => value === option))) throw new OrderInputError("상품명·옵션·수량을 확인해주세요.");
     const scope = { ...(l.school === undefined ? {} : { school: text(l.school, "학교", 100) }), ...(l.teachingClass === undefined ? {} : { teachingClass: text(l.teachingClass, "수업반", 40) }), ...(l.subject === undefined ? {} : { subject: text(l.subject, "교재 종류", 100) }), ...(l.course === undefined ? {} : { course: text(l.course, "수업명", 100) }) };
-    return { ...scope, id, orderNumber: text(l.orderNumber, "주문번호", 100), productNumber: text(l.productNumber, "상품번호", 100), productName, option, quantity, unitPrice: l.unitPrice === null ? null : number(l.unitPrice, "판매단가", 100000000, false) };
+    const classStartDate = l.classStartDate === undefined ? "" : text(l.classStartDate, "수업시작일", 10);
+    if (classStartDate && (!/^\d{4}-\d{2}-\d{2}$/.test(classStartDate) || !Number.isFinite(Date.parse(classStartDate)) || new Date(classStartDate).toISOString().slice(0, 10) !== classStartDate)) throw new OrderInputError("수업시작일을 확인해주세요.");
+    const existingStudents = l.existingStudents == null ? null : number(l.existingStudents, "기존학생수", 100000);
+    const newStudents = l.newStudents == null ? null : number(l.newStudents, "신규학생수", 100000);
+    if (format === "202610" && forExport && ((existingStudents === null) !== (newStudents === null))) throw new OrderInputError("기존·신규 학생수는 모두 입력하거나 모두 비워주세요.");
+    const extra = { ...(l.classStartDate === undefined ? {} : { classStartDate }), ...(l.existingStudents === undefined ? {} : { existingStudents }), ...(l.newStudents === undefined ? {} : { newStudents }) };
+    return { ...scope, ...extra, id, orderNumber: text(l.orderNumber, "주문번호", 100), productNumber: text(l.productNumber, "상품번호", 100), productName, option, quantity, unitPrice: l.unitPrice === null ? null : number(l.unitPrice, "판매단가", 100000000, false) };
   });
   if (new Set(lines.map(l => l.id)).size !== lines.length) throw new OrderInputError("주문 항목이 중복되었습니다.");
   if (forExport && (!delivery.recipient || (!delivery.phone && !delivery.mobile) || !delivery.postalCode || !delivery.address)) throw new OrderInputError("엑셀 다운로드 전에 수령자·연락처·우편번호·주소를 입력해주세요.");
-  return { title, date, delivery, lines };
+  return { format, title, date, delivery, lines };
 }
 export function orderRows(order: OrderInput): (string | number | null)[][] {
   const d = order.delivery;
+  if (order.format === "202610") return order.lines.map(l => [l.school || "", l.classStartDate || "", l.productName, l.option, l.quantity, l.existingStudents ?? null, l.newStudents ?? null, d.recipient, d.phone, d.mobile, d.postalCode, d.address, d.message, d.shipping, d.invoiceCount]);
   return order.lines.map(l => [l.orderNumber, l.productNumber, l.productName, l.option, l.quantity, l.unitPrice, orderAmount(l), d.recipient, d.phone, d.mobile, d.postalCode, d.address, d.message, d.shipping, d.invoiceCount, d.parcelSize]);
 }
