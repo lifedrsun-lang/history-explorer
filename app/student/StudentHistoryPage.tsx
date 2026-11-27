@@ -1,19 +1,9 @@
 "use client";
 
-import { db } from "@/lib/firebase";
-
-import {
-  collection,
-  getDocs,
-  doc,
-  updateDoc,
-} from "firebase/firestore";
-
 import { useEffect, useState } from "react";
 import {
   DEFAULT_STUDENT_PROGRAM,
   StudentProgram,
-  getStudentProgramValue,
 } from "@/lib/programs";
 
 import SchoolSelect from "./components/SchoolSelect";
@@ -28,7 +18,6 @@ import {
   getDefaultSchoolDisplayNames,
   getSchoolDisplayName,
   getSchoolNotice,
-  getSchoolPassword,
   isCultureCenterSchool,
   normalizeSchoolText,
   isHaneulbitSchool,
@@ -68,226 +57,21 @@ export default function StudentHistoryPage({
 
   const DEFAULT_SCHOOLS = getDefaultSchoolDisplayNames();
 
-  const COLLECTION_NAMES = [
-    "students",
-    "student",
-    "Students",
-    "Student",
-  ];
+  const normalize = (value: any) => String(value || "").trim();
 
-  const normalize = (value: any) => {
-    return String(value || "").trim();
-  };
-
-  const normalizeNoSpace = (value: any) => {
-    return normalizeSchoolText(value);
-  };
-
-  const getStudentName = (data: any) => {
-    return normalize(
-      data?.name ||
-        data?.studentName ||
-        data?.student_name ||
-        data?.이름 ||
-        ""
-    );
-  };
-
-  const getStudentSchool = (data: any) => {
-    return normalize(
-      data?.school ||
-        data?.schoolName ||
-        data?.school_name ||
-        data?.학교 ||
-        ""
-    );
-  };
-
-  const getStudentGrade = (data: any) => {
-    return (
-      data?.grade ||
-      data?.studentGrade ||
-      data?.student_grade ||
-      data?.학년 ||
-      ""
-    );
-  };
-
-  const getStudentClass = (data: any) => {
-    return (
-      data?.class ||
-      data?.studentClass ||
-      data?.student_class ||
-      data?.className ||
-      data?.반 ||
-      data?.group ||
-      data?.team ||
-      ""
-    );
-  };
-
-  const getStudentNumber = (data: any) => {
-    return (
-      data?.studentNumber ||
-      data?.number ||
-      data?.studentNo ||
-      data?.no ||
-      data?.번호 ||
-      0
-    );
-  };
-
-  const getStudentPassword = (data: any) => {
-    return normalize(
-      data?.password ||
-        data?.studentPassword ||
-        data?.pw ||
-        data?.비밀번호 ||
-        ""
-    );
-  };
-
-  const getStudentProgram = (data: any) => {
-    return getStudentProgramValue(data?.program);
-  };
-
-  const isSelectedProgramStudent = (data: any) => {
-    return getStudentProgram(data) === program;
-  };
-
-  const getBronze = (data: any) => {
-    return Number(
-      data?.bronze ||
-        data?.bronzeCoin ||
-        data?.동엽전 ||
-        0
-    );
-  };
-
-  const getSilver = (data: any) => {
-    return Number(
-      data?.silver ||
-        data?.silverCoin ||
-        data?.은엽전 ||
-        0
-    );
-  };
-
-  // 교사용에서 숨김 처리된 학생은 학생 페이지 검색/랭킹에서 제외
-  const isHiddenStudent = (data: any) => {
-    return data?.isActive === false;
-  };
-
-  const getGradeNumber = (value: any) => {
-    const text = String(value || "").trim();
-    const match = text.match(/\d+/);
-
-    if (!match) {
-      return 0;
-    }
-
-    return Number(match[0]);
-  };
-
-  const makeStudentObject = (
-    docId: string,
-    data: any,
-    collectionName: string
-  ) => {
-    return {
-      id: docId,
-      collectionName,
-
-      ...data,
-
-      name: getStudentName(data),
-      school: getStudentSchool(data),
-      grade: getStudentGrade(data),
-      class: getStudentClass(data),
-      studentNumber: getStudentNumber(data),
-      password: getStudentPassword(data),
-
-      bronze: getBronze(data),
-      silver: getSilver(data),
-      program: getStudentProgram(data),
-    };
-  };
-
-  const fetchAllStudents = async () => {
-    const allList: any[] = [];
-
-    for (const collectionName of COLLECTION_NAMES) {
-      try {
-        const snapshot = await getDocs(
-          collection(db, collectionName)
-        );
-
-        snapshot.forEach((docItem) => {
-          const data = docItem.data();
-
-          if (isHiddenStudent(data)) {
-            return;
-          }
-
-          if (!isSelectedProgramStudent(data)) {
-            return;
-          }
-
-          allList.push(
-            makeStudentObject(
-              docItem.id,
-              data,
-              collectionName
-            )
-          );
-        });
-      } catch (error) {
-        console.error(
-          `${collectionName} 컬렉션 조회 실패:`,
-          error
-        );
-      }
-    }
-
-    return allList;
-  };
-
-  const isSameSchool = (
-    studentSchool: string,
-    targetSchool: string
-  ) => {
-    if (isCultureCenterSchool(targetSchool)) {
-      return isCultureCenterSchool(studentSchool);
-    }
-
-    const a = normalizeNoSpace(studentSchool);
-    const b = normalizeNoSpace(targetSchool);
-
-    if (!a || !b) {
-      return false;
-    }
-
-    if (a === b) {
-      return true;
-    }
-
-    if (a.includes(b)) {
-      return true;
-    }
-
-    if (b.includes(a)) {
-      return true;
-    }
-
-    return false;
-  };
+  const normalizeNoSpace = (value: any) => normalizeSchoolText(value);
 
   const fetchSchools = async () => {
     try {
-      const [allList, contractResponse] = await Promise.all([
-        fetchAllStudents(),
+      const [studentResponse, contractResponse] = await Promise.all([
+        fetch(`/api/student/classroom-access?program=${encodeURIComponent(program)}`, {
+          cache: "no-store",
+        }).catch(() => null),
         fetch("/api/classroom/schools", { cache: "no-store" }).catch(() => null),
       ]);
+      const studentPayload = studentResponse?.ok
+        ? ((await studentResponse.json().catch(() => ({}))) as { schools?: string[] })
+        : {};
       const contractPayload = contractResponse?.ok
         ? ((await contractResponse.json().catch(() => ({}))) as {
             schools?: ContractSchoolSummary[];
@@ -297,31 +81,21 @@ export default function StudentHistoryPage({
       const publishedContractSchools = Array.isArray(contractPayload.schools)
         ? contractPayload.schools
         : [];
+      const serverSchools = Array.isArray(studentPayload.schools)
+        ? studentPayload.schools.map((school) => getSchoolDisplayName(school))
+        : [];
 
       setContractSchools(publishedContractSchools);
       setAfterSchoolStatuses(contractPayload.afterSchoolStatuses || {});
-
-      const schoolSet = new Set<string>();
-
-      allList.forEach((student) => {
-        const school = normalize(
-          getSchoolDisplayName(student?.school)
-        );
-
-        if (school) {
-          schoolSet.add(school);
-        }
-      });
-
-      const mergedSchools = Array.from(
-        new Set([
-          ...DEFAULT_SCHOOLS,
-          ...publishedContractSchools.map((school) => school.displayName),
-          ...Array.from(schoolSet),
-        ])
+      setAllSchools(
+        Array.from(
+          new Set([
+            ...DEFAULT_SCHOOLS,
+            ...publishedContractSchools.map((school) => school.displayName),
+            ...serverSchools,
+          ])
+        )
       );
-
-      setAllSchools(mergedSchools);
     } catch (error) {
       console.error("학교 목록 불러오기 실패:", error);
       setAllSchools(DEFAULT_SCHOOLS);
@@ -330,131 +104,94 @@ export default function StudentHistoryPage({
     }
   };
 
-  const fetchStudentsBySchool = async (
-    school: string
-  ) => {
+  const fetchStudentsBySchool = async (school: string) => {
     setLoading(true);
-
     try {
-      const allList = await fetchAllStudents();
+      const response = await fetch(
+        `/api/student/classroom-access?program=${encodeURIComponent(program)}`,
+        { cache: "no-store" }
+      );
+      const payload = (await response.json().catch(() => ({}))) as {
+        authenticated?: boolean;
+        school?: string;
+        students?: any[];
+      };
+      if (!response.ok || payload.authenticated !== true || !Array.isArray(payload.students)) {
+        setSelectedSchool("");
+        setStudents([]);
+        setPendingSchool(school);
+        return;
+      }
+      setStudents(payload.students);
 
-      const targetSchool = normalize(school);
-
-      const matchedList = allList.filter((student) => {
-        return isSameSchool(
-          student?.school,
-          targetSchool
-        );
-      });
-
-      matchedList.sort((a, b) => {
-        const gradeA = getGradeNumber(a?.grade);
-        const gradeB = getGradeNumber(b?.grade);
-
-        const classA = normalize(a?.class);
-        const classB = normalize(b?.class);
-
-        const numA = Number(a?.studentNumber || 0);
-        const numB = Number(b?.studentNumber || 0);
-
-        if (gradeA !== gradeB) {
-          return gradeA - gradeB;
-        }
-
-        if (classA !== classB) {
-          return classA.localeCompare(classB);
-        }
-
-        return numA - numB;
-      });
-
-      setStudents(matchedList);
-
-      const savedStudent =
-        localStorage.getItem("selectedStudent");
-
-      if (savedStudent && !normalizeNoSpace(school).includes("등현초")) {
-        const parsed = JSON.parse(savedStudent);
-
-        const matched = matchedList.find(
-          (s) => s.id === parsed.id
-        );
-
-        if (matched) {
-          setSelectedStudent(matched);
-        } else {
-          localStorage.removeItem("selectedStudent");
-          setSelectedStudent(null);
-        }
+      const studentResponse = await fetch("/api/student/classroom", { cache: "no-store" });
+      if (studentResponse.ok) {
+        const studentPayload = (await studentResponse.json().catch(() => ({}))) as {
+          student?: any;
+        };
+        if (studentPayload.student) setSelectedStudent(studentPayload.student);
       }
     } catch (error) {
       console.error("학생 목록 불러오기 실패:", error);
+      setSelectedSchool("");
+      setStudents([]);
+      setPendingSchool(school);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  const usesCombinedStudentEntry = (school: string) => {
-    const normalized = normalizeNoSpace(school);
-    return normalized.includes("하늘빛초") || normalized.includes("새솔초") || normalized.includes("등현초");
+  const enterSchool = async (school: string, entryCode: string) => {
+    setCheckingSchoolCode(true);
+    try {
+      const response = await fetch("/api/student/classroom-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ school, program, entryCode }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        students?: any[];
+      };
+      if (!response.ok) {
+        alert(payload.error || "입장 코드를 확인해 주세요.");
+        return false;
+      }
+      setStudents(Array.isArray(payload.students) ? payload.students : []);
+      setSelectedSchool(school);
+      localStorage.setItem("selectedSchool", school);
+      setPendingSchool("");
+      setPasswordInput("");
+      return true;
+    } catch {
+      alert("학교 입장을 확인하지 못했습니다. 다시 시도해 주세요.");
+      return false;
+    } finally {
+      setCheckingSchoolCode(false);
+    }
   };
+
+  const usesCombinedStudentEntry = (_school: string) => false;
 
   const handleSchoolSelect = (school: string) => {
-    const cleanSchool = normalize(
-      getSchoolDisplayName(school)
-    );
-    const password = getSchoolPassword(cleanSchool);
-
-    if (normalizeNoSpace(cleanSchool).includes("등현초")) {
-      setSelectedStudent(null);
-      setPendingStudent(null);
-      setCombinedSchoolVerified(false);
-      setSearchName("");
-      setStudentPassword("");
-      setPasswordInput("");
-      localStorage.removeItem("selectedStudent");
-      localStorage.removeItem("selectedSchool");
-      setPendingSchool("");
-      setSelectedSchool(cleanSchool);
-      return;
-    }
-
-    if (usesCombinedStudentEntry(cleanSchool)) {
-      setSelectedSchool(cleanSchool);
-      setCombinedSchoolVerified(false);
-      setPendingStudent(null);
-      setSearchName("");
-      setPasswordInput("");
-      setStudentPassword("");
-      return;
-    }
-
-    if (!password) {
-      setSelectedSchool(cleanSchool);
-
-      localStorage.setItem(
-        "selectedSchool",
-        cleanSchool
-      );
-
-      return;
-    }
-
+    const cleanSchool = normalize(getSchoolDisplayName(school));
+    setSelectedStudent(null);
+    setPendingStudent(null);
+    setCombinedSchoolVerified(false);
+    setSearchName("");
+    setStudentPassword("");
+    setPasswordInput("");
+    setSelectedSchool("");
     setPendingSchool(cleanSchool);
   };
 
   useEffect(() => {
     fetchSchools();
-
-    const storedPendingSchool =
-      localStorage.getItem("pendingSchool");
-
-    if (storedPendingSchool) {
-      handleSchoolSelect(storedPendingSchool);
-
+    const storedSchool =
+      localStorage.getItem("pendingSchool") || localStorage.getItem("selectedSchool");
+    if (storedSchool) {
+      setSelectedSchool(storedSchool);
       localStorage.removeItem("pendingSchool");
-
-      return;
     }
   }, []);
 
@@ -468,42 +205,73 @@ export default function StudentHistoryPage({
     }
   }, [selectedSchool]);
 
-  const changeCharacter = async (
-    studentId: string,
-    type: string
-  ) => {
+  const loginStudent = async (student: any, credential: string) => {
+    if (!student || !credential.trim()) {
+      alert("학생 인증 정보를 입력해 주세요.");
+      return false;
+    }
+    setCheckingSchoolCode(true);
     try {
-      const collectionName =
-        selectedStudent?.collectionName || "students";
-
-      const ref = doc(
-        db,
-        collectionName,
-        studentId
-      );
-
-      await updateDoc(ref, {
-        character: type,
+      const response = await fetch("/api/student/classroom", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: student.id,
+          collectionName: student.collectionName,
+          credential,
+        }),
       });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        student?: any;
+      };
+      if (!response.ok || !payload.student) {
+        alert(payload.error || "학생 인증 정보를 확인해 주세요.");
+        return false;
+      }
+      setSelectedStudent(payload.student);
+      setPendingStudent(null);
+      setStudentPassword("");
+      return true;
+    } catch {
+      alert("학생 로그인을 처리하지 못했습니다. 다시 시도해 주세요.");
+      return false;
+    } finally {
+      setCheckingSchoolCode(false);
+    }
+  };
 
-      setSelectedStudent((prev: any) => {
-        const updated = {
-          ...prev,
-          character: type,
-        };
-
-        localStorage.setItem(
-          "selectedStudent",
-          JSON.stringify(updated)
-        );
-
-        return updated;
+  const changeCharacter = async (_studentId: string, type: string) => {
+    try {
+      const response = await fetch("/api/student/classroom", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ character: type }),
       });
-
-      fetchStudentsBySchool(selectedSchool);
+      const payload = (await response.json().catch(() => ({}))) as { student?: any };
+      if (!response.ok || !payload.student) throw new Error("character_update_failed");
+      setSelectedStudent(payload.student);
     } catch (error) {
       console.error("캐릭터 변경 실패:", error);
     }
+  };
+
+  const logoutStudent = async () => {
+    await fetch("/api/student/classroom", { method: "DELETE" }).catch(() => undefined);
+    setSelectedStudent(null);
+    setPendingStudent(null);
+    setStudentPassword("");
+  };
+
+  const logoutSchool = async () => {
+    await fetch("/api/student/classroom-access", { method: "DELETE" }).catch(() => undefined);
+    localStorage.removeItem("selectedSchool");
+    localStorage.removeItem("selectedStudent");
+    setSelectedSchool("");
+    setSelectedStudent(null);
+    setPendingStudent(null);
+    setCombinedSchoolVerified(false);
+    setStudents([]);
   };
 
   const activeStudents = students.filter((s) => {
