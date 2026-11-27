@@ -70,13 +70,15 @@ export const verifyStudentSchoolEntryCode = (school: unknown, code: unknown) => 
   const normalizedSchool = normalizeSchoolText(school);
   const codes = parseSchoolEntryCodes();
   const configured = codes[normalizedSchool] || "";
-  if (configured && safeEqual(code, configured)) return true;
+  if (configured) return safeEqual(code, configured);
 
   // 등현초는 기존 전용 환경변수도 Preview 전환 기간 동안 지원합니다.
   if (normalizeNoSpace(school).includes("등현초")) {
     return safeEqual(code, process.env.DEUNGHYEON_ENTRY_CODE);
   }
-  return false;
+
+  // 기존에 학교 공통 코드가 없던 수업은 학생별 인증만 적용합니다.
+  return normalizeCode(code) === "";
 };
 
 const safeCoinHistory = (value: unknown) => {
