@@ -111,11 +111,11 @@ export default function TextbookOrdersPage() {
     if (dirty && !window.confirm("저장하지 않은 주문 내용이 있습니다. 다른 주문을 열까요?")) return;
     const period = parseTextbookOrderTitle(order.title);
     setQuarter(period.quarter); setOrderRound(period.round);
-    setSubject("별꼼역사"); setSelectedBooks([]); setSelectedMonarteBooks([]); setSelectedOptions([]); setCustomProduct(""); setCustomOption(""); setCourse(""); setSelectedGroup(""); setMailPreview(false); setQuantity(1);
+    setSubject("별꼼역사"); setSelectedBooks([]); setSelectedMonarteBooks([]); setSelectedOptions([]); setCustomProduct(""); setCustomOption(""); setCourse(""); setSelectedGroup(""); setMailPreview(false); setQuantity(1); setClassStartDate(""); setExistingStudents(null); setNewStudents(null);
     setEditor(order); setBaseline(JSON.stringify(order)); setPreview(false); setError(""); setMessage("");
   };
   const changeOrderPeriod = (nextQuarter: string, nextRound: string) => {
-    if (nextQuarter !== quarter) { setSelectedGroup(""); setQuantity(1); setCourse(""); }
+    if (nextQuarter !== quarter) { setSelectedGroup(""); setQuantity(1); setCourse(""); setClassStartDate(""); setExistingStudents(null); setNewStudents(null); }
     setQuarter(nextQuarter); setOrderRound(nextRound);
     setEditor(e => e ? { ...e, title: textbookOrderTitle(nextQuarter, nextRound) } : e);
     setMessage("");
@@ -256,7 +256,7 @@ export default function TextbookOrdersPage() {
         <h3>학교 · 반별 교재 추가</h3>
         <fieldset disabled={busy || locked} className={styles.selector}>
           <div className={styles.fields}>
-            <label>신청 연도<input type="number" min={2000} max={2100} value={year} onChange={e => { setYear(Number(e.target.value)); setGroups([]); setSelectedGroup(""); setQuantity(1); setCourse(""); setSetupError(""); }} /></label>
+            <label>신청 연도<input type="number" min={2000} max={2100} value={year} onChange={e => { setYear(Number(e.target.value)); setGroups([]); setSelectedGroup(""); setQuantity(1); setCourse(""); setClassStartDate(""); setExistingStudents(null); setNewStudents(null); setSetupError(""); }} /></label>
             <label>방과후 학교 · 반<select value={selectedGroup} onChange={e => chooseGroup(e.target.value)}><option value="">학교와 반 선택</option>{groups.map(item => <option key={item.id} value={item.id}>{item.school} {item.teachingClass} · {item.counts[`Q${quarter}`] || 0}명{item.status === "paused" ? " (휴강)" : item.status === "completed" ? " (종강)" : ""}</option>)}</select></label>
             <label className={styles.wide}>수업명 (선택)<input maxLength={100} value={course} onChange={e => setCourse(e.target.value)} placeholder="예: 한국사, 세계문화" /></label>
           </div>
