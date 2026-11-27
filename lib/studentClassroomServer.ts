@@ -43,7 +43,7 @@ const sameSchool = (firstInput: unknown, secondInput: unknown) => {
   }
   const a = normalizeSchoolText(first);
   const b = normalizeSchoolText(second);
-  return Boolean(a && b && (a === b || a.includes(b) || b.includes(a)));
+  return Boolean(a && b && a === b);
 };
 
 const safeEqual = (firstInput: unknown, secondInput: unknown) => {
