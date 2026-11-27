@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { User } from "firebase/auth";
+import { matchesReviewCategory, REVIEW_CATEGORY_LABELS, type ReviewCategory } from "@/lib/reviewCategories";
 
 type WrongAnswer = {
   order: number;
@@ -43,6 +44,7 @@ type QuestionStat = {
 type ReviewAssignmentResult = {
   id: string;
   title: string;
+  questions?: { questionType?: string; examLevel?: string }[];
   school: string;
   targetTeachingClass: string;
   createdAt: string | null;
@@ -56,7 +58,7 @@ type ReviewAssignmentResult = {
   };
 };
 
-type Props = { user: User | null };
+type Props = { user: User | null; category?: ReviewCategory };
 const OPTION_LABELS = ["①", "②", "③", "④", "⑤"];
 
 const formatDate = (value: string | null) => {
@@ -71,7 +73,7 @@ const formatDate = (value: string | null) => {
   }).format(date);
 };
 
-export default function ReviewResultsPanel({ user }: Props) {
+export default function ReviewResultsPanel({ user, category = "all" }: Props) {
   const [assignments, setAssignments] = useState<ReviewAssignmentResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -106,11 +108,13 @@ export default function ReviewResultsPanel({ user }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  const visibleAssignments = assignments.filter((assignment) => category === "all" || assignment.questions?.some((question) => matchesReviewCategory(question, category)));
+
   return (
     <section className="mt-4 rounded-3xl bg-white p-5 shadow-md">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-black">📊 복습 결과 · 오답 분석</h2>
+          <h2 className="text-xl font-black">📊 {category === "all" ? "복습" : REVIEW_CATEGORY_LABELS[category]} 결과 · 오답 분석</h2>
           <p className="mt-1 text-sm font-bold text-slate-500">
             학생별 점수와 반 전체에서 많이 틀린 문제를 함께 확인합니다.
           </p>
@@ -131,14 +135,14 @@ export default function ReviewResultsPanel({ user }: Props) {
         </div>
       )}
 
-      {!isLoading && assignments.length === 0 && !errorMessage && (
+      {!isLoading && visibleAssignments.length === 0 && !errorMessage && (
         <div className="mt-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-black text-slate-500">
           아직 발송한 복습과제가 없습니다.
         </div>
       )}
 
       <div className="mt-4 grid gap-4">
-        {assignments.slice(0, 12).map((assignment) => {
+        {visibleAssignments.slice(0, 12).map((assignment) => {
           const analytics = assignment.analytics;
           const hasScores = analytics.scoredCount > 0;
 
@@ -151,6 +155,9 @@ export default function ReviewResultsPanel({ user }: Props) {
                 <div>
                   <div className="text-base font-black text-slate-800">
                     {assignment.title}
+                    {category !== "all" && assignment.questions?.some((question) => !matchesReviewCategory(question, category)) && (
+                      <span className="ml-2 text-xs font-bold text-amber-700">기존 혼합 과제 · 전체 결과</span>
+                    )}
                   </div>
                   <div className="mt-1 text-xs font-bold text-slate-500">
                     {assignment.school} · {assignment.targetTeachingClass}
