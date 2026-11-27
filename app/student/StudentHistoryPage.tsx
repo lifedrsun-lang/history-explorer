@@ -319,27 +319,8 @@ export default function StudentHistoryPage({
             />
 
             <button
-              onClick={() => {
-                const correctPassword =
-                  getSchoolPassword(pendingSchool);
-
-                if (
-                  normalize(passwordInput) ===
-                  normalize(correctPassword)
-                ) {
-                  setSelectedSchool(pendingSchool);
-
-                  localStorage.setItem(
-                    "selectedSchool",
-                    pendingSchool
-                  );
-
-                  setPendingSchool("");
-                  setPasswordInput("");
-                } else {
-                  alert("비밀번호가 틀렸습니다.");
-                }
-              }}
+              onClick={() => enterSchool(pendingSchool, passwordInput)}
+              disabled={checkingSchoolCode}
               className="w-full bg-sky-400 hover:bg-sky-500 transition rounded-2xl py-4 text-xl font-bold text-white shadow-sm"
             >
               입장하기
@@ -543,20 +524,7 @@ export default function StudentHistoryPage({
             </div>
 
             <button
-              onClick={() => {
-                localStorage.removeItem(
-                  "selectedSchool"
-                );
-
-                localStorage.removeItem(
-                  "selectedStudent"
-                );
-
-                setSelectedSchool("");
-                setSelectedStudent(null);
-                setCombinedSchoolVerified(false);
-                setStudents([]);
-              }}
+              onClick={logoutSchool}
               className="bg-sky-50 border border-sky-200 px-3 py-2 rounded-2xl text-xs font-bold text-sky-700 shrink-0"
             >
               학교 변경
@@ -633,30 +601,8 @@ export default function StudentHistoryPage({
               />
 
               <button
-                onClick={() => {
-                  if (
-                    normalize(studentPassword) ===
-                    normalize(
-                      pendingStudent?.password
-                    )
-                  ) {
-                    setSelectedStudent(
-                      pendingStudent
-                    );
-
-                    localStorage.setItem(
-                      "selectedStudent",
-                      JSON.stringify(
-                        pendingStudent
-                      )
-                    );
-
-                    setPendingStudent(null);
-                    setStudentPassword("");
-                  } else {
-                    alert("비밀번호가 틀렸습니다.");
-                  }
-                }}
+                onClick={() => loginStudent(pendingStudent, studentPassword)}
+                disabled={checkingSchoolCode}
                 className="w-full bg-sky-400 rounded-2xl py-4 text-xl font-bold text-white shadow-sm"
               >
                 입장하기
@@ -698,12 +644,7 @@ export default function StudentHistoryPage({
             <button
               onClick={() => {
                 setSearchName("");
-
-                localStorage.removeItem(
-                  "selectedStudent"
-                );
-
-                setSelectedStudent(null);
+                logoutStudent();
               }}
               className="w-full bg-white/90 border border-sky-100 rounded-[24px] p-4 text-sm font-bold text-sky-700 shadow-sm"
             >
