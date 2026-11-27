@@ -4,7 +4,7 @@ import Link from "next/link";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { useCallback, useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
-import { newOrderLine, newTextbookOrder, ORDER_BOOKS, ORDER_MONARTE_BOOKS, ORDER_MONARTE_OPTIONS, ORDER_SUBJECTS, ORDER_COLUMNS, ORDER_OPTIONS, orderBookNumber, orderAmount, orderRows, parseTextbookOrderTitle, textbookOrderMailSubject, textbookOrderTitle, validateOrder, type OrderDelivery, type OrderLine, type TextbookOrder } from "@/lib/textbookOrders";
+import { newOrderLine, newTextbookOrder, ORDER_BOOKS, ORDER_MONARTE_BOOKS, ORDER_MONARTE_OPTIONS, ORDER_SUBJECTS, orderColumns, orderFormatLabel, ORDER_OPTIONS, orderBookNumber, orderAmount, orderRows, parseTextbookOrderTitle, textbookOrderMailSubject, textbookOrderTitle, validateOrder, type OrderDelivery, type OrderLine, type TextbookOrder } from "@/lib/textbookOrders";
 import styles from "./orders.module.css";
 
 const DELIVERY_FIELDS: [keyof OrderDelivery, string][] = [["recipient", "수령자"], ["phone", "전화"], ["mobile", "핸드폰"], ["postalCode", "우편번호"], ["address", "주소"], ["message", "배송메세지"], ["shipping", "배송비"], ["invoiceCount", "송장출력갯수"], ["parcelSize", "택배크기"]];
@@ -56,6 +56,9 @@ export default function TextbookOrdersPage() {
   const [setupError, setSetupError] = useState("");
   const [mailPreview, setMailPreview] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [classStartDate, setClassStartDate] = useState("");
+  const [existingStudents, setExistingStudents] = useState<number | null>(null);
+  const [newStudents, setNewStudents] = useState<number | null>(null);
   const group = groups.find(g => g.id === selectedGroup);
   const enrolledCount = group?.counts[`Q${quarter}`] || 0;
   const locked = !!editor && ["sent", "sending", "unknown"].includes(editor.mailStatus || "");
@@ -108,11 +111,11 @@ export default function TextbookOrdersPage() {
     if (dirty && !window.confirm("저장하지 않은 주문 내용이 있습니다. 다른 주문을 열까요?")) return;
     const period = parseTextbookOrderTitle(order.title);
     setQuarter(period.quarter); setOrderRound(period.round);
-    setSubject("별꼼역사"); setSelectedBooks([]); setSelectedMonarteBooks([]); setSelectedOptions([]); setCustomProduct(""); setCustomOption(""); setCourse(""); setSelectedGroup(""); setMailPreview(false); setQuantity(1);
+    setSubject("별꼼역사"); setSelectedBooks([]); setSelectedMonarteBooks([]); setSelectedOptions([]); setCustomProduct(""); setCustomOption(""); setCourse(""); setSelectedGroup(""); setMailPreview(false); setQuantity(1); setClassStartDate(""); setExistingStudents(null); setNewStudents(null);
     setEditor(order); setBaseline(JSON.stringify(order)); setPreview(false); setError(""); setMessage("");
   };
   const changeOrderPeriod = (nextQuarter: string, nextRound: string) => {
-    if (nextQuarter !== quarter) { setSelectedGroup(""); setQuantity(1); setCourse(""); }
+    if (nextQuarter !== quarter) { setSelectedGroup(""); setQuantity(1); setCourse(""); setClassStartDate(""); setExistingStudents(null); setNewStudents(null); }
     setQuarter(nextQuarter); setOrderRound(nextRound);
     setEditor(e => e ? { ...e, title: textbookOrderTitle(nextQuarter, nextRound) } : e);
     setMessage("");
@@ -130,6 +133,7 @@ export default function TextbookOrdersPage() {
   const chooseGroup = (id: string) => {
     const next = groups.find(g => g.id === id);
     setSelectedGroup(id);
+    setClassStartDate(""); setExistingStudents(null); setNewStudents(null);
     setQuantity(next?.counts[`Q${quarter}`] || 1);
     setCourse("");
     setError("");
@@ -145,7 +149,7 @@ export default function TextbookOrdersPage() {
     if (!products.length) { setError("교재와 구성품 또는 실제 상품명을 입력해주세요."); return; }
     if (editor.lines.length + products.length > 200) { setError("주문 항목은 200개까지 저장할 수 있습니다."); return; }
     const lines = products.map(product => ({
-      ...newOrderLine(), ...product, quantity, school: group.school, teachingClass: group.teachingClass, subject, course: course.trim(),
+      ...newOrderLine(), ...product, quantity, school: group.school, teachingClass: group.teachingClass, subject, course: course.trim(), ...(editor.format === "202610" ? { classStartDate, existingStudents, newStudents } : {}),
     }));
     if (lines.some(line => editor.lines.some(existing => existing.school === line.school && overlapsClass(existing.teachingClass, line.teachingClass) && (existing.course || "") === line.course && existing.productName === line.productName && existing.option === line.option)) &&
       !window.confirm("같은 학교·교재에 동일하거나 겹치는 반의 주문이 있습니다. 중복 주문이 아닌 추가 수량이 맞다면 별도 행을 더할까요?")) return;
@@ -246,12 +250,13 @@ export default function TextbookOrdersPage() {
           <div className={`${styles.periodField} ${styles.wide}`}><span id="order-quarter-label">분기</span><div className={styles.periodButtons} role="group" aria-labelledby="order-quarter-label">{[1, 2, 3, 4].map(q => <button type="button" key={q} aria-pressed={quarter === String(q)} className={quarter === String(q) ? styles.periodSelected : undefined} onClick={() => changeOrderPeriod(String(q), orderRound)}>{q}분기</button>)}</div></div>
           <div className={`${styles.periodField} ${styles.wide}`}><span id="order-term-label">텀</span><div className={`${styles.periodButtons} ${styles.termButtons}`} role="group" aria-labelledby="order-term-label">{[1, 2, 3].map(term => <button type="button" key={term} aria-pressed={orderRound === String(term)} className={orderRound === String(term) ? styles.periodSelected : undefined} onClick={() => changeOrderPeriod(quarter, String(term))}>{term}텀</button>)}</div></div>
           <label className={styles.wide}>주문 제목 (자동)<input value={editor.title} readOnly placeholder="분기와 텀을 선택해주세요." /></label>
+          <label className={styles.wide}>주문서 양식<select value={editor.format || "legacy"} onChange={e => patch("format", e.target.value === "202610" ? "202610" : "legacy")}><option value="legacy">기존 양식</option><option value="202610">신규 양식 (2026년 10월~)</option></select></label>
           <label>주문일<input type="date" value={editor.date} onChange={e => patch("date", e.target.value)} /></label>
         </fieldset>
         <h3>학교 · 반별 교재 추가</h3>
         <fieldset disabled={busy || locked} className={styles.selector}>
           <div className={styles.fields}>
-            <label>신청 연도<input type="number" min={2000} max={2100} value={year} onChange={e => { setYear(Number(e.target.value)); setGroups([]); setSelectedGroup(""); setQuantity(1); setCourse(""); setSetupError(""); }} /></label>
+            <label>신청 연도<input type="number" min={2000} max={2100} value={year} onChange={e => { setYear(Number(e.target.value)); setGroups([]); setSelectedGroup(""); setQuantity(1); setCourse(""); setClassStartDate(""); setExistingStudents(null); setNewStudents(null); setSetupError(""); }} /></label>
             <label>방과후 학교 · 반<select value={selectedGroup} onChange={e => chooseGroup(e.target.value)}><option value="">학교와 반 선택</option>{groups.map(item => <option key={item.id} value={item.id}>{item.school} {item.teachingClass} · {item.counts[`Q${quarter}`] || 0}명{item.status === "paused" ? " (휴강)" : item.status === "completed" ? " (종강)" : ""}</option>)}</select></label>
             <label className={styles.wide}>수업명 (선택)<input maxLength={100} value={course} onChange={e => setCourse(e.target.value)} placeholder="예: 한국사, 세계문화" /></label>
           </div>
@@ -270,6 +275,7 @@ export default function TextbookOrdersPage() {
             <label>옵션명 (선택)<input maxLength={40} value={customOption} onChange={e => setCustomOption(e.target.value)} placeholder="업체 옵션명" /></label>
             <p className={styles.muted}>공식 상품명이 등록되지 않은 교재는 업체 주문서의 정확한 명칭과 옵션을 직접 입력해주세요.</p>
           </div>}
+          {editor.format === "202610" && <div className={styles.fields}><label>수업시작일<input type="date" value={classStartDate} onChange={e => setClassStartDate(e.target.value)} /></label><label>기존학생수<input type="number" min={0} max={100000} step={1} value={existingStudents ?? ""} onChange={e => setExistingStudents(e.target.value === "" ? null : Number(e.target.value))} /></label><label>신규학생수<input type="number" min={0} max={100000} step={1} value={newStudents ?? ""} onChange={e => setNewStudents(e.target.value === "" ? null : Number(e.target.value))} /></label><p className={styles.muted}>분기 또는 학기별 새롭게 모집하여 시작할 때만 두 학생수를 작성하세요. 일반 주문은 공란으로 두세요. 입력한 값은 이번에 추가하는 구성품에 반영됩니다.</p></div>}
           <div className={styles.quantityActions}><label>이번에 추가할 구성품별 수량<input type="number" min={1} max={100000} step={1} value={quantity} onChange={e => setQuantity(Number(e.target.value))} /></label><button type="button" disabled={!group} onClick={() => setQuantity(enrolledCount || 1)}>신청 인원 적용</button><button type="button" disabled={!group} className={styles.primary} onClick={addItems}>주문서에 교재 추가</button></div>
           <p className={styles.muted}>이미 추가한 다른 학교·교재의 수량은 변경되지 않습니다. 추가한 항목은 아래에서 개별 수정할 수 있습니다.</p>
         </fieldset>
@@ -283,6 +289,7 @@ export default function TextbookOrdersPage() {
           <label className={styles.wide}>상품명<input value={line.productName} maxLength={300} onChange={e => patchLine(line.id, "productName", e.target.value)} /></label>
           <label>옵션명{orderBookNumber(line.productName) !== null ? <select value={line.option} onChange={e => patchLine(line.id, "option", e.target.value)}>{ORDER_OPTIONS.map(option => <option key={option}>{option}</option>)}</select> : <input maxLength={40} value={line.option} onChange={e => patchLine(line.id, "option", e.target.value)} />}</label>
           <label>수량<input type="number" min={1} max={100000} step={1} value={line.quantity} onChange={e => patchLine(line.id, "quantity", Number(e.target.value))} /></label>
+          {editor.format === "202610" && <><label>학교명<input maxLength={100} value={line.school || ""} onChange={e => patchLine(line.id, "school", e.target.value)} /></label><label>수업시작일<input type="date" value={line.classStartDate || ""} onChange={e => patchLine(line.id, "classStartDate", e.target.value)} /></label><label>기존학생수<input type="number" min={0} max={100000} step={1} value={line.existingStudents ?? ""} onChange={e => patchLine(line.id, "existingStudents", e.target.value === "" ? null : Number(e.target.value))} /></label><label>신규학생수<input type="number" min={0} max={100000} step={1} value={line.newStudents ?? ""} onChange={e => patchLine(line.id, "newStudents", e.target.value === "" ? null : Number(e.target.value))} /></label></>}
           <label>판매단가 (선택)<input type="number" min={0} max={100000000} step="0.01" placeholder="미입력" value={line.unitPrice ?? ""} onChange={e => patchLine(line.id, "unitPrice", e.target.value === "" ? null : Number(e.target.value))} /></label>
           <label>판매금액<output>{money(orderAmount(line))}</output></label>
           <label>주문번호 (선택)<input value={line.orderNumber} maxLength={100} onChange={e => patchLine(line.id, "orderNumber", e.target.value)} /></label>
@@ -290,11 +297,11 @@ export default function TextbookOrdersPage() {
         </div><div className={styles.actions}><button disabled={editor.lines.length >= 200} onClick={() => patch("lines", [...editor.lines, { ...line, id: crypto.randomUUID() }])}>항목 복사</button><button onClick={() => patch("lines", editor.lines.filter(l => l.id !== line.id))}>항목 삭제</button></div></fieldset>)}</div></details>
         <div className={styles.summary}><span>전체 항목 수량 <strong>{totals?.quantity.toLocaleString("ko-KR")}개</strong></span><span>{totals?.missing ? "단가 입력 항목 소계" : "판매금액 합계"} <strong>{money(totals?.priced ?? null)}</strong></span>{!!totals?.missing && <span>단가 미입력 {totals.missing}개 항목</span>}</div>
         <div className={styles.actions}><button disabled={busy || locked} className={styles.primary} onClick={() => void save()}>{busy ? "처리 중" : "주문 저장"}</button><button disabled={busy} onClick={() => setPreview(p => !p)}>{preview ? "미리보기 닫기" : "주문서 미리보기"}</button><button disabled={busy} onClick={() => void download()}>엑셀 다운로드 (.xlsx)</button><button disabled={busy || locked || dirty || !editor.id} onClick={() => setMailPreview(p => !p)}>주문 메일 확인</button></div>
-        <p className={styles.muted}>다운로드에는 현재 화면의 내용이 반영됩니다. 주문 내역을 보관하려면 저장해주세요. 원본 양식의 열 순서로 내보냅니다.</p>
+        <p className={styles.muted}>다운로드에는 현재 화면의 내용이 반영됩니다. 주문 내역을 보관하려면 저장해주세요. 선택한 양식({orderFormatLabel(editor)})의 열 순서로 내보냅니다.</p>
         {locked && <p role="status" className={styles.muted}>{editor.mailStatus === "sent" ? "메일 발송 완료. 다음 텀 주문은 복사하여 작성해주세요." : "발송 중이거나 결과를 확인할 수 없는 주문입니다. 보낸편지함을 확인해주세요."}</p>}
         {!editor.id || dirty ? <p className={styles.muted}>메일 발송 전 주문 내용을 저장해주세요.</p> : null}
-        {mailPreview && <section className={styles.mailPreview}><h3>주문 메일 미리보기</h3><p>받는 사람: dreameat64@naver.com</p><p>숨은 참조: loveghkql@naver.com</p><p>제목: {textbookOrderMailSubject(editor)}</p><p>첨부: 주문서 엑셀 (.xlsx) · {editor.lines.length}개 항목</p><p>안녕하세요.<br /><br />{editor.title} 주문서를 첨부합니다.<br />확인 부탁드립니다.<br /><br />감사합니다.<br />이화선</p><p className={styles.muted}>참여확인서에 연결한 Gmail 계정으로 발송합니다.</p><div className={styles.actions}><button disabled={busy || locked || dirty || !editor.id} className={styles.primary} onClick={() => void sendMail()}>드림잇에 주문 메일 발송</button><Link href="/teacher/atc-confirmations">Gmail 연결 관리</Link></div></section>}
-        {preview && <div className={styles.tableScroll}><table><caption>드림잇주문 · 엑셀 내용 확인</caption><thead><tr>{ORDER_COLUMNS.map(c => <th key={c}>{c}</th>)}</tr></thead><tbody>{orderRows(editor).map((row, i) => <tr key={editor.lines[i].id}>{row.map((v, j) => <td key={j}>{v ?? ""}</td>)}</tr>)}</tbody></table></div>}
+        {mailPreview && <section className={styles.mailPreview}><h3>주문 메일 미리보기</h3><p>받는 사람: dreameat64@naver.com</p><p>숨은 참조: loveghkql@naver.com</p><p>제목: {textbookOrderMailSubject(editor)}</p><p>첨부: {orderFormatLabel(editor)} 주문서 엑셀 (.xlsx) · {editor.lines.length}개 항목</p><p>안녕하세요.<br /><br />{editor.title} 주문서를 첨부합니다.<br />확인 부탁드립니다.<br /><br />감사합니다.<br />이화선</p><p className={styles.muted}>참여확인서에 연결한 Gmail 계정으로 발송합니다.</p><div className={styles.actions}><button disabled={busy || locked || dirty || !editor.id} className={styles.primary} onClick={() => void sendMail()}>드림잇에 주문 메일 발송</button><Link href="/teacher/atc-confirmations">Gmail 연결 관리</Link></div></section>}
+        {preview && <div className={styles.tableScroll}><table><caption>드림잇주문 · {orderFormatLabel(editor)} · 엑셀 내용 확인</caption><thead><tr>{orderColumns(editor).map(c => <th key={c}>{c}</th>)}</tr></thead><tbody>{orderRows(editor).map((row, i) => <tr key={editor.lines[i].id}>{row.map((v, j) => <td key={j}>{v ?? ""}</td>)}</tr>)}</tbody></table></div>}
       </section> : <section className={styles.panel}><h2>통합 교재 주문서</h2><p>새 주문을 만들거나 저장한 주문을 선택해주세요.</p><button disabled={!defaultDelivery && !setupError} className={styles.primary} onClick={newOrder}>새 주문 작성</button></section>}
     </div>
   </main>;
