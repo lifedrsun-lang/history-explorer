@@ -46,3 +46,26 @@ export const updateTeacherStudentCharacter = async (
   }
   return payload.student as any;
 };
+
+const patchTeacherStudent = async (body: Record<string, unknown>) => {
+  const response = await authorizedFetch("/api/teacher/student-data", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.student) {
+    throw new Error(payload.error || "student_update_failed");
+  }
+  return payload.student as any;
+};
+
+export const updateTeacherStudentProfile = (
+  studentId: string,
+  fields: Record<string, unknown>
+) => patchTeacherStudent({ action: "profile", studentId, fields });
+
+export const updateTeacherStudentMaterialHistory = (
+  studentId: string,
+  materialHistory: unknown[]
+) => patchTeacherStudent({ action: "materialHistory", studentId, materialHistory });
