@@ -31,17 +31,20 @@ const passwordCandidates = (value: unknown) => {
   return candidates.filter((item, index, list) => list.indexOf(item) === index);
 };
 
-const loginByKnownStudent = async (body: Record<string, unknown>) => {
+const loginByKnownStudent = async (body: Record<string, unknown>, request: Request) => {
   const passwords = passwordCandidates(body.studentPassword);
   let lastError: unknown = new Error("student_auth_required");
 
   for (const studentPassword of passwords) {
     try {
-      return await getVerifiedStudent({
-        studentId: body.studentId,
-        studentCollection: body.studentCollection || "students",
-        studentPassword,
-      });
+      return await getVerifiedStudent(
+        {
+          studentId: body.studentId,
+          studentCollection: body.studentCollection || "students",
+          studentPassword,
+        },
+        request
+      );
     } catch (error) {
       lastError = error;
     }
@@ -103,7 +106,7 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const student = normalize(body.studentId)
-      ? await loginByKnownStudent(body)
+      ? await getVerifiedStudent(body, request)
       : await loginByIdentity(body);
 
     if (student.program !== "byeolkkum_history") {
