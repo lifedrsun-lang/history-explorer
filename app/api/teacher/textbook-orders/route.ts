@@ -40,7 +40,7 @@ export async function GET(request: Request) {
   try {
     const teacher = await authorize(request);
     const snapshot = await getFirebaseAdmin().db.collection(COLLECTION).where("teacherUid", "==", teacher.uid).get();
-    const orders = snapshot.docs.map(d => { const data = d.data(); return { id: d.id, revision: data.revision, title: data.title, date: data.date, delivery: data.delivery, lines: data.lines, createdAt: data.createdAt, updatedAt: data.updatedAt, ...(data.mailStatus ? { mailStatus: data.mailStatus } : {}), ...(data.mailSentAt ? { mailSentAt: data.mailSentAt } : {}) } as TextbookOrder; });
+    const orders = snapshot.docs.map(d => { const data = d.data(); return { id: d.id, revision: data.revision, title: data.title, ...(data.format ? { format: data.format } : {}), date: data.date, delivery: data.delivery, lines: data.lines, createdAt: data.createdAt, updatedAt: data.updatedAt, ...(data.mailStatus ? { mailStatus: data.mailStatus } : {}), ...(data.mailSentAt ? { mailSentAt: data.mailSentAt } : {}) } as TextbookOrder; });
     orders.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     return json({ orders });
   } catch (error) { return failure(error); }
