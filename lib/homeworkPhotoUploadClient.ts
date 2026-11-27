@@ -1,6 +1,6 @@
 import type { HomeworkUploadTarget } from "./homeworkPhoto";
 
-type StudentAuth = { studentId: string; studentCollection: string; studentPassword: string };
+type StudentAuth = { studentId: string; studentCollection: string; studentPassword?: string };
 const SUBMIT_ERROR = "사진 제출에 실패했습니다. 다시 시도해 주세요.";
 
 export const homeworkUploadError = (error: unknown) =>
