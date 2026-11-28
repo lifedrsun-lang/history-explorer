@@ -3,16 +3,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  updateDoc,
-} from "firebase/firestore";
 
-import { auth, db } from "@/lib/firebase";
+
+import { auth } from "@/lib/firebase";
+import { loadTeacherStudents, manageTeacherStudent } from "@/lib/teacherStudentDataClient";
 import {
   DEFAULT_STAGE_ID,
   STAGE_DATA,
@@ -108,8 +102,7 @@ export default function TeacherStudentsPage() {
     setLoading(true);
     setError("");
     try {
-      const snapshot = await getDocs(collection(db, "students"));
-      setStudents(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
+      setStudents(await loadTeacherStudents());
     } catch {
       setError("학생 정보를 불러오지 못했습니다.");
     } finally {
@@ -156,81 +149,15 @@ export default function TeacherStudentsPage() {
     };
   }, []);
 
-  const getStudentRef = (student: any) => doc(db, "students", student.id);
-
-  const getTodayString = () => {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  const makeHistoryItem = (item: any) => ({
-    id: `coin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    date: getTodayString(),
-    createdAt: new Date(),
-    ...item,
-  });
-
-  const makeClassHistoryItem = (item: any) => ({
-    id: `class-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    date: getTodayString(),
-    createdAt: new Date(),
-    ...item,
-  });
-
-  const getNextCoinHistory = (student: any, items: any[]) => {
-    const current = Array.isArray(student?.coinHistory) ? student.coinHistory : [];
-    return [...current, ...items.map(makeHistoryItem)].slice(-100);
-  };
-
-  const getSourceLabel = (source: CoinSource) => {
-    if (source === "quiz") return "퀴즈";
-    if (source === "homework") return "과제";
-    if (source === "making") return "만들기 완성";
-    return "선생님 보너스";
-  };
-
   const addBronzeBySource = async (student: any, source: CoinSource, amount: number) => {
-    const currentBronze = Number(student?.bronze || 0);
-    const currentSilver = Number(student?.silver || 0);
-    const afterAddBronze = currentBronze + amount;
-    const exchangeCount = Math.floor(afterAddBronze / 10);
-    const newBronze = afterAddBronze % 10;
-    const newSilver = currentSilver + exchangeCount;
-
-    const historyItems: any[] = [
-      {
-        type: "earn",
-        currency: "bronze",
-        amount,
-        source,
-        text: `동엽전 ${amount}개 획득 (${getSourceLabel(source)})`,
-      },
-    ];
-
-    if (exchangeCount > 0) {
-      historyItems.push({
-        type: "exchange",
-        fromCurrency: "bronze",
-        fromAmount: 10 * exchangeCount,
-        toCurrency: "silver",
-        toAmount: exchangeCount,
-        text: `동엽전 ${10 * exchangeCount}개를 은엽전 ${exchangeCount}개로 자동 교환`,
-      });
+    try {
+      const result = await manageTeacherStudent({ action: "coin", studentId: student.id, operation: "award", source, amount });
+      const exchangeCount = Number(result.exchangeCount || 0);
+      showToast(exchangeCount > 0 ? `🪙 동엽전 ${amount}개 지급 · 은엽전 ${exchangeCount}개 자동 교환` : `🪙 동엽전 ${amount}개 지급 완료`);
+      await loadStudents();
+    } catch {
+      showToast("코인 지급에 실패했습니다.");
     }
-
-    await updateDoc(getStudentRef(student), {
-      bronze: newBronze,
-      silver: newSilver,
-      totalBronze: Number(student?.totalBronze || 0) + amount,
-      totalSilver: Number(student?.totalSilver || 0) + exchangeCount,
-      coinHistory: getNextCoinHistory(student, historyItems),
-    });
-
-    showToast(exchangeCount > 0 ? `🪙 동엽전 ${amount}개 지급 · 은엽전 ${exchangeCount}개 자동 교환` : `🪙 동엽전 ${amount}개 지급 완료`);
-    await loadStudents();
   };
 
   const addQuizBronze = (student: any) => addBronzeBySource(student, "quiz", 1);
@@ -253,78 +180,50 @@ export default function TeacherStudentsPage() {
   };
 
   const removeBronze = async (student: any) => {
-    const currentBronze = Number(student?.bronze || 0);
-    if (currentBronze <= 0) {
-      showToast("회수할 동엽전이 없습니다");
-      return;
+    try {
+      await manageTeacherStudent({ action: "coin", studentId: student.id, operation: "remove" });
+      showToast("동엽전 1개 회수 완료");
+      await loadStudents();
+    } catch (error) {
+      showToast(error instanceof Error && error.message === "insufficient_balance" ? "회수할 동엽전이 없습니다" : "동엽전 회수 실패");
     }
-    await updateDoc(getStudentRef(student), {
-      bronze: currentBronze - 1,
-      totalBronze: Math.max(Number(student?.totalBronze || 0) - 1, 0),
-      coinHistory: getNextCoinHistory(student, [
-        { type: "adjust", currency: "bronze", amount: 1, text: "동엽전 1개 회수" },
-      ]),
-    });
-    showToast("동엽전 1개 회수 완료");
-    await loadStudents();
   };
 
   const useSilver = async (student: any) => {
-    const currentSilver = Number(student?.silver || 0);
-    if (currentSilver <= 0) {
-      showToast("은엽전이 부족합니다");
-      return;
+    try {
+      await manageTeacherStudent({ action: "coin", studentId: student.id, operation: "use" });
+      showToast("은엽전 1개 사용 완료");
+      await loadStudents();
+    } catch (error) {
+      showToast(error instanceof Error && error.message === "insufficient_balance" ? "은엽전이 부족합니다" : "은엽전 사용 실패");
     }
-    await updateDoc(getStudentRef(student), {
-      silver: currentSilver - 1,
-      coinHistory: getNextCoinHistory(student, [
-        { type: "use", currency: "silver", amount: 1, text: "은엽전 1개 사용" },
-      ]),
-    });
-    showToast("은엽전 1개 사용 완료");
-    await loadStudents();
   };
 
   const addAttendanceRecord = async (student: any, status: AttendanceStatus) => {
-    const current = Array.isArray(student?.attendanceHistory) ? student.attendanceHistory : [];
-    await updateDoc(getStudentRef(student), {
-      attendanceHistory: [
-        ...current,
-        makeClassHistoryItem({ type: "attendance", status, text: status }),
-      ].slice(-100),
-    });
-    showToast(`✅ ${status} 기록 완료`);
-    await loadStudents();
+    try {
+      await manageTeacherStudent({ action: "attendance", studentId: student.id, status });
+      showToast(`✅ ${status} 기록 완료`);
+      await loadStudents();
+    } catch {
+      showToast("출석 기록 저장에 실패했습니다.");
+    }
   };
 
   const addMaterialRecord = async (student: any) => {
-    const current = Array.isArray(student?.materialHistory) ? student.materialHistory : [];
-    const world = isWorldCultureProgram(student?.program);
-    const worldProgress = getWorldCultureProgress(student?.worldCultureStage);
-    if (world && !worldProgress) { alert("세계문화 교재 진도를 먼저 선택해주세요."); return; }
-    const stageInfo = getStageInfo(student?.stage);
-    const materialName = world ? `모나르떼 ${worldProgress?.label}` : stageInfo?.current?.short || `별꼼역사 ${getBookNumberFromStage(student?.stage)}권`;
-    await updateDoc(getStudentRef(student), {
-      materialHistory: [
-        ...current,
-        makeClassHistoryItem({
-          type: "material",
-          materialName,
-          stageId: getStudentMaterialStageId(student),
-          stageTitle: world ? worldProgress?.label || "" : stageInfo?.current?.title || "",
-          text: `${materialName} 교재 지급`,
-        }),
-      ].slice(-100),
-    });
-    showToast("📦 교재 지급 기록 완료");
-    await loadStudents();
+    try {
+      await manageTeacherStudent({ action: "material", studentId: student.id });
+      showToast("📦 교재 지급 기록 완료");
+      await loadStudents();
+    } catch {
+      showToast("교재 지급 기록에 실패했습니다. 교재 진도를 확인해주세요.");
+    }
   };
 
   const changeStage = async (student: any, direction: number) => {
     if (isWorldCultureProgram(student?.program)) return;
     let nextBook = getBookNumberFromStage(student?.stage) + direction;
     nextBook = Math.max(1, Math.min(STAGE_DATA.length, nextBook));
-    await updateDoc(getStudentRef(student), { stage: getStageIdForBook(nextBook) });
+    await manageTeacherStudent({ action: "progress", studentId: student.id, stage: getStageIdForBook(nextBook) });
     await loadStudents();
   };
 
@@ -332,10 +231,7 @@ export default function TeacherStudentsPage() {
     setSavingId(student.id);
     setError("");
     try {
-      await updateDoc(getStudentRef(student), {
-        enrollmentStatus: status,
-        isActive: status === "active",
-      });
+      await manageTeacherStudent({ action: "status", studentId: student.id, status });
       await loadStudents();
     } catch {
       setError("수강 상태를 저장하지 못했습니다.");
@@ -354,21 +250,17 @@ export default function TeacherStudentsPage() {
   const deleteStudent = async (student: any) => {
     const check = confirm(`${student.name} 학생을 삭제할까요?`);
     if (!check) return;
-    await deleteDoc(getStudentRef(student));
+    await manageTeacherStudent({ action: "delete", studentId: student.id });
     await loadStudents();
   };
 
   const toggleTerm = async (student: any, quarter: number) => {
     if (!isQuarterManagedProgram(student?.program)) return;
     const term = makeEnrollmentTerm(termYear, quarter);
-    const current = getEnrollmentTerms(student);
-    const next = current.includes(term)
-      ? current.filter((item) => item !== term)
-      : [...current, term].sort((a, b) => a.localeCompare(b));
 
     setSavingId(student.id);
     try {
-      await updateDoc(getStudentRef(student), { enrollmentTerms: next });
+      await manageTeacherStudent({ action: "toggleTerm", studentId: student.id, term });
       await loadStudents();
     } catch {
       setError("수강 분기 이력을 저장하지 못했습니다.");
@@ -400,7 +292,7 @@ export default function TeacherStudentsPage() {
     try {
       await Promise.all(
         unassignedStudents.map((student) =>
-          updateDoc(getStudentRef(student), { enrollmentTerms: [term] })
+          manageTeacherStudent({ action: "assignTerm", studentId: student.id, term })
         )
       );
       showToast(`${unassignedStudents.length}명 분기 적용 완료`);
@@ -457,30 +349,17 @@ export default function TeacherStudentsPage() {
 
     const password = newNumber ? String(newNumber).padStart(2, "0") : "";
 
-    await addDoc(collection(db, "students"), {
-      school: newSchool || (isSunLabOnly ? "SUN LAB" : "미지정"),
-      grade: newGrade,
-      class: newClass,
-      teachingClass: isSunLabOnly ? "" : newTeachingClass,
-      studentNumber: newNumber,
-      password,
-      name: newName.trim(),
-      bronze: 0,
-      silver: 0,
-      totalBronze: 0,
-      totalSilver: 0,
+    try {
+      await manageTeacherStudent({ action: "create", fields: { school: newSchool || (isSunLabOnly ? "SUN LAB" : "미지정"),
+      grade: newGrade, class: newClass, teachingClass: isSunLabOnly ? "" : newTeachingClass,
+      studentNumber: newNumber, name: newName.trim(),
       stage: isSunLabOnly || isWorldCultureProgram(newProgram) ? DEFAULT_STAGE_ID : newStage,
       worldCultureStage: isWorldCultureProgram(newProgram) ? newWorldStage : "",
-      program: newProgram,
-      timelineCompletedIssues: [],
-      isActive: newStatus === "active",
-      enrollmentStatus: newStatus,
-      enrollmentTerms: newEnrollmentTerms,
-      coinHistory: [],
-      attendanceHistory: [],
-      materialHistory: [],
-      sunLabMember: isSunLabMember,
-    });
+      program: newProgram, enrollmentStatus: newStatus, enrollmentTerms: newEnrollmentTerms, sunLabMember: isSunLabMember } });
+    } catch {
+      showToast("학생 등록에 실패했습니다.");
+      return;
+    }
 
     resetNewStudentForm();
     setIsStudentModalOpen(false);
@@ -588,7 +467,7 @@ export default function TeacherStudentsPage() {
     );
 
     for (const student of studentsToUpdate) {
-      await updateDoc(getStudentRef(student), world ? { worldCultureStage: bulkWorldStage } : { stage: selectedBulkStage.id });
+      await manageTeacherStudent({ action: "progress", studentId: student.id, ...(world ? { worldCultureStage: bulkWorldStage } : { stage: selectedBulkStage.id }) });
     }
 
     setIsBulkStageOpen(false);

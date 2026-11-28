@@ -81,3 +81,15 @@ export const teacherAfterSchoolCoins = async (body: Record<string, unknown>) => 
   if (!response.ok) throw new Error(payload.error || "coin_request_failed");
   return payload;
 };
+
+
+export const manageTeacherStudent = async (body: Record<string, unknown>) => {
+  const response = await authorizedFetch("/api/teacher/student-management", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "student_management_failed");
+  return payload;
+};

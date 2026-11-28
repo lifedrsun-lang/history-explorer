@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 
+import { getEnrollmentStatus } from "@/lib/studentEnrollment";
 import { getFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { verifyStudentDataTeacherRequest } from "@/lib/studentDataTeacherAuth";
 
@@ -33,7 +34,10 @@ const safeStudent = (id: string, data: FirebaseFirestore.DocumentData) => ({
   bronze: Number(data?.bronze || data?.bronzeCoin || data?.동엽전 || 0),
   silver: Number(data?.silver || data?.silverCoin || data?.은엽전 || 0),
   character: normalize(data?.character),
-  stage: Number(data?.stage || 0),
+  stage: typeof data?.stage === "string" || typeof data?.stage === "number" ? data.stage : "",
+  totalBronze: Number(data?.totalBronze || 0),
+  totalSilver: Number(data?.totalSilver || 0),
+  attendanceHistory: serializeValue(Array.isArray(data?.attendanceHistory) ? data.attendanceHistory : []),
   coinHistory: serializeValue(Array.isArray(data?.coinHistory) ? data.coinHistory : []),
   materialHistory: serializeValue(Array.isArray(data?.materialHistory) ? data.materialHistory : []),
   studentNumber: normalize(data?.studentNumber || data?.number || data?.studentNo),
@@ -45,7 +49,7 @@ const safeStudent = (id: string, data: FirebaseFirestore.DocumentData) => ({
     : [],
   pendingCoinExchangeRequestId: normalize(data?.pendingCoinExchangeRequestId),
   isActive: data?.isActive !== false,
-  enrollmentStatus: normalize(data?.enrollmentStatus || "active"),
+  enrollmentStatus: getEnrollmentStatus(data),
 });
 
 const authError = (error: unknown) => {
@@ -143,7 +147,7 @@ export async function PATCH(request: NextRequest) {
         program.length > 50 ||
         worldCultureStage.length > 80 ||
         !["", "A반", "B반"].includes(teachingClass) ||
-        !["active", "paused", "completed", "withdrawn"].includes(enrollmentStatus) ||
+        !["active", "paused", "ended"].includes(enrollmentStatus) ||
         enrollmentTerms.length > 20 ||
         enrollmentTerms.some((term: string) => !/^\d{4}-Q[1-4]$/.test(term))
       ) {
