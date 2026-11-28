@@ -6,6 +6,7 @@ import { User } from "firebase/auth";
 import type { AssignmentStudent } from "@/lib/assignments";
 import { getStudentProgramValue } from "@/lib/programs";
 import ReviewResultsPanel from "./ReviewResultsPanel";
+import { REVIEW_CATEGORY_LABELS, type ReviewCategory } from "@/lib/reviewCategories";
 
 type ReviewQuestion = {
   id: string;
@@ -19,6 +20,7 @@ type Props = {
   user: User | null;
   questions: ReviewQuestion[];
   onSent?: () => void;
+  category?: ReviewCategory;
 };
 
 const getTeachingClass = (student: AssignmentStudent) => {
@@ -49,7 +51,7 @@ async function teacherFetch(user: User, url: string, init: RequestInit = {}) {
   return data;
 }
 
-export default function ReviewAssignmentComposer({ user, questions, onSent }: Props) {
+export default function ReviewAssignmentComposer({ user, questions, onSent, category = "all" }: Props) {
   const [open, setOpen] = useState(false);
   const [students, setStudents] = useState<AssignmentStudent[]>([]);
   const [customTitle, setTitle] = useState<string | null>(null);
@@ -65,7 +67,7 @@ export default function ReviewAssignmentComposer({ user, questions, onSent }: Pr
     questions.length > 0 &&
     questions.every((question) => question.questionType === "exam");
 
-  const title = customTitle ?? (isExamAssignment ? "기출문제" : "교재문제");
+  const title = customTitle ?? (category === "all" ? (isExamAssignment ? "기출문제" : "교재문제") : REVIEW_CATEGORY_LABELS[category]);
 
   useEffect(() => {
     if (!open || !user || students.length > 0 || isLoadingStudents) return;
@@ -357,7 +359,7 @@ export default function ReviewAssignmentComposer({ user, questions, onSent }: Pr
     <>
       <div id="review-distribution-composer">{composerContent}</div>
       <div id="review-results-panel">
-        <ReviewResultsPanel user={user} />
+        <ReviewResultsPanel user={user} category={category} />
       </div>
     </>
   );
