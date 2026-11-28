@@ -56,11 +56,25 @@ const sections: Record<string, ManagementSection> = {
         className: "border-violet-200 bg-violet-50 text-violet-900",
       },
       {
-        href: "/teacher/presentations/review",
+        href: "/teacher/presentations/review?category=textbook",
         icon: "📝",
-        title: "복습문제 자료",
-        description: "복습문제를 만들고 배포 상태와 결과를 확인",
+        title: "복습문제",
+        description: "교재 복습문제 등록·배포·결과 확인",
         className: "border-indigo-200 bg-indigo-50 text-indigo-900",
+      },
+      {
+        href: "/teacher/presentations/review?category=basic",
+        icon: "📗",
+        title: "기본기출문제",
+        description: "한능검 기본 기출문제 등록·배포·결과 확인",
+        className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+      },
+      {
+        href: "/teacher/presentations/review?category=advanced",
+        icon: "🏆",
+        title: "심화기출문제",
+        description: "한능검 심화 기출문제 등록·배포·결과 확인",
+        className: "border-amber-200 bg-amber-50 text-amber-900",
       },
       {
         href: "/teacher/history-cards",
@@ -375,8 +389,8 @@ export default async function TeacherManagementSectionPage({
             {(section === "after-school"
               ? [
                   { title: "수강생 관리", items: config.items.slice(0, 3) },
-                  { title: "수업 관리", items: config.items.slice(3, 8) },
-                  { title: "교재 및 행정 관리", items: config.items.slice(8) },
+                  { title: "수업 관리", items: config.items.slice(3, 10) },
+                  { title: "교재 및 행정 관리", items: config.items.slice(10) },
                 ]
               : [{ title: "", items: config.items }]
             ).map((group) => (
