@@ -4,12 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/check-history-people.cjs && node scripts/check-history-timeline-access.cjs && next build",
+    "build": "node scripts/verify-student-data-teacher-auth.cjs --allow-missing && node scripts/check-history-people.cjs && node scripts/check-history-timeline-access.cjs && node scripts/audit-students-firestore-clients.cjs --require-zero && next build",
     "start": "next start",
     "lint": "eslint",
     "test:golden-bingo": "node scripts/verify-golden-bingo.mjs",
     "test:history-people": "node scripts/check-history-people.cjs",
-    "test:history-access": "node scripts/check-history-timeline-access.cjs"
+    "test:history-access": "node scripts/check-history-timeline-access.cjs",
+    "test:student-direct-access": "node scripts/audit-students-firestore-clients.cjs --require-zero"
   },
   "dependencies": {
     "@sparticuz/chromium": "153.0.0",

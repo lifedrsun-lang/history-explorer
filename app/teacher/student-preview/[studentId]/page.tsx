@@ -1,12 +1,10 @@
 "use client";
 
-import { auth, db } from "@/lib/firebase";
-
+import { auth } from "@/lib/firebase";
 import {
-  doc,
-  getDoc,
-  updateDoc,
-} from "firebase/firestore";
+  loadTeacherStudent,
+  updateTeacherStudentCharacter,
+} from "@/lib/teacherStudentDataClient";
 import { onAuthStateChanged } from "firebase/auth";
 
 import { useCallback, useEffect, useState } from "react";
@@ -43,20 +41,7 @@ export default function TeacherStudentPreviewPage() {
     }
 
     try {
-      const snapshot = await getDoc(
-        doc(db, "students", studentId)
-      );
-
-      if (!snapshot.exists()) {
-        setErrorText("학생 정보를 찾을 수 없습니다.");
-        setLoading(false);
-        return;
-      }
-
-      setStudent({
-        id: snapshot.id,
-        ...snapshot.data(),
-      });
+      setStudent(await loadTeacherStudent(studentId));
     } catch (error) {
       console.error(
         "학생 미리보기 불러오기 실패:",
@@ -88,17 +73,9 @@ export default function TeacherStudentPreviewPage() {
     studentIdValue: string,
     type: string
   ) => {
-    await updateDoc(
-      doc(db, "students", studentIdValue),
-      {
-        character: type,
-      }
+    setStudent(
+      await updateTeacherStudentCharacter(studentIdValue, type)
     );
-
-    setStudent((prev: any) => ({
-      ...prev,
-      character: type,
-    }));
   };
 
   if (!authorized || loading) {

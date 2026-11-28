@@ -1,9 +1,8 @@
 "use client";
 
-import { doc, updateDoc } from "firebase/firestore";
 import { useState } from "react";
 
-import { db } from "@/lib/firebase";
+import { updateTeacherStudentProfile } from "@/lib/teacherStudentDataClient";
 import {
   STUDENT_PROGRAM_OPTIONS,
   getStudentProgramValue,
@@ -65,18 +64,16 @@ export default function StudentEditModal({
     setSaving(true);
     try {
       const studentNumber = String(formData.get("studentNumber") || "").trim();
-      await updateDoc(doc(db, "students", student.id), {
+      await updateTeacherStudentProfile(student.id, {
         school: String(formData.get("school") || "").trim(),
         grade: String(formData.get("grade") || "").trim(),
         class: String(formData.get("class") || "").trim(),
         studentNumber,
-        password: studentNumber.padStart(2, "0"),
         name: String(formData.get("name") || "").trim(),
         program,
-        ...(isWorldCultureProgram(program) ? { worldCultureStage: worldStage } : {}),
+        worldCultureStage: isWorldCultureProgram(program) ? worldStage : "",
         teachingClass: isQuarterManagedProgram(program) ? teachingClass : "",
         enrollmentStatus: status,
-        isActive: status === "active",
         enrollmentTerms,
         sunLabMember,
       });

@@ -1,12 +1,11 @@
 "use client";
 
 import { getStageInfo } from "@/app/student/data/stageData";
-import { db } from "@/lib/firebase";
 import { getStudentProgramLabel, isWorldCultureProgram, getWorldCultureProgress, getStudentMaterialStageId } from "@/lib/programs";
 import { formatEnrollmentTerm, getEnrollmentTerms } from "@/lib/studentEnrollment";
-import { doc, updateDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { manageTeacherStudent, updateTeacherStudentMaterialHistory } from "@/lib/teacherStudentDataClient";
 import StudentActivityBadges from "./StudentActivityBadges";
 import TeacherTopRankBadge from "./TeacherTopRankBadge";
 
@@ -29,6 +28,9 @@ export default function StudentCard({
   const worldProgress = getWorldCultureProgress(student?.worldCultureStage);
   const materialStageId = getStudentMaterialStageId(student);
   const enrollmentTerms = getEnrollmentTerms(student);
+  const [revealedCode, setRevealedCode] = useState<{ studentId: string; code: string } | null>(null);
+  const [codeError, setCodeError] = useState(false);
+  const [codeLoading, setCodeLoading] = useState(false);
   const [materialHistory, setMaterialHistory] = useState<any[]>(
     Array.isArray(student?.materialHistory) ? student.materialHistory : []
   );
@@ -70,9 +72,7 @@ export default function StudentCard({
 
     const nextHistory = materialHistory.filter((_, index) => index !== targetIndex);
 
-    await updateDoc(doc(db, "students", student.id), {
-      materialHistory: nextHistory,
-    });
+    await updateTeacherStudentMaterialHistory(student.id, nextHistory);
 
     setMaterialHistory(nextHistory);
   };
@@ -156,7 +156,19 @@ export default function StudentCard({
       </div>
 
       <div className="bg-blue-50 rounded-2xl p-2 sm:p-3 mb-2 text-sm truncate">
-        🔑 비밀번호: <span className="font-bold text-blue-600">{student.password}</span>
+        🔑 비밀번호: {revealedCode?.studentId === student.id ? (
+          <><span className="font-bold text-blue-600">{revealedCode?.code || "미설정"}</span>{" "}
+          <button type="button" onClick={() => setRevealedCode(null)} className="font-bold text-slate-600">숨기기</button></>
+        ) : (
+          <button type="button" disabled={codeLoading} onClick={async () => {
+            setCodeLoading(true); setCodeError(false);
+            try {
+              const result = await manageTeacherStudent({ action: "revealCode", studentId: student.id });
+              setRevealedCode({ studentId: student.id, code: String(result.code || "") });
+            } catch { setCodeError(true); }
+            finally { setCodeLoading(false); }
+          }} className="font-bold text-blue-600">{codeLoading ? "확인 중" : "보기"}</button>
+        )} {codeError && <span className="text-rose-600">확인 실패</span>}
       </div>
 
       <div className="bg-yellow-50 rounded-2xl p-2 sm:p-3 mb-2 text-xs sm:text-sm">

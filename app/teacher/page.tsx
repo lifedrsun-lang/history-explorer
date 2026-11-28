@@ -1,15 +1,9 @@
 "use client";
 
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
+import { loadTeacherStudents, manageTeacherStudent } from "@/lib/teacherStudentDataClient";
 
-import {
-  collection,
-  addDoc,
-  getDocs,
-  doc,
-  updateDoc,
-  deleteDoc,
-} from "firebase/firestore";
+
 import {
   browserLocalPersistence,
   browserSessionPersistence,
@@ -176,81 +170,13 @@ export default function TeacherPage() {
     }, 1800);
   };
 
-  const getTodayString = () => {
-    const date = new Date();
-
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
-  };
-
-  const getSourceLabel = (source: CoinSource) => {
-    if (source === "quiz") {
-      return "퀴즈";
-    }
-
-    if (source === "homework") {
-      return "과제";
-    }
-
-    if (source === "making") {
-      return "만들기 완성";
-    }
-
-    return "선생님 보너스";
-  };
-
-  const makeHistoryItem = (item: any) => {
-    return {
-      id: `coin-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2, 8)}`,
-      date: getTodayString(),
-      createdAt: new Date(),
-      ...item,
-    };
-  };
-
-  const getNextCoinHistory = (student: any, items: any[]) => {
-    const currentHistory = Array.isArray(student?.coinHistory)
-      ? student.coinHistory
-      : [];
-
-    const newItems = items.map((item) => makeHistoryItem(item));
-
-    return [...currentHistory, ...newItems].slice(-100);
-  };
-
-  const makeClassHistoryItem = (item: any) => {
-    return {
-      id: `class-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2, 8)}`,
-      date: getTodayString(),
-      createdAt: new Date(),
-      ...item,
-    };
-  };
-
-  const getStudentRef = (student: any) => {
-    return doc(db, "students", student.id);
-  };
-
   const fetchStudents = async () => {
-    const querySnapshot = await getDocs(collection(db, "students"));
-
-    const studentList: any[] = [];
-
-    querySnapshot.forEach((docItem) => {
-      studentList.push({
-        id: docItem.id,
-        ...docItem.data(),
-      });
-    });
-
-    setStudents(studentList);
+    try {
+      setStudents(await loadTeacherStudents());
+    } catch {
+      setStudents([]);
+      showToast("학생 정보를 불러오지 못했습니다.");
+    }
   };
 
   useEffect(() => {
@@ -403,29 +329,13 @@ export default function TeacherPage() {
 
     const password = String(studentNumber).padStart(2, "0");
 
-    await addDoc(collection(db, "students"), {
-      school: school || "미지정",
-      grade,
-      class: studentClass,
-      studentNumber,
-      password,
-      name,
-
-      bronze: 0,
-      silver: 0,
-
-      totalBronze: 0,
-      totalSilver: 0,
-
-      stage: selectedStage,
-      program: studentProgram,
-      timelineCompletedIssues: [],
-      isActive: true,
-
-      coinHistory: [],
-      attendanceHistory: [],
-      materialHistory: [],
-    });
+    try {
+      await manageTeacherStudent({ action: "create", fields: { school: school || "미지정", grade, class: studentClass, studentNumber, name,
+      stage: selectedStage, program: studentProgram, enrollmentStatus: "active", teachingClass: studentTeachingClass } });
+    } catch {
+      showToast("학생 등록에 실패했습니다.");
+      return;
+    }
 
     setStudentNumber("");
     setName("");
@@ -449,67 +359,15 @@ export default function TeacherPage() {
     setEditingStudent(null);
   };
 
-  const addBronzeBySource = async (
-    student: any,
-    source: CoinSource,
-    amount: number
-  ) => {
-    const sourceLabel = getSourceLabel(source);
-
-    const currentBronze = Number(student?.bronze || 0);
-    const currentSilver = Number(student?.silver || 0);
-
-    const afterAddBronze = currentBronze + amount;
-
-    const exchangeCount = Math.floor(afterAddBronze / 10);
-    const newBronze = afterAddBronze % 10;
-    const newSilver = currentSilver + exchangeCount;
-
-    const totalBronze = Number(student?.totalBronze || 0) + amount;
-    const totalSilver = Number(student?.totalSilver || 0) + exchangeCount;
-
-    const historyItems: any[] = [
-      {
-        type: "earn",
-        currency: "bronze",
-        amount,
-        source,
-        text: `동엽전 ${amount}개 획득 (${sourceLabel})`,
-      },
-    ];
-
-    if (exchangeCount > 0) {
-      historyItems.push({
-        type: "exchange",
-        fromCurrency: "bronze",
-        fromAmount: 10 * exchangeCount,
-        toCurrency: "silver",
-        toAmount: exchangeCount,
-        text:
-          exchangeCount === 1
-            ? "동엽전 10개를 은엽전 1개로 자동 교환"
-            : `동엽전 ${10 * exchangeCount}개를 은엽전 ${exchangeCount}개로 자동 교환`,
-      });
+  const addBronzeBySource = async (student: any, source: CoinSource, amount: number) => {
+    try {
+      const result = await manageTeacherStudent({ action: "coin", studentId: student.id, operation: "award", source, amount });
+      const exchangeCount = Number(result.exchangeCount || 0);
+      showToast(exchangeCount > 0 ? `🪙 동엽전 ${amount}개 지급 · 은엽전 ${exchangeCount}개 자동 교환` : `🪙 동엽전 ${amount}개 지급 완료`);
+      await fetchStudents();
+    } catch {
+      showToast("코인 지급에 실패했습니다.");
     }
-
-    const coinHistory = getNextCoinHistory(student, historyItems);
-
-    await updateDoc(getStudentRef(student), {
-      bronze: newBronze,
-      silver: newSilver,
-      totalBronze,
-      totalSilver,
-      coinHistory,
-    });
-
-    const coinToastMessage =
-      exchangeCount > 0
-        ? `🪙 동엽전 ${amount}개 지급 완료 · 은엽전 ${exchangeCount}개 자동 교환`
-        : `🪙 동엽전 ${amount}개 지급 완료`;
-
-    showToast(coinToastMessage);
-
-    fetchStudents();
   };
 
   const addQuizBronze = async (student: any) => {
@@ -563,58 +421,23 @@ export default function TeacherPage() {
 
   // 기존 StudentCard 호환용
   const removeBronze = async (student: any) => {
-    const currentBronze = Number(student?.bronze || 0);
-
-    if (currentBronze <= 0) {
-      showToast("회수할 동엽전이 없습니다");
-      return;
+    try {
+      await manageTeacherStudent({ action: "coin", studentId: student.id, operation: "remove" });
+      showToast("동엽전 1개 회수 완료");
+      await fetchStudents();
+    } catch (error) {
+      showToast(error instanceof Error && error.message === "insufficient_balance" ? "회수할 동엽전이 없습니다" : "동엽전 회수 실패");
     }
-
-    const coinHistory = getNextCoinHistory(student, [
-      {
-        type: "adjust",
-        currency: "bronze",
-        amount: 1,
-        text: "동엽전 1개 회수",
-      },
-    ]);
-
-    await updateDoc(getStudentRef(student), {
-      bronze: currentBronze - 1,
-      totalBronze: Math.max(Number(student?.totalBronze || 0) - 1, 0),
-      coinHistory,
-    });
-
-    showToast("동엽전 1개 회수 완료");
-
-    fetchStudents();
   };
 
   const useSilver = async (student: any) => {
-    const currentSilver = Number(student?.silver || 0);
-
-    if (currentSilver <= 0) {
-      showToast("은엽전이 부족합니다");
-      return;
+    try {
+      await manageTeacherStudent({ action: "coin", studentId: student.id, operation: "use" });
+      showToast("은엽전 1개 사용 완료");
+      await fetchStudents();
+    } catch (error) {
+      showToast(error instanceof Error && error.message === "insufficient_balance" ? "은엽전이 부족합니다" : "은엽전 사용 실패");
     }
-
-    const coinHistory = getNextCoinHistory(student, [
-      {
-        type: "use",
-        currency: "silver",
-        amount: 1,
-        text: "은엽전 1개 사용",
-      },
-    ]);
-
-    await updateDoc(getStudentRef(student), {
-      silver: currentSilver - 1,
-      coinHistory,
-    });
-
-    showToast("은엽전 1개 사용 완료");
-
-    fetchStudents();
   };
 
   const getAttendanceToastIcon = (status: AttendanceStatus) => {
@@ -633,60 +456,24 @@ export default function TeacherPage() {
     return "⏰";
   };
 
-  const addAttendanceRecord = async (
-    student: any,
-    status: AttendanceStatus
-  ) => {
-    const currentHistory = Array.isArray(student?.attendanceHistory)
-      ? student.attendanceHistory
-      : [];
-
-    const attendanceHistory = [
-      ...currentHistory,
-      makeClassHistoryItem({
-        type: "attendance",
-        status,
-        text: status,
-      }),
-    ].slice(-100);
-
-    await updateDoc(getStudentRef(student), {
-      attendanceHistory,
-    });
-
-    showToast(`${getAttendanceToastIcon(status)} ${status} 기록 완료`);
-
-    fetchStudents();
+  const addAttendanceRecord = async (student: any, status: AttendanceStatus) => {
+    try {
+      await manageTeacherStudent({ action: "attendance", studentId: student.id, status });
+      showToast(`${getAttendanceToastIcon(status)} ${status} 기록 완료`);
+      await fetchStudents();
+    } catch {
+      showToast("출석 기록 저장에 실패했습니다.");
+    }
   };
 
   const addMaterialRecord = async (student: any) => {
-    const currentHistory = Array.isArray(student?.materialHistory)
-      ? student.materialHistory
-      : [];
-
-    const stageInfo = getStageInfo(student?.stage);
-    const materialName =
-      stageInfo?.current?.short ||
-      `별꼼역사 ${getBookNumberFromStage(student?.stage)}권`;
-
-    const materialHistory = [
-      ...currentHistory,
-      makeClassHistoryItem({
-        type: "material",
-        materialName,
-        stageId: student?.stage || "",
-        stageTitle: stageInfo?.current?.title || "",
-        text: `${materialName} 교재 지급`,
-      }),
-    ].slice(-100);
-
-    await updateDoc(getStudentRef(student), {
-      materialHistory,
-    });
-
-    showToast("📦 교재 지급 기록 완료");
-
-    fetchStudents();
+    try {
+      await manageTeacherStudent({ action: "material", studentId: student.id });
+      showToast("📦 교재 지급 기록 완료");
+      await fetchStudents();
+    } catch {
+      showToast("교재 지급 기록에 실패했습니다. 교재 진도를 확인해주세요.");
+    }
   };
 
   const changeStage = async (student: any, direction: number) => {
@@ -702,17 +489,13 @@ export default function TeacherPage() {
       newBookNumber = STAGE_DATA.length;
     }
 
-    await updateDoc(getStudentRef(student), {
-      stage: getStageIdForBook(newBookNumber),
-    });
+    await manageTeacherStudent({ action: "progress", studentId: student.id, stage: getStageIdForBook(newBookNumber) });
 
     fetchStudents();
   };
 
   const toggleStudentVisible = async (student: any) => {
-    await updateDoc(getStudentRef(student), {
-      isActive: !student.isActive,
-    });
+    await manageTeacherStudent({ action: "visibility", studentId: student.id, active: !student.isActive });
 
     fetchStudents();
   };
@@ -724,7 +507,7 @@ export default function TeacherPage() {
       return;
     }
 
-    await deleteDoc(getStudentRef(student));
+    await manageTeacherStudent({ action: "delete", studentId: student.id });
 
     fetchStudents();
   };
@@ -862,9 +645,7 @@ export default function TeacherPage() {
       );
 
     for (const student of studentsToUpdate) {
-      await updateDoc(getStudentRef(student), {
-        stage: selectedBulkStage.id,
-      });
+      await manageTeacherStudent({ action: "progress", studentId: student.id, stage: selectedBulkStage.id });
     }
 
     alert(

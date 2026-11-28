@@ -6,7 +6,6 @@ type Props = {
   student: {
     id?: unknown;
     collectionName?: unknown;
-    password?: unknown;
   };
 };
 
@@ -24,7 +23,6 @@ export default function HistoryTimelineLaunchButton({ student }: Props) {
       body: JSON.stringify({
         studentId: String(student.id || ""),
         studentCollection: String(student.collectionName || "students"),
-        studentPassword: String(student.password || ""),
       }),
     })
       .then(async (response) => {
@@ -41,7 +39,7 @@ export default function HistoryTimelineLaunchButton({ student }: Props) {
     return () => {
       active = false;
     };
-  }, [student.id, student.collectionName, student.password]);
+  }, [student.id, student.collectionName]);
 
   const openTimeline = async () => {
     setLoading(true);
@@ -54,7 +52,6 @@ export default function HistoryTimelineLaunchButton({ student }: Props) {
         body: JSON.stringify({
           studentId: String(student.id || ""),
           studentCollection: String(student.collectionName || "students"),
-          studentPassword: String(student.password || ""),
         }),
       });
       const data = await response.json().catch(() => ({}));

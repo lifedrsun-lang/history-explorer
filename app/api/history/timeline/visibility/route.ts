@@ -21,11 +21,14 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
-    const student = await getVerifiedStudent({
-      studentId: body.studentId,
-      studentCollection: body.studentCollection || "students",
-      studentPassword: body.studentPassword,
-    });
+    const student = await getVerifiedStudent(
+      {
+        studentId: body.studentId,
+        studentCollection: body.studentCollection || "students",
+        studentPassword: body.studentPassword,
+      },
+      request
+    );
     if (student.program !== "byeolkkum_history") {
       return Response.json({ canView: false }, { headers: { "Cache-Control": "private, no-store" } });
     }

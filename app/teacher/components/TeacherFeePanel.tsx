@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { collection, getDocs } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
+import { loadTeacherStudents } from "@/lib/teacherStudentDataClient";
 import { getStudentProgramValue } from "@/lib/programs";
 import { getEnrollmentStatus } from "@/lib/studentEnrollment";
 import {
@@ -53,13 +53,7 @@ export default function TeacherFeePanel() {
     setLoadError("");
 
     try {
-      const snapshot = await getDocs(collection(db, "students"));
-      setStudents(
-        snapshot.docs.map((item) => ({
-          id: item.id,
-          ...item.data(),
-        }))
-      );
+      setStudents(await loadTeacherStudents());
     } catch {
       setLoadError("학생 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {

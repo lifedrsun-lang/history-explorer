@@ -22,7 +22,6 @@ type Props = {
 type StudentLike = {
   id?: unknown;
   collectionName?: unknown;
-  password?: unknown;
 };
 
 type UploadState = {
@@ -99,18 +98,16 @@ export default function StudentAssignments({ student }: Props) {
 
   const studentId = String(student?.id || "");
   const studentCollection = getStudentCollection(student);
-  const studentPassword = String(student?.password || "");
 
   const getStudentAuthBody = useCallback(() => {
     return {
       studentId,
       studentCollection,
-      studentPassword,
     };
-  }, [studentCollection, studentId, studentPassword]);
+  }, [studentCollection, studentId]);
 
   const loadAssignments = useCallback(async () => {
-    if (!studentId || !studentPassword) {
+    if (!studentId ) {
       return;
     }
 
@@ -139,7 +136,7 @@ export default function StudentAssignments({ student }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [getStudentAuthBody, studentId, studentPassword]);
+  }, [getStudentAuthBody, studentId]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
