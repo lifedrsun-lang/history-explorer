@@ -2,23 +2,15 @@
 
 import Link from "next/link";
 import { onAuthStateChanged } from "firebase/auth";
-import {
-  Timestamp,
-  collection,
-  doc,
-  getDocs,
-  runTransaction,
-} from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
+import { teacherAfterSchoolCoins } from "@/lib/teacherStudentDataClient";
 import {
   type AfterSchoolClass,
   type AfterSchoolSchool,
   getAfterSchoolClass,
-  matchesAfterSchoolSchool,
 } from "@/lib/afterSchool";
-import { getEnrollmentStatus } from "@/lib/studentEnrollment";
 
 type ClassFilter = "전체" | AfterSchoolClass;
 type CoinSource = "bonus" | "homework" | "quiz";
@@ -34,7 +26,7 @@ type StudentRecord = {
   silver?: number;
   totalBronze?: number;
   totalSilver?: number;
-  coinHistory?: unknown[];
+  teachingClass?: string;
   enrollmentStatus?: string;
   isActive?: boolean;
 };
@@ -44,13 +36,12 @@ type AwardReceipt = {
   studentName: string;
   source: CoinSource;
   sourceLabel: string;
-  historyIds: string[];
+  receiptId: string;
   before: {
     bronze: number;
     silver: number;
     totalBronze: number;
     totalSilver: number;
-    coinHistory: unknown[];
   };
   after: {
     bronze: number;
@@ -72,27 +63,10 @@ const COIN_ACTIONS: Array<{
   { source: "quiz", label: "퀴즈", className: "bg-sky-500 active:bg-sky-600" },
 ];
 
-const getSourceLabel = (source: CoinSource) => {
-  if (source === "quiz") return "퀴즈";
-  if (source === "homework") return "과제";
-  return "선생님 보너스";
-};
-
-const getTodayString = () => {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
 const getNumber = (value: unknown) => {
   const number = Number(value || 0);
   return Number.isFinite(number) ? number : 0;
 };
-
-const getHistoryId = (prefix: string) =>
-  `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
 const sortStudents = (left: StudentRecord, right: StudentRecord) => {
   const gradeDifference = getNumber(left.grade) - getNumber(right.grade);
@@ -132,12 +106,8 @@ export default function AfterSchoolCoinAwardPanel({
     setErrorMessage("");
 
     try {
-      const snapshot = await getDocs(collection(db, "students"));
-      const nextStudents = snapshot.docs
-        .map((item) => ({ id: item.id, ...item.data() }) as StudentRecord)
-        .filter((student) => matchesAfterSchoolSchool(student.school, school))
-        .filter((student) => getEnrollmentStatus(student) === "active")
-        .sort(sortStudents);
+      const result = await teacherAfterSchoolCoins({ action: "list", slug: school.slug });
+      const nextStudents = (result.students as StudentRecord[]).sort(sortStudents);
 
       setStudents(nextStudents);
     } catch {
@@ -228,81 +198,8 @@ export default function AfterSchoolCoinAwardPanel({
     setErrorMessage("");
 
     try {
-      const studentRef = doc(db, "students", student.id);
-      const sourceLabel = getSourceLabel(source);
-      const awardHistoryId = getHistoryId("coin");
-      const exchangeHistoryId = getHistoryId("coin-exchange");
-      const createdAt = Timestamp.now();
-
-      const receipt = await runTransaction(db, async (transaction) => {
-        const snapshot = await transaction.get(studentRef);
-        if (!snapshot.exists()) throw new Error("student_not_found");
-
-        const current = snapshot.data() as StudentRecord;
-        if (!matchesAfterSchoolSchool(current.school, school)) {
-          throw new Error("school_mismatch");
-        }
-        if (getEnrollmentStatus(current) !== "active") {
-          throw new Error("inactive_student");
-        }
-
-        const before = {
-          bronze: getNumber(current.bronze),
-          silver: getNumber(current.silver),
-          totalBronze: getNumber(current.totalBronze),
-          totalSilver: getNumber(current.totalSilver),
-          coinHistory: Array.isArray(current.coinHistory) ? current.coinHistory : [],
-        };
-        const afterAddBronze = before.bronze + 1;
-        const exchangeCount = Math.floor(afterAddBronze / 10);
-        const after = {
-          bronze: afterAddBronze % 10,
-          silver: before.silver + exchangeCount,
-          totalBronze: before.totalBronze + 1,
-          totalSilver: before.totalSilver + exchangeCount,
-        };
-        const historyItems: Record<string, unknown>[] = [
-          {
-            id: awardHistoryId,
-            date: getTodayString(),
-            createdAt,
-            type: "earn",
-            currency: "bronze",
-            amount: 1,
-            source,
-            text: `동엽전 1개 획득 (${sourceLabel})`,
-          },
-        ];
-
-        if (exchangeCount > 0) {
-          historyItems.push({
-            id: exchangeHistoryId,
-            date: getTodayString(),
-            createdAt,
-            type: "exchange",
-            fromCurrency: "bronze",
-            fromAmount: 10 * exchangeCount,
-            toCurrency: "silver",
-            toAmount: exchangeCount,
-            text: `동엽전 ${10 * exchangeCount}개를 은엽전 ${exchangeCount}개로 자동 교환`,
-          });
-        }
-
-        transaction.update(studentRef, {
-          ...after,
-          coinHistory: [...before.coinHistory, ...historyItems].slice(-100),
-        });
-
-        return {
-          studentId: student.id,
-          studentName: String(current.name || student.name || "학생"),
-          source,
-          sourceLabel,
-          historyIds: historyItems.map((item) => String(item.id)),
-          before,
-          after,
-        } satisfies AwardReceipt;
-      });
+      const result = await teacherAfterSchoolCoins({ action: "award", slug: school.slug, studentId: student.id, source });
+      const receipt = result.receipt as AwardReceipt;
 
       setStudents((current) =>
         current.map((item) =>
@@ -338,37 +235,7 @@ export default function AfterSchoolCoinAwardPanel({
     setErrorMessage("");
 
     try {
-      const studentRef = doc(db, "students", lastAward.studentId);
-
-      await runTransaction(db, async (transaction) => {
-        const snapshot = await transaction.get(studentRef);
-        if (!snapshot.exists()) throw new Error("unsafe_undo");
-
-        const current = snapshot.data() as StudentRecord;
-        const currentHistory = Array.isArray(current.coinHistory) ? current.coinHistory : [];
-        const tail = currentHistory.slice(-lastAward.historyIds.length);
-        const tailIds = tail.map((item) =>
-          String((item as { id?: unknown } | null)?.id || "")
-        );
-        const isLatestAward = lastAward.historyIds.every(
-          (historyId, index) => historyId === tailIds[index]
-        );
-        const balancesUnchanged =
-          getNumber(current.bronze) === lastAward.after.bronze &&
-          getNumber(current.silver) === lastAward.after.silver &&
-          getNumber(current.totalBronze) === lastAward.after.totalBronze &&
-          getNumber(current.totalSilver) === lastAward.after.totalSilver;
-
-        if (!isLatestAward || !balancesUnchanged) throw new Error("unsafe_undo");
-
-        transaction.update(studentRef, {
-          bronze: lastAward.before.bronze,
-          silver: lastAward.before.silver,
-          totalBronze: lastAward.before.totalBronze,
-          totalSilver: lastAward.before.totalSilver,
-          coinHistory: lastAward.before.coinHistory,
-        });
-      });
+      await teacherAfterSchoolCoins({ action: "undo", slug: school.slug, studentId: lastAward.studentId, receiptId: lastAward.receiptId });
 
       setStudents((current) =>
         current.map((student) =>

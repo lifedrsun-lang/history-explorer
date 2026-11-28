@@ -69,3 +69,15 @@ export const updateTeacherStudentMaterialHistory = (
   studentId: string,
   materialHistory: unknown[]
 ) => patchTeacherStudent({ action: "materialHistory", studentId, materialHistory });
+
+
+export const teacherAfterSchoolCoins = async (body: Record<string, unknown>) => {
+  const response = await authorizedFetch("/api/teacher/after-school-coins", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "coin_request_failed");
+  return payload;
+};
